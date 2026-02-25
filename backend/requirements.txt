@@ -1,0 +1,32 @@
+# Framework
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.6.1
+
+# Database
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.19
+
+# GCP
+google-cloud-pubsub==2.27.1
+google-cloud-storage==2.19.0
+
+# Payments
+stripe==11.3.0
+
+# Email
+sendgrid==6.11.0
+
+# Push Notifications
+firebase-admin==6.6.0
+
+# Utils
+httpx==0.28.1
+python-dateutil==2.9.0
