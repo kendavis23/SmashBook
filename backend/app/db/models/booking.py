@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, Numeric, Text, Boolean, Enum
+from sqlalchemy import Column, String, Integer, ForeignKey, Numeric, Text, Boolean, Enum, DateTime, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -33,13 +33,18 @@ class PaymentStatus(str, enum.Enum):
 
 class Booking(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "bookings"
+    __table_args__ = (
+        Index("ix_bookings_court_window", "court_id", "start_datetime", "end_datetime"),
+        Index("ix_bookings_club_status", "club_id", "status"),
+        Index("ix_bookings_club_start", "club_id", "start_datetime"),
+    )
 
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
     court_id = Column(UUID(as_uuid=True), ForeignKey("courts.id"), nullable=False)
     booking_type = Column(Enum(BookingType), nullable=False)
     status = Column(Enum(BookingStatus), nullable=False, default=BookingStatus.pending)
-    start_datetime = Column(String, nullable=False)
-    end_datetime = Column(String, nullable=False)
+    start_datetime = Column(DateTime(timezone=True), nullable=False)
+    end_datetime = Column(DateTime(timezone=True), nullable=False)
     created_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     staff_profile_id = Column(UUID(as_uuid=True), ForeignKey("staff_profiles.id"), nullable=True)
     event_name = Column(String(255), nullable=True)
@@ -64,6 +69,9 @@ class Booking(Base, UUIDMixin, TimestampMixin):
 
 class BookingPlayer(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "booking_players"
+    __table_args__ = (
+        UniqueConstraint("booking_id", "user_id", name="uq_booking_players_booking_user"),
+    )
 
     booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)

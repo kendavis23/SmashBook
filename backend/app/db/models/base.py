@@ -1,6 +1,5 @@
 import uuid
-from datetime import datetime
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
 
@@ -10,8 +9,8 @@ class Base(DeclarativeBase):
 
 
 class TimestampMixin:
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
 
 class UUIDMixin:

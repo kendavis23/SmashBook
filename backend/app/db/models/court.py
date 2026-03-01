@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Text, Enum
+from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Text, Enum, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin
@@ -31,8 +31,8 @@ class CourtBlackout(Base, UUIDMixin):
     __tablename__ = "court_blackouts"
 
     court_id = Column(UUID(as_uuid=True), ForeignKey("courts.id"), nullable=False)
-    start_datetime = Column(String, nullable=False)
-    end_datetime = Column(String, nullable=False)
+    start_datetime = Column(DateTime(timezone=True), nullable=False)
+    end_datetime = Column(DateTime(timezone=True), nullable=False)
     reason = Column(Text, nullable=True)
 
     court = relationship("Court", back_populates="blackouts")

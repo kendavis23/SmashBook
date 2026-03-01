@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Enum
+from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Enum, DateTime, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -17,6 +17,9 @@ class TenantUserRole(str, enum.Enum):
 
 class User(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "users"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
+    )
 
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
     email = Column(String(255), nullable=False)
@@ -24,7 +27,7 @@ class User(Base, UUIDMixin, TimestampMixin):
     hashed_password = Column(String(255), nullable=False)
     skill_level = Column(Numeric(3, 1), nullable=True)
     skill_assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    skill_assigned_at = Column(String, nullable=True)
+    skill_assigned_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     stripe_customer_id = Column(String(255), nullable=True)
 

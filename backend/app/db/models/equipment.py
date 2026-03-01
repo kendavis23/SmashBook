@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Numeric, Text, Enum
+from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Numeric, Text, Enum, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -44,7 +44,7 @@ class EquipmentRental(Base, UUIDMixin, TimestampMixin):
     charge = Column(Numeric(10, 2), nullable=False)
     damage_reported = Column(Boolean, nullable=False, default=False)
     damage_notes = Column(Text, nullable=True)
-    returned_at = Column(String, nullable=True)
+    returned_at = Column(DateTime(timezone=True), nullable=True)
 
     booking = relationship("Booking", back_populates="equipment_rentals")
     equipment = relationship("EquipmentInventory", back_populates="rentals")

@@ -11,7 +11,7 @@
 - [ ] Waitlist logic for fully booked slots
 
 ### Technical Foundation
-- [ ] SQLAlchemy models for core entities (Court, Booking, User, Pricing)
+- [ ] Extend SQLAlchemy models with additional capabilities (waitlist, membership tiers, recurring bookings)
 - [ ] Configure multi-tenant middleware in FastAPI
 
 ---
@@ -28,14 +28,6 @@
 - [ ] Equipment rental add-ons at booking
 - [ ] Recurring booking / membership subscriptions
 
-## ✅ Done
-- [x] Git repo setup
-- [x] FastAPI project structure
-- [x] .gitignore configuration
-- [x] Naming — SmashBook confirmed, no active trademarks
-
----
-
 ## 💼 Business Actions
 - [ ] **Dom (lawyer)** — intro call, get buy-in, discuss IP/trademark filing and company structure
 - [ ] **Javi (club owner)** — demo concept, validate pricing model, explore as pilot club
@@ -50,3 +42,16 @@
 - Javi could be a great design partner — real operational input on pricing/booking rules
 - Multi-tenant: row-level security vs schema-per-tenant decision still pending
 - Reference Playtomic pricing model during pricing logic design
+
+---
+
+## ✅ Done
+
+### Product
+- [x] SQLAlchemy models for core entities (Court, Booking, User, Pricing)
+- [x] FastAPI project structure
+- [x] Git repo setup
+- [x] .gitignore configuration
+
+### Business
+- [x] Naming — SmashBook confirmed, no active trademarks

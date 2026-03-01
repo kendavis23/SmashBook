@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Boolean, ForeignKey, Text, SmallInteger, Date, Enum
+from sqlalchemy import Column, Boolean, ForeignKey, Text, SmallInteger, Date, Enum, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -32,8 +32,8 @@ class TrainerAvailability(Base, UUIDMixin, TimestampMixin):
     staff_profile_id = Column(UUID(as_uuid=True), ForeignKey("staff_profiles.id"), nullable=False)
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
     day_of_week = Column(SmallInteger, nullable=False)
-    start_time = Column(String, nullable=False)
-    end_time = Column(String, nullable=False)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
     set_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     effective_from = Column(Date, nullable=False)
     effective_until = Column(Date, nullable=True)
