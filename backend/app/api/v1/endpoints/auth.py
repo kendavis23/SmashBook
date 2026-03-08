@@ -59,7 +59,7 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
     db.add(TenantUser(tenant_id=tenant.id, user_id=user.id, role=TenantUserRole.player))
     db.add(Wallet(user_id=user.id))
 
-    token_data = {"sub": str(user.id)}
+    token_data = {"sub": str(user.id), "tid": str(tenant.id)}
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
@@ -81,7 +81,7 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
 
-    token_data = {"sub": str(user.id)}
+    token_data = {"sub": str(user.id), "tid": str(tenant.id)}
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
@@ -96,7 +96,7 @@ async def refresh_token(body: RefreshRequest):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token"
         )
-    token_data = {"sub": payload["sub"]}
+    token_data = {"sub": payload["sub"], "tid": payload["tid"]}
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),

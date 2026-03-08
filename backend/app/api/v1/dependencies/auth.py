@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -21,22 +21,47 @@ _ADMIN_ROLES = {TenantUserRole.owner, TenantUserRole.admin}
 
 
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db),
 ) -> User:
     payload = decode_token(credentials.credentials)
     if not payload or payload.get("type") != "access":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
     user = await db.get(User, payload.get("sub"))
     if not user or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+
+    # If TenantMiddleware resolved a tenant, the JWT's tid claim must match
+    # both the resolved tenant and the user's own tenant_id.  This prevents
+    # a token issued for Tenant A from being used against Tenant B's API.
+    request_tenant = getattr(request.state, "tenant", None)
+    token_tid = payload.get("tid")
+
+    if request_tenant is not None:
+        if token_tid is None or str(request_tenant.id) != token_tid:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token tenant does not match the current tenant",
+            )
+
+    if token_tid is not None and str(user.tenant_id) != token_tid:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token tenant does not match user's tenant",
+        )
+
     return user
 
 
 async def _require_role(user: User, allowed_roles: set[TenantUserRole], db: AsyncSession) -> User:
+    # Scope the role look-up to the user's own tenant so a staff member of
+    # Tenant A cannot gain elevated access on Tenant B.
     result = await db.execute(
         select(TenantUser).where(
             TenantUser.user_id == user.id,
+            TenantUser.tenant_id == user.tenant_id,
             TenantUser.role.in_(allowed_roles),
         )
     )

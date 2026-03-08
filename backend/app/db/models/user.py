@@ -2,7 +2,7 @@ import enum
 from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Enum, DateTime, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from .base import Base, UUIDMixin, TimestampMixin
+from .base import Base, UUIDMixin, TimestampMixin, TenantScopedMixin
 
 
 class TenantUserRole(str, enum.Enum):
@@ -15,7 +15,7 @@ class TenantUserRole(str, enum.Enum):
     player = "player"
 
 
-class User(Base, UUIDMixin, TimestampMixin):
+class User(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "users"
     __table_args__ = (
         UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),
@@ -38,7 +38,7 @@ class User(Base, UUIDMixin, TimestampMixin):
     skill_history = relationship("SkillLevelHistory", foreign_keys="SkillLevelHistory.user_id", back_populates="user")
 
 
-class TenantUser(Base, UUIDMixin, TimestampMixin):
+class TenantUser(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     __tablename__ = "tenant_users"
 
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
