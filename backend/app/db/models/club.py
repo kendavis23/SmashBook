@@ -65,5 +65,8 @@ class PricingRule(Base, UUIDMixin):
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
     price_per_slot = Column(Numeric(10, 2), nullable=False)
+    discounted_price = Column(Numeric(10, 2), nullable=True)
+    surge_max_pct = Column(Numeric(5, 2), nullable=True)
+    low_demand_min_pct = Column(Numeric(5, 2), nullable=True)
 
     club = relationship("Club", back_populates="pricing_rules")

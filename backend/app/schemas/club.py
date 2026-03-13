@@ -78,6 +78,9 @@ class PricingRuleEntry(BaseModel):
     start_time: time
     end_time: time
     price_per_slot: Decimal
+    discounted_price: Optional[Decimal] = None
+    surge_max_pct: Optional[Decimal] = None
+    low_demand_min_pct: Optional[Decimal] = None
 
     @field_validator("day_of_week")
     @classmethod
