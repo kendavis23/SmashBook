@@ -32,3 +32,7 @@ firebase-admin==6.6.0
 # Utils
 httpx==0.28.1
 python-dateutil==2.9.0
+
+# Dev / testing
+pytest==8.3.4
+pytest-asyncio==0.24.0

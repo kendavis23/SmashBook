@@ -37,11 +37,14 @@ _LOCAL_HOSTS = {"localhost", "127.0.0.1", ""}
 
 # Paths that bypass tenant resolution entirely (e.g. infra health checks).
 _BYPASS_PATHS = {"/healthz"}
+# Path prefixes that bypass tenant resolution (platform-admin routes have no tenant context).
+_BYPASS_PREFIXES = ("/api/v1/admin/",)
 
 
 class TenantMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        if request.url.path in _BYPASS_PATHS:
+        path = request.url.path
+        if path in _BYPASS_PATHS or any(path.startswith(p) for p in _BYPASS_PREFIXES):
             return await call_next(request)
 
         tenant = await _resolve_tenant(request)
