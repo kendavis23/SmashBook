@@ -151,8 +151,9 @@ This automatically:
 - Starts the FastAPI server with hot reload on port 8080
 
 **Services available at:**
-- API: http://localhost:8080
-- Swagger docs: http://localhost:8080/docs
+- Health check: http://localhost:8080/healthz
+- Docs (Swagger UI): http://localhost:8080/api/v1/docs
+- Any endpoint: http://localhost:8080/api/v1/...
 - PostgreSQL: `localhost:5432` (user: `padel_user`, db: `padel_db`)
 
 ### Stop the environment

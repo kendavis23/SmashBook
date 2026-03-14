@@ -71,7 +71,13 @@ async def onboard_tenant(
         )
 
     # --- tenant ---
-    tenant = Tenant(name=body.name, subdomain=body.subdomain, plan_id=body.plan_id, is_active=True)
+    tenant = Tenant(
+        name=body.name,
+        subdomain=body.subdomain,
+        plan_id=body.plan_id,
+        is_active=True,
+        subscription_start_date=body.subscription_start_date,
+    )
     db.add(tenant)
     await db.flush()
 

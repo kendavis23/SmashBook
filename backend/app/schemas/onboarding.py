@@ -1,5 +1,6 @@
 import re
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
 
@@ -31,6 +32,7 @@ class TenantOnboardRequest(BaseModel):
     name: str
     subdomain: str
     plan_id: uuid.UUID
+    subscription_start_date: Optional[datetime] = None
     club: ClubCreate
     courts: List[CourtCreate]
     owner: OwnerCreate
