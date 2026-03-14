@@ -13,9 +13,16 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 from fastapi import HTTPException
 
-from app.api.v1.endpoints.clubs import create_club, list_clubs, update_club, update_pricing_rules
-from app.db.models.club import Club, ClubSettings
-from app.schemas.club import ClubCreate, ClubUpdate, PricingRuleEntry
+from app.api.v1.endpoints.clubs import (
+    create_club,
+    get_operating_hours,
+    list_clubs,
+    update_club,
+    update_operating_hours,
+    update_pricing_rules,
+)
+from app.db.models.club import Club, ClubSettings, OperatingHours
+from app.schemas.club import ClubCreate, ClubUpdate, OperatingHoursEntry, PricingRuleEntry
 from datetime import time
 
 
@@ -387,3 +394,159 @@ async def test_pricing_rule_all_dynamic_fields_none_by_default():
     assert db._added[0].discounted_price is None
     assert db._added[0].surge_max_pct is None
     assert db._added[0].low_demand_min_pct is None
+
+
+# ---------------------------------------------------------------------------
+# OperatingHoursEntry schema validation
+# ---------------------------------------------------------------------------
+
+
+def test_operating_hours_entry_valid():
+    entry = OperatingHoursEntry(day_of_week=0, open_time=time(8, 0), close_time=time(22, 0))
+    assert entry.open_time < entry.close_time
+
+
+def test_operating_hours_entry_rejects_close_before_open():
+    with pytest.raises(Exception):
+        OperatingHoursEntry(day_of_week=1, open_time=time(22, 0), close_time=time(8, 0))
+
+
+def test_operating_hours_entry_rejects_equal_times():
+    with pytest.raises(Exception):
+        OperatingHoursEntry(day_of_week=2, open_time=time(9, 0), close_time=time(9, 0))
+
+
+def test_operating_hours_entry_rejects_invalid_day():
+    with pytest.raises(Exception):
+        OperatingHoursEntry(day_of_week=7, open_time=time(8, 0), close_time=time(22, 0))
+
+
+def test_operating_hours_entry_rejects_negative_day():
+    with pytest.raises(Exception):
+        OperatingHoursEntry(day_of_week=-1, open_time=time(8, 0), close_time=time(22, 0))
+
+
+# ---------------------------------------------------------------------------
+# GET /clubs/{club_id}/operating-hours — get_operating_hours
+# ---------------------------------------------------------------------------
+
+
+def _make_oh_read_db(hours: list):
+    db = AsyncMock()
+    scalars = MagicMock()
+    scalars.all.return_value = hours
+    execute_result = MagicMock()
+    execute_result.scalars.return_value = scalars
+    db.execute = AsyncMock(return_value=execute_result)
+    return db
+
+
+def _make_oh(day: int, open_h: int = 8, close_h: int = 22):
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        club_id=uuid.uuid4(),
+        day_of_week=day,
+        open_time=time(open_h, 0),
+        close_time=time(close_h, 0),
+    )
+
+
+@pytest.mark.asyncio
+async def test_get_operating_hours_returns_all_days():
+    hours = [_make_oh(d) for d in range(7)]
+    db = _make_oh_read_db(hours)
+    result = await get_operating_hours(uuid.uuid4(), db)
+    assert result == hours
+
+
+@pytest.mark.asyncio
+async def test_get_operating_hours_returns_empty_when_none_set():
+    db = _make_oh_read_db([])
+    result = await get_operating_hours(uuid.uuid4(), db)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_get_operating_hours_executes_query():
+    db = _make_oh_read_db([])
+    await get_operating_hours(uuid.uuid4(), db)
+    db.execute.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# PUT /clubs/{club_id}/operating-hours — update_operating_hours
+# ---------------------------------------------------------------------------
+
+
+def _make_oh_write_db():
+    db = AsyncMock()
+    club = _make_club()
+    db.get = AsyncMock(return_value=club)
+    db.execute = AsyncMock()
+    db.flush = AsyncMock()
+    added = []
+    db.add_all = MagicMock(side_effect=lambda objs: added.extend(objs))
+    db._added = added
+    return db
+
+
+def _oh_entry(day: int, open_h: int = 8, close_h: int = 22) -> OperatingHoursEntry:
+    return OperatingHoursEntry(day_of_week=day, open_time=time(open_h, 0), close_time=time(close_h, 0))
+
+
+@pytest.mark.asyncio
+async def test_update_operating_hours_persists_all_entries():
+    db = _make_oh_write_db()
+    entries = [_oh_entry(d) for d in range(7)]
+    result = await update_operating_hours(uuid.uuid4(), entries, CURRENT_USER, db)
+    assert len(result) == 7
+
+
+@pytest.mark.asyncio
+async def test_update_operating_hours_stores_correct_times():
+    db = _make_oh_write_db()
+    entry = _oh_entry(0, open_h=9, close_h=21)
+    await update_operating_hours(uuid.uuid4(), [entry], CURRENT_USER, db)
+    assert db._added[0].open_time == time(9, 0)
+    assert db._added[0].close_time == time(21, 0)
+
+
+@pytest.mark.asyncio
+async def test_update_operating_hours_deletes_existing_before_insert():
+    db = _make_oh_write_db()
+    await update_operating_hours(uuid.uuid4(), [_oh_entry(0)], CURRENT_USER, db)
+    # delete (execute) then insert (add_all) — execute must be called
+    db.execute.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_update_operating_hours_flushes():
+    db = _make_oh_write_db()
+    await update_operating_hours(uuid.uuid4(), [_oh_entry(1)], CURRENT_USER, db)
+    db.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_operating_hours_raises_422_on_duplicate_day():
+    db = _make_oh_write_db()
+    entries = [_oh_entry(0), _oh_entry(0)]  # Monday duplicated
+    with pytest.raises(HTTPException) as exc_info:
+        await update_operating_hours(uuid.uuid4(), entries, CURRENT_USER, db)
+    assert exc_info.value.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_update_operating_hours_raises_404_when_club_not_found():
+    db = _make_oh_write_db()
+    db.get = AsyncMock(return_value=None)
+    with pytest.raises(HTTPException) as exc_info:
+        await update_operating_hours(uuid.uuid4(), [_oh_entry(0)], CURRENT_USER, db)
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_operating_hours_accepts_empty_list():
+    """Clearing all hours should succeed."""
+    db = _make_oh_write_db()
+    result = await update_operating_hours(uuid.uuid4(), [], CURRENT_USER, db)
+    assert result == []

@@ -180,6 +180,13 @@ async def update_operating_hours(
     """Replace all operating hours for the club."""
     await _get_club(club_id, db)
 
+    days = [entry.day_of_week for entry in body]
+    if len(days) != len(set(days)):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Duplicate day_of_week entries are not allowed",
+        )
+
     await db.execute(delete(OperatingHours).where(OperatingHours.club_id == club_id))
 
     new_hours = [

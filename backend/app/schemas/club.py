@@ -3,7 +3,7 @@ from datetime import time
 from decimal import Decimal
 from typing import Optional, List
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 
 class ClubCreate(BaseModel):
@@ -72,6 +72,12 @@ class OperatingHoursEntry(BaseModel):
         if v < 0 or v > 6:
             raise ValueError("day_of_week must be 0 (Monday) … 6 (Sunday)")
         return v
+
+    @model_validator(mode="after")
+    def open_before_close(self) -> "OperatingHoursEntry":
+        if self.open_time >= self.close_time:
+            raise ValueError("open_time must be before close_time")
+        return self
 
     model_config = {"from_attributes": True}
 
