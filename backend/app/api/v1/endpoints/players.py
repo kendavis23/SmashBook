@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db, get_read_db
-from app.api.v1.dependencies.auth import get_current_user
+from app.api.v1.dependencies.auth import get_current_user, require_staff
 
 router = APIRouter(prefix="/players", tags=["players"])
 
@@ -43,6 +43,6 @@ async def get_skill_history(player_id: str, db=Depends(get_read_db)):
 
 
 @router.patch("/{player_id}/skill-level")
-async def update_skill_level(player_id: str, current_user=Depends(get_current_user), db=Depends(get_db)):
+async def update_skill_level(player_id: str, current_user=Depends(require_staff), db=Depends(get_db)):
     """Staff only: assign or update a player's skill level."""
     pass
