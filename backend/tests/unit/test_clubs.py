@@ -1,0 +1,389 @@
+"""
+Unit tests for POST /api/v1/clubs, GET /api/v1/clubs,
+PATCH /api/v1/clubs/{club_id}, and the PUT /pricing-rules bug fix.
+
+The database session is mocked — no real Postgres needed.
+"""
+
+import uuid
+from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+from fastapi import HTTPException
+
+from app.api.v1.endpoints.clubs import create_club, list_clubs, update_club, update_pricing_rules
+from app.db.models.club import Club, ClubSettings
+from app.schemas.club import ClubCreate, ClubUpdate, PricingRuleEntry
+from datetime import time
+
+
+# ---------------------------------------------------------------------------
+# Fixtures
+# ---------------------------------------------------------------------------
+
+PLAN_ID = uuid.uuid4()
+TENANT_ID = uuid.uuid4()
+
+PLAN_SINGLE = SimpleNamespace(id=PLAN_ID, name="starter", max_clubs=1)
+PLAN_MULTI = SimpleNamespace(id=PLAN_ID, name="pro", max_clubs=3)
+PLAN_UNLIMITED = SimpleNamespace(id=PLAN_ID, name="enterprise", max_clubs=-1)
+
+TENANT = SimpleNamespace(id=TENANT_ID, plan_id=PLAN_ID)
+CURRENT_USER = SimpleNamespace(id=uuid.uuid4())
+
+
+def _make_db(plan=PLAN_UNLIMITED, current_club_count: int = 0):
+    """Return a minimal AsyncSession mock for the clubs endpoint."""
+    db = AsyncMock()
+
+    db.get = AsyncMock(return_value=plan)
+
+    count_result = MagicMock()
+    count_result.scalar_one.return_value = current_club_count
+    db.execute = AsyncMock(return_value=count_result)
+
+    db.flush = AsyncMock()
+    db.refresh = AsyncMock()
+
+    added = []
+
+    def _add(obj):
+        if not getattr(obj, "id", None):
+            object.__setattr__(obj, "id", uuid.uuid4())
+        added.append(obj)
+
+    db.add = MagicMock(side_effect=_add)
+    db._added = added
+    return db
+
+
+def _body(**kwargs) -> ClubCreate:
+    defaults = dict(name="Padel Kings Club")
+    defaults.update(kwargs)
+    return ClubCreate(**defaults)
+
+
+# ---------------------------------------------------------------------------
+# Happy path
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_club_returns_club_with_correct_name():
+    db = _make_db()
+    result = await create_club(_body(name="My Club"), CURRENT_USER, TENANT, db)
+    assert result.name == "My Club"
+
+
+@pytest.mark.asyncio
+async def test_create_club_scoped_to_tenant():
+    db = _make_db()
+    result = await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert result.tenant_id == TENANT_ID
+
+
+@pytest.mark.asyncio
+async def test_create_club_defaults_currency_to_gbp():
+    db = _make_db()
+    result = await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert result.currency == "GBP"
+
+
+@pytest.mark.asyncio
+async def test_create_club_accepts_custom_currency():
+    db = _make_db()
+    result = await create_club(_body(currency="EUR"), CURRENT_USER, TENANT, db)
+    assert result.currency == "EUR"
+
+
+@pytest.mark.asyncio
+async def test_create_club_stores_address():
+    db = _make_db()
+    result = await create_club(_body(address="1 Padel Street"), CURRENT_USER, TENANT, db)
+    assert result.address == "1 Padel Street"
+
+
+@pytest.mark.asyncio
+async def test_create_club_address_defaults_to_none():
+    db = _make_db()
+    result = await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert result.address is None
+
+
+@pytest.mark.asyncio
+async def test_create_club_also_creates_default_settings():
+    """A ClubSettings row must be added in the same transaction."""
+    db = _make_db()
+    await create_club(_body(), CURRENT_USER, TENANT, db)
+    settings_objects = [o for o in db._added if isinstance(o, ClubSettings)]
+    assert len(settings_objects) == 1
+
+
+@pytest.mark.asyncio
+async def test_create_club_settings_linked_to_club():
+    db = _make_db()
+    result = await create_club(_body(), CURRENT_USER, TENANT, db)
+    settings = next(o for o in db._added if isinstance(o, ClubSettings))
+    assert settings.club_id == result.id
+
+
+@pytest.mark.asyncio
+async def test_create_club_calls_refresh_for_settings_relationship():
+    db = _make_db()
+    result = await create_club(_body(), CURRENT_USER, TENANT, db)
+    db.refresh.assert_awaited_once_with(result, ["settings"])
+
+
+# ---------------------------------------------------------------------------
+# Plan limit enforcement
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_club_raises_403_when_at_single_club_limit():
+    db = _make_db(plan=PLAN_SINGLE, current_club_count=1)
+    with pytest.raises(HTTPException) as exc_info:
+        await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert exc_info.value.status_code == 403
+    assert "starter" in exc_info.value.detail
+    assert "1" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_create_club_raises_403_when_at_multi_club_limit():
+    db = _make_db(plan=PLAN_MULTI, current_club_count=3)
+    with pytest.raises(HTTPException) as exc_info:
+        await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert exc_info.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_club_succeeds_one_below_limit():
+    db = _make_db(plan=PLAN_MULTI, current_club_count=2)
+    result = await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert result.name == "Padel Kings Club"
+
+
+@pytest.mark.asyncio
+async def test_create_club_unlimited_plan_skips_count_query():
+    """max_clubs == -1 should not execute a COUNT query at all."""
+    db = _make_db(plan=PLAN_UNLIMITED, current_club_count=99)
+    await create_club(_body(), CURRENT_USER, TENANT, db)
+    db.execute.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_create_club_unlimited_plan_always_succeeds():
+    db = _make_db(plan=PLAN_UNLIMITED, current_club_count=999)
+    result = await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert result.tenant_id == TENANT_ID
+
+
+# ---------------------------------------------------------------------------
+# DB interactions
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_create_club_flushes_twice():
+    """Two flushes: once after Club, once after ClubSettings."""
+    db = _make_db()
+    await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert db.flush.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_create_club_adds_exactly_two_objects():
+    """Only a Club and a ClubSettings should be added."""
+    db = _make_db()
+    await create_club(_body(), CURRENT_USER, TENANT, db)
+    assert len(db._added) == 2
+    types = {type(o) for o in db._added}
+    assert types == {Club, ClubSettings}
+
+
+# ---------------------------------------------------------------------------
+# GET /clubs — list_clubs
+# ---------------------------------------------------------------------------
+
+
+def _make_list_db(clubs: list):
+    """Return a db mock whose execute() yields the given list of Club objects."""
+    db = AsyncMock()
+    scalars = MagicMock()
+    scalars.all.return_value = clubs
+    execute_result = MagicMock()
+    execute_result.scalars.return_value = scalars
+    db.execute = AsyncMock(return_value=execute_result)
+    return db
+
+
+@pytest.mark.asyncio
+async def test_list_clubs_returns_all_tenant_clubs():
+    clubs = [
+        SimpleNamespace(id=uuid.uuid4(), tenant_id=TENANT_ID, name="Club A", address=None, currency="GBP", settings=None),
+        SimpleNamespace(id=uuid.uuid4(), tenant_id=TENANT_ID, name="Club B", address=None, currency="GBP", settings=None),
+    ]
+    db = _make_list_db(clubs)
+    result = await list_clubs(TENANT, db)
+    assert result == clubs
+
+
+@pytest.mark.asyncio
+async def test_list_clubs_returns_empty_list_when_no_clubs():
+    db = _make_list_db([])
+    result = await list_clubs(TENANT, db)
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_list_clubs_executes_query():
+    db = _make_list_db([])
+    await list_clubs(TENANT, db)
+    db.execute.assert_awaited_once()
+
+
+# ---------------------------------------------------------------------------
+# PATCH /clubs/{club_id} — update_club
+# ---------------------------------------------------------------------------
+
+
+def _make_update_db(club=None):
+    """Return a db mock for update_club; execute() returns the given club or None."""
+    db = AsyncMock()
+    scalar = MagicMock()
+    scalar.scalar_one_or_none.return_value = club
+    db.execute = AsyncMock(return_value=scalar)
+    db.flush = AsyncMock()
+    return db
+
+
+def _make_club(**kwargs):
+    defaults = dict(id=uuid.uuid4(), tenant_id=TENANT_ID, name="Original", address=None, currency="GBP", settings=None)
+    defaults.update(kwargs)
+    return SimpleNamespace(**defaults)
+
+
+@pytest.mark.asyncio
+async def test_update_club_renames_club():
+    club = _make_club(name="Old Name")
+    db = _make_update_db(club)
+    result = await update_club(club.id, ClubUpdate(name="New Name"), CURRENT_USER, TENANT, db)
+    assert result.name == "New Name"
+
+
+@pytest.mark.asyncio
+async def test_update_club_updates_address():
+    club = _make_club()
+    db = _make_update_db(club)
+    result = await update_club(club.id, ClubUpdate(address="10 Court Lane"), CURRENT_USER, TENANT, db)
+    assert result.address == "10 Court Lane"
+
+
+@pytest.mark.asyncio
+async def test_update_club_updates_currency():
+    club = _make_club()
+    db = _make_update_db(club)
+    result = await update_club(club.id, ClubUpdate(currency="EUR"), CURRENT_USER, TENANT, db)
+    assert result.currency == "EUR"
+
+
+@pytest.mark.asyncio
+async def test_update_club_ignores_none_fields():
+    """Fields not supplied should not overwrite existing values."""
+    club = _make_club(name="Keep Me", address="Stay")
+    db = _make_update_db(club)
+    result = await update_club(club.id, ClubUpdate(currency="USD"), CURRENT_USER, TENANT, db)
+    assert result.name == "Keep Me"
+    assert result.address == "Stay"
+
+
+@pytest.mark.asyncio
+async def test_update_club_raises_404_when_not_found():
+    db = _make_update_db(club=None)
+    with pytest.raises(HTTPException) as exc_info:
+        await update_club(uuid.uuid4(), ClubUpdate(name="X"), CURRENT_USER, TENANT, db)
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_club_flushes_on_success():
+    club = _make_club()
+    db = _make_update_db(club)
+    await update_club(club.id, ClubUpdate(name="X"), CURRENT_USER, TENANT, db)
+    db.flush.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_update_club_no_flush_on_404():
+    db = _make_update_db(club=None)
+    with pytest.raises(HTTPException):
+        await update_club(uuid.uuid4(), ClubUpdate(name="X"), CURRENT_USER, TENANT, db)
+    db.flush.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# PUT /clubs/{club_id}/pricing-rules — dynamic pricing fields persisted
+# ---------------------------------------------------------------------------
+
+
+def _make_pricing_db():
+    db = AsyncMock()
+    # _get_club uses db.get
+    club = _make_club()
+    db.get = AsyncMock(return_value=club)
+    db.execute = AsyncMock()
+    db.flush = AsyncMock()
+    added = []
+    db.add_all = MagicMock(side_effect=lambda objs: added.extend(objs))
+    db._added = added
+    return db
+
+
+def _pricing_rule(**kwargs) -> PricingRuleEntry:
+    defaults = dict(
+        label="Peak",
+        day_of_week=0,
+        start_time=time(18, 0),
+        end_time=time(21, 0),
+        price_per_slot=Decimal("20.00"),
+    )
+    defaults.update(kwargs)
+    return PricingRuleEntry(**defaults)
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_persists_discounted_price():
+    db = _make_pricing_db()
+    rule = _pricing_rule(discounted_price=Decimal("15.00"))
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].discounted_price == Decimal("15.00")
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_persists_surge_max_pct():
+    db = _make_pricing_db()
+    rule = _pricing_rule(surge_max_pct=Decimal("25.00"))
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].surge_max_pct == Decimal("25.00")
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_persists_low_demand_min_pct():
+    db = _make_pricing_db()
+    rule = _pricing_rule(low_demand_min_pct=Decimal("10.00"))
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].low_demand_min_pct == Decimal("10.00")
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_all_dynamic_fields_none_by_default():
+    """Rules without dynamic pricing should store None, not raise."""
+    db = _make_pricing_db()
+    rule = _pricing_rule()
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].discounted_price is None
+    assert db._added[0].surge_max_pct is None
+    assert db._added[0].low_demand_min_pct is None

@@ -6,6 +6,12 @@ from typing import Optional, List
 from pydantic import BaseModel, field_validator
 
 
+class ClubCreate(BaseModel):
+    name: str
+    address: Optional[str] = None
+    currency: str = "GBP"
+
+
 class ClubSettingsResponse(BaseModel):
     booking_duration_minutes: int
     max_advance_booking_days: int
@@ -90,6 +96,12 @@ class PricingRuleEntry(BaseModel):
         return v
 
     model_config = {"from_attributes": True}
+
+
+class ClubUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    currency: Optional[str] = None
 
 
 class StripeConnectRequest(BaseModel):
