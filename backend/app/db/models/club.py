@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Numeric, Text, SmallInteger, Time
+from sqlalchemy import Column, String, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, Text, SmallInteger, Time, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin, TenantScopedMixin
@@ -56,17 +56,34 @@ class OperatingHours(Base, UUIDMixin):
     club = relationship("Club", back_populates="operating_hours")
 
 
-class PricingRule(Base, UUIDMixin):
+class PricingRule(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "pricing_rules"
 
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
+
+    # Window definition
     label = Column(String(50), nullable=False)
     day_of_week = Column(SmallInteger, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
+    valid_from = Column(Date, nullable=True)
+    valid_until = Column(Date, nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+    # Base pricing
     price_per_slot = Column(Numeric(10, 2), nullable=False)
-    discounted_price = Column(Numeric(10, 2), nullable=True)
+
+    # Surge pricing — activates when utilization >= surge_trigger_pct
+    surge_trigger_pct = Column(Numeric(5, 2), nullable=True)
     surge_max_pct = Column(Numeric(5, 2), nullable=True)
+
+    # Low-demand pricing — activates when utilization <= low_demand_trigger_pct
+    low_demand_trigger_pct = Column(Numeric(5, 2), nullable=True)
     low_demand_min_pct = Column(Numeric(5, 2), nullable=True)
+
+    # Flat incentive override (e.g. Happy Hour, promotional rate)
+    incentive_price = Column(Numeric(10, 2), nullable=True)
+    incentive_label = Column(String(100), nullable=True)
+    incentive_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     club = relationship("Club", back_populates="pricing_rules")

@@ -38,8 +38,16 @@ db:
 sql:
 	docker-compose exec db psql -U padel_user -d padel_db -c "$(q)"
 
+# ── ERD ───────────────────────────────────────────────────────────────────────
+# Generates docs/erd.png using eralchemy2 (must be installed in the api container)
+erd:
+	eralchemy2 \
+		-i "postgresql://padel_user:padel_pass@localhost:5432/padel_db" \
+		-o docs/erd.png
+	@echo "ERD generated → docs/erd.png"
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd

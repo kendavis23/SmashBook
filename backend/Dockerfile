@@ -3,7 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install Cloud SQL Auth Proxy
-RUN apt-get update && apt-get install -y wget && \
+RUN apt-get update && apt-get install -y wget graphviz libgraphviz-dev gcc && \
     wget -O /usr/local/bin/cloud-sql-proxy \
     https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.14.1/cloud-sql-proxy.linux.amd64 && \
     chmod +x /usr/local/bin/cloud-sql-proxy && \

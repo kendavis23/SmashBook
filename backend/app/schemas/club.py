@@ -1,5 +1,5 @@
 import uuid
-from datetime import time
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Optional, List
 
@@ -85,14 +85,30 @@ class OperatingHoursEntry(BaseModel):
 class PricingRuleEntry(BaseModel):
     """A single peak/off-peak pricing window."""
 
+    # Window definition
     label: str
     day_of_week: int
     start_time: time
     end_time: time
+    valid_from: Optional[date] = None
+    valid_until: Optional[date] = None
+    is_active: bool = True
+
+    # Base pricing
     price_per_slot: Decimal
-    discounted_price: Optional[Decimal] = None
+
+    # Surge pricing
+    surge_trigger_pct: Optional[Decimal] = None
     surge_max_pct: Optional[Decimal] = None
+
+    # Low-demand pricing
+    low_demand_trigger_pct: Optional[Decimal] = None
     low_demand_min_pct: Optional[Decimal] = None
+
+    # Flat incentive override
+    incentive_price: Optional[Decimal] = None
+    incentive_label: Optional[str] = None
+    incentive_expires_at: Optional[datetime] = None
 
     @field_validator("day_of_week")
     @classmethod
@@ -100,6 +116,16 @@ class PricingRuleEntry(BaseModel):
         if v < 0 or v > 6:
             raise ValueError("day_of_week must be 0 (Monday) … 6 (Sunday)")
         return v
+
+    @model_validator(mode="after")
+    def validate_surge_pair(self) -> "PricingRuleEntry":
+        if (self.surge_trigger_pct is None) != (self.surge_max_pct is None):
+            raise ValueError("surge_trigger_pct and surge_max_pct must both be set or both be null")
+        if (self.low_demand_trigger_pct is None) != (self.low_demand_min_pct is None):
+            raise ValueError("low_demand_trigger_pct and low_demand_min_pct must both be set or both be null")
+        if self.valid_from and self.valid_until and self.valid_from > self.valid_until:
+            raise ValueError("valid_from must be before valid_until")
+        return self
 
     model_config = {"from_attributes": True}
 
