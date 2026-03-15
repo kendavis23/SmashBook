@@ -233,10 +233,17 @@ async def update_pricing_rules(
             day_of_week=rule.day_of_week,
             start_time=rule.start_time,
             end_time=rule.end_time,
+            valid_from=rule.valid_from,
+            valid_until=rule.valid_until,
+            is_active=rule.is_active,
             price_per_slot=rule.price_per_slot,
-            discounted_price=rule.discounted_price,
+            surge_trigger_pct=rule.surge_trigger_pct,
             surge_max_pct=rule.surge_max_pct,
+            low_demand_trigger_pct=rule.low_demand_trigger_pct,
             low_demand_min_pct=rule.low_demand_min_pct,
+            incentive_price=rule.incentive_price,
+            incentive_label=rule.incentive_label,
+            incentive_expires_at=rule.incentive_expires_at,
         )
         for rule in body
     ]

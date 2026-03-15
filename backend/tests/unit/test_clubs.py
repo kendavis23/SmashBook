@@ -23,7 +23,7 @@ from app.api.v1.endpoints.clubs import (
 )
 from app.db.models.club import Club, ClubSettings, OperatingHours
 from app.schemas.club import ClubCreate, ClubUpdate, OperatingHoursEntry, PricingRuleEntry
-from datetime import time
+from datetime import date, datetime, time, timezone
 
 
 # ---------------------------------------------------------------------------
@@ -362,38 +362,133 @@ def _pricing_rule(**kwargs) -> PricingRuleEntry:
 
 
 @pytest.mark.asyncio
-async def test_pricing_rule_persists_discounted_price():
+async def test_pricing_rule_persists_base_fields():
     db = _make_pricing_db()
-    rule = _pricing_rule(discounted_price=Decimal("15.00"))
+    rule = _pricing_rule(label="Peak", day_of_week=1, price_per_slot=Decimal("25.00"))
     await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
-    assert db._added[0].discounted_price == Decimal("15.00")
+    added = db._added[0]
+    assert added.label == "Peak"
+    assert added.day_of_week == 1
+    assert added.price_per_slot == Decimal("25.00")
+    assert added.start_time == time(18, 0)
+    assert added.end_time == time(21, 0)
 
 
 @pytest.mark.asyncio
-async def test_pricing_rule_persists_surge_max_pct():
+async def test_pricing_rule_persists_incentive_price():
     db = _make_pricing_db()
-    rule = _pricing_rule(surge_max_pct=Decimal("25.00"))
+    rule = _pricing_rule(incentive_price=Decimal("15.00"), incentive_label="Happy Hour")
     await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].incentive_price == Decimal("15.00")
+    assert db._added[0].incentive_label == "Happy Hour"
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_persists_incentive_expires_at():
+    expires = datetime(2026, 12, 31, 23, 59, tzinfo=timezone.utc)
+    db = _make_pricing_db()
+    rule = _pricing_rule(incentive_price=Decimal("10.00"), incentive_expires_at=expires)
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].incentive_expires_at == expires
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_persists_surge_fields():
+    db = _make_pricing_db()
+    rule = _pricing_rule(surge_trigger_pct=Decimal("80.00"), surge_max_pct=Decimal("25.00"))
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].surge_trigger_pct == Decimal("80.00")
     assert db._added[0].surge_max_pct == Decimal("25.00")
 
 
 @pytest.mark.asyncio
-async def test_pricing_rule_persists_low_demand_min_pct():
+async def test_pricing_rule_persists_low_demand_fields():
     db = _make_pricing_db()
-    rule = _pricing_rule(low_demand_min_pct=Decimal("10.00"))
+    rule = _pricing_rule(low_demand_trigger_pct=Decimal("20.00"), low_demand_min_pct=Decimal("10.00"))
     await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].low_demand_trigger_pct == Decimal("20.00")
     assert db._added[0].low_demand_min_pct == Decimal("10.00")
 
 
 @pytest.mark.asyncio
-async def test_pricing_rule_all_dynamic_fields_none_by_default():
-    """Rules without dynamic pricing should store None, not raise."""
+async def test_pricing_rule_persists_seasonal_dates():
+    db = _make_pricing_db()
+    rule = _pricing_rule(valid_from=date(2026, 6, 1), valid_until=date(2026, 8, 31))
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].valid_from == date(2026, 6, 1)
+    assert db._added[0].valid_until == date(2026, 8, 31)
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_is_active_defaults_to_true():
     db = _make_pricing_db()
     rule = _pricing_rule()
     await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
-    assert db._added[0].discounted_price is None
-    assert db._added[0].surge_max_pct is None
-    assert db._added[0].low_demand_min_pct is None
+    assert db._added[0].is_active is True
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_can_be_set_inactive():
+    db = _make_pricing_db()
+    rule = _pricing_rule(is_active=False)
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    assert db._added[0].is_active is False
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_all_optional_fields_none_by_default():
+    """A minimal rule with only required fields should store None for all optional fields."""
+    db = _make_pricing_db()
+    rule = _pricing_rule()
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    added = db._added[0]
+    assert added.valid_from is None
+    assert added.valid_until is None
+    assert added.surge_trigger_pct is None
+    assert added.surge_max_pct is None
+    assert added.low_demand_trigger_pct is None
+    assert added.low_demand_min_pct is None
+    assert added.incentive_price is None
+    assert added.incentive_label is None
+    assert added.incentive_expires_at is None
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_persists_multiple_rules():
+    db = _make_pricing_db()
+    rules = [
+        _pricing_rule(label="Peak", day_of_week=0, price_per_slot=Decimal("25.00")),
+        _pricing_rule(label="Off-Peak", day_of_week=0, start_time=time(8, 0), end_time=time(17, 0), price_per_slot=Decimal("15.00")),
+    ]
+    await update_pricing_rules(uuid.uuid4(), rules, CURRENT_USER, db)
+    assert len(db._added) == 2
+    assert db._added[0].label == "Peak"
+    assert db._added[1].label == "Off-Peak"
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_deletes_existing_before_insert():
+    db = _make_pricing_db()
+    rule = _pricing_rule()
+    await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
+    db.execute.assert_awaited()
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_raises_404_when_club_not_found():
+    db = _make_pricing_db()
+    db.get = AsyncMock(return_value=None)
+    with pytest.raises(HTTPException) as exc_info:
+        await update_pricing_rules(uuid.uuid4(), [_pricing_rule()], CURRENT_USER, db)
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_pricing_rule_accepts_empty_list():
+    """Clearing all pricing rules should succeed."""
+    db = _make_pricing_db()
+    result = await update_pricing_rules(uuid.uuid4(), [], CURRENT_USER, db)
+    assert result == []
 
 
 # ---------------------------------------------------------------------------
