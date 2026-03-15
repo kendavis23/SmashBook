@@ -52,9 +52,19 @@ Controls feature gating and limits per tenant.
 | `name` | VARCHAR(100) | e.g. "Starter", "Pro" |
 | `max_clubs` | INTEGER | `-1` = unlimited |
 | `max_courts_per_club` | INTEGER | `-1` = unlimited |
+| `max_staff_users` | INTEGER | `-1` = unlimited |
 | `open_games_feature` | BOOLEAN | Feature flag |
 | `waitlist_feature` | BOOLEAN | Feature flag |
+| `white_label_enabled` | BOOLEAN | Feature flag — custom branding |
+| `analytics_enabled` | BOOLEAN | Feature flag — advanced reporting |
 | `price_per_month` | NUMERIC(10,2) | |
+| `setup_fee` | NUMERIC(10,2) | Default `0` |
+| `trial_days` | INTEGER | Default `0` |
+| `booking_fee_pct` | NUMERIC(5,2) | Nullable — % fee per court booking |
+| `revenue_share_pct` | NUMERIC(5,2) | Nullable — % of total club revenue |
+| `third_party_revenue_share_pct` | NUMERIC(5,2) | Nullable — % of lessons/retail/etc |
+| `overage_fee_per_booking` | NUMERIC(10,2) | Nullable — flat fee beyond plan limits |
+| `max_api_calls_per_month` | INTEGER | Nullable — `NULL` = unlimited |
 
 **Relationships:** `tenants` (1:many)
 
@@ -71,6 +81,7 @@ Top-level organizational unit. Each tenant is a sports club operator.
 | `custom_domain` | VARCHAR(255) | Nullable |
 | `plan_id` | UUID | FK → `subscription_plans` |
 | `is_active` | BOOLEAN | |
+| `subscription_start_date` | TIMESTAMPTZ | Nullable — `NULL` until tenant goes live |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -184,7 +195,17 @@ One-to-one extension of a club with operational configuration.
 | `day_of_week` | SMALLINT | 0 = Monday … 6 = Sunday |
 | `start_time` | TIME | |
 | `end_time` | TIME | |
-| `price_per_slot` | NUMERIC(10,2) | |
+| `valid_from` | DATE | Nullable — rule effective start date |
+| `valid_until` | DATE | Nullable — rule effective end date |
+| `is_active` | BOOLEAN | Default `true` |
+| `price_per_slot` | NUMERIC(10,2) | Base price |
+| `surge_trigger_pct` | NUMERIC(5,2) | Nullable — activates when utilisation ≥ this % |
+| `surge_max_pct` | NUMERIC(5,2) | Nullable — max surge multiplier (%) |
+| `low_demand_trigger_pct` | NUMERIC(5,2) | Nullable — activates when utilisation ≤ this % |
+| `low_demand_min_pct` | NUMERIC(5,2) | Nullable — floor discount multiplier (%) |
+| `incentive_price` | NUMERIC(10,2) | Nullable — flat promotional override price |
+| `incentive_label` | VARCHAR(100) | Nullable — e.g. "Happy Hour" |
+| `incentive_expires_at` | TIMESTAMPTZ | Nullable — incentive expiry |
 
 ---
 

@@ -421,7 +421,7 @@ gcloud run services describe padel-api \
   --format="value(status.url)"
 
 # Hit the health endpoint
-curl https://<SERVICE_URL>/health
+curl https://<SERVICE_URL>/healthz
 ```
 
 ---
@@ -512,8 +512,9 @@ gcloud run deploy padel-api \
 ### API health endpoint
 
 ```bash
-curl https://<SERVICE_URL>/health
+curl https://<SERVICE_URL>/healthz
 # Expected: 200 OK  {"status": "ok"}
+# Note: local dev uses http://localhost:8080/healthz
 ```
 
 ### Check Cloud Run service status

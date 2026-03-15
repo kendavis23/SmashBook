@@ -311,7 +311,7 @@ erDiagram
 ### Non-obvious relationships
 
 - **`booking_players`** is a junction table — a booking can have 1–4 players, each with their own payment status and attendance confirmation
-- **`wallets`** hold pre-loaded credit at the player level, scoped to a club (a player's wallet at Club A is separate from Club B)
+- **`wallets`** hold pre-loaded credit at the player level — one wallet per user (global, not club-scoped)
 - **`skill_ratings`** are club-scoped and updated post-match; staff can override, with all changes logged in `skill_rating_history`
 - **`payments`** reference both a Stripe PaymentIntent and (optionally) a wallet debit, supporting hybrid payment (partial wallet + card)
 
@@ -416,8 +416,8 @@ See `docs/DEPLOYMENT.md` for the full CI/CD runbook.
 docker compose up
 
 # Services available at:
-# API:      http://localhost:8000
-# Docs:     http://localhost:8000/docs
+# API:      http://localhost:8080
+# Docs:     http://localhost:8080/api/v1/docs
 # Database: localhost:5432
 ```
 
@@ -439,11 +439,12 @@ Both are JWTs signed with HS256. Tokens contain `user_id`, `club_id`, `role`, an
 | Role | Scope | Capabilities |
 |------|-------|-------------|
 | `player` | Club | Bookings, payments, own profile |
+| `viewer` | Club | Read-only access to club data |
 | `staff` | Club | All player capabilities + booking admin, player management |
 | `trainer` | Club | Own schedule, assigned lesson bookings |
-| `operations_lead` | Club | All staff capabilities + trainer schedule management |
-| `club_owner` | Club | Full club configuration |
-| `platform_admin` | Platform | Cross-tenant administration |
+| `ops_lead` | Club | All staff capabilities + trainer schedule management |
+| `admin` | Club | Full club configuration except ownership transfer |
+| `owner` | Club | Full club configuration + billing |
 
 Role is enforced via FastAPI dependencies:
 
