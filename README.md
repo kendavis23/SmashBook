@@ -1,4 +1,4 @@
-# Padel Booking App — Project Scaffolding
+# SmashBook — Padel Club Management Platform
 
 Multi-tenant SaaS platform for padel club court booking.
 
@@ -191,7 +191,10 @@ GET    /api/v1/reports/transactions      [staff]
 GET    /api/v1/reports/stripe-payouts    [staff]
 GET    /api/v1/reports/export            [staff] → signed GCS URL
 
+POST   /api/v1/clubs                     [admin]
+GET    /api/v1/clubs
 GET    /api/v1/clubs/{id}
+PATCH  /api/v1/clubs/{id}               [admin]
 PATCH  /api/v1/clubs/{id}/settings      [admin]
 GET    /api/v1/clubs/{id}/operating-hours
 PUT    /api/v1/clubs/{id}/operating-hours [admin]
