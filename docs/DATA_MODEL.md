@@ -23,6 +23,10 @@ Tenant ──< Club ──< Court ──< Booking ──< BookingPlayer
 
 Tenant ──< TenantUser ──> User ──< Wallet ──< WalletTransaction
                                └──< SkillLevelHistory
+                               └──< MembershipSubscription ──> MembershipPlan
+                                                           └──< MembershipCreditLog
+
+Club ──< MembershipPlan ──< MembershipSubscription
 ```
 
 ---
@@ -462,6 +466,76 @@ Immutable audit log of player skill changes.
 
 ---
 
+### 11. Memberships
+
+#### `membership_plans`
+Club-defined subscription tiers (e.g. Silver, Gold, Platinum).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `name` | VARCHAR(100) | e.g. "Gold" |
+| `description` | TEXT | Nullable |
+| `billing_period` | ENUM | `monthly`, `annual` |
+| `price` | NUMERIC(10,2) | |
+| `trial_days` | INTEGER | Default `0` |
+| `booking_credits_per_period` | INTEGER | Nullable — `NULL` = unlimited |
+| `guest_passes_per_period` | INTEGER | Nullable — `NULL` = none |
+| `discount_pct` | NUMERIC(5,2) | Nullable — % off court bookings |
+| `priority_booking_days` | INTEGER | Nullable — extra advance-booking window beyond club default |
+| `max_active_members` | INTEGER | Nullable — enrollment cap; `NULL` = unlimited |
+| `is_active` | BOOLEAN | Default `true` |
+| `stripe_price_id` | VARCHAR(255) | Nullable — Stripe recurring Price ID |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Relationships:** `club`, `subscriptions`
+
+---
+
+#### `membership_subscriptions`
+A player's active subscription to a `MembershipPlan`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `user_id` | UUID | FK → `users` |
+| `plan_id` | UUID | FK → `membership_plans` |
+| `club_id` | UUID | FK → `clubs` — denormalised for tenant-scoping |
+| `status` | ENUM | `trialing`, `active`, `paused`, `cancelled`, `expired` |
+| `current_period_start` | TIMESTAMPTZ | |
+| `current_period_end` | TIMESTAMPTZ | |
+| `cancel_at_period_end` | BOOLEAN | Default `false` |
+| `cancelled_at` | TIMESTAMPTZ | Nullable |
+| `credits_remaining` | INTEGER | Nullable — `NULL` when plan has unlimited credits |
+| `guest_passes_remaining` | INTEGER | Nullable — `NULL` when plan has no guest passes |
+| `stripe_subscription_id` | VARCHAR(255) | Nullable |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Relationships:** `user`, `plan`, `club`, `credit_logs`
+
+---
+
+#### `membership_credit_logs`
+Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet_transactions` pattern.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `subscription_id` | UUID | FK → `membership_subscriptions` |
+| `booking_id` | UUID | FK → `bookings`, nullable |
+| `credit_type` | ENUM | `booking_credit`, `guest_pass` |
+| `delta` | INTEGER | Negative = used; positive = restored/reset |
+| `balance_after` | INTEGER | Snapshot for audit trail |
+| `notes` | TEXT | Nullable |
+| `created_at` | TIMESTAMPTZ | |
+
+**Relationships:** `subscription`, `booking`
+
+---
+
 ## Enumerations
 
 | Enum | Values |
@@ -478,6 +552,9 @@ Immutable audit log of player skill changes.
 | `WalletTransactionType` | `top_up`, `debit`, `refund`, `adjustment` |
 | `ItemType` | `racket`, `ball_tube`, `other` |
 | `ItemCondition` | `good`, `fair`, `damaged`, `retired` |
+| `BillingPeriod` | `monthly`, `annual` |
+| `MembershipStatus` | `trialing`, `active`, `paused`, `cancelled`, `expired` |
+| `CreditType` | `booking_credit`, `guest_pass` |
 
 ---
 
@@ -503,6 +580,11 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 |---|---|
 | `4f3a53db6bd2` | Initial schema — all 22 tables, FK relationships, PostgreSQL ENUMs |
 | `b9e1f2a3c4d5` | Fix datetime types to TIMESTAMPTZ, TIME; add composite indexes on `bookings` |
+| `c1d2e3f4a5b6` | Pricing rule discount and dynamic pricing |
+| `d2e3f4a5b6c7` | Add subscription plan commercial fields |
+| `e3f4a5b6c7d8` | Add `subscription_start_date` to tenants |
+| `f4a5b6c7d8e9` | Full dynamic pricing (surge, low-demand, incentives, seasonal) |
+| `a1b2c3d4e5f6` | Add membership schema — `membership_plans`, `membership_subscriptions`, `membership_credit_logs` |
 
 To run migrations:
 ```bash

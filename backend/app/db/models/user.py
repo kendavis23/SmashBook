@@ -36,6 +36,7 @@ class User(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     wallet = relationship("Wallet", back_populates="user", uselist=False)
     booking_players = relationship("BookingPlayer", back_populates="user")
     skill_history = relationship("SkillLevelHistory", foreign_keys="SkillLevelHistory.user_id", back_populates="user")
+    membership_subscriptions = relationship("MembershipSubscription", back_populates="user")
 
 
 class TenantUser(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):

@@ -9,6 +9,7 @@ from .equipment import EquipmentInventory, EquipmentRental
 from .skill import SkillLevelHistory
 from .wallet import Wallet, WalletTransaction
 from .payment import Payment, Invoice
+from .membership import MembershipPlan, MembershipSubscription, MembershipCreditLog
 
 __all__ = [
     "Base",
@@ -22,4 +23,5 @@ __all__ = [
     "SkillLevelHistory",
     "Wallet", "WalletTransaction",
     "Payment", "Invoice",
+    "MembershipPlan", "MembershipSubscription", "MembershipCreditLog",
 ]

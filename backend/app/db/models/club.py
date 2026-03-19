@@ -21,6 +21,8 @@ class Club(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     staff_profiles = relationship("StaffProfile", back_populates="club")
     bookings = relationship("Booking", back_populates="club")
     equipment = relationship("EquipmentInventory", back_populates="club")
+    membership_plans = relationship("MembershipPlan", back_populates="club")
+    membership_subscriptions = relationship("MembershipSubscription", back_populates="club")
 
 
 class ClubSettings(Base, UUIDMixin, TimestampMixin):

@@ -28,6 +28,16 @@ migrate-status:
 migration:
 	docker-compose exec api alembic revision --autogenerate -m "$(msg)"
 
+# Local variants (no Docker — runs against DATABASE_URL in backend/.env)
+migrate-local:
+	cd backend && .venv/bin/alembic upgrade head
+
+migrate-down-local:
+	cd backend && .venv/bin/alembic downgrade -1
+
+migration-local:
+	cd backend && .venv/bin/alembic revision --autogenerate -m "$(msg)"
+
 # ── Database access ───────────────────────────────────────────────────────────
 
 # Open interactive psql shell
@@ -50,4 +60,4 @@ erd:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd migrate-local migrate-down-local migration-local
