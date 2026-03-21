@@ -205,18 +205,19 @@ class TestCrossTenantRejection:
             await session.commit()
             await session.refresh(t2)
 
-        token = create_access_token({"sub": str(player.id), "tid": str(tenant.id)})
-        resp = await client.get(
-            "/api/v1/clubs",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "X-Tenant-ID": str(t2.id),  # deliberate mismatch
-            },
-        )
-        assert resp.status_code == 401
-
-        async with test_session_factory() as session:
-            obj = await session.get(TenantModel, t2.id)
-            if obj:
-                await session.delete(obj)
-                await session.commit()
+        try:
+            token = create_access_token({"sub": str(player.id), "tid": str(tenant.id)})
+            resp = await client.get(
+                "/api/v1/clubs",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "X-Tenant-ID": str(t2.id),  # deliberate mismatch
+                },
+            )
+            assert resp.status_code == 401
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(TenantModel, t2.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()

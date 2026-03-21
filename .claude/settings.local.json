@@ -1,0 +1,6 @@
+{
+  "env": {
+    "DATABASE_URL": "postgresql+asyncpg://test:test@localhost:5433/test",
+    "DATABASE_READ_REPLICA_URL": "postgresql+asyncpg://test:test@localhost:5433/test"
+  }
+}

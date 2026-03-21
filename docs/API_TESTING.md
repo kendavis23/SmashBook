@@ -1,4 +1,4 @@
-_Last updated: 2026-03-21 00:00 UTC_
+_Last updated: 2026-03-21 21:30 UTC_
 
 # Integration Testing
 
@@ -229,13 +229,15 @@ The recommended approach is Docker — it is isolated from any dev database, tri
 
 ### Start the container
 
+The test database runs on port **5433** to avoid conflicting with the dev database on port 5432.
+
 ```bash
 docker run -d \
   --name smashbook-test-db \
   -e POSTGRES_USER=test \
   -e POSTGRES_PASSWORD=test \
   -e POSTGRES_DB=test \
-  -p 5432:5432 \
+  -p 5433:5432 \
   postgres:16
 ```
 
@@ -260,6 +262,22 @@ docker rm -f smashbook-test-db
 # re-run the docker run command above
 ```
 
+### Environment variables
+
+The database URLs are set in `.claude/settings.local.json` (gitignored) so they are injected automatically when running commands through Claude Code:
+
+```
+DATABASE_URL=postgresql+asyncpg://test:test@localhost:5433/test
+DATABASE_READ_REPLICA_URL=postgresql+asyncpg://test:test@localhost:5433/test
+```
+
+If running pytest in a separate terminal (outside Claude Code), export them manually first:
+
+```bash
+export DATABASE_URL=postgresql+asyncpg://test:test@localhost:5433/test
+export DATABASE_READ_REPLICA_URL=postgresql+asyncpg://test:test@localhost:5433/test
+```
+
 You do not need to run Alembic migrations — the `test_engine` fixture calls `Base.metadata.create_all` on first use, which creates all tables automatically.
 
 ---
@@ -269,7 +287,7 @@ You do not need to run Alembic migrations — the `test_engine` fixture calls `B
 ### Auth flows (first test suite)
 
 ```bash
-cd /Users/ken/SmashBook/backend
+cd backend
 .venv/bin/python -m pytest tests/integration/test_auth.py -v
 ```
 

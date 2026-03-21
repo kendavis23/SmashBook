@@ -77,7 +77,7 @@ class TestCreateCourt:
     ):
         """A club that exists but belongs to a different tenant must return 404,
         not 403, to avoid leaking whether the club exists."""
-        from app.db.models.club import Club, ClubSettings
+        from app.db.models.club import Club
         from app.db.models.tenant import Tenant as TenantModel
         from sqlalchemy import delete as sql_delete
 
@@ -93,29 +93,24 @@ class TestCreateCourt:
             await session.flush()
             other_club = Club(tenant_id=t2.id, name="Other Club", currency="GBP")
             session.add(other_club)
-            await session.flush()
-            session.add(ClubSettings(club_id=other_club.id))
             await session.commit()
             other_club_id = other_club.id
             t2_id = t2.id
 
-        resp = await client.post(
-            "/api/v1/courts",
-            json={**CREATE_COURT, "club_id": str(other_club_id)},
-            headers=staff_headers,
-        )
-        assert resp.status_code == 404
-
-        # Cleanup
-        async with test_session_factory() as session:
-            await session.execute(
-                sql_delete(ClubSettings).where(ClubSettings.club_id == other_club_id)
+        try:
+            resp = await client.post(
+                "/api/v1/courts",
+                json={**CREATE_COURT, "club_id": str(other_club_id)},
+                headers=staff_headers,
             )
-            await session.execute(sql_delete(Club).where(Club.id == other_club_id))
-            obj = await session.get(TenantModel, t2_id)
-            if obj:
-                await session.delete(obj)
-            await session.commit()
+            assert resp.status_code == 404
+        finally:
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(Club).where(Club.id == other_club_id))
+                obj = await session.get(TenantModel, t2_id)
+                if obj:
+                    await session.delete(obj)
+                await session.commit()
 
     async def test_plan_court_limit_enforced(
         self, client, staff_headers, club, test_session_factory, plan
@@ -143,7 +138,7 @@ class TestCreateCourt:
             headers=staff_headers,
         )
         assert r2.status_code == 403
-        assert "maximum" in r2.json()["detail"].lower()
+        assert "at most" in r2.json()["detail"].lower()
 
         async with test_session_factory() as session:
             p = await session.get(SubscriptionPlan, plan.id)

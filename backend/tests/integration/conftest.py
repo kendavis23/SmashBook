@@ -47,11 +47,11 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.security import create_access_token, get_password_hash
 from app.db.models.base import Base
-from app.db.models.club import Club, ClubSettings, OperatingHours, PricingRule
+from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.membership import MembershipPlan
 from app.db.models.court import Court, CourtBlackout
 from app.db.models.tenant import SubscriptionPlan, Tenant
-from app.db.models.user import TenantUser, TenantUserRole, User
+from app.db.models.user import TenantUserRole, User
 from app.db.models.wallet import Wallet
 from app.db.session import get_db, get_read_db
 from app.main import app
@@ -165,9 +165,6 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
                     sql_delete(Court).where(Court.club_id.in_(club_ids))
                 )
             await session.execute(
-                sql_delete(ClubSettings).where(ClubSettings.club_id.in_(club_ids))
-            )
-            await session.execute(
                 sql_delete(OperatingHours).where(OperatingHours.club_id.in_(club_ids))
             )
             await session.execute(
@@ -185,9 +182,6 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
             await session.execute(
                 sql_delete(Wallet).where(Wallet.user_id.in_(user_ids))
             )
-        await session.execute(
-            sql_delete(TenantUser).where(TenantUser.tenant_id == tenant_id)
-        )
         if user_ids:
             await session.execute(
                 sql_delete(User).where(User.tenant_id == tenant_id)
@@ -268,10 +262,9 @@ async def _create_user(
             full_name=full_name,
             hashed_password=get_password_hash("Test1234!"),
             is_active=True,
+            role=role,
         )
         session.add(user)
-        await session.flush()
-        session.add(TenantUser(tenant_id=tenant_id, user_id=user.id, role=role))
         await session.commit()
         await session.refresh(user)
     return user
@@ -281,9 +274,6 @@ async def _delete_user(user_id: uuid.UUID, session_factory) -> None:
     async with session_factory() as session:
         await session.execute(
             sql_delete(Wallet).where(Wallet.user_id == user_id)
-        )
-        await session.execute(
-            sql_delete(TenantUser).where(TenantUser.user_id == user_id)
         )
         obj = await session.get(User, user_id)
         if obj:
@@ -356,8 +346,6 @@ async def club(tenant, test_session_factory):
             currency="GBP",
         )
         session.add(c)
-        await session.flush()
-        session.add(ClubSettings(club_id=c.id))
         await session.commit()
         await session.refresh(c)
 
@@ -372,9 +360,6 @@ async def club(tenant, test_session_factory):
                 sql_delete(CourtBlackout).where(CourtBlackout.court_id.in_(court_ids))
             )
             await session.execute(sql_delete(Court).where(Court.club_id == c.id))
-        await session.execute(
-            sql_delete(ClubSettings).where(ClubSettings.club_id == c.id)
-        )
         await session.execute(
             sql_delete(OperatingHours).where(OperatingHours.club_id == c.id)
         )

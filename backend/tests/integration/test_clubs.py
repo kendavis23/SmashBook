@@ -36,7 +36,7 @@ class TestCreateClub:
         assert body["name"] == "New Court Club"
         assert body["currency"] == "GBP"
         assert body["tenant_id"] == str(tenant.id)
-        assert body["settings"] is not None  # default ClubSettings auto-created
+        assert body["booking_duration_minutes"] is not None  # settings fields are flat on ClubResponse
 
     async def test_defaults_currency_to_gbp(self, client, admin_headers):
         resp = await client.post(
@@ -124,8 +124,9 @@ class TestListClubs:
         self, client, player_headers, club, test_session_factory, plan
     ):
         """Clubs belonging to a different tenant must not appear in the response."""
-        from app.db.models.club import Club, ClubSettings
+        from app.db.models.club import Club
         from app.db.models.tenant import Tenant as TenantModel
+        from sqlalchemy import delete as sql_delete
 
         subdomain = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
@@ -139,30 +140,24 @@ class TestListClubs:
             await session.flush()
             other_club = Club(tenant_id=t2.id, name="Other Club", currency="GBP")
             session.add(other_club)
-            await session.flush()
-            session.add(ClubSettings(club_id=other_club.id))
             await session.commit()
             other_club_id = other_club.id
             t2_id = t2.id
 
-        resp = await client.get("/api/v1/clubs", headers=player_headers)
-        assert resp.status_code == 200
-        ids = [c["id"] for c in resp.json()]
-        assert str(other_club_id) not in ids
-
-        # Cleanup
-        from sqlalchemy import delete as sql_delete
-        async with test_session_factory() as session:
-            await session.execute(
-                sql_delete(ClubSettings).where(ClubSettings.club_id == other_club_id)
-            )
-            await session.execute(
-                sql_delete(Club).where(Club.id == other_club_id)
-            )
-            obj = await session.get(TenantModel, t2_id)
-            if obj:
-                await session.delete(obj)
-            await session.commit()
+        try:
+            resp = await client.get("/api/v1/clubs", headers=player_headers)
+            assert resp.status_code == 200
+            ids = [c["id"] for c in resp.json()]
+            assert str(other_club_id) not in ids
+        finally:
+            async with test_session_factory() as session:
+                await session.execute(
+                    sql_delete(Club).where(Club.id == other_club_id)
+                )
+                obj = await session.get(TenantModel, t2_id)
+                if obj:
+                    await session.delete(obj)
+                await session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +172,7 @@ class TestGetClub:
         body = resp.json()
         assert body["id"] == str(club.id)
         assert body["name"] == club.name
-        assert body["settings"] is not None
+        assert body["booking_duration_minutes"] is not None
 
     async def test_unknown_id_returns_404(self, client, player_headers):
         resp = await client.get(

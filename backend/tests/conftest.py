@@ -8,8 +8,8 @@ Setting os.environ here runs before pytest collects test modules.
 import os
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
-os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost/test")
-os.environ.setdefault("DATABASE_READ_REPLICA_URL", "postgresql+asyncpg://test:test@localhost/test")
+os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://test:test@localhost:5433/test")
+os.environ.setdefault("DATABASE_READ_REPLICA_URL", "postgresql+asyncpg://test:test@localhost:5433/test")
 os.environ.setdefault("PUBSUB_PROJECT_ID", "test-project")
 os.environ.setdefault("GCS_BUCKET_VIDEOS", "test-videos-bucket")
 os.environ.setdefault("GCS_BUCKET_INVOICES", "test-invoices-bucket")

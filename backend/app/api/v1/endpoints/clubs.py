@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.dependencies.auth import require_admin
+from app.api.v1.dependencies.auth import get_current_user, require_admin
 from app.api.v1.dependencies.tenant import get_tenant
 from app.core.config import get_settings
 from app.db.models.club import Club, OperatingHours, PricingRule
@@ -68,6 +68,7 @@ async def create_club(
 
 @router.get("", response_model=List[ClubResponse])
 async def list_clubs(
+    current_user=Depends(get_current_user),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_read_db),
 ):
