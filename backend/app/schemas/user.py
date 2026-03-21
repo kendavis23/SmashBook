@@ -4,6 +4,8 @@ import uuid
 
 from pydantic import BaseModel, EmailStr, field_validator
 
+from app.db.models.user import NotificationChannel, TenantUserRole
+
 
 class UserRegister(BaseModel):
     tenant_subdomain: str
@@ -56,7 +58,18 @@ class UserResponse(BaseModel):
     id: uuid.UUID
     email: str
     full_name: str
+    role: TenantUserRole
+    phone: Optional[str] = None
+    photo_url: Optional[str] = None
     skill_level: Optional[Decimal] = None
+    preferred_notification_channel: NotificationChannel
     is_active: bool
 
     model_config = {"from_attributes": True}
+
+
+class UserProfileUpdate(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    photo_url: Optional[str] = None
+    preferred_notification_channel: Optional[NotificationChannel] = None

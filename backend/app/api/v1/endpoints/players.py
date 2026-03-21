@@ -2,20 +2,29 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db, get_read_db
 from app.api.v1.dependencies.auth import get_current_user, require_staff
+from app.db.models.user import User
+from app.schemas.user import UserResponse, UserProfileUpdate
 
 router = APIRouter(prefix="/players", tags=["players"])
 
 
-@router.get("/me")
-async def get_my_profile(current_user=Depends(get_current_user), db=Depends(get_read_db)):
+@router.get("/me", response_model=UserResponse)
+async def get_my_profile(current_user: User = Depends(get_current_user)):
     """Get current player's profile."""
-    pass
+    return current_user
 
 
-@router.patch("/me")
-async def update_my_profile(current_user=Depends(get_current_user), db=Depends(get_db)):
+@router.patch("/me", response_model=UserResponse)
+async def update_my_profile(
+    body: UserProfileUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Update profile details."""
-    pass
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(current_user, field, value)
+    db.add(current_user)
+    return current_user
 
 
 @router.get("/me/bookings")
