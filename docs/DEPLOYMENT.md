@@ -1,3 +1,5 @@
+_Last updated: 2026-03-21 00:00 UTC_
+
 # SmashBook — Deployment & CI/CD Runbook
 
 > **Audience:** Engineers deploying changes to SmashBook

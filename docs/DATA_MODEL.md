@@ -1,3 +1,5 @@
+_Last updated: 2026-03-21 00:00 UTC_
+
 # SmashBook Data Model
 
 ## Overview
@@ -12,19 +14,17 @@ SmashBook uses a **multi-tenant PostgreSQL** database with SQLAlchemy ORM. All t
 Tenant ──< Club ──< Court ──< Booking ──< BookingPlayer
               │                    │
               │                    ├──< Payment
-              │                    ├──< Invoice
               │                    └──< EquipmentRental ──> EquipmentInventory
               │
-              ├──< ClubSettings (1:1)
               ├──< OperatingHours
               ├──< PricingRule
               ├──< StaffProfile ──< TrainerAvailability
               └──< EquipmentInventory
 
-Tenant ──< TenantUser ──> User ──< Wallet ──< WalletTransaction
-                               └──< SkillLevelHistory
-                               └──< MembershipSubscription ──> MembershipPlan
-                                                           └──< MembershipCreditLog
+Tenant ──< User ──< Wallet ──< WalletTransaction
+               └──< SkillLevelHistory
+               └──< MembershipSubscription ──> MembershipPlan
+                                           └──< MembershipCreditLog
 
 Club ──< MembershipPlan ──< MembershipSubscription
 ```
@@ -96,6 +96,7 @@ Top-level organizational unit. Each tenant is a sports club operator.
 ### 2. Users & Authentication
 
 #### `users`
+Role is stored directly on the user row (no separate `tenant_users` join table).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -104,6 +105,7 @@ Top-level organizational unit. Each tenant is a sports club operator.
 | `email` | VARCHAR(255) | UNIQUE per tenant |
 | `full_name` | VARCHAR(255) | |
 | `hashed_password` | VARCHAR(255) | bcrypt |
+| `role` | ENUM | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` — default `player` |
 | `skill_level` | NUMERIC(3,1) | Nullable; e.g. `3.5` |
 | `skill_assigned_by` | UUID | FK → `users` (self-ref), nullable |
 | `skill_assigned_at` | TIMESTAMPTZ | Nullable |
@@ -114,27 +116,14 @@ Top-level organizational unit. Each tenant is a sports club operator.
 
 **Constraints:** `UNIQUE(tenant_id, email)`
 
-**Relationships:** `tenant`, `tenant_users`, `wallet`, `booking_players`, `skill_history`
-
----
-
-#### `tenant_users`
-Join table assigning a role to a user within a tenant.
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | UUID | PK |
-| `tenant_id` | UUID | FK → `tenants` |
-| `user_id` | UUID | FK → `users` |
-| `role` | ENUM | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` |
-| `created_at` | TIMESTAMPTZ | |
-| `updated_at` | TIMESTAMPTZ | |
+**Relationships:** `tenant`, `wallet`, `booking_players`, `skill_history`, `membership_subscriptions`
 
 ---
 
 ### 3. Clubs
 
 #### `clubs`
+Club settings are stored directly on this table (no separate `club_settings` table).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -144,36 +133,24 @@ Join table assigning a role to a user within a tenant.
 | `address` | TEXT | Nullable |
 | `stripe_connect_account_id` | VARCHAR(255) | Nullable — Stripe Connect |
 | `currency` | VARCHAR(3) | Default `"GBP"` |
+| `booking_duration_minutes` | INTEGER | Default `90` |
+| `max_advance_booking_days` | INTEGER | Default `14` |
+| `min_booking_notice_hours` | INTEGER | Default `2` |
+| `max_bookings_per_player_per_week` | INTEGER | Nullable |
+| `skill_level_min` | NUMERIC(3,1) | Default `1.0` |
+| `skill_level_max` | NUMERIC(3,1) | Default `7.0` |
+| `skill_range_allowed` | NUMERIC(3,1) | Default `1.5` — max spread between players |
+| `open_games_enabled` | BOOLEAN | Default `true` |
+| `min_players_to_confirm` | INTEGER | Default `4` |
+| `auto_cancel_hours_before` | INTEGER | Nullable |
+| `cancellation_notice_hours` | INTEGER | Default `48` |
+| `cancellation_refund_pct` | INTEGER | Default `100` (0–100) |
+| `reminder_hours_before` | INTEGER | Default `24` |
+| `waitlist_enabled` | BOOLEAN | Default `true` |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**Relationships:** `tenant`, `settings`, `operating_hours`, `pricing_rules`, `courts`, `staff_profiles`, `bookings`, `equipment`
-
----
-
-#### `club_settings`
-One-to-one extension of a club with operational configuration.
-
-| Column | Type | Default | Notes |
-|---|---|---|---|
-| `id` | UUID | PK | |
-| `club_id` | UUID | FK → `clubs` | UNIQUE |
-| `booking_duration_minutes` | INTEGER | 90 | |
-| `max_advance_booking_days` | INTEGER | 14 | |
-| `min_booking_notice_hours` | INTEGER | 2 | |
-| `max_bookings_per_player_per_week` | INTEGER | null | |
-| `skill_level_min` | NUMERIC(3,1) | 1.0 | |
-| `skill_level_max` | NUMERIC(3,1) | 7.0 | |
-| `skill_range_allowed` | NUMERIC(3,1) | 1.5 | Max spread between players |
-| `open_games_enabled` | BOOLEAN | true | |
-| `min_players_to_confirm` | INTEGER | 4 | |
-| `auto_cancel_hours_before` | INTEGER | null | |
-| `cancellation_notice_hours` | INTEGER | 48 | |
-| `cancellation_refund_pct` | INTEGER | 100 | 0–100 |
-| `reminder_hours_before` | INTEGER | 24 | |
-| `waitlist_enabled` | BOOLEAN | true | |
-| `created_at` | TIMESTAMPTZ | | |
-| `updated_at` | TIMESTAMPTZ | | |
+**Relationships:** `tenant`, `operating_hours`, `pricing_rules`, `courts`, `staff_profiles`, `bookings`, `equipment`, `membership_plans`, `membership_subscriptions`
 
 ---
 
@@ -325,7 +302,6 @@ Links players to a booking and tracks their individual payment status.
 |---|---|---|
 | `id` | UUID | PK |
 | `staff_profile_id` | UUID | FK → `staff_profiles` |
-| `club_id` | UUID | FK → `clubs` |
 | `day_of_week` | SMALLINT | 0 = Monday … 6 = Sunday |
 | `start_time` | TIME | |
 | `end_time` | TIME | |
@@ -379,6 +355,7 @@ Links players to a booking and tracks their individual payment status.
 ### 8. Payments & Billing
 
 #### `payments`
+Invoice fields are stored directly on this table (no separate `invoices` table).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -393,22 +370,8 @@ Links players to a booking and tracks their individual payment status.
 | `state` | ENUM | `pending`, `succeeded`, `failed`, `refunded`, `partially_refunded` |
 | `refund_amount` | NUMERIC(10,2) | Nullable |
 | `notes` | TEXT | Nullable |
-| `created_at` | TIMESTAMPTZ | |
-| `updated_at` | TIMESTAMPTZ | |
-
----
-
-#### `invoices`
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | UUID | PK |
-| `user_id` | UUID | FK → `users` |
-| `booking_id` | UUID | FK → `bookings`, nullable |
 | `stripe_invoice_id` | VARCHAR(255) | Nullable |
 | `stripe_receipt_url` | VARCHAR(500) | Nullable |
-| `amount` | NUMERIC(10,2) | |
-| `currency` | VARCHAR(3) | Default `"GBP"` |
 | `pdf_storage_path` | VARCHAR(500) | GCS path, nullable |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
@@ -456,7 +419,6 @@ Immutable audit log of player skill changes.
 |---|---|---|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users` |
-| `club_id` | UUID | FK → `clubs` |
 | `previous_level` | NUMERIC(3,1) | Nullable — null on first assignment |
 | `new_level` | NUMERIC(3,1) | |
 | `assigned_by` | UUID | FK → `users` (staff/admin who made the change) |
@@ -540,7 +502,7 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 
 | Enum | Values |
 |---|---|
-| `TenantUserRole` | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` |
+| `TenantUserRole` | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` — used for `users.role` |
 | `StaffRole` | `trainer`, `ops_lead`, `admin`, `front_desk` |
 | `SurfaceType` | `indoor`, `outdoor`, `crystal`, `artificial_grass` |
 | `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `corporate_event`, `tournament` |
@@ -578,13 +540,14 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 
 | Version | Description |
 |---|---|
-| `4f3a53db6bd2` | Initial schema — all 22 tables, FK relationships, PostgreSQL ENUMs |
+| `4f3a53db6bd2` | Initial schema — FK relationships, PostgreSQL ENUMs |
 | `b9e1f2a3c4d5` | Fix datetime types to TIMESTAMPTZ, TIME; add composite indexes on `bookings` |
 | `c1d2e3f4a5b6` | Pricing rule discount and dynamic pricing |
 | `d2e3f4a5b6c7` | Add subscription plan commercial fields |
 | `e3f4a5b6c7d8` | Add `subscription_start_date` to tenants |
 | `f4a5b6c7d8e9` | Full dynamic pricing (surge, low-demand, incentives, seasonal) |
 | `a1b2c3d4e5f6` | Add membership schema — `membership_plans`, `membership_subscriptions`, `membership_credit_logs` |
+| `7d4d380...` | Table simplification — merge `club_settings` into `clubs`; merge `invoices` into `payments`; merge `tenant_users` role into `users`; drop `club_id` from `skill_level_history` and `trainer_availability` |
 
 To run migrations:
 ```bash

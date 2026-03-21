@@ -1,7 +1,9 @@
+_Last updated: 2026-03-21 00:00 UTC_
+
 # SmashBook — Architecture
 
 > **Audience:** Engineering (current and future contributors), technical investors/partners  
-> **Last updated:** 2026-03  
+> **Last updated:** 2026-03 (AI architecture expanded)  
 > **Status:** MVP in progress (Sprints 1–6), AI phases follow
 
 ---
@@ -29,8 +31,14 @@
     - [Webhook handling](#webhook-handling)
   - [7. AI Architecture](#7-ai-architecture)
     - [Service allocation](#service-allocation)
+    - [The inference service wrapper](#the-inference-service-wrapper)
+    - [Every AI call: the internal flow](#every-ai-call-the-internal-flow)
+    - [Sync vs async split](#sync-vs-async-split)
+    - [pgvector and RAG](#pgvector-and-rag)
     - [Core principles](#core-principles)
-    - [Phase 1 AI features (Quick Wins)](#phase-1-ai-features-quick-wins)
+    - [All AI features by phase](#all-ai-features-by-phase)
+    - [New AI-native service classes](#new-ai-native-service-classes)
+    - [New Pub/Sub topics for AI pipeline](#new-pubsub-topics-for-ai-pipeline)
   - [8. Infrastructure \& Deployment](#8-infrastructure--deployment)
     - [Environments](#environments)
     - [GCP services used](#gcp-services-used)
@@ -354,34 +362,169 @@ Webhooks are verified using Stripe signature validation before any processing oc
 
 ### Service allocation
 
+Two external AI providers handle fundamentally different jobs. The decision rule: **if a human would write it, use Anthropic; if a model would score it, use Vertex AI.**
+
 | Task type | Service | Examples |
 |-----------|---------|---------|
-| Language generation | Anthropic Claude API | Insights summaries, re-engagement messages, conversational booking, support chatbot |
-| Structured ML | Vertex AI | Demand forecasting, churn prediction, cancellation prediction, skill rating models |
-| Semantic search / RAG | pgvector on Cloud SQL | Player preference matching, similar booking patterns |
+| Language generation | Anthropic Claude API | Notification copy, insight summaries, re-engagement messages, conversational booking, support chatbot |
+| Structured ML / prediction | Vertex AI | Demand forecasting, churn scoring, price multipliers, anomaly detection, skill rating models |
+| Semantic search / RAG | pgvector on Cloud SQL | Player preference matching, matchmaking similarity, similar booking patterns |
+
+### The inference service wrapper
+
+Every AI call — regardless of provider or feature — goes through a single `ai_inference_service.py` wrapper. This class is the linchpin of the entire AI layer and handles four responsibilities:
+
+1. **Feature flag check** — reads `ai_feature_flags` table; raises `FeatureNotAvailableError` if the feature is disabled for this tenant, returning the fallback result immediately without making an external API call.
+2. **Input deduplication** — computes a SHA-256 hash of the input payload; skips the model call and returns a cached result if the same input was recently processed.
+3. **Model call with retry** — calls the appropriate provider SDK with exponential backoff; catches all errors cleanly.
+4. **Inference logging** — writes a row to `ai_inference_log` (input, output, token counts, latency, model version, `fallback_used` flag) before returning to the caller. The log write happens regardless of whether the call succeeded or fell back — you never lose a record.
+
+```python
+class AIInferenceService:
+    async def call(
+        self,
+        feature: str,
+        provider: ModelProvider,
+        model: str,
+        payload: dict,
+        club: Club,
+        fallback_fn: Callable,
+    ) -> AIInferenceResult:
+        # 1. Feature flag check
+        if not await self._is_enabled(feature, club.tenant_id):
+            return AIInferenceResult(output=await fallback_fn(), fallback_used=True)
+
+        # 2. Input hash / cache check
+        input_hash = hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+        if cached := await self._get_cached(input_hash):
+            return cached
+
+        # 3. Model call
+        start = time.monotonic()
+        try:
+            output = await self._call_provider(provider, model, payload)
+            fallback_used = False
+        except Exception as e:
+            output = await fallback_fn()
+            fallback_used = True
+
+        # 4. Log everything
+        await self._log(feature, provider, model, payload, output,
+                        input_hash, fallback_used, time.monotonic() - start, club)
+        return AIInferenceResult(output=output, fallback_used=fallback_used)
+```
+
+### Every AI call: the internal flow
+
+```
+Feature service
+    │
+    ├─ ai_feature_flags check ──── disabled ──→ fallback result
+    │                                                    │
+    ▼                                                    │
+AI inference service                                     │
+    │                                                    │
+    ├─ input hash check ────────── cache hit ──→ cached result
+    │                                                    │
+    ▼                                                    │
+Model API call (Anthropic / Vertex AI)                   │
+    │                                                    │
+    ├─ error ───────────────────────────────→ fallback result ─┐
+    │                                                           │
+    ▼                                                           │
+ai_inference_log write ◄─────────────────────────────────────┘
+    │                         (fallback_used = true for errors)
+    ▼
+Result returned to feature service
+    │
+    ├──→ ai_recommendations
+    ├──→ gap_detection_events
+    ├──→ campaign trigger (Pub/Sub)
+    ├──→ pricing_rules update
+    └──→ notification send
+```
+
+### Sync vs async split
+
+**Synchronous** (blocks the user request — must be fast):
+
+- **Dynamic pricing** — called at booking time; must resolve before the price is shown to the player. Uses a Vertex AI structured endpoint, not a generative model, so latency is predictable.
+
+**Asynchronous via Pub/Sub** (all other AI features):
+
+- Churn scoring, gap detection, revenue forecasting — scheduled workers publish events; AI workers consume them without ever touching the request path.
+- Notification drafting, re-engagement copy — triggered by gap or churn events; Anthropic API call happens in a worker.
+- Post-match skill updates, segment re-classification — event-driven from booking completion.
+
+The general rule: if the user is waiting for the response, the AI call must be synchronous and use the fastest available model. Everything else goes async.
+
+### pgvector and RAG
+
+pgvector runs as a PostgreSQL extension on the same Cloud SQL instance — no separate vector database. It is used in two contexts:
+
+- **Matchmaking (Phase 2)** — player embeddings (skill level, availability patterns, play style) are stored as vectors. When an open game slot needs filling, a similarity query finds the best-fit players from the same club.
+- **Conversational booking (Phase 3)** — booking history and player preferences are retrieved as context and injected into the Anthropic API prompt, enabling personalised responses without relying on the model's context window alone.
+
+Embeddings are generated by Vertex AI's embedding models and written to the database by the scoring pipeline workers.
 
 ### Core principles
 
-**1. Graceful degradation** — every AI feature has a non-AI fallback. If the pricing model is unavailable, the system falls back to base rates. If matchmaking fails, the booking proceeds without match suggestions.
+**1. Graceful degradation** — every AI feature has a non-AI fallback. If the pricing model is unavailable, the service returns the base rate from `pricing_rules`. If matchmaking fails, the booking proceeds without match suggestions. Fallback logic lives inside the feature service, not the inference wrapper, so each feature can define the most appropriate fallback independently.
 
-**2. Logging from day one** — all AI inputs and outputs are logged to an `ai_inference_log` table before any feature is used in production. This supports evaluation, debugging, and future model fine-tuning.
+**2. Logging from day one** — all AI inputs and outputs are logged to `ai_inference_log` before any feature goes to production. This table is the foundation for evaluation, debugging, cost tracking, and future model fine-tuning. Partition it by month in production; archive full payloads to Cloud Storage after 90 days and retain only metadata.
 
-**3. Per-tenant feature gating** — no AI feature runs unless explicitly enabled on the tenant's `subscription_plan`. This allows controlled rollout and per-plan pricing of AI capabilities.
+**3. Per-tenant feature gating** — no AI feature runs unless explicitly enabled on the tenant's `subscription_plan` (plan-level) and confirmed in `ai_feature_flags` (runtime override). The two-layer check allows plan-level defaults to be overridden per tenant without schema changes.
 
-**4. Async where possible** — AI calls that don't need to block the user request (post-match skill updates, churn scoring, re-engagement drafts) are triggered via Pub/Sub, keeping API response times fast.
+**4. Async where possible** — AI calls that do not need to block the user request are triggered via Pub/Sub. This keeps API response times fast and decouples AI pipeline failures from the core booking flow.
 
-### Phase 1 AI features (Quick Wins)
+**5. Cost alignment** — AI features are gated per subscription plan and consumption is tracked via `ai_inference_log` (token counts per tenant). This supports per-plan AI pricing and makes overage billing straightforward.
 
-| Feature | Trigger | Service | Output |
-|---------|---------|---------|--------|
-| Dynamic pricing | Booking request | Vertex AI | Price multiplier |
-| Gap detection & discounts | Scheduled (hourly) | Vertex AI | Discount offers pushed to eligible players |
-| AI insights dashboard | Dashboard load | Anthropic API | Natural-language summary |
-| Revenue forecasting | Scheduled (daily) | Vertex AI | Weekly/monthly projections |
-| Smart notifications | Gap detected | Anthropic API | Targeted push copy |
-| Weather-aware reminders | Scheduled (6h before booking) | Weather API + Anthropic | Alert message |
-| Payment anomaly detection | Payment event | Vertex AI | Anomaly flag |
-| Membership tier suggestions | Wallet top-up | Vertex AI | Tier recommendation |
+### All AI features by phase
+
+| Feature | Trigger | Provider | Output | Phase |
+|---------|---------|----------|--------|-------|
+| Dynamic pricing | Booking request (sync) | Vertex AI | Price multiplier | 1 |
+| Gap detection | Hourly scheduler | Vertex AI | Gap event + discount offer | 1 |
+| Smart notifications | Gap detected | Anthropic | Targeted push / SMS copy | 1 |
+| AI insights dashboard | Dashboard load | Anthropic | Natural-language summary | 1 |
+| Revenue forecasting | Daily scheduler | Vertex AI | Weekly/monthly projections | 1 |
+| Weather-aware reminders | 6h before booking | Weather API + Anthropic | Personalised alert | 1 |
+| Payment anomaly detection | Payment event | Vertex AI | Anomaly flag + staff alert | 1 |
+| Membership tier suggestions | Wallet top-up | Vertex AI | Tier recommendation | 1 |
+| Churn scoring | Daily scheduler | Vertex AI | Risk scores per player | 2 |
+| Player segmentation | Post-scoring | Vertex AI | Segment assignments | 2 |
+| Re-engagement campaigns | Churn threshold crossed | Anthropic | Campaign copy + audience | 2 |
+| Matchmaking | Open game request | pgvector + Vertex AI | Player suggestions | 2 |
+| Skill rating updates | Booking completion | Vertex AI | Skill delta | 2 |
+| Fill the Court | Low utilisation | Vertex AI + Anthropic | Targeted offers + copy | 2 |
+| Conversational booking | Player chat message | Anthropic (tool use) | Confirmed booking | 3 |
+| AI support chatbot | Player support request | Anthropic (tool use) | Resolution / escalation | 3 |
+| CV court analysis | Video upload | Vertex AI Vision | Rally stats, skill signals | 3 |
+
+### New AI-native service classes
+
+These service classes are added alongside the AI-native schema (see `docs/DATA_MODEL.md` — AI schema addendum):
+
+| Service | Responsibilities |
+|---------|-----------------|
+| `ai_inference_service.py` | Centralised wrapper for all AI API calls; handles flag check, logging, fallback, retry |
+| `segmentation_service.py` | Create/update segments, run AI classifier, manage segment memberships |
+| `churn_service.py` | Score players, update `player_engagement_scores`, trigger re-engagement campaigns |
+| `campaign_service.py` | Campaign CRUD, audience selection, send orchestration, conversion tracking |
+| `utilisation_service.py` | Compute and store `court_utilisation_snapshots`, trigger gap detection pipeline |
+| `gap_detection_service.py` | Detect gaps, generate discount offers, write `gap_detection_events`, trigger notifications |
+| `ai_recommendation_service.py` | Create, route, and action recommendations; manage staff approval workflow |
+
+### New Pub/Sub topics for AI pipeline
+
+| Topic | Published by | Consumed by |
+|-------|-------------|-------------|
+| `utilisation-snapshots` | Scheduled worker (hourly) | `gap_detection_worker` |
+| `gap-detected` | `gap_detection_service` | `campaign_worker`, `notification_worker` |
+| `churn-scores-updated` | Scheduled worker (daily) | `campaign_worker` |
+| `segment-assigned` | `segmentation_service` | `campaign_worker` |
+| `recommendation-created` | `ai_recommendation_service` | `notification_worker` (staff alerts) |
+| `campaign-triggered` | `campaign_service` | `notification_worker` |
 
 ---
 

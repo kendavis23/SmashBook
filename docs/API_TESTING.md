@@ -1,3 +1,5 @@
+_Last updated: 2026-03-21 00:00 UTC_
+
 # Integration Testing
 
 This document explains how the integration test suite works, why it's structured this way, and how to extend it.
