@@ -1,4 +1,4 @@
-_Last updated: 2026-03-21 00:00 UTC_
+_Last updated: 2026-03-21 20:35 UTC_
 
 # SmashBook Data Model
 
@@ -111,6 +111,12 @@ Role is stored directly on the user row (no separate `tenant_users` join table).
 | `skill_assigned_at` | TIMESTAMPTZ | Nullable |
 | `is_active` | BOOLEAN | |
 | `stripe_customer_id` | VARCHAR(255) | Nullable |
+| `phone` | VARCHAR(50) | Nullable |
+| `photo_url` | VARCHAR(500) | Nullable — GCS path |
+| `is_suspended` | BOOLEAN | Default `false` |
+| `suspension_reason` | TEXT | Nullable |
+| `default_payment_method_id` | VARCHAR(255) | Nullable — Stripe PaymentMethod ID |
+| `preferred_notification_channel` | ENUM | `push`, `email`, `sms`, `in_app` — default `push` |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -503,6 +509,7 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 | Enum | Values |
 |---|---|
 | `TenantUserRole` | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` — used for `users.role` |
+| `NotificationChannel` | `push`, `email`, `sms`, `in_app` |
 | `StaffRole` | `trainer`, `ops_lead`, `admin`, `front_desk` |
 | `SurfaceType` | `indoor`, `outdoor`, `crystal`, `artificial_grass` |
 | `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `corporate_event`, `tournament` |
@@ -548,6 +555,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `f4a5b6c7d8e9` | Full dynamic pricing (surge, low-demand, incentives, seasonal) |
 | `a1b2c3d4e5f6` | Add membership schema — `membership_plans`, `membership_subscriptions`, `membership_credit_logs` |
 | `7d4d380...` | Table simplification — merge `club_settings` into `clubs`; merge `invoices` into `payments`; merge `tenant_users` role into `users`; drop `club_id` from `skill_level_history` and `trainer_availability` |
+| `7f7915bed71a` | G1 — Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` to `users`; add `notificationchannel` enum |
 
 To run migrations:
 ```bash

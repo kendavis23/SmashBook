@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Enum, DateTime, UniqueConstraint
+from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Enum, DateTime, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin, TenantScopedMixin
@@ -13,6 +13,13 @@ class TenantUserRole(str, enum.Enum):
     ops_lead = "ops_lead"
     viewer = "viewer"
     player = "player"
+
+
+class NotificationChannel(str, enum.Enum):
+    push = "push"
+    email = "email"
+    sms = "sms"
+    in_app = "in_app"
 
 
 class User(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
@@ -31,6 +38,14 @@ class User(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     skill_assigned_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
     stripe_customer_id = Column(String(255), nullable=True)
+    phone = Column(String(50), nullable=True)
+    photo_url = Column(String(500), nullable=True)
+    is_suspended = Column(Boolean, nullable=False, default=False)
+    suspension_reason = Column(Text, nullable=True)
+    default_payment_method_id = Column(String(255), nullable=True)
+    preferred_notification_channel = Column(
+        Enum(NotificationChannel), nullable=False, default=NotificationChannel.push
+    )
 
     tenant = relationship("Tenant", back_populates="users")
     wallet = relationship("Wallet", back_populates="user", uselist=False)
