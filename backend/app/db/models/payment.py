@@ -34,18 +34,9 @@ class Payment(Base, UUIDMixin, TimestampMixin):
     refund_amount = Column(Numeric(10, 2), nullable=True)
     notes = Column(Text, nullable=True)
 
-    booking = relationship("Booking", back_populates="payments")
-
-
-class Invoice(Base, UUIDMixin, TimestampMixin):
-    __tablename__ = "invoices"
-
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)
+    # Invoice fields (merged from invoices table)
     stripe_invoice_id = Column(String(255), nullable=True)
     stripe_receipt_url = Column(String(500), nullable=True)
-    amount = Column(Numeric(10, 2), nullable=False)
-    currency = Column(String(3), nullable=False, default="GBP")
     pdf_storage_path = Column(String(500), nullable=True)  # GCS path
 
-    booking = relationship("Booking", back_populates=None)
+    booking = relationship("Booking", back_populates="payments")

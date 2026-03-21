@@ -56,8 +56,15 @@ erd:
 		-o docs/erd.png
 	@echo "ERD generated → docs/erd.png"
 
+# Generates docs/SmashBook_ERD.drawio from SQLAlchemy models (no DB connection needed)
+erd-drawio:
+	docker-compose exec api python scripts/generate_erd_drawio.py docs/SmashBook_ERD.drawio
+
+erd-drawio-local:
+	cd backend && .venv/bin/python scripts/generate_erd_drawio.py ../docs/SmashBook_ERD.drawio
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd migrate-local migrate-down-local migration-local
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local

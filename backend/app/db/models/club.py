@@ -13,22 +13,7 @@ class Club(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     stripe_connect_account_id = Column(String(255), nullable=True)
     currency = Column(String(3), nullable=False, default="GBP")
 
-    tenant = relationship("Tenant", back_populates="clubs")
-    settings = relationship("ClubSettings", back_populates="club", uselist=False)
-    operating_hours = relationship("OperatingHours", back_populates="club")
-    pricing_rules = relationship("PricingRule", back_populates="club")
-    courts = relationship("Court", back_populates="club")
-    staff_profiles = relationship("StaffProfile", back_populates="club")
-    bookings = relationship("Booking", back_populates="club")
-    equipment = relationship("EquipmentInventory", back_populates="club")
-    membership_plans = relationship("MembershipPlan", back_populates="club")
-    membership_subscriptions = relationship("MembershipSubscription", back_populates="club")
-
-
-class ClubSettings(Base, UUIDMixin, TimestampMixin):
-    __tablename__ = "club_settings"
-
-    club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False, unique=True)
+    # Settings (merged from club_settings)
     booking_duration_minutes = Column(Integer, nullable=False, default=90)
     max_advance_booking_days = Column(Integer, nullable=False, default=14)
     min_booking_notice_hours = Column(Integer, nullable=False, default=2)
@@ -44,7 +29,15 @@ class ClubSettings(Base, UUIDMixin, TimestampMixin):
     reminder_hours_before = Column(Integer, nullable=False, default=24)
     waitlist_enabled = Column(Boolean, nullable=False, default=True)
 
-    club = relationship("Club", back_populates="settings")
+    tenant = relationship("Tenant", back_populates="clubs")
+    operating_hours = relationship("OperatingHours", back_populates="club")
+    pricing_rules = relationship("PricingRule", back_populates="club")
+    courts = relationship("Court", back_populates="club")
+    staff_profiles = relationship("StaffProfile", back_populates="club")
+    bookings = relationship("Booking", back_populates="club")
+    equipment = relationship("EquipmentInventory", back_populates="club")
+    membership_plans = relationship("MembershipPlan", back_populates="club")
+    membership_subscriptions = relationship("MembershipSubscription", back_populates="club")
 
 
 class OperatingHours(Base, UUIDMixin):

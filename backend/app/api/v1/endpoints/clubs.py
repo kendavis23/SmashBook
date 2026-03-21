@@ -5,12 +5,11 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.api.v1.dependencies.auth import require_admin
 from app.api.v1.dependencies.tenant import get_tenant
 from app.core.config import get_settings
-from app.db.models.club import Club, ClubSettings, OperatingHours, PricingRule
+from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.session import get_db, get_read_db
 from app.schemas.club import (
@@ -40,7 +39,7 @@ async def create_club(
     """
     Create a new club for the current tenant.
     Enforces the plan's max_clubs limit (-1 = unlimited).
-    A default ClubSettings record is created automatically.
+    Settings are initialised to defaults automatically.
     """
     plan: SubscriptionPlan = await db.get(SubscriptionPlan, tenant.plan_id)
 
@@ -63,12 +62,7 @@ async def create_club(
         currency=body.currency,
     )
     db.add(club)
-    await db.flush()  # populate club.id
-
-    db.add(ClubSettings(club_id=club.id))
     await db.flush()
-
-    await db.refresh(club, ["settings"])
     return club
 
 
@@ -81,7 +75,6 @@ async def list_clubs(
     result = await db.execute(
         select(Club)
         .where(Club.tenant_id == tenant.id)
-        .options(selectinload(Club.settings))
         .order_by(Club.name)
     )
     return result.scalars().all()
@@ -97,9 +90,7 @@ async def update_club(
 ):
     """Update a club's name, address, or currency."""
     result = await db.execute(
-        select(Club)
-        .where(Club.id == club_id, Club.tenant_id == tenant.id)
-        .options(selectinload(Club.settings))
+        select(Club).where(Club.id == club_id, Club.tenant_id == tenant.id)
     )
     club = result.scalar_one_or_none()
     if not club:
@@ -122,12 +113,7 @@ async def _get_club(club_id: uuid.UUID, db: AsyncSession) -> Club:
 @router.get("/{club_id}", response_model=ClubResponse)
 async def get_club(club_id: uuid.UUID, db: AsyncSession = Depends(get_read_db)):
     """Get club profile and current settings."""
-    result = await db.execute(
-        select(Club)
-        .where(Club.id == club_id)
-        .options(selectinload(Club.settings))
-    )
-    club = result.scalar_one_or_none()
+    club = await db.get(Club, club_id)
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
     return club
@@ -141,22 +127,13 @@ async def update_club_settings(
     db: AsyncSession = Depends(get_db),
 ):
     """Update booking rules, cancellation policy, skill matching config, etc."""
-    await _get_club(club_id, db)
-
-    result = await db.execute(
-        select(ClubSettings).where(ClubSettings.club_id == club_id)
-    )
-    settings = result.scalar_one_or_none()
-
-    if settings is None:
-        settings = ClubSettings(club_id=club_id)
-        db.add(settings)
+    club = await _get_club(club_id, db)
 
     for field, value in body.model_dump(exclude_none=True).items():
-        setattr(settings, field, value)
+        setattr(club, field, value)
 
     await db.flush()
-    return settings
+    return club
 
 
 @router.get("/{club_id}/operating-hours", response_model=List[OperatingHoursEntry])

@@ -3,7 +3,7 @@ BookingService — core booking business logic.
 
 Responsibilities:
   - Validate slot availability against operating_hours, pricing_rules, court_blackouts
-  - Enforce club_settings rules (advance booking window, notice period, weekly cap)
+  - Enforce Club settings rules (advance booking window, notice period, weekly cap)
   - Calculate total_price and per-player amount_due based on pricing_rules + lighting surcharge
   - Create booking + booking_players in a single transaction
   - Publish booking.created event to Pub/Sub
@@ -24,7 +24,7 @@ class BookingService:
                               max_players: int, is_open_game: bool, **kwargs) -> dict:
         """
         Full booking creation flow:
-          1. Fetch ClubSettings, OperatingHours, PricingRules for club
+          1. Fetch Club (settings), OperatingHours, PricingRules for club
           2. Check court is active and not blacked out in the window
           3. Check slot is not already booked (no overlapping confirmed/pending booking on same court)
           4. Enforce min_booking_notice_hours and max_advance_booking_days
@@ -41,7 +41,7 @@ class BookingService:
     async def cancel_booking(self, booking_id: str, cancelled_by_user_id: str) -> dict:
         """
           1. Fetch booking, verify it belongs to the user or user is staff
-          2. Check cancellation_notice_hours — determine refund_pct from ClubSettings
+          2. Check cancellation_notice_hours — determine refund_pct from Club settings
           3. For each BookingPlayer with payment_status=paid:
                - Calculate refund amount (amount_due * refund_pct / 100)
                - Publish 'payment.refund_required' to payment-events topic
@@ -93,6 +93,6 @@ class BookingService:
         """
         Returns bookings where is_open_game=True and status in (pending, confirmed)
         and player count < max_players. Optionally filtered by date and skill_level
-        compatibility (skill_range_allowed from ClubSettings).
+        compatibility (skill_range_allowed from Club).
         """
         pass

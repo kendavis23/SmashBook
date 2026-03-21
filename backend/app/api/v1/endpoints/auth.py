@@ -12,7 +12,7 @@ from app.core.security import (
     decode_token,
 )
 from app.db.models.tenant import Tenant
-from app.db.models.user import User, TenantUser, TenantUserRole
+from app.db.models.user import User, TenantUserRole
 from app.db.models.wallet import Wallet
 from app.schemas.user import (
     UserRegister,
@@ -52,11 +52,11 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
         email=body.email,
         full_name=body.full_name,
         hashed_password=get_password_hash(body.password),
+        role=TenantUserRole.player,
     )
     db.add(user)
     await db.flush()  # Populate user.id before foreign key references
 
-    db.add(TenantUser(tenant_id=tenant.id, user_id=user.id, role=TenantUserRole.player))
     db.add(Wallet(user_id=user.id))
 
     token_data = {"sub": str(user.id), "tid": str(tenant.id)}

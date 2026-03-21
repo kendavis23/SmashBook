@@ -42,7 +42,7 @@ class PaymentService:
           2. Set Payment.state = 'succeeded'
           3. Set BookingPlayer.payment_status = 'paid'
           4. If all players paid → set Booking.status = 'confirmed'
-          5. Create Invoice record
+          5. Set invoice fields on Payment record (stripe_invoice_id, stripe_receipt_url)
           6. Publish 'send_payment_receipt' → notification-events
         """
         pass
@@ -63,7 +63,7 @@ class PaymentService:
           - If payment was via wallet → credit Wallet, create WalletTransaction(type=refund)
           - Update Payment.state = 'refunded' or 'partially_refunded'
           - Update BookingPlayer.payment_status = 'refunded'
-          - Create/update Invoice for refund record
+          - Update Payment.pdf_storage_path with refund PDF if applicable
           - Publish 'send_email' with refund confirmation to notification-events
         """
         pass

@@ -15,10 +15,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.security import get_password_hash
-from app.db.models.club import Club, ClubSettings
+from app.db.models.club import Club
 from app.db.models.court import Court
 from app.db.models.tenant import SubscriptionPlan, Tenant
-from app.db.models.user import TenantUser, TenantUserRole, User
+from app.db.models.user import TenantUserRole, User
 from app.db.session import get_db
 from app.schemas.onboarding import TenantOnboardRequest, TenantOnboardResponse
 
@@ -81,7 +81,7 @@ async def onboard_tenant(
     db.add(tenant)
     await db.flush()
 
-    # --- club + default settings ---
+    # --- club ---
     club = Club(
         tenant_id=tenant.id,
         name=body.club.name,
@@ -90,8 +90,6 @@ async def onboard_tenant(
     )
     db.add(club)
     await db.flush()
-
-    db.add(ClubSettings(club_id=club.id))
 
     # --- courts ---
     courts = [
@@ -113,15 +111,13 @@ async def onboard_tenant(
         email=body.owner.email,
         full_name=body.owner.full_name,
         hashed_password=get_password_hash(body.owner.password),
+        role=TenantUserRole.owner,
         is_active=True,
     )
     db.add(owner)
     await db.flush()
 
-    db.add(TenantUser(tenant_id=tenant.id, user_id=owner.id, role=TenantUserRole.owner))
-
     # session auto-commits on exit (see get_db)
-    await db.flush()
 
     return TenantOnboardResponse(
         tenant_id=tenant.id,

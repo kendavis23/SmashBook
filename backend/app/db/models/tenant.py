@@ -46,4 +46,3 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     plan = relationship("SubscriptionPlan", back_populates="tenants")
     clubs = relationship("Club", back_populates="tenant")
     users = relationship("User", back_populates="tenant")
-    tenant_users = relationship("TenantUser", back_populates="tenant")

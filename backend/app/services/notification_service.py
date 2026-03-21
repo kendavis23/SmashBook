@@ -28,7 +28,7 @@ class NotificationService:
 
     @staticmethod
     def send_booking_reminder(booking_id: str, user_ids: list) -> None:
-        """Reminder sent N hours before game (reminder_hours_before from ClubSettings)."""
+        """Reminder sent N hours before game (reminder_hours_before from Club)."""
         publish_notification_event("send_booking_reminder", {
             "booking_id": booking_id,
             "user_ids": user_ids,
@@ -63,11 +63,11 @@ class NotificationService:
         })
 
     @staticmethod
-    def send_payment_receipt(booking_id: str, user_id: str, invoice_id: str) -> None:
+    def send_payment_receipt(booking_id: str, user_id: str, payment_id: str) -> None:
         publish_notification_event("send_payment_receipt", {
             "booking_id": booking_id,
             "user_id": user_id,
-            "invoice_id": invoice_id,
+            "payment_id": payment_id,
         })
 
     @staticmethod

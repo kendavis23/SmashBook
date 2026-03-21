@@ -12,7 +12,13 @@ class ClubCreate(BaseModel):
     currency: str = "GBP"
 
 
-class ClubSettingsResponse(BaseModel):
+class ClubResponse(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    name: str
+    address: Optional[str] = None
+    currency: str
+    # Settings fields (merged from ClubSettings)
     booking_duration_minutes: int
     max_advance_booking_days: int
     min_booking_notice_hours: int
@@ -31,13 +37,22 @@ class ClubSettingsResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class ClubResponse(BaseModel):
-    id: uuid.UUID
-    tenant_id: uuid.UUID
-    name: str
-    address: Optional[str] = None
-    currency: str
-    settings: Optional[ClubSettingsResponse] = None
+# Kept as a focused schema for the PATCH /settings endpoint
+class ClubSettingsResponse(BaseModel):
+    booking_duration_minutes: int
+    max_advance_booking_days: int
+    min_booking_notice_hours: int
+    max_bookings_per_player_per_week: Optional[int] = None
+    skill_level_min: Decimal
+    skill_level_max: Decimal
+    skill_range_allowed: Decimal
+    open_games_enabled: bool
+    min_players_to_confirm: int
+    auto_cancel_hours_before: Optional[int] = None
+    cancellation_notice_hours: int
+    cancellation_refund_pct: int
+    reminder_hours_before: int
+    waitlist_enabled: bool
 
     model_config = {"from_attributes": True}
 

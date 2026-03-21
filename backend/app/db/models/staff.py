@@ -30,7 +30,6 @@ class TrainerAvailability(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "trainer_availability"
 
     staff_profile_id = Column(UUID(as_uuid=True), ForeignKey("staff_profiles.id"), nullable=False)
-    club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
     day_of_week = Column(SmallInteger, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)

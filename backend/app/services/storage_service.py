@@ -3,7 +3,7 @@ StorageService — Cloud Storage operations.
 
 Handles signed URL generation for:
   - Match video uploads (player-initiated)
-  - Invoice PDF downloads (player-initiated)
+  - Payment receipt PDF downloads (player-initiated)
   - Report exports (staff-initiated)
 """
 from datetime import timedelta
@@ -43,7 +43,7 @@ class StorageService:
         """
         Returns a signed GET URL for an invoice PDF.
         URL expires in 1 hour.
-        gcs_path is stored in Invoice.pdf_storage_path.
+        gcs_path is stored in Payment.pdf_storage_path.
         """
         bucket_name, object_path = gcs_path.replace("gs://", "").split("/", 1)
         bucket = gcs_client.bucket(bucket_name)
@@ -58,8 +58,8 @@ class StorageService:
     def upload_invoice_pdf(pdf_bytes: bytes, tenant_id: str,
                             invoice_id: str) -> str:
         """
-        Uploads a generated invoice PDF to the invoices bucket.
-        Returns the GCS path to store in Invoice.pdf_storage_path.
+        Uploads a generated receipt PDF to the invoices bucket.
+        Returns the GCS path to store in Payment.pdf_storage_path.
         """
         bucket = gcs_client.bucket(settings.GCS_BUCKET_INVOICES)
         object_path = f"{tenant_id}/invoices/{invoice_id}.pdf"

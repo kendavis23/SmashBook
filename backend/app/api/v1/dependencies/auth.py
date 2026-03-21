@@ -1,11 +1,10 @@
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 
-from app.db.session import get_db, get_read_db
+from app.db.session import get_db
 from app.core.security import decode_token
-from app.db.models.user import User, TenantUser, TenantUserRole
+from app.db.models.user import User, TenantUserRole
 
 security = HTTPBearer()
 
@@ -55,37 +54,19 @@ async def get_current_user(
     return user
 
 
-async def _require_role(user: User, allowed_roles: set[TenantUserRole], db: AsyncSession) -> User:
-    # Scope the role look-up to the user's own tenant so a staff member of
-    # Tenant A cannot gain elevated access on Tenant B.
-    result = await db.execute(
-        select(TenantUser).where(
-            TenantUser.user_id == user.id,
-            TenantUser.tenant_id == user.tenant_id,
-            TenantUser.role.in_(allowed_roles),
-        )
-    )
-    if not result.scalar_one_or_none():
+def _require_role(user: User, allowed_roles: set[TenantUserRole]) -> User:
+    if user.role not in allowed_roles:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return user
 
 
-async def require_staff(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_read_db),
-) -> User:
-    return await _require_role(current_user, _STAFF_ROLES, db)
+async def require_staff(current_user: User = Depends(get_current_user)) -> User:
+    return _require_role(current_user, _STAFF_ROLES)
 
 
-async def require_ops_lead(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_read_db),
-) -> User:
-    return await _require_role(current_user, _OPS_LEAD_ROLES, db)
+async def require_ops_lead(current_user: User = Depends(get_current_user)) -> User:
+    return _require_role(current_user, _OPS_LEAD_ROLES)
 
 
-async def require_admin(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_read_db),
-) -> User:
-    return await _require_role(current_user, _ADMIN_ROLES, db)
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    return _require_role(current_user, _ADMIN_ROLES)
