@@ -63,8 +63,23 @@ erd-drawio:
 erd-drawio-local:
 	cd backend && .venv/bin/python scripts/generate_erd_drawio.py ../docs/SmashBook_ERD.drawio
 
+# ── GitHub ────────────────────────────────────────────────────────────────────
+# Show one raw project item — use this to confirm the sprint field name
+project-fields:
+	gh project item-list 2 --owner kendavis23 --format json --limit 1 | jq '.'
+
+# Export all issues with sprint data merged in (requires: gh auth login, jq)
+issues:
+	@gh issue list --limit 1000 --state all --json number,title,body,state,labels,assignees,milestone,createdAt,updatedAt,closedAt,url > /tmp/smashbook_issues.json
+	@gh project item-list 2 --owner kendavis23 --format json --limit 1000 > /tmp/smashbook_project.json
+	@jq -s \
+		'(.[1].items | map(select(.content.type == "Issue")) | map({((.content.number | tostring)): .sprint}) | add) as $$sprints \
+		| .[0] | map(. + {sprint: $$sprints[(.number | tostring)]})' \
+		/tmp/smashbook_issues.json /tmp/smashbook_project.json > issues.json
+	@echo "Exported → issues.json"
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields
