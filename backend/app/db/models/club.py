@@ -47,6 +47,8 @@ class OperatingHours(Base, UUIDMixin):
     day_of_week = Column(SmallInteger, nullable=False)
     open_time = Column(Time, nullable=False)
     close_time = Column(Time, nullable=False)
+    valid_from = Column(Date, nullable=True)
+    valid_until = Column(Date, nullable=True)
 
     club = relationship("Club", back_populates="operating_hours")
 

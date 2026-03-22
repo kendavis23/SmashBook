@@ -80,6 +80,8 @@ class OperatingHoursEntry(BaseModel):
     day_of_week: int
     open_time: time
     close_time: time
+    valid_from: Optional[date] = None
+    valid_until: Optional[date] = None
 
     @field_validator("day_of_week")
     @classmethod
@@ -89,9 +91,11 @@ class OperatingHoursEntry(BaseModel):
         return v
 
     @model_validator(mode="after")
-    def open_before_close(self) -> "OperatingHoursEntry":
+    def validate_times_and_dates(self) -> "OperatingHoursEntry":
         if self.open_time >= self.close_time:
             raise ValueError("open_time must be before close_time")
+        if self.valid_from and self.valid_until and self.valid_from > self.valid_until:
+            raise ValueError("valid_from must be before valid_until")
         return self
 
     model_config = {"from_attributes": True}

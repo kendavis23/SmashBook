@@ -1,4 +1,4 @@
-_Last updated: 2026-03-21 20:35 UTC_
+_Last updated: 2026-03-22 15:35 UTC_
 
 # SmashBook Data Model
 
@@ -169,6 +169,8 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 | `day_of_week` | SMALLINT | 0 = Monday … 6 = Sunday |
 | `open_time` | TIME | |
 | `close_time` | TIME | |
+| `valid_from` | DATE | Nullable — seasonal start date |
+| `valid_until` | DATE | Nullable — seasonal end date |
 
 ---
 
@@ -556,6 +558,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `a1b2c3d4e5f6` | Add membership schema — `membership_plans`, `membership_subscriptions`, `membership_credit_logs` |
 | `7d4d380...` | Table simplification — merge `club_settings` into `clubs`; merge `invoices` into `payments`; merge `tenant_users` role into `users`; drop `club_id` from `skill_level_history` and `trainer_availability` |
 | `7f7915bed71a` | G1 — Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` to `users`; add `notificationchannel` enum |
+| `17206ff810ef` | G2 — Add `valid_from`, `valid_until` to `operating_hours` for seasonal hour variations |
 
 To run migrations:
 ```bash

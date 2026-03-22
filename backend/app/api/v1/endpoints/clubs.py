@@ -173,6 +173,8 @@ async def update_operating_hours(
             day_of_week=entry.day_of_week,
             open_time=entry.open_time,
             close_time=entry.close_time,
+            valid_from=entry.valid_from,
+            valid_until=entry.valid_until,
         )
         for entry in body
     ]
