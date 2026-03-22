@@ -1,17 +1,64 @@
 """
 BookingService — core booking business logic.
 
-Responsibilities:
-  - Validate slot availability against operating_hours, pricing_rules, court_blackouts
-  - Enforce Club settings rules (advance booking window, notice period, weekly cap)
-  - Calculate total_price and per-player amount_due based on pricing_rules + lighting surcharge
-  - Create booking + booking_players in a single transaction
-  - Publish booking.created event to Pub/Sub
-  - Handle open game logic (is_open_game, min_players_to_confirm, auto-cancel)
-  - Waitlist promotion when a booking is cancelled
+Booking modes
+-------------
+- Open game (is_open_game=True):  publicly listed; anyone matching skill can self-join
+- Private booking (is_open_game=False): not listed; slots filled via invite only
+Both types accept players until accepted_count >= max_players (default 4 for padel).
+
+Slot-grid enforcement
+---------------------
+For booking_type=regular, start_datetime must align to the slot grid derived from
+operating_hours.open_time + club.booking_duration_minutes. Staff bypass for
+lesson_*/corporate_event/tournament types.
+
+Skill range
+-----------
+Computed at creation from organiser's skill_level ± club.skill_range_allowed, clamped
+to club.skill_level_min/max.  Staff may provide an explicit anchor or override min/max.
+Joins from open games are always checked; invites always bypass the check.
 """
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+from typing import Optional
+import uuid
+
+from fastapi import HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.pubsub import publish_booking_event
+from sqlalchemy.orm import selectinload
+
+from app.db.models.booking import (
+    Booking,
+    BookingPlayer,
+    BookingStatus,
+    BookingType,
+    InviteStatus,
+    PaymentStatus,
+    PlayerRole,
+)
+from app.db.models.club import Club, OperatingHours, PricingRule
+from app.db.models.court import Court, CourtBlackout
+from app.db.models.user import TenantUserRole, User
+
+_STAFF_ROLES = {
+    TenantUserRole.owner,
+    TenantUserRole.admin,
+    TenantUserRole.staff,
+    TenantUserRole.trainer,
+    TenantUserRole.ops_lead,
+}
+
+_GRID_ENFORCED_TYPES = {BookingType.regular}
+
+
+def _is_staff(user: User) -> bool:
+    return user.role in _STAFF_ROLES
+
+
+def _accepted_count(players: list[BookingPlayer]) -> int:
+    return sum(1 for p in players if p.invite_status == InviteStatus.accepted)
 
 
 class BookingService:
@@ -19,80 +66,607 @@ class BookingService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_booking(self, club_id: str, court_id: str, booking_type: str,
-                              start_datetime, end_datetime, created_by_user_id: str,
-                              max_players: int, is_open_game: bool, **kwargs) -> dict:
-        """
-        Full booking creation flow:
-          1. Fetch Club (settings), OperatingHours, PricingRules for club
-          2. Check court is active and not blacked out in the window
-          3. Check slot is not already booked (no overlapping confirmed/pending booking on same court)
-          4. Enforce min_booking_notice_hours and max_advance_booking_days
-          5. Check player weekly booking cap (max_bookings_per_player_per_week)
-          6. Calculate price: match pricing_rule by day_of_week + time window → price_per_slot
-             Add lighting_surcharge if applicable
-          7. Create Booking record (status=pending)
-          8. Create BookingPlayer for organiser (role=organiser, amount_due=price/max_players)
-          9. Publish 'booking.created' → Pub/Sub booking-events topic
-         10. Return booking dict for API response
-        """
-        pass
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
 
-    async def cancel_booking(self, booking_id: str, cancelled_by_user_id: str) -> dict:
-        """
-          1. Fetch booking, verify it belongs to the user or user is staff
-          2. Check cancellation_notice_hours — determine refund_pct from Club settings
-          3. For each BookingPlayer with payment_status=paid:
-               - Calculate refund amount (amount_due * refund_pct / 100)
-               - Publish 'payment.refund_required' to payment-events topic
-          4. Update booking status → 'cancelled'
-          5. Publish 'booking.cancelled' → Pub/Sub
-          6. Trigger waitlist promotion: check for waitlisted players on this court/time
-             and publish 'waitlist.slot_available' for the first in queue
-        """
-        pass
+    async def _get_club_and_court(self, club_id: uuid.UUID, court_id: uuid.UUID, tenant_id: uuid.UUID):
+        """Fetch club + court, verifying both belong to the tenant."""
+        club_result = await self.db.execute(
+            select(Club).where(Club.id == club_id, Club.tenant_id == tenant_id)
+        )
+        club = club_result.scalar_one_or_none()
+        if not club:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
 
-    async def join_open_game(self, booking_id: str, user_id: str) -> dict:
-        """
-          1. Fetch booking — verify is_open_game=True and status in (pending, confirmed)
-          2. Verify current player count < max_players
-          3. Check skill_range_allowed: compare user.skill_level against existing players
-          4. Create BookingPlayer (role=player, amount_due=total_price/max_players)
-          5. Re-calculate all players' amount_due if price is split equally
-          6. If player count now >= min_players_to_confirm → update status to 'confirmed'
-             and publish 'booking.confirmed'
-          7. Return updated booking
-        """
-        pass
+        court_result = await self.db.execute(
+            select(Court).where(Court.id == court_id, Court.club_id == club_id)
+        )
+        court = court_result.scalar_one_or_none()
+        if not court:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Court not found")
+        if not court.is_active:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Court is not active")
 
-    async def add_to_waitlist(self, booking_id: str, user_id: str) -> dict:
-        """Register player on waitlist. Waitlist is ordered by joined_at timestamp."""
-        pass
+        return club, court
 
-    async def get_availability(self, club_id: str, court_id: str, date) -> list:
-        """
-        Returns list of available time slots for a court on a given date.
-          1. Fetch OperatingHours for club on date.weekday()
-          2. Generate slots of booking_duration_minutes within open/close window
-          3. Remove slots overlapping existing bookings (confirmed or pending)
-          4. Remove slots overlapping court_blackouts
-          5. Remove slots that violate min_booking_notice_hours from now
-          6. Annotate each slot with price from PricingRules
-        """
-        pass
+    async def _get_operating_hours(self, club_id: uuid.UUID, query_date) -> OperatingHours:
+        day_of_week = query_date.weekday()
+        oh_result = await self.db.execute(
+            select(OperatingHours).where(
+                OperatingHours.club_id == club_id,
+                OperatingHours.day_of_week == day_of_week,
+            )
+        )
+        oh_records = oh_result.scalars().all()
+        if not oh_records:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Club has no operating hours configured for this day",
+            )
+        # Prefer seasonal record (non-null valid_from) over catch-all
+        return next((h for h in oh_records if h.valid_from is not None), oh_records[0])
 
-    async def calculate_price(self, club_id: str, court_id: str, start_datetime, end_datetime) -> dict:
-        """
-        Returns { base_price, lighting_surcharge, total_price } by matching
-        PricingRule for (club_id, day_of_week, start_time ≤ slot < end_time).
-        Falls back to off-peak if no rule matches.
-        """
-        pass
+    def _validate_grid_alignment(self, start: datetime, oh: OperatingHours, duration_minutes: int) -> None:
+        """Validate that start time falls on a slot boundary."""
+        open_dt = datetime.combine(start.date(), oh.open_time, tzinfo=timezone.utc)
+        delta_minutes = int((start - open_dt).total_seconds() // 60)
+        if delta_minutes < 0 or delta_minutes % duration_minutes != 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Start time must align to a {duration_minutes}-minute slot boundary from the club's opening time",
+            )
 
-    async def get_open_games(self, club_id: str, date=None, skill_level=None) -> list:
-        """
-        Returns bookings where is_open_game=True and status in (pending, confirmed)
-        and player count < max_players. Optionally filtered by date and skill_level
-        compatibility (skill_range_allowed from Club).
-        """
-        pass
+    def _validate_window_in_hours(self, start: datetime, end: datetime, oh: OperatingHours, query_date) -> None:
+        open_dt = datetime.combine(query_date, oh.open_time, tzinfo=timezone.utc)
+        close_dt = datetime.combine(query_date, oh.close_time, tzinfo=timezone.utc)
+        if start < open_dt or end > close_dt:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Booking window falls outside club operating hours",
+            )
+
+    async def _check_no_conflict(self, court_id: uuid.UUID, start: datetime, end: datetime, exclude_booking_id: Optional[uuid.UUID] = None) -> None:
+        stmt = select(Booking.id).where(
+            Booking.court_id == court_id,
+            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+            Booking.start_datetime < end,
+            Booking.end_datetime > start,
+        )
+        if exclude_booking_id:
+            stmt = stmt.where(Booking.id != exclude_booking_id)
+        result = await self.db.execute(stmt)
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Court is already booked for this time slot")
+
+    async def _check_no_blackout(self, court_id: uuid.UUID, start: datetime, end: datetime) -> None:
+        result = await self.db.execute(
+            select(CourtBlackout.id).where(
+                CourtBlackout.court_id == court_id,
+                CourtBlackout.start_datetime < end,
+                CourtBlackout.end_datetime > start,
+            )
+        )
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Court is blacked out during this time slot")
+
+    async def _load_booking(self, booking_id: uuid.UUID) -> Booking:
+        """Re-fetch booking with all relationships eagerly loaded."""
+        result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .where(Booking.id == booking_id)
+        )
+        return result.scalar_one()
+
+    async def _get_price(self, club_id: uuid.UUID, start: datetime) -> Optional[Decimal]:
+        day_of_week = start.weekday()
+        slot_time = start.time()
+        now = datetime.now(tz=timezone.utc)
+        result = await self.db.execute(
+            select(PricingRule).where(
+                PricingRule.club_id == club_id,
+                PricingRule.day_of_week == day_of_week,
+                PricingRule.is_active == True,
+                PricingRule.start_time <= slot_time,
+                PricingRule.end_time > slot_time,
+            )
+        )
+        rule = result.scalar_one_or_none()
+        if not rule:
+            return None
+        if rule.incentive_price and (rule.incentive_expires_at is None or rule.incentive_expires_at > now):
+            return rule.incentive_price
+        return rule.price_per_slot
+
+    def _compute_skill_range(
+        self,
+        organiser: User,
+        club: Club,
+        is_staff: bool,
+        anchor_skill_level: Optional[Decimal],
+        override_min: Optional[Decimal],
+        override_max: Optional[Decimal],
+    ) -> tuple[Optional[Decimal], Optional[Decimal]]:
+        if is_staff and override_min is not None and override_max is not None:
+            return override_min, override_max
+
+        anchor = None
+        if is_staff and anchor_skill_level is not None:
+            anchor = anchor_skill_level
+        elif organiser.skill_level is not None:
+            anchor = Decimal(str(organiser.skill_level))
+
+        if anchor is None:
+            return None, None
+
+        half_range = Decimal(str(club.skill_range_allowed))
+        min_skill = max(Decimal(str(club.skill_level_min)), anchor - half_range)
+        max_skill = min(Decimal(str(club.skill_level_max)), anchor + half_range)
+        return min_skill, max_skill
+
+    def _check_player_skill(self, user: User, min_skill: Optional[Decimal], max_skill: Optional[Decimal]) -> None:
+        if min_skill is None and max_skill is None:
+            return
+        if user.skill_level is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Skill level required to join this game",
+            )
+        skill = Decimal(str(user.skill_level))
+        if not (min_skill <= skill <= max_skill):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Skill level {skill} is outside this game's range ({min_skill}–{max_skill})",
+            )
+
+    # ------------------------------------------------------------------
+    # Public methods
+    # ------------------------------------------------------------------
+
+    async def create_booking(
+        self,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+        club_id: uuid.UUID,
+        court_id: uuid.UUID,
+        booking_type: BookingType,
+        start_datetime: datetime,
+        is_open_game: bool,
+        max_players: int,
+        player_user_ids: list[uuid.UUID],
+        notes: Optional[str],
+        anchor_skill_level: Optional[Decimal],
+        skill_level_override_min: Optional[Decimal],
+        skill_level_override_max: Optional[Decimal],
+        event_name: Optional[str],
+        contact_name: Optional[str],
+        contact_email: Optional[str],
+        contact_phone: Optional[str],
+        staff_profile_id: Optional[uuid.UUID],
+    ) -> Booking:
+        is_staff = _is_staff(requesting_user)
+
+        # 1. Fetch club + court
+        club, court = await self._get_club_and_court(club_id, court_id, tenant_id)
+
+        # 2. Compute end datetime
+        end_datetime = start_datetime + timedelta(minutes=club.booking_duration_minutes)
+
+        # 3. Operating hours for the booking date
+        oh = await self._get_operating_hours(club_id, start_datetime.date())
+
+        # 4. Booking window within operating hours
+        self._validate_window_in_hours(start_datetime, end_datetime, oh, start_datetime.date())
+
+        # 5. Grid alignment (regular bookings only)
+        if booking_type in _GRID_ENFORCED_TYPES:
+            self._validate_grid_alignment(start_datetime, oh, club.booking_duration_minutes)
+
+        # 6. Notice window (bypass for staff)
+        if not is_staff:
+            notice_cutoff = datetime.now(tz=timezone.utc) + timedelta(hours=club.min_booking_notice_hours)
+            if start_datetime < notice_cutoff:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Bookings must be made at least {club.min_booking_notice_hours} hour(s) in advance",
+                )
+
+        # 7. Advance window (bypass for staff)
+        if not is_staff:
+            advance_limit = datetime.now(tz=timezone.utc) + timedelta(days=club.max_advance_booking_days)
+            if start_datetime > advance_limit:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Bookings cannot be made more than {club.max_advance_booking_days} day(s) in advance",
+                )
+
+        # 8. Court conflict
+        await self._check_no_conflict(court_id, start_datetime, end_datetime)
+
+        # 9. Blackout
+        await self._check_no_blackout(court_id, start_datetime, end_datetime)
+
+        # 10. Truly empty open game (no organiser slot taken) is staff-only.
+        # A player creating an open game is always added as organiser; only staff
+        # can create a game with all 4 slots open and no organiser attached.
+        is_empty_admin_game = is_open_game and is_staff and len(player_user_ids) == 0
+        if is_open_game and len(player_user_ids) == 0 and not is_staff:
+            # Player creates open game → they become organiser.  Not an error; handled below.
+            pass
+
+        # 11. Skill range computation
+        min_skill, max_skill = self._compute_skill_range(
+            requesting_user, club, is_staff, anchor_skill_level,
+            skill_level_override_min, skill_level_override_max,
+        )
+
+        # 12. Validate named players
+        named_players: list[User] = []
+        for uid in player_user_ids:
+            if uid == requesting_user.id:
+                continue  # organiser added separately
+            result = await self.db.execute(
+                select(User).where(User.id == uid, User.tenant_id == tenant_id)
+            )
+            named_user = result.scalar_one_or_none()
+            if not named_user:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Player {uid} not found in this tenant",
+                )
+            if not is_staff:
+                self._check_player_skill(named_user, min_skill, max_skill)
+            named_players.append(named_user)
+
+        # 13. Price
+        total_price = await self._get_price(club_id, start_datetime)
+
+        # 14. Amount due per player slot
+        amount_due = (total_price / max_players) if total_price else Decimal("0.00")
+
+        # Capture requesting_user.id before any flush — after flush() SQLAlchemy may
+        # expire the ORM object (loaded via db.get with a string key), making .id None.
+        requesting_user_id = requesting_user.id
+
+        # 15. Create booking
+        booking = Booking(
+            club_id=club_id,
+            court_id=court_id,
+            booking_type=booking_type,
+            status=BookingStatus.pending,
+            start_datetime=start_datetime,
+            end_datetime=end_datetime,
+            created_by_user_id=requesting_user_id,
+            staff_profile_id=staff_profile_id,
+            max_players=max_players,
+            min_skill_level=min_skill,
+            max_skill_level=max_skill,
+            is_open_game=is_open_game,
+            total_price=total_price,
+            notes=notes,
+            event_name=event_name,
+            contact_name=contact_name,
+            contact_email=contact_email,
+            contact_phone=contact_phone,
+        )
+        self.db.add(booking)
+        await self.db.flush()  # get booking.id
+
+        # 16. Add organiser as BookingPlayer (skip only for staff-admin empty open games)
+        if not is_empty_admin_game:
+            organiser_bp = BookingPlayer(
+                booking=booking,
+                user=requesting_user,
+                role=PlayerRole.organiser,
+                invite_status=InviteStatus.accepted,
+                payment_status=PaymentStatus.pending,
+                amount_due=amount_due,
+            )
+            self.db.add(organiser_bp)
+
+        # 17. Add named players
+        for named_user in named_players:
+            bp = BookingPlayer(
+                booking=booking,
+                user=named_user,
+                role=PlayerRole.player,
+                invite_status=InviteStatus.accepted,
+                payment_status=PaymentStatus.pending,
+                amount_due=amount_due,
+            )
+            self.db.add(bp)
+
+        await self.db.flush()
+
+        # 18. Auto-confirm if player count meets threshold
+        accepted = (0 if is_empty_admin_game else 1) + len(named_players)
+        if accepted >= club.min_players_to_confirm:
+            booking.status = BookingStatus.confirmed
+
+        await self.db.flush()
+        return await self._load_booking(booking.id)
+
+    async def list_bookings(
+        self,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        booking_type: Optional[str] = None,
+        booking_status: Optional[str] = None,
+    ) -> list[Booking]:
+        # Verify club belongs to tenant
+        club_result = await self.db.execute(
+            select(Club.id).where(Club.id == club_id, Club.tenant_id == tenant_id)
+        )
+        if not club_result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+        stmt = (
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .where(Booking.club_id == club_id)
+        )
+
+        if not _is_staff(requesting_user):
+            # Players see only bookings they are part of
+            stmt = stmt.join(BookingPlayer, BookingPlayer.booking_id == Booking.id).where(
+                BookingPlayer.user_id == requesting_user.id
+            )
+
+        if date_from:
+            stmt = stmt.where(Booking.start_datetime >= datetime.fromisoformat(date_from))
+        if date_to:
+            stmt = stmt.where(Booking.start_datetime <= datetime.fromisoformat(date_to))
+        if booking_type:
+            stmt = stmt.where(Booking.booking_type == booking_type)
+        if booking_status:
+            stmt = stmt.where(Booking.status == booking_status)
+
+        result = await self.db.execute(stmt)
+        return result.scalars().unique().all()
+
+    async def list_open_games(
+        self,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        date: Optional[str] = None,
+        min_skill: Optional[Decimal] = None,
+        max_skill: Optional[Decimal] = None,
+    ) -> list[Booking]:
+        club_result = await self.db.execute(
+            select(Club.id).where(Club.id == club_id, Club.tenant_id == tenant_id)
+        )
+        if not club_result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+        # Subquery: count accepted players per booking
+        accepted_count_sq = (
+            select(BookingPlayer.booking_id, func.count().label("cnt"))
+            .where(BookingPlayer.invite_status == InviteStatus.accepted)
+            .group_by(BookingPlayer.booking_id)
+            .subquery()
+        )
+
+        stmt = (
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .outerjoin(accepted_count_sq, accepted_count_sq.c.booking_id == Booking.id)
+            .where(
+                Booking.club_id == club_id,
+                Booking.is_open_game == True,
+                Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+                func.coalesce(accepted_count_sq.c.cnt, 0) < Booking.max_players,
+            )
+        )
+
+        if date:
+            parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
+            day_start = datetime.combine(parsed_date, datetime.min.time(), tzinfo=timezone.utc)
+            day_end = day_start + timedelta(days=1)
+            stmt = stmt.where(Booking.start_datetime >= day_start, Booking.start_datetime < day_end)
+
+        if min_skill is not None and max_skill is not None:
+            stmt = stmt.where(
+                Booking.min_skill_level <= max_skill,
+                Booking.max_skill_level >= min_skill,
+            )
+
+        result = await self.db.execute(stmt)
+        return result.scalars().unique().all()
+
+    async def get_booking(
+        self,
+        booking_id: uuid.UUID,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+    ) -> Booking:
+        # Verify club belongs to tenant
+        club_result = await self.db.execute(
+            select(Club.id).where(Club.id == club_id, Club.tenant_id == tenant_id)
+        )
+        if not club_result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+        result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .where(Booking.id == booking_id, Booking.club_id == club_id)
+        )
+        booking = result.scalar_one_or_none()
+        if not booking:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+        is_staff = _is_staff(requesting_user)
+        if not is_staff:
+            in_booking = any(p.user_id == requesting_user.id for p in booking.players)
+            if not in_booking and not booking.is_open_game:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+        return booking
+
+    async def join_booking(
+        self,
+        booking_id: uuid.UUID,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+    ) -> Booking:
+        result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .join(Club, Booking.club_id == Club.id)
+            .where(Booking.id == booking_id, Booking.club_id == club_id, Club.tenant_id == tenant_id)
+        )
+        booking = result.scalar_one_or_none()
+        if not booking:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+        if not booking.is_open_game:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot self-join a private booking")
+
+        if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Booking is no longer available")
+
+        if any(p.user_id == requesting_user.id for p in booking.players):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You are already part of this booking")
+
+        accepted = _accepted_count(booking.players)
+        if accepted >= booking.max_players:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Booking is full")
+
+        # Skill check
+        self._check_player_skill(
+            requesting_user,
+            booking.min_skill_level and Decimal(str(booking.min_skill_level)),
+            booking.max_skill_level and Decimal(str(booking.max_skill_level)),
+        )
+
+        # Fetch club for min_players_to_confirm
+        club = await self.db.get(Club, club_id)
+        amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
+
+        bp = BookingPlayer(
+            booking=booking,
+            user=requesting_user,
+            role=PlayerRole.player,
+            invite_status=InviteStatus.accepted,
+            payment_status=PaymentStatus.pending,
+            amount_due=amount_due,
+        )
+        self.db.add(bp)
+        await self.db.flush()
+
+        # Auto-confirm
+        new_accepted = accepted + 1
+        if new_accepted >= club.min_players_to_confirm and booking.status == BookingStatus.pending:
+            booking.status = BookingStatus.confirmed
+
+        await self.db.flush()
+        return await self._load_booking(booking.id)
+
+    async def invite_player(
+        self,
+        booking_id: uuid.UUID,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+        invited_user_id: uuid.UUID,
+    ) -> Booking:
+        result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .join(Club, Booking.club_id == Club.id)
+            .where(Booking.id == booking_id, Booking.club_id == club_id, Club.tenant_id == tenant_id)
+        )
+        booking = result.scalar_one_or_none()
+        if not booking:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+        is_staff = _is_staff(requesting_user)
+        is_organiser = any(
+            p.user_id == requesting_user.id and p.role == PlayerRole.organiser
+            for p in booking.players
+        )
+        if not is_staff and not is_organiser:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the organiser or staff can invite players")
+
+        if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot invite to a cancelled or completed booking")
+
+        accepted = _accepted_count(booking.players)
+        if accepted >= booking.max_players:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Booking is full")
+
+        if any(p.user_id == invited_user_id for p in booking.players):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Player is already part of this booking")
+
+        # Verify invited user exists in tenant
+        invited_result = await self.db.execute(
+            select(User).where(User.id == invited_user_id, User.tenant_id == tenant_id)
+        )
+        invited_user = invited_result.scalar_one_or_none()
+        if not invited_user:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Player not found in this tenant")
+
+        # Skill check bypassed for organiser and staff invites
+        club = await self.db.get(Club, club_id)
+        amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
+
+        bp = BookingPlayer(
+            booking=booking,
+            user=invited_user,
+            role=PlayerRole.player,
+            invite_status=InviteStatus.pending,
+            payment_status=PaymentStatus.pending,
+            amount_due=amount_due,
+        )
+        self.db.add(bp)
+        await self.db.flush()
+        return await self._load_booking(booking.id)
+
+    async def cancel_booking(
+        self,
+        booking_id: uuid.UUID,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+    ) -> Booking:
+        result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .join(Club, Booking.club_id == Club.id)
+            .where(Booking.id == booking_id, Booking.club_id == club_id, Club.tenant_id == tenant_id)
+        )
+        booking = result.scalar_one_or_none()
+        if not booking:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+        is_staff = _is_staff(requesting_user)
+        if not is_staff:
+            is_organiser = any(
+                p.user_id == requesting_user.id and p.role == PlayerRole.organiser
+                for p in booking.players
+            )
+            if not is_organiser:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the organiser or staff can cancel this booking")
+
+        if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Booking is already {booking.status.value}",
+            )
+
+        booking.status = BookingStatus.cancelled
+        await self.db.flush()
+        return await self._load_booking(booking.id)

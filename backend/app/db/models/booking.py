@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, Numeric, Text, Boolean, Enum, DateTime, Index, UniqueConstraint
+from sqlalchemy import Column, String, Integer, ForeignKey, Numeric, Text, Boolean, Enum, DateTime, Date, Time, Index, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -31,6 +31,19 @@ class PaymentStatus(str, enum.Enum):
     refunded = "refunded"
 
 
+class InviteStatus(str, enum.Enum):
+    pending = "pending"
+    accepted = "accepted"
+    declined = "declined"
+
+
+class WaitlistStatus(str, enum.Enum):
+    waiting = "waiting"
+    offered = "offered"
+    booked = "booked"
+    expired = "expired"
+
+
 class Booking(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "bookings"
     __table_args__ = (
@@ -52,6 +65,8 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     contact_email = Column(String(255), nullable=True)
     contact_phone = Column(String(50), nullable=True)
     max_players = Column(Integer, nullable=True)
+    min_skill_level = Column(Numeric(3, 1), nullable=True)
+    max_skill_level = Column(Numeric(3, 1), nullable=True)
     notes = Column(Text, nullable=True)
     total_price = Column(Numeric(10, 2), nullable=True)
     is_open_game = Column(Boolean, nullable=False, default=False)
@@ -78,6 +93,27 @@ class BookingPlayer(Base, UUIDMixin, TimestampMixin):
     role = Column(Enum(PlayerRole), nullable=False)
     payment_status = Column(Enum(PaymentStatus), nullable=False, default=PaymentStatus.pending)
     amount_due = Column(Numeric(10, 2), nullable=False)
+    invite_status = Column(Enum(InviteStatus), nullable=False, default=InviteStatus.accepted)
 
     booking = relationship("Booking", back_populates="players")
-    user = relationship("User", back_populates="booking_players")
+    user = relationship("User")
+
+
+class WaitlistEntry(Base, UUIDMixin, TimestampMixin):
+    __tablename__ = "waitlist_entries"
+
+    club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
+    court_id = Column(UUID(as_uuid=True), ForeignKey("courts.id"), nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    desired_date = Column(Date, nullable=False)
+    desired_start_time = Column(Time, nullable=True)
+    desired_end_time = Column(Time, nullable=True)
+    status = Column(Enum(WaitlistStatus), nullable=False, default=WaitlistStatus.waiting)
+    offered_booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)
+    offer_expires_at = Column(DateTime(timezone=True), nullable=True)
+    notified_at = Column(DateTime(timezone=True), nullable=True)
+
+    club = relationship("Club")
+    court = relationship("Court")
+    user = relationship("User")
+    offered_booking = relationship("Booking", foreign_keys=[offered_booking_id])

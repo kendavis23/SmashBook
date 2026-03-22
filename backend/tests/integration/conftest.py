@@ -47,6 +47,7 @@ from sqlalchemy.ext.asyncio import (
 
 from app.core.security import create_access_token, get_password_hash
 from app.db.models.base import Base
+from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.membership import MembershipPlan
 from app.db.models.court import Court, CourtBlackout
@@ -156,6 +157,19 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
                 )
             ).scalars().all()
             if court_ids:
+                # Bookings → BookingPlayers must go before courts
+                booking_ids = (
+                    await session.execute(
+                        select(Booking.id).where(Booking.court_id.in_(court_ids))
+                    )
+                ).scalars().all()
+                if booking_ids:
+                    await session.execute(
+                        sql_delete(BookingPlayer).where(BookingPlayer.booking_id.in_(booking_ids))
+                    )
+                    await session.execute(
+                        sql_delete(Booking).where(Booking.id.in_(booking_ids))
+                    )
                 await session.execute(
                     sql_delete(CourtBlackout).where(
                         CourtBlackout.court_id.in_(court_ids)
@@ -272,6 +286,10 @@ async def _create_user(
 
 async def _delete_user(user_id: uuid.UUID, session_factory) -> None:
     async with session_factory() as session:
+        # Delete booking_player rows before the user (FK constraint)
+        await session.execute(
+            sql_delete(BookingPlayer).where(BookingPlayer.user_id == user_id)
+        )
         await session.execute(
             sql_delete(Wallet).where(Wallet.user_id == user_id)
         )

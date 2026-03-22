@@ -1,4 +1,4 @@
-_Last updated: 2026-03-22 15:35 UTC_
+_Last updated: 2026-03-22 23:00 UTC_
 
 # SmashBook Data Model
 
@@ -249,6 +249,8 @@ Blocks a court from being booked during a time window (maintenance, events, etc)
 | `contact_email` | VARCHAR(255) | Nullable |
 | `contact_phone` | VARCHAR(50) | Nullable |
 | `max_players` | INTEGER | Nullable |
+| `min_skill_level` | NUMERIC(3,1) | Nullable — lower bound for join eligibility |
+| `max_skill_level` | NUMERIC(3,1) | Nullable — upper bound for join eligibility |
 | `notes` | TEXT | Nullable |
 | `total_price` | NUMERIC(10,2) | Nullable |
 | `is_open_game` | BOOLEAN | Default `false` |
@@ -276,12 +278,34 @@ Links players to a booking and tracks their individual payment status.
 | `booking_id` | UUID | FK → `bookings` |
 | `user_id` | UUID | FK → `users` |
 | `role` | ENUM | `organiser`, `player` |
+| `invite_status` | ENUM | `pending`, `accepted`, `declined` — default `accepted` |
 | `payment_status` | ENUM | `pending`, `paid`, `refunded` |
 | `amount_due` | NUMERIC(10,2) | |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
 **Constraints:** `UNIQUE(booking_id, user_id)`
+
+---
+
+#### `waitlist_entries`
+Tracks players waiting for a slot on a specific date/time.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `court_id` | UUID | FK → `courts`, nullable |
+| `user_id` | UUID | FK → `users` |
+| `desired_date` | DATE | |
+| `desired_start_time` | TIME | Nullable |
+| `desired_end_time` | TIME | Nullable |
+| `status` | ENUM | `waiting`, `offered`, `booked`, `expired` |
+| `offered_booking_id` | UUID | FK → `bookings`, nullable |
+| `offer_expires_at` | TIMESTAMPTZ | Nullable |
+| `notified_at` | TIMESTAMPTZ | Nullable |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
 
 ---
 
