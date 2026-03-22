@@ -34,3 +34,17 @@ class CourtResponse(BaseModel):
     is_active: bool
 
     model_config = {"from_attributes": True}
+
+
+class TimeSlot(BaseModel):
+    start_time: str  # "HH:MM" UTC
+    end_time: str    # "HH:MM" UTC
+    is_available: bool
+    price: Optional[Decimal] = None
+    price_label: Optional[str] = None
+
+
+class CourtAvailabilityResponse(BaseModel):
+    court_id: uuid.UUID
+    date: str
+    slots: list[TimeSlot]

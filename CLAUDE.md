@@ -313,3 +313,12 @@ After any significant change, update the relevant `docs/` file(s) before finishi
 - Changes to the deployment or worker setup
 
 If no single existing doc covers the change, add a note to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+### Tracking Implemented APIs
+
+`docs/IMPLEMENTED_API.md` is the authoritative list of working endpoints. **Update it every time an endpoint moves from stub (`pass`) to implemented.** Steps:
+
+1. Move the endpoint from the "Not Yet Implemented" table into its domain section.
+2. Update the `_Last updated` timestamp on line 1 to the current UTC date/time.
+
+Never leave `IMPLEMENTED_API.md` out of sync with the code after completing an endpoint.
