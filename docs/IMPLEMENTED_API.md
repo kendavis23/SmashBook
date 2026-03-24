@@ -1,4 +1,4 @@
-_Last updated: 2026-03-24 12:00 UTC_
+_Last updated: 2026-03-24 15:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -91,11 +91,23 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 
 ---
 
+## Equipment — `/api/v1/equipment`
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/equipment` | List equipment inventory for a club (no auth; tenant-scoped). Returns item type, name, rental price, total/available quantity, condition |
+| `POST` | `/api/v1/equipment` | Staff only: create a new equipment item. quantity_available is set equal to quantity_total on creation |
+| `PATCH` | `/api/v1/equipment/{item_id}` | Staff only: update name, price, condition, notes, or quantity_total. Increasing total restocks available by the delta; decreasing is blocked if units are out on active rentals |
+| `DELETE` | `/api/v1/equipment/{item_id}` | Staff only: soft-retire an item (sets condition=retired, quantity_available=0). Blocked if any units are currently out on active rentals |
+| `POST` | `/api/v1/bookings/{booking_id}/equipment-rental` | Add equipment rental to an existing booking. Requesting user must be a booking participant (staff bypass). Validates stock, creates rental record, decrements inventory, adds charge to player's amount_due. Inventory is restored automatically if the booking is later cancelled |
+
+---
+
 ## Not Yet Implemented (stubs)
 
 | File | Endpoints |
 |---|---|
-| `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video`, `POST /{id}/equipment-rental` |
+| `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
 | `payments.py` | Payments, wallet top-up, refunds, invoices |
 | `staff.py` | Staff management — list, create, update, deactivate |
 | `trainers.py` | Trainer availability — get, set, clear |

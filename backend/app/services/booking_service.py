@@ -38,6 +38,7 @@ from app.db.models.booking import (
     PaymentStatus,
     PlayerRole,
 )
+from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.court import Court, CourtBlackout
 from app.db.models.user import TenantUserRole, User
@@ -786,6 +787,19 @@ class BookingService:
             )
 
         booking.status = BookingStatus.cancelled
+
+        # Restore quantity_available for any equipment rented against this booking
+        rentals_result = await self.db.execute(
+            select(EquipmentRental).where(EquipmentRental.booking_id == booking_id)
+        )
+        for rental in rentals_result.scalars().all():
+            eq_result = await self.db.execute(
+                select(EquipmentInventory).where(EquipmentInventory.id == rental.equipment_id)
+            )
+            equipment = eq_result.scalar_one_or_none()
+            if equipment:
+                equipment.quantity_available += rental.quantity
+
         await self.db.flush()
         return await self._load_booking(booking.id)
 

@@ -25,7 +25,9 @@ from app.schemas.booking import (
     InvitePlayerRequest,
     OpenGameSummary,
 )
+from app.schemas.equipment import EquipmentRentalRequest, EquipmentRentalResponse
 from app.services.booking_service import BookingService
+from app.services.equipment_service import EquipmentService
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -400,7 +402,28 @@ async def upload_video(booking_id: str, current_user=Depends(get_current_user)):
     pass
 
 
-@router.post("/{booking_id}/equipment-rental")
-async def add_equipment_rental(booking_id: str, current_user=Depends(get_current_user), db=Depends(get_db)):
-    """Add equipment rental to a booking."""
-    pass
+@router.post("/{booking_id}/equipment-rental", response_model=EquipmentRentalResponse, status_code=status.HTTP_201_CREATED)
+async def add_equipment_rental(
+    booking_id: uuid.UUID,
+    body: EquipmentRentalRequest,
+    club_id: uuid.UUID = Query(...),
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Add equipment rental to an existing booking.
+    The requesting user must be a participant of the booking (staff bypass).
+    Equipment must belong to the same club and have sufficient stock.
+    The rental charge is added to the requesting user's amount_due.
+    """
+    svc = EquipmentService(db)
+    result = await svc.add_rental_to_booking(
+        booking_id=booking_id,
+        club_id=club_id,
+        tenant_id=tenant.id,
+        requesting_user=current_user,
+        equipment_id=body.equipment_id,
+        quantity=body.quantity,
+    )
+    return result

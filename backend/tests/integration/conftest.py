@@ -49,6 +49,7 @@ from app.core.security import create_access_token, get_password_hash
 from app.db.models.base import Base
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club, OperatingHours, PricingRule
+from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.membership import MembershipPlan
 from app.db.models.court import Court, CourtBlackout
 from app.db.models.tenant import SubscriptionPlan, Tenant
@@ -165,6 +166,9 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
                 ).scalars().all()
                 if booking_ids:
                     await session.execute(
+                        sql_delete(EquipmentRental).where(EquipmentRental.booking_id.in_(booking_ids))
+                    )
+                    await session.execute(
                         sql_delete(BookingPlayer).where(BookingPlayer.booking_id.in_(booking_ids))
                     )
                     await session.execute(
@@ -186,6 +190,9 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
             )
             await session.execute(
                 sql_delete(MembershipPlan).where(MembershipPlan.club_id.in_(club_ids))
+            )
+            await session.execute(
+                sql_delete(EquipmentInventory).where(EquipmentInventory.club_id.in_(club_ids))
             )
             await session.execute(
                 sql_delete(Club).where(Club.tenant_id == tenant_id)
