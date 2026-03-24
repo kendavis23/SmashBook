@@ -261,11 +261,25 @@ class BookingService:
         contact_email: Optional[str],
         contact_phone: Optional[str],
         staff_profile_id: Optional[uuid.UUID],
+        on_behalf_of_user_id: Optional[uuid.UUID] = None,
     ) -> Booking:
         is_staff = _is_staff(requesting_user)
 
         # 1. Fetch club + court
         club, court = await self._get_club_and_court(club_id, court_id, tenant_id)
+
+        # 1a. Resolve organiser: staff may book on behalf of a player
+        if on_behalf_of_user_id is not None:
+            if not is_staff:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="on_behalf_of_user_id is staff-only")
+            behalf_result = await self.db.execute(
+                select(User).where(User.id == on_behalf_of_user_id, User.tenant_id == tenant_id)
+            )
+            organiser_user = behalf_result.scalar_one_or_none()
+            if not organiser_user:
+                raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="on_behalf_of player not found in this tenant")
+        else:
+            organiser_user = requesting_user
 
         # 2. Compute end datetime
         end_datetime = start_datetime + timedelta(minutes=club.booking_duration_minutes)
@@ -312,9 +326,9 @@ class BookingService:
             # Player creates open game → they become organiser.  Not an error; handled below.
             pass
 
-        # 11. Skill range computation
+        # 11. Skill range computation — use organiser's skill level as anchor
         min_skill, max_skill = self._compute_skill_range(
-            requesting_user, club, is_staff, anchor_skill_level,
+            organiser_user, club, is_staff, anchor_skill_level,
             skill_level_override_min, skill_level_override_max,
         )
 
@@ -328,7 +342,7 @@ class BookingService:
 
         named_players: list[User] = []
         for uid in deduped_player_ids:
-            if uid == requesting_user.id:
+            if uid == organiser_user.id:
                 continue  # organiser added separately
             result = await self.db.execute(
                 select(User).where(User.id == uid, User.tenant_id == tenant_id)
@@ -389,7 +403,7 @@ class BookingService:
         if not is_empty_admin_game:
             organiser_bp = BookingPlayer(
                 booking=booking,
-                user=requesting_user,
+                user=organiser_user,
                 role=PlayerRole.organiser,
                 invite_status=InviteStatus.accepted,
                 payment_status=PaymentStatus.pending,
@@ -772,5 +786,88 @@ class BookingService:
             )
 
         booking.status = BookingStatus.cancelled
+        await self.db.flush()
+        return await self._load_booking(booking.id)
+
+    async def update_booking(
+        self,
+        booking_id: uuid.UUID,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        court_id: Optional[uuid.UUID],
+        start_datetime: Optional[datetime],
+        notes: Optional[str],
+        event_name: Optional[str],
+        contact_name: Optional[str],
+        contact_email: Optional[str],
+        contact_phone: Optional[str],
+    ) -> Booking:
+        """Staff-only: update mutable fields on an existing booking."""
+        result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .join(Club, Booking.club_id == Club.id)
+            .where(Booking.id == booking_id, Booking.club_id == club_id, Club.tenant_id == tenant_id)
+        )
+        booking = result.scalar_one_or_none()
+        if not booking:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+        if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Cannot edit a {booking.status.value} booking",
+            )
+
+        # Determine the effective court and start time (may be changing)
+        new_court_id = court_id if court_id is not None else booking.court_id
+        new_start = start_datetime if start_datetime is not None else booking.start_datetime
+
+        time_or_court_changed = (court_id is not None and court_id != booking.court_id) or \
+                                 (start_datetime is not None and start_datetime != booking.start_datetime)
+
+        if time_or_court_changed:
+            # Validate the new court belongs to this club
+            if court_id is not None and court_id != booking.court_id:
+                court_result = await self.db.execute(
+                    select(Court).where(Court.id == new_court_id, Court.club_id == club_id)
+                )
+                new_court = court_result.scalar_one_or_none()
+                if not new_court:
+                    raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Court not found")
+                if not new_court.is_active:
+                    raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Court is not active")
+
+            # Fetch club for duration
+            club = await self.db.get(Club, club_id)
+            new_end = new_start + timedelta(minutes=club.booking_duration_minutes)
+
+            # Operating hours and grid alignment
+            oh = await self._get_operating_hours(club_id, new_start.date())
+            self._validate_window_in_hours(new_start, new_end, oh, new_start.date())
+            if booking.booking_type in _GRID_ENFORCED_TYPES:
+                self._validate_grid_alignment(new_start, oh, club.booking_duration_minutes)
+
+            # Conflict and blackout (exclude the booking being edited)
+            await self._check_no_conflict(new_court_id, new_start, new_end, exclude_booking_id=booking_id)
+            await self._check_no_blackout(new_court_id, new_start, new_end)
+
+            booking.court_id = new_court_id
+            booking.start_datetime = new_start
+            booking.end_datetime = new_end
+
+        # Apply simple field updates (only when explicitly provided)
+        if notes is not None:
+            booking.notes = notes
+        if event_name is not None:
+            booking.event_name = event_name
+        if contact_name is not None:
+            booking.contact_name = contact_name
+        if contact_email is not None:
+            booking.contact_email = contact_email
+        if contact_phone is not None:
+            booking.contact_phone = contact_phone
+
         await self.db.flush()
         return await self._load_booking(booking.id)

@@ -1282,3 +1282,352 @@ class TestCalendarView:
             headers=staff_headers,
         )
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/bookings — on_behalf_of_user_id (staff creates for a player)
+# ---------------------------------------------------------------------------
+
+class TestCreateOnBehalf:
+
+    async def test_staff_creates_booking_on_behalf_of_player(
+        self, client, staff_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Player in on_behalf_of_user_id becomes the organiser BookingPlayer."""
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                on_behalf_of_user_id=str(player2.id),
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert len(body["players"]) == 1
+        organiser = body["players"][0]
+        assert organiser["user_id"] == str(player2.id)
+        assert organiser["role"] == "organiser"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_on_behalf_staff_not_in_player_list(
+        self, client, staff_headers, staff, player2, club, court_with_hours, test_session_factory
+    ):
+        """The creating staff member must not appear as a BookingPlayer when on_behalf_of_user_id is set."""
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                on_behalf_of_user_id=str(player2.id),
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        player_ids = [p["user_id"] for p in resp.json()["players"]]
+        assert str(staff.id) not in player_ids
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_on_behalf_player_can_then_cancel_own_booking(
+        self, client, staff_headers, player2, player2_headers, club, court_with_hours, test_session_factory
+    ):
+        """Because the player is the organiser, they can cancel the booking themselves."""
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                on_behalf_of_user_id=str(player2.id),
+            ),
+            headers=staff_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.delete(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            headers=player2_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "cancelled"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_player_cannot_use_on_behalf_of(
+        self, client, player_headers, player2, club, court_with_hours
+    ):
+        """Non-staff callers get 403 when providing on_behalf_of_user_id."""
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                on_behalf_of_user_id=str(player2.id),
+            ),
+            headers=player_headers,
+        )
+        assert resp.status_code == 403
+
+    async def test_on_behalf_unknown_user_returns_422(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """A UUID that does not belong to the tenant returns 422."""
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                on_behalf_of_user_id=str(uuid.uuid4()),
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# PATCH /api/v1/bookings/{id}
+# ---------------------------------------------------------------------------
+
+class TestUpdateBooking:
+
+    async def test_staff_can_update_notes(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Staff can update notes on an existing booking."""
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, notes="original"),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={"notes": "updated notes"},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["notes"] == "updated notes"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_staff_can_update_event_name_and_contact(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """Staff can update event_name, contact_name, contact_email, contact_phone."""
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                booking_type="corporate_event",
+                event_name="Old Event",
+            ),
+            headers=staff_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={
+                "event_name": "New Event",
+                "contact_name": "Jane Doe",
+                "contact_email": "jane@example.com",
+                "contact_phone": "+44 7700 000000",
+            },
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["event_name"] == "New Event"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_staff_can_reschedule(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Staff can move a booking to a non-conflicting slot."""
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        # Move to the next 90-min slot on the same day
+        new_start = start.replace(hour=12, minute=0)
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={"start_datetime": new_start.isoformat()},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["start_datetime"].startswith(new_start.strftime("%Y-%m-%dT%H:%M"))
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_reschedule_conflict_rejected(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Rescheduling into a slot occupied by another booking returns 409."""
+        s1 = _future(48)
+        s2 = _future(48).replace(hour=12, minute=0)
+
+        r1 = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, s1),
+            headers=player_headers,
+        )
+        r2 = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, s2),
+            headers=player_headers,
+        )
+        assert r1.status_code == 201 and r2.status_code == 201
+        booking2_id = r2.json()["id"]
+
+        # Try to move booking 2 into slot occupied by booking 1
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking2_id}?club_id={club.id}",
+            json={"start_datetime": s1.isoformat()},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 409
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_staff_can_reassign_court(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Staff can move a booking to a different active court."""
+        async with test_session_factory() as session:
+            court2 = Court(club_id=club.id, name="Court U2", surface_type="indoor", is_active=True)
+            session.add(court2)
+            await session.commit()
+            await session.refresh(court2)
+
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={"court_id": str(court2.id)},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["court_id"] == str(court2.id)
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+        await _delete_bookings_for_court(court2.id, test_session_factory)
+        async with test_session_factory() as session:
+            await session.execute(sql_delete(Court).where(Court.id == court2.id))
+            await session.commit()
+
+    async def test_cannot_update_cancelled_booking(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Editing a cancelled booking returns 422."""
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        booking_id = r.json()["id"]
+        await client.delete(f"/api/v1/bookings/{booking_id}?club_id={club.id}", headers=player_headers)
+
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={"notes": "too late"},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_player_cannot_update(
+        self, client, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """PATCH is staff-only — players receive 403."""
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        booking_id = r.json()["id"]
+
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={"notes": "sneaky edit"},
+            headers=player_headers,
+        )
+        assert resp.status_code == 403
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_update_tenant_isolation(
+        self, client, club, court_with_hours, player_headers, plan, test_session_factory
+    ):
+        """A staff token from a different tenant cannot edit a booking in this tenant's club."""
+        from app.db.models.tenant import Tenant as TenantModel
+        subdomain = f"alien-upd-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Alien Update", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.flush()
+            alien = User(
+                tenant_id=t2.id,
+                email=f"alien-upd-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Alien Staff",
+                hashed_password="x",
+                is_active=True,
+                role=TenantUserRole.staff,
+            )
+            session.add(alien)
+            await session.commit()
+            await session.refresh(alien)
+            t2_id, alien_id = t2.id, alien.id
+
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        token = create_access_token({"sub": str(alien_id), "tid": str(t2_id)})
+        alien_headers = {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2_id)}
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={"notes": "cross-tenant edit"},
+            headers=alien_headers,
+        )
+        assert resp.status_code in (401, 404)
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+        async with test_session_factory() as session:
+            obj = await session.get(User, alien_id)
+            if obj:
+                await session.delete(obj)
+            obj2 = await session.get(TenantModel, t2_id)
+            if obj2:
+                await session.delete(obj2)
+            await session.commit()

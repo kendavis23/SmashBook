@@ -17,6 +17,7 @@ from app.schemas.booking import (
     BookingCreate,
     BookingPlayerResponse,
     BookingResponse,
+    BookingUpdate,
     CalendarBooking,
     CalendarCourtColumn,
     CalendarDay,
@@ -144,6 +145,7 @@ async def create_booking(
         contact_email=body.contact_email,
         contact_phone=body.contact_phone,
         staff_profile_id=body.staff_profile_id,
+        on_behalf_of_user_id=body.on_behalf_of_user_id,
     )
     return _build_booking_response(booking)
 
@@ -347,6 +349,37 @@ async def cancel_booking(
         club_id=club_id,
         tenant_id=tenant.id,
         requesting_user=current_user,
+    )
+    return _build_booking_response(booking)
+
+
+@router.patch("/{booking_id}", response_model=BookingResponse)
+async def update_booking(
+    booking_id: uuid.UUID,
+    body: BookingUpdate,
+    club_id: uuid.UUID = Query(...),
+    current_user: User = Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Staff only: edit a booking. Supports rescheduling (start_datetime), court reassignment,
+    and metadata updates (notes, event_name, contact fields).
+    Conflict and blackout checks are re-run whenever court or time changes.
+    Cannot edit cancelled or completed bookings.
+    """
+    svc = BookingService(db)
+    booking = await svc.update_booking(
+        booking_id=booking_id,
+        club_id=club_id,
+        tenant_id=tenant.id,
+        court_id=body.court_id,
+        start_datetime=body.start_datetime,
+        notes=body.notes,
+        event_name=body.event_name,
+        contact_name=body.contact_name,
+        contact_email=body.contact_email,
+        contact_phone=body.contact_phone,
     )
     return _build_booking_response(booking)
 

@@ -26,6 +26,9 @@ class BookingCreate(BaseModel):
     # Pre-named players for private/reserved booking
     player_user_ids: list[uuid.UUID] = []
 
+    # Staff-only: create the booking on behalf of this player (they become the organiser)
+    on_behalf_of_user_id: Optional[uuid.UUID] = None
+
     # Corporate / tournament / lesson fields
     event_name: Optional[str] = None
     contact_name: Optional[str] = None
@@ -44,6 +47,17 @@ class BookingCreate(BaseModel):
 
 class InvitePlayerRequest(BaseModel):
     user_id: uuid.UUID
+
+
+class BookingUpdate(BaseModel):
+    """Staff-only PATCH payload. Only provided fields are updated."""
+    court_id: Optional[uuid.UUID] = None
+    start_datetime: Optional[datetime] = None
+    notes: Optional[str] = None
+    event_name: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
 
 
 class BookingPlayerResponse(BaseModel):

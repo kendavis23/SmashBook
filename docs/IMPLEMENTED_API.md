@@ -1,4 +1,4 @@
-_Last updated: 2026-03-24 10:00 UTC_
+_Last updated: 2026-03-24 12:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -79,7 +79,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/bookings` | Create a booking (open game or private); enforces slot grid, operating hours, conflict, skill range |
+| `POST` | `/api/v1/bookings` | Create a booking (open game or private); enforces slot grid, operating hours, conflict, skill range. Staff: pass `on_behalf_of_user_id` to designate a player as organiser |
+| `PATCH` | `/api/v1/bookings/{booking_id}` | Staff only: edit court, start time, notes, event name, contact fields. Re-validates conflict/blackout on time or court change |
 | `GET` | `/api/v1/bookings` | List bookings for a club; staff see all, players see only their own. Filters: `date_from`, `date_to`, `booking_type`, `booking_status`, `court_id`, `player_search` (staff only — name/email substring) |
 | `GET` | `/api/v1/bookings/calendar` | Staff: calendar grid view (day or week) of all non-cancelled bookings, grouped by day → court column. Params: `club_id`, `view=day\|week`, `anchor_date` |
 | `GET` | `/api/v1/bookings/open-games` | Browse publicly joinable open games; filterable by date and skill range (no auth) |
