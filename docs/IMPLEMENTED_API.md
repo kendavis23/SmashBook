@@ -1,4 +1,4 @@
-_Last updated: 2026-03-22 23:00 UTC_
+_Last updated: 2026-03-24 10:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -80,7 +80,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/v1/bookings` | Create a booking (open game or private); enforces slot grid, operating hours, conflict, skill range |
-| `GET` | `/api/v1/bookings` | List bookings for a club; staff see all, players see only their own |
+| `GET` | `/api/v1/bookings` | List bookings for a club; staff see all, players see only their own. Filters: `date_from`, `date_to`, `booking_type`, `booking_status`, `court_id`, `player_search` (staff only — name/email substring) |
+| `GET` | `/api/v1/bookings/calendar` | Staff: calendar grid view (day or week) of all non-cancelled bookings, grouped by day → court column. Params: `club_id`, `view=day\|week`, `anchor_date` |
 | `GET` | `/api/v1/bookings/open-games` | Browse publicly joinable open games; filterable by date and skill range (no auth) |
 | `GET` | `/api/v1/bookings/{booking_id}` | Get booking detail; players can only see their own or open games |
 | `POST` | `/api/v1/bookings/{booking_id}/join` | Player self-joins an open game; enforces skill range and capacity |
@@ -93,7 +94,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 
 | File | Endpoints |
 |---|---|
-| `bookings.py` | `GET /calendar`, `POST /{id}/waitlist`, `POST /{id}/video`, `POST /{id}/equipment-rental` |
+| `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video`, `POST /{id}/equipment-rental` |
 | `payments.py` | Payments, wallet top-up, refunds, invoices |
 | `staff.py` | Staff management — list, create, update, deactivate |
 | `trainers.py` | Trainer availability — get, set, clear |

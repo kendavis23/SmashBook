@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -94,3 +94,38 @@ class OpenGameSummary(BaseModel):
     total_price: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
+
+
+class CalendarBooking(BaseModel):
+    id: uuid.UUID
+    court_id: uuid.UUID
+    court_name: str
+    booking_type: BookingType
+    status: BookingStatus
+    is_open_game: bool
+    start_datetime: datetime
+    end_datetime: datetime
+    event_name: Optional[str] = None
+    players: list[BookingPlayerResponse]
+    slots_available: int
+    total_price: Optional[Decimal] = None
+
+    model_config = {"from_attributes": True}
+
+
+class CalendarCourtColumn(BaseModel):
+    court_id: uuid.UUID
+    court_name: str
+    bookings: list[CalendarBooking]
+
+
+class CalendarDay(BaseModel):
+    date: date
+    courts: list[CalendarCourtColumn]
+
+
+class CalendarResponse(BaseModel):
+    view: str
+    date_from: date
+    date_to: date
+    days: list[CalendarDay]

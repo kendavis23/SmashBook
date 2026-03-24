@@ -1,5 +1,6 @@
 import uuid
-from datetime import date, datetime
+from collections import defaultdict
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -16,6 +17,10 @@ from app.schemas.booking import (
     BookingCreate,
     BookingPlayerResponse,
     BookingResponse,
+    CalendarBooking,
+    CalendarCourtColumn,
+    CalendarDay,
+    CalendarResponse,
     InvitePlayerRequest,
     OpenGameSummary,
 )
@@ -84,6 +89,24 @@ def _build_open_game_summary(booking: Booking) -> OpenGameSummary:
     )
 
 
+def _build_calendar_booking(booking: Booking) -> CalendarBooking:
+    accepted = _accepted_count(booking.players)
+    return CalendarBooking(
+        id=booking.id,
+        court_id=booking.court_id,
+        court_name=booking.court.name,
+        booking_type=booking.booking_type,
+        status=booking.status,
+        is_open_game=booking.is_open_game,
+        start_datetime=booking.start_datetime,
+        end_datetime=booking.end_datetime,
+        event_name=booking.event_name,
+        players=[_build_player_response(p) for p in booking.players],
+        slots_available=max(0, (booking.max_players or 0) - accepted),
+        total_price=booking.total_price,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -132,6 +155,8 @@ async def list_bookings(
     date_to: Optional[datetime] = None,
     booking_type: Optional[str] = None,
     booking_status: Optional[str] = None,
+    court_id: Optional[uuid.UUID] = None,
+    player_search: Optional[str] = Query(default=None, description="Search by player name or email (staff only)"),
     current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_read_db),
@@ -146,6 +171,8 @@ async def list_bookings(
         date_to=date_to,
         booking_type=booking_type,
         booking_status=booking_status,
+        court_id=court_id,
+        player_search=player_search,
     )
     return [_build_booking_response(b) for b in bookings]
 
@@ -169,6 +196,68 @@ async def list_open_games(
         max_skill=max_skill,
     )
     return [_build_open_game_summary(b) for b in bookings]
+
+
+@router.get("/calendar", response_model=CalendarResponse)
+async def get_calendar_view(
+    club_id: uuid.UUID = Query(...),
+    view: str = Query(default="week", pattern="^(day|week)$"),
+    anchor_date: Optional[date] = Query(default=None, description="Anchor date for the view (defaults to today)"),
+    current_user: User = Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """
+    Staff: calendar grid view of all bookings.
+    - view=day: single day grid for anchor_date
+    - view=week: Mon–Sun week containing anchor_date
+    Response is grouped by day → court column → bookings.
+    Cancelled bookings are excluded.
+    """
+    if anchor_date is None:
+        anchor_date = date.today()
+
+    svc = BookingService(db)
+    data = await svc.get_calendar_view(
+        club_id=club_id,
+        tenant_id=tenant.id,
+        view=view,
+        anchor_date=anchor_date,
+    )
+
+    courts = data["courts"]
+    bookings = data["bookings"]
+    date_from: date = data["date_from"]
+    date_to: date = data["date_to"]
+
+    # Group bookings by date then court
+    by_date_court: dict = defaultdict(lambda: defaultdict(list))
+    for b in bookings:
+        by_date_court[b.start_datetime.date()][b.court_id].append(b)
+
+    days = []
+    current = date_from
+    while current <= date_to:
+        court_columns = [
+            CalendarCourtColumn(
+                court_id=court.id,
+                court_name=court.name,
+                bookings=[
+                    _build_calendar_booking(b)
+                    for b in by_date_court[current].get(court.id, [])
+                ],
+            )
+            for court in courts
+        ]
+        days.append(CalendarDay(date=current, courts=court_columns))
+        current += timedelta(days=1)
+
+    return CalendarResponse(
+        view=view,
+        date_from=date_from,
+        date_to=date_to,
+        days=days,
+    )
 
 
 @router.get("/{booking_id}", response_model=BookingResponse)
@@ -265,18 +354,6 @@ async def cancel_booking(
 # ---------------------------------------------------------------------------
 # Stubs — implemented in later sprints
 # ---------------------------------------------------------------------------
-
-@router.get("/calendar")
-async def get_calendar_view(
-    club_id: str = Query(...),
-    view: str = Query("week"),
-    date: Optional[str] = None,
-    current_user=Depends(require_staff),
-    db=Depends(get_read_db),
-):
-    """Staff: daily and weekly booking calendar view."""
-    pass
-
 
 @router.post("/{booking_id}/waitlist")
 async def join_waitlist(booking_id: str, current_user=Depends(get_current_user), db=Depends(get_db)):

@@ -25,7 +25,7 @@ from typing import Optional
 import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -428,6 +428,8 @@ class BookingService:
         date_to: Optional[datetime] = None,
         booking_type: Optional[str] = None,
         booking_status: Optional[str] = None,
+        court_id: Optional[uuid.UUID] = None,
+        player_search: Optional[str] = None,
     ) -> list[Booking]:
         # Verify club belongs to tenant
         club_result = await self.db.execute(
@@ -448,6 +450,17 @@ class BookingService:
             stmt = stmt.join(BookingPlayer, BookingPlayer.booking_id == Booking.id).where(
                 BookingPlayer.user_id == requesting_user.id
             )
+        elif player_search:
+            # Staff: join through players to filter by name/email
+            search_term = f"%{player_search.lower()}%"
+            stmt = stmt.join(BookingPlayer, BookingPlayer.booking_id == Booking.id).join(
+                User, User.id == BookingPlayer.user_id
+            ).where(
+                or_(
+                    func.lower(User.full_name).like(search_term),
+                    func.lower(User.email).like(search_term),
+                )
+            )
 
         if date_from:
             stmt = stmt.where(Booking.start_datetime >= date_from)
@@ -457,9 +470,64 @@ class BookingService:
             stmt = stmt.where(Booking.booking_type == booking_type)
         if booking_status:
             stmt = stmt.where(Booking.status == booking_status)
+        if court_id:
+            stmt = stmt.where(Booking.court_id == court_id)
 
         result = await self.db.execute(stmt)
         return result.scalars().unique().all()
+
+    async def get_calendar_view(
+        self,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        view: str,
+        anchor_date: date,
+    ) -> dict:
+        club_result = await self.db.execute(
+            select(Club.id).where(Club.id == club_id, Club.tenant_id == tenant_id)
+        )
+        if not club_result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+        if view == "day":
+            date_from = anchor_date
+            date_to = anchor_date
+        else:
+            # week: Monday through Sunday containing anchor_date
+            date_from = anchor_date - timedelta(days=anchor_date.weekday())
+            date_to = date_from + timedelta(days=6)
+
+        start_dt = datetime.combine(date_from, datetime.min.time()).replace(tzinfo=timezone.utc)
+        end_dt = datetime.combine(date_to, datetime.max.time()).replace(tzinfo=timezone.utc)
+
+        courts_result = await self.db.execute(
+            select(Court)
+            .where(Court.club_id == club_id, Court.is_active == True)
+            .order_by(Court.name)
+        )
+        courts = courts_result.scalars().all()
+
+        bookings_result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .where(
+                Booking.club_id == club_id,
+                Booking.start_datetime >= start_dt,
+                Booking.start_datetime <= end_dt,
+                Booking.status != BookingStatus.cancelled,
+            )
+            .order_by(Booking.start_datetime)
+        )
+        bookings = bookings_result.scalars().unique().all()
+
+        return {
+            "view": view,
+            "date_from": date_from,
+            "date_to": date_to,
+            "courts": courts,
+            "bookings": bookings,
+        }
 
     async def list_open_games(
         self,

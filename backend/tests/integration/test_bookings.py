@@ -1037,3 +1037,248 @@ class TestBugFixes:
             headers=staff_headers,
         )
         assert resp.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/bookings — new filters (court_id, player_search)
+# ---------------------------------------------------------------------------
+
+class TestListBookingsFilters:
+
+    async def test_filter_by_court_id(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory, tenant
+    ):
+        """court_id filter returns only bookings on that court."""
+        # court2 reuses the operating hours + pricing rules already created by court_with_hours
+        # (they are club-scoped, not court-scoped)
+        async with test_session_factory() as session:
+            court2 = Court(club_id=club.id, name="Court 2", surface_type="indoor", is_active=True)
+            session.add(court2)
+            await session.commit()
+            await session.refresh(court2)
+
+        s1 = _future(48)
+        s2 = _future(48).replace(hour=13, minute=30)
+
+        await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, s1), headers=player_headers)
+        await client.post("/api/v1/bookings", json=_booking_payload(club.id, court2.id, s2), headers=player_headers)
+
+        resp = await client.get(
+            f"/api/v1/bookings?club_id={club.id}&court_id={court_with_hours.id}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        results = resp.json()
+        assert all(b["court_id"] == str(court_with_hours.id) for b in results)
+        assert any(b["court_id"] == str(court_with_hours.id) for b in results)
+
+        # Filter by court2 returns only that booking
+        resp2 = await client.get(
+            f"/api/v1/bookings?club_id={club.id}&court_id={court2.id}",
+            headers=staff_headers,
+        )
+        assert resp2.status_code == 200
+        assert all(b["court_id"] == str(court2.id) for b in resp2.json())
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+        await _delete_bookings_for_court(court2.id, test_session_factory)
+
+        async with test_session_factory() as session:
+            await session.execute(sql_delete(Court).where(Court.id == court2.id))
+            await session.commit()
+
+    async def test_player_search_by_name(
+        self, client, staff_headers, player_headers, player, club, court_with_hours, test_session_factory
+    ):
+        """player_search filters bookings to those containing a matching player name."""
+        start = _future(48)
+        await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+
+        # Search by a substring of "Test Player" (the player fixture's full_name)
+        resp = await client.get(
+            f"/api/v1/bookings?club_id={club.id}&player_search=Test+Player",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) >= 1
+
+        # Non-matching search returns no results
+        resp_no = await client.get(
+            f"/api/v1/bookings?club_id={club.id}&player_search=doesnotexistxyz",
+            headers=staff_headers,
+        )
+        assert resp_no.status_code == 200
+        assert len(resp_no.json()) == 0
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_player_search_by_email(
+        self, client, staff_headers, player_headers, player, club, court_with_hours, test_session_factory
+    ):
+        """player_search also matches on email."""
+        start = _future(48)
+        await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+
+        # player email starts with "player-"
+        resp = await client.get(
+            f"/api/v1/bookings?club_id={club.id}&player_search=player-",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) >= 1
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/bookings/calendar
+# ---------------------------------------------------------------------------
+
+class TestCalendarView:
+
+    async def test_player_cannot_access_calendar(self, client, player_headers, club):
+        """Calendar is staff-only — players receive 403."""
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}",
+            headers=player_headers,
+        )
+        assert resp.status_code == 403
+
+    async def test_tenant_isolation(self, client, club, plan, test_session_factory):
+        """A token for a different tenant must be rejected."""
+        from app.db.models.tenant import Tenant as TenantModel
+        subdomain = f"alien-cal-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Alien Cal", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.flush()
+            alien = User(
+                tenant_id=t2.id,
+                email=f"alien-cal-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Alien Cal",
+                hashed_password="x",
+                is_active=True,
+                role=TenantUserRole.staff,
+            )
+            session.add(alien)
+            await session.commit()
+            await session.refresh(alien)
+            t2_id, alien_id = t2.id, alien.id
+
+        token = create_access_token({"sub": str(alien_id), "tid": str(t2_id)})
+        headers = {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2_id)}
+        resp = await client.get(f"/api/v1/bookings/calendar?club_id={club.id}", headers=headers)
+        assert resp.status_code in (401, 404)
+
+        async with test_session_factory() as session:
+            obj = await session.get(User, alien_id)
+            if obj:
+                await session.delete(obj)
+            obj2 = await session.get(TenantModel, t2_id)
+            if obj2:
+                await session.delete(obj2)
+            await session.commit()
+
+    async def test_week_view_structure(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Week calendar returns 7 days, each with a courts list containing the test court."""
+        anchor = _future(48).date()
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=week&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["view"] == "week"
+        assert len(body["days"]) == 7
+        # Every day has the active court as a column
+        court_ids_in_day = [c["court_id"] for c in body["days"][0]["courts"]]
+        assert str(court_with_hours.id) in court_ids_in_day
+
+    async def test_day_view_structure(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """Day calendar returns exactly 1 day."""
+        anchor = _future(48).date()
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["view"] == "day"
+        assert len(body["days"]) == 1
+        assert body["days"][0]["date"] == anchor.isoformat()
+
+    async def test_bookings_appear_in_correct_day_and_court(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """A booking appears in the right day column and court column."""
+        start = _future(48)
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        anchor = start.date()
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        court_col = next(c for c in day["courts"] if c["court_id"] == str(court_with_hours.id))
+        booking_ids = [b["id"] for b in court_col["bookings"]]
+        assert booking_id in booking_ids
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_cancelled_bookings_excluded(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Cancelled bookings must not appear in the calendar."""
+        start = _future(48)
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        booking_id = r.json()["id"]
+        await client.delete(f"/api/v1/bookings/{booking_id}?club_id={club.id}", headers=player_headers)
+
+        anchor = start.date()
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        all_booking_ids = [
+            b["id"]
+            for day in resp.json()["days"]
+            for court in day["courts"]
+            for b in court["bookings"]
+        ]
+        assert booking_id not in all_booking_ids
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_default_anchor_date_returns_200(self, client, staff_headers, club):
+        """No anchor_date param — defaults to today's week, must return 200."""
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["view"] == "week"
+
+    async def test_invalid_view_param_rejected(self, client, staff_headers, club):
+        """view=month is not a valid value — must return 422."""
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=month",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422
