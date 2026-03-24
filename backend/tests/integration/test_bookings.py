@@ -399,7 +399,9 @@ class TestCreateBooking:
 class TestListBookings:
 
     async def test_staff_sees_all_bookings(self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory):
-        s1, s2 = _future(48), _future(51)  # two non-overlapping slots
+        # Use same day, different valid slot times (10:30 and 13:30 are on the 90-min grid)
+        s1 = _future(48)
+        s2 = _future(48).replace(hour=13, minute=30)  # two non-overlapping slots, same day
         await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, s1), headers=player_headers)
         await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, s2), headers=staff_headers)
 
@@ -410,7 +412,8 @@ class TestListBookings:
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 
     async def test_player_sees_only_own_bookings(self, client, player_headers, staff_headers, club, court_with_hours, test_session_factory):
-        s1, s2 = _future(48), _future(51)
+        s1 = _future(48)
+        s2 = _future(48).replace(hour=13, minute=30)
         await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, s1), headers=player_headers)
         await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, s2), headers=staff_headers)
 
@@ -808,3 +811,229 @@ class TestCancelBooking:
         assert resp.status_code == 422
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for bug-fixes
+# ---------------------------------------------------------------------------
+
+class TestBugFixes:
+
+    # Fix #1 — invite_player overbooking: pending invites must hold slots
+    async def test_cannot_invite_beyond_max_players_via_pending(
+        self, client, player_headers, staff_headers, player2, player_with_skill,
+        club, court_with_hours, test_session_factory, tenant
+    ):
+        """Fill 3 of 4 slots with pending invites; a 4th invite should succeed
+        but a 5th must be rejected with 409 (booking full)."""
+        from app.core.security import get_password_hash
+        # Create two more users to invite
+        extra_ids = []
+        async with test_session_factory() as session:
+            for i in range(2):
+                u = User(
+                    tenant_id=tenant.id,
+                    email=f"invitee{i}-{uuid.uuid4().hex[:6]}@test.com",
+                    full_name=f"Invitee {i}",
+                    hashed_password=get_password_hash("Test1234!"),
+                    is_active=True,
+                    role=TenantUserRole.player,
+                )
+                session.add(u)
+            await session.commit()
+
+        async with test_session_factory() as session:
+            result = await session.execute(
+                select(User).where(User.tenant_id == tenant.id, User.full_name.like("Invitee %"))
+            )
+            invitees = result.scalars().all()
+            extra_ids = [u.id for u in invitees]
+
+        # Organiser creates private booking (max_players=4, organiser takes slot 1)
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        # Invite player2 → slot 2 (pending)
+        r2 = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+        assert r2.status_code == 200
+
+        # Invite player_with_skill → slot 3 (pending)
+        r3 = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player_with_skill.id)},
+            headers=player_headers,
+        )
+        assert r3.status_code == 200
+
+        # Invite extra_ids[0] → slot 4 (pending) — should succeed
+        r4 = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(extra_ids[0])},
+            headers=player_headers,
+        )
+        assert r4.status_code == 200
+
+        # Invite extra_ids[1] → slot 5 — must be rejected (booking full)
+        r5 = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(extra_ids[1])},
+            headers=player_headers,
+        )
+        assert r5.status_code == 409
+
+        async with test_session_factory() as session:
+            await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.user_id.in_(extra_ids)))
+            for uid in extra_ids:
+                obj = await session.get(User, uid)
+                if obj:
+                    await session.delete(obj)
+            await session.commit()
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    # Fix #2 — create_booking: too many named players must be rejected
+    async def test_too_many_named_players_rejected(
+        self, client, staff_headers, player2, player_with_skill, club, court_with_hours, test_session_factory, tenant
+    ):
+        """Providing organiser + 4 named players (5 total) for max_players=4 must return 422."""
+        from app.core.security import get_password_hash
+        async with test_session_factory() as session:
+            extra = User(
+                tenant_id=tenant.id,
+                email=f"extra-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Extra Player",
+                hashed_password=get_password_hash("Test1234!"),
+                is_active=True,
+                role=TenantUserRole.player,
+            )
+            session.add(extra)
+            await session.commit()
+            await session.refresh(extra)
+
+        # Staff is organiser (slot 1) + 3 named = 4 total, but max_players=3 → rejected
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                player_user_ids=[str(player2.id), str(player_with_skill.id), str(extra.id)],
+                max_players=3,  # organiser + 3 named = 4 > 3
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422
+
+        async with test_session_factory() as session:
+            obj = await session.get(User, extra.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    # Fix #3 — list_open_games excludes past bookings
+    async def test_list_open_games_excludes_past_bookings(
+        self, client, staff_headers, club, court_with_hours, tenant, test_session_factory
+    ):
+        """Staff creates a past open game; it must not appear in the open-games list."""
+        # Use yesterday at 10:30 UTC — on the 90-min grid, within operating hours
+        past_start = (datetime.now(tz=timezone.utc) - timedelta(days=1)).replace(
+            hour=10, minute=30, second=0, microsecond=0
+        )
+        # Staff bypass allows booking in the past
+        await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, past_start, is_open_game=True),
+            headers=staff_headers,
+        )
+
+        resp = await client.get(
+            f"/api/v1/bookings/open-games?club_id={club.id}",
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 200
+        # Past booking must not appear regardless of status
+        for game in resp.json():
+            start_dt = datetime.fromisoformat(game["start_datetime"])
+            assert start_dt > datetime.now(tz=timezone.utc)
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    # Fix #4 — skill filter includes games with no skill restriction (NULL columns)
+    async def test_skill_filter_includes_null_skill_open_games(
+        self, client, staff_headers, club, court_with_hours, tenant, test_session_factory
+    ):
+        """An open game with no skill restriction must appear when filtering by skill range."""
+        start = _future(48)
+        # Staff creates empty open game — no anchor → min/max skill remain NULL
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, is_open_game=True),
+            headers=staff_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+        assert r.json()["min_skill_level"] is None  # confirm no skill set
+
+        resp = await client.get(
+            f"/api/v1/bookings/open-games?club_id={club.id}&min_skill=3.0&max_skill=5.0",
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 200
+        ids = [g["id"] for g in resp.json()]
+        assert booking_id in ids, "Open game with no skill restriction should appear in filtered results"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    # Fix #6 — duplicate player_user_ids are silently deduplicated
+    async def test_duplicate_player_ids_deduplicated(
+        self, client, staff_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Passing the same player_user_id twice must not error; player is added once."""
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                player_user_ids=[str(player2.id), str(player2.id)],
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        players = resp.json()["players"]
+        player2_entries = [p for p in players if p["user_id"] == str(player2.id)]
+        assert len(player2_entries) == 1  # deduplicated
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    # Fix #7 — max_players=0 returns 422 (Pydantic validation)
+    async def test_max_players_zero_rejected(self, client, player_headers, club, court_with_hours):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, max_players=0),
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+
+    # Fix #9 — partial skill override (only min, no max) rejected
+    async def test_partial_skill_override_rejected(self, client, staff_headers, club, court_with_hours):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                skill_level_override_min="3.0",
+                # skill_level_override_max omitted
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422

@@ -19,7 +19,7 @@ Computed at creation from organiser's skill_level ± club.skill_range_allowed, c
 to club.skill_level_min/max.  Staff may provide an explicit anchor or override min/max.
 Joins from open games are always checked; invites always bypass the check.
 """
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 import uuid
@@ -104,8 +104,24 @@ class BookingService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Club has no operating hours configured for this day",
             )
-        # Prefer seasonal record (non-null valid_from) over catch-all
-        return next((h for h in oh_records if h.valid_from is not None), oh_records[0])
+        # Prefer a seasonal record whose date window covers query_date over catch-all.
+        # A seasonal record has valid_from set; valid_to=None means open-ended.
+        for h in oh_records:
+            if h.valid_from is None:
+                continue
+            if h.valid_from > query_date:
+                continue
+            if h.valid_to is not None and h.valid_to < query_date:
+                continue
+            return h
+        # Fall back to the catch-all (valid_from is None)
+        catch_all = next((h for h in oh_records if h.valid_from is None), None)
+        if catch_all:
+            return catch_all
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Club has no operating hours configured for this day",
+        )
 
     def _validate_grid_alignment(self, start: datetime, oh: OperatingHours, duration_minutes: int) -> None:
         """Validate that start time falls on a slot boundary."""
@@ -302,9 +318,16 @@ class BookingService:
             skill_level_override_min, skill_level_override_max,
         )
 
-        # 12. Validate named players
-        named_players: list[User] = []
+        # 12. Validate named players (deduplicate while preserving order)
+        seen_ids: set[uuid.UUID] = set()
+        deduped_player_ids: list[uuid.UUID] = []
         for uid in player_user_ids:
+            if uid not in seen_ids:
+                seen_ids.add(uid)
+                deduped_player_ids.append(uid)
+
+        named_players: list[User] = []
+        for uid in deduped_player_ids:
             if uid == requesting_user.id:
                 continue  # organiser added separately
             result = await self.db.execute(
@@ -320,7 +343,15 @@ class BookingService:
                 self._check_player_skill(named_user, min_skill, max_skill)
             named_players.append(named_user)
 
-        # 13. Price
+        # 13. Capacity check: organiser (if any) + named players must not exceed max_players
+        organiser_slot = 0 if is_empty_admin_game else 1
+        if organiser_slot + len(named_players) > max_players:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Too many players: {organiser_slot + len(named_players)} exceeds max_players={max_players}",
+            )
+
+        # 14. Price
         total_price = await self._get_price(club_id, start_datetime)
 
         # 14. Amount due per player slot
@@ -393,8 +424,8 @@ class BookingService:
         club_id: uuid.UUID,
         tenant_id: uuid.UUID,
         requesting_user: User,
-        date_from: Optional[str] = None,
-        date_to: Optional[str] = None,
+        date_from: Optional[datetime] = None,
+        date_to: Optional[datetime] = None,
         booking_type: Optional[str] = None,
         booking_status: Optional[str] = None,
     ) -> list[Booking]:
@@ -419,9 +450,9 @@ class BookingService:
             )
 
         if date_from:
-            stmt = stmt.where(Booking.start_datetime >= datetime.fromisoformat(date_from))
+            stmt = stmt.where(Booking.start_datetime >= date_from)
         if date_to:
-            stmt = stmt.where(Booking.start_datetime <= datetime.fromisoformat(date_to))
+            stmt = stmt.where(Booking.start_datetime <= date_to)
         if booking_type:
             stmt = stmt.where(Booking.booking_type == booking_type)
         if booking_status:
@@ -434,7 +465,7 @@ class BookingService:
         self,
         club_id: uuid.UUID,
         tenant_id: uuid.UUID,
-        date: Optional[str] = None,
+        date: Optional[date] = None,
         min_skill: Optional[Decimal] = None,
         max_skill: Optional[Decimal] = None,
     ) -> list[Booking]:
@@ -452,6 +483,7 @@ class BookingService:
             .subquery()
         )
 
+        now = datetime.now(tz=timezone.utc)
         stmt = (
             select(Booking)
             .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
@@ -461,20 +493,22 @@ class BookingService:
                 Booking.club_id == club_id,
                 Booking.is_open_game == True,
                 Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+                Booking.start_datetime >= now,
                 func.coalesce(accepted_count_sq.c.cnt, 0) < Booking.max_players,
             )
         )
 
         if date:
-            parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
-            day_start = datetime.combine(parsed_date, datetime.min.time(), tzinfo=timezone.utc)
+            day_start = datetime.combine(date, datetime.min.time(), tzinfo=timezone.utc)
             day_end = day_start + timedelta(days=1)
             stmt = stmt.where(Booking.start_datetime >= day_start, Booking.start_datetime < day_end)
 
         if min_skill is not None and max_skill is not None:
+            # Include games whose skill range overlaps the requested range,
+            # AND include games with no skill restriction (NULL columns = open to all).
             stmt = stmt.where(
-                Booking.min_skill_level <= max_skill,
-                Booking.max_skill_level >= min_skill,
+                (Booking.min_skill_level == None) | (Booking.min_skill_level <= max_skill),
+                (Booking.max_skill_level == None) | (Booking.max_skill_level >= min_skill),
             )
 
         result = await self.db.execute(stmt)
@@ -546,8 +580,8 @@ class BookingService:
         # Skill check
         self._check_player_skill(
             requesting_user,
-            booking.min_skill_level and Decimal(str(booking.min_skill_level)),
-            booking.max_skill_level and Decimal(str(booking.max_skill_level)),
+            Decimal(str(booking.min_skill_level)) if booking.min_skill_level is not None else None,
+            Decimal(str(booking.max_skill_level)) if booking.max_skill_level is not None else None,
         )
 
         # Fetch club for min_players_to_confirm
@@ -603,8 +637,10 @@ class BookingService:
         if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot invite to a cancelled or completed booking")
 
-        accepted = _accepted_count(booking.players)
-        if accepted >= booking.max_players:
+        # Count all players (accepted + pending) — each BookingPlayer row is a committed slot.
+        # A pending invite holds the slot until accepted or declined.
+        total_players = len(booking.players)
+        if total_players >= booking.max_players:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Booking is full")
 
         if any(p.user_id == invited_user_id for p in booking.players):

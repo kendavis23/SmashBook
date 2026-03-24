@@ -3,7 +3,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 from app.db.models.booking import BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
 
@@ -14,7 +14,7 @@ class BookingCreate(BaseModel):
     booking_type: BookingType = BookingType.regular
     start_datetime: datetime
     is_open_game: bool = False
-    max_players: int = 4
+    max_players: int = Field(default=4, ge=1, le=20)
     notes: Optional[str] = None
 
     # Skill — players: ignored (organiser's skill_level used automatically)
@@ -32,6 +32,14 @@ class BookingCreate(BaseModel):
     contact_email: Optional[str] = None
     contact_phone: Optional[str] = None
     staff_profile_id: Optional[uuid.UUID] = None
+
+    @model_validator(mode="after")
+    def validate_skill_overrides(self) -> "BookingCreate":
+        min_set = self.skill_level_override_min is not None
+        max_set = self.skill_level_override_max is not None
+        if min_set != max_set:
+            raise ValueError("skill_level_override_min and skill_level_override_max must both be provided or both omitted")
+        return self
 
 
 class InvitePlayerRequest(BaseModel):

@@ -1,4 +1,5 @@
 import uuid
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -127,8 +128,8 @@ async def create_booking(
 @router.get("", response_model=list[BookingResponse])
 async def list_bookings(
     club_id: uuid.UUID = Query(...),
-    date_from: Optional[str] = None,
-    date_to: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
     booking_type: Optional[str] = None,
     booking_status: Optional[str] = None,
     current_user: User = Depends(get_current_user),
@@ -152,7 +153,7 @@ async def list_bookings(
 @router.get("/open-games", response_model=list[OpenGameSummary])
 async def list_open_games(
     club_id: uuid.UUID = Query(...),
-    date: Optional[str] = None,
+    game_date: Optional[date] = Query(default=None, alias="date"),
     min_skill: Optional[Decimal] = None,
     max_skill: Optional[Decimal] = None,
     tenant: Tenant = Depends(get_tenant),
@@ -163,7 +164,7 @@ async def list_open_games(
     bookings = await svc.list_open_games(
         club_id=club_id,
         tenant_id=tenant.id,
-        date=date,
+        date=game_date,
         min_skill=min_skill,
         max_skill=max_skill,
     )
