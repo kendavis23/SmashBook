@@ -619,12 +619,6 @@
     "createdAt": "2026-03-08T13:56:57Z",
     "labels": [
       {
-        "id": "LA_kwDORVso0c8AAAACal67Xw",
-        "name": "Sprint 11",
-        "description": "Sprint 11 — Conversational Booking & AI Support Chatbot",
-        "color": "CFD3D7"
-      },
-      {
         "id": "LA_kwDORVso0c8AAAACb-4T5w",
         "name": "Artifiicial Intelligence",
         "description": "",
@@ -640,7 +634,7 @@
     "number": 112,
     "state": "OPEN",
     "title": "Club owner: AI chatbot handles all routine player queries 24/7 with no support staff required",
-    "updatedAt": "2026-03-19T12:36:12Z",
+    "updatedAt": "2026-03-22T17:56:29Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/112",
     "sprint": {
       "duration": 14,
@@ -3567,7 +3561,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Staff\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-24T16:04:23Z",
     "createdAt": "2026-03-08T13:54:04Z",
     "labels": [
       {
@@ -3590,9 +3584,9 @@
       "dueOn": null
     },
     "number": 22,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: view daily and weekly booking calendar",
-    "updatedAt": "2026-03-19T11:49:16Z",
+    "updatedAt": "2026-03-24T16:04:23Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/22",
     "sprint": {
       "duration": 14,
@@ -3604,7 +3598,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Staff\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-24T16:04:16Z",
     "createdAt": "2026-03-08T13:54:02Z",
     "labels": [
       {
@@ -3627,9 +3621,9 @@
       "dueOn": null
     },
     "number": 21,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: search bookings by player name, date, or court",
-    "updatedAt": "2026-03-19T11:49:16Z",
+    "updatedAt": "2026-03-24T16:04:16Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/21",
     "sprint": {
       "duration": 14,
@@ -3641,7 +3635,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Staff\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T23:06:47Z",
     "createdAt": "2026-03-08T13:54:00Z",
     "labels": [
       {
@@ -3664,9 +3658,9 @@
       "dueOn": null
     },
     "number": 20,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: create a booking for an open match at a specific skill level",
-    "updatedAt": "2026-03-19T11:49:15Z",
+    "updatedAt": "2026-03-22T23:06:47Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/20",
     "sprint": {
       "duration": 14,
@@ -3678,7 +3672,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Staff\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-24T19:53:52Z",
     "createdAt": "2026-03-08T13:53:58Z",
     "labels": [
       {
@@ -3701,9 +3695,9 @@
       "dueOn": null
     },
     "number": 19,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: create, edit, or cancel bookings on behalf of players",
-    "updatedAt": "2026-03-19T11:49:09Z",
+    "updatedAt": "2026-03-24T19:53:52Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/19",
     "sprint": {
       "duration": 14,
@@ -3715,7 +3709,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Booking\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-24T20:25:43Z",
     "createdAt": "2026-03-08T13:53:57Z",
     "labels": [
       {
@@ -3738,9 +3732,9 @@
       "dueOn": null
     },
     "number": 18,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: book equipment rental alongside court booking",
-    "updatedAt": "2026-03-19T11:49:03Z",
+    "updatedAt": "2026-03-24T20:25:44Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/18",
     "sprint": {
       "duration": 14,
@@ -3766,6 +3760,12 @@
         "name": "Booking",
         "description": "",
         "color": "9c6e8a"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_jVHw",
+        "name": "Messaging | Chat",
+        "description": "",
+        "color": "40270d"
       }
     ],
     "milestone": {
@@ -3777,19 +3777,19 @@
     "number": 17,
     "state": "OPEN",
     "title": "Player: add self to waitlist; get notified when slot opens",
-    "updatedAt": "2026-03-19T11:49:03Z",
+    "updatedAt": "2026-03-24T21:15:33Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/17",
     "sprint": {
       "duration": 14,
-      "iterationId": "a43df5a1",
-      "startDate": "2026-04-05",
-      "title": "Sprint 3"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Booking\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T23:06:34Z",
     "createdAt": "2026-03-08T13:53:53Z",
     "labels": [
       {
@@ -3812,9 +3812,9 @@
       "dueOn": null
     },
     "number": 16,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: join an open game without organising a full group",
-    "updatedAt": "2026-03-19T11:49:02Z",
+    "updatedAt": "2026-03-22T23:06:34Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/16",
     "sprint": {
       "duration": 14,
@@ -3826,7 +3826,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Booking\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-24T21:14:59Z",
     "createdAt": "2026-03-08T13:53:51Z",
     "labels": [
       {
@@ -3849,9 +3849,9 @@
       "dueOn": null
     },
     "number": 15,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: invite other players to a booking (confirm attendance)",
-    "updatedAt": "2026-03-19T11:49:02Z",
+    "updatedAt": "2026-03-24T21:14:59Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/15",
     "sprint": {
       "duration": 14,
@@ -3863,7 +3863,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 3 — Core Booking Flow\n**Phase:** MVP\n**Area:** Booking\n\n**Sprint Goal:** Players can book courts for up to 4 players, invite others, join open games, and join waitlists.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T23:05:36Z",
     "createdAt": "2026-03-08T13:16:02Z",
     "labels": [
       {
@@ -3886,9 +3886,9 @@
       "dueOn": null
     },
     "number": 14,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: book a court for up to four players",
-    "updatedAt": "2026-03-19T11:48:54Z",
+    "updatedAt": "2026-03-22T23:05:36Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/14",
     "sprint": {
       "duration": 14,
@@ -3900,7 +3900,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 2 — Court Discovery & Real-Time Availability\n**Phase:** MVP\n**Area:** Staff\n\n**Sprint Goal:** Players can search courts by date/time, filter by surface type, and see live slot availability.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-24T16:04:11Z",
     "createdAt": "2026-03-08T13:15:58Z",
     "labels": [
       {
@@ -3923,21 +3923,21 @@
       "dueOn": null
     },
     "number": 12,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: view real-time overview of all court bookings",
-    "updatedAt": "2026-03-19T11:47:09Z",
+    "updatedAt": "2026-03-24T16:04:11Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/12",
     "sprint": {
       "duration": 14,
-      "iterationId": "4ead2dfa",
-      "startDate": "2026-03-22",
-      "title": "Sprint 2"
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
     }
   },
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 2 — Court Discovery & Real-Time Availability\n**Phase:** MVP\n**Area:** Search\n\n**Sprint Goal:** Players can search courts by date/time, filter by surface type, and see live slot availability.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T23:06:05Z",
     "createdAt": "2026-03-08T13:15:56Z",
     "labels": [
       {
@@ -3960,21 +3960,21 @@
       "dueOn": null
     },
     "number": 11,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: browse open games to join an existing session",
-    "updatedAt": "2026-03-19T11:47:03Z",
+    "updatedAt": "2026-03-22T23:06:05Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/11",
     "sprint": {
       "duration": 14,
-      "iterationId": "4ead2dfa",
-      "startDate": "2026-03-22",
-      "title": "Sprint 2"
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
     }
   },
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 2 — Court Discovery & Real-Time Availability\n**Phase:** MVP\n**Area:** Search\n\n**Sprint Goal:** Players can search courts by date/time, filter by surface type, and see live slot availability.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T20:29:23Z",
     "createdAt": "2026-03-08T13:15:54Z",
     "labels": [
       {
@@ -3997,9 +3997,9 @@
       "dueOn": null
     },
     "number": 10,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: view court availability in real time",
-    "updatedAt": "2026-03-19T11:47:02Z",
+    "updatedAt": "2026-03-22T20:29:23Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/10",
     "sprint": {
       "duration": 14,
@@ -4011,7 +4011,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 2 — Court Discovery & Real-Time Availability\n**Phase:** MVP\n**Area:** Search\n\n**Sprint Goal:** Players can search courts by date/time, filter by surface type, and see live slot availability.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T20:29:51Z",
     "createdAt": "2026-03-08T13:15:52Z",
     "labels": [
       {
@@ -4034,9 +4034,9 @@
       "dueOn": null
     },
     "number": 9,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: filter courts by surface type (indoor / outdoor)",
-    "updatedAt": "2026-03-19T11:47:02Z",
+    "updatedAt": "2026-03-22T20:29:51Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/9",
     "sprint": {
       "duration": 14,
@@ -4048,7 +4048,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 2 — Court Discovery & Real-Time Availability\n**Phase:** MVP\n**Area:** Search\n\n**Sprint Goal:** Players can search courts by date/time, filter by surface type, and see live slot availability.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T20:29:37Z",
     "createdAt": "2026-03-08T13:15:49Z",
     "labels": [
       {
@@ -4071,9 +4071,9 @@
       "dueOn": null
     },
     "number": 8,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: search available courts by date and time",
-    "updatedAt": "2026-03-19T11:46:30Z",
+    "updatedAt": "2026-03-22T20:29:37Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/8",
     "sprint": {
       "duration": 14,
@@ -4178,7 +4178,7 @@
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 1 — Foundation: Auth, Tenant & Player Accounts\n**Phase:** MVP\n**Area:** Profile\n\n**Sprint Goal:** Players can register, log in, reset passwords and manage their profile. Multi-tenant scaffolding is live.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T18:11:24Z",
     "createdAt": "2026-03-08T13:15:41Z",
     "labels": [
       {
@@ -4201,9 +4201,9 @@
       "dueOn": null
     },
     "number": 4,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: update profile details (name, photo, contact)",
-    "updatedAt": "2026-03-19T11:46:23Z",
+    "updatedAt": "2026-03-22T18:11:24Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/4",
     "sprint": {
       "duration": 14,
@@ -4229,6 +4229,12 @@
         "name": "Admin",
         "description": "",
         "color": "403809"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_jVHw",
+        "name": "Messaging | Chat",
+        "description": "",
+        "color": "40270d"
       }
     ],
     "milestone": {
@@ -4240,19 +4246,19 @@
     "number": 3,
     "state": "OPEN",
     "title": "Player: reset password via email link",
-    "updatedAt": "2026-03-19T11:46:22Z",
+    "updatedAt": "2026-03-24T21:18:21Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/3",
     "sprint": {
       "duration": 14,
-      "iterationId": "4ead2dfa",
-      "startDate": "2026-03-22",
-      "title": "Sprint 2"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
     "assignees": [],
     "body": "**Sprint:** Sprint 1 — Foundation: Auth, Tenant & Player Accounts\n**Phase:** MVP\n**Area:** Auth\n\n**Sprint Goal:** Players can register, log in, reset passwords and manage their profile. Multi-tenant scaffolding is live.\n\n---\n*User story from Padel Platform v4.0 sprint plan.*",
-    "closedAt": null,
+    "closedAt": "2026-03-22T18:05:45Z",
     "createdAt": "2026-03-08T13:15:37Z",
     "labels": [
       {
@@ -4275,9 +4281,9 @@
       "dueOn": null
     },
     "number": 2,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: log in securely with JWT access/refresh tokens",
-    "updatedAt": "2026-03-19T11:46:17Z",
+    "updatedAt": "2026-03-22T18:05:45Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/2",
     "sprint": {
       "duration": 14,
