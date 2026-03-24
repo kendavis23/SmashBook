@@ -720,13 +720,13 @@ class BookingService:
         if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot invite to a cancelled or completed booking")
 
-        # Count all players (accepted + pending) — each BookingPlayer row is a committed slot.
-        # A pending invite holds the slot until accepted or declined.
-        total_players = len(booking.players)
-        if total_players >= booking.max_players:
+        # Count active slots (accepted + pending). Declined entries free their slot.
+        active_players = sum(1 for p in booking.players if p.invite_status != InviteStatus.declined)
+        if active_players >= booking.max_players:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Booking is full")
 
-        if any(p.user_id == invited_user_id for p in booking.players):
+        # Block re-invite only if they have an active (pending/accepted) entry
+        if any(p.user_id == invited_user_id and p.invite_status != InviteStatus.declined for p in booking.players):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Player is already part of this booking")
 
         # Verify invited user exists in tenant
@@ -750,6 +750,50 @@ class BookingService:
             amount_due=amount_due,
         )
         self.db.add(bp)
+        await self.db.flush()
+        return await self._load_booking(booking.id)
+
+    async def respond_to_invite(
+        self,
+        booking_id: uuid.UUID,
+        club_id: uuid.UUID,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+        action: InviteStatus,
+    ) -> Booking:
+        if action == InviteStatus.pending:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Action must be 'accepted' or 'declined'")
+
+        result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
+            .options(selectinload(Booking.court))
+            .join(Club, Booking.club_id == Club.id)
+            .where(Booking.id == booking_id, Booking.club_id == club_id, Club.tenant_id == tenant_id)
+        )
+        booking = result.scalar_one_or_none()
+        if not booking:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found")
+
+        if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Booking is no longer active")
+
+        bp = next((p for p in booking.players if p.user_id == requesting_user.id), None)
+        if not bp:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="You have not been invited to this booking")
+
+        if bp.invite_status != InviteStatus.pending:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Invite already {bp.invite_status.value}")
+
+        bp.invite_status = action
+
+        if action == InviteStatus.accepted:
+            # Auto-confirm booking if accepted count now meets threshold
+            club = await self.db.get(Club, club_id)
+            new_accepted = _accepted_count(booking.players) + 1  # +1 because bp.invite_status update not yet reflected
+            if new_accepted >= club.min_players_to_confirm and booking.status == BookingStatus.pending:
+                booking.status = BookingStatus.confirmed
+
         await self.db.flush()
         return await self._load_booking(booking.id)
 

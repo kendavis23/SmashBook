@@ -1,4 +1,4 @@
-_Last updated: 2026-03-24 15:00 UTC_
+_Last updated: 2026-03-24 16:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -86,7 +86,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `GET` | `/api/v1/bookings/open-games` | Browse publicly joinable open games; filterable by date and skill range (no auth) |
 | `GET` | `/api/v1/bookings/{booking_id}` | Get booking detail; players can only see their own or open games |
 | `POST` | `/api/v1/bookings/{booking_id}/join` | Player self-joins an open game; enforces skill range and capacity |
-| `POST` | `/api/v1/bookings/{booking_id}/invite` | Organiser or staff invites a player; bypasses skill check |
+| `POST` | `/api/v1/bookings/{booking_id}/invite` | Organiser or staff invites a player; bypasses skill check; pending invite holds a slot |
+| `POST` | `/api/v1/bookings/{booking_id}/respond-invite` | Invited player accepts or declines their invite; declining frees the slot for re-invite |
 | `DELETE` | `/api/v1/bookings/{booking_id}` | Cancel a booking; players can cancel their own, staff can cancel any |
 
 ---

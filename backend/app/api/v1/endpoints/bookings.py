@@ -23,6 +23,7 @@ from app.schemas.booking import (
     CalendarDay,
     CalendarResponse,
     InvitePlayerRequest,
+    InviteRespondRequest,
     OpenGameSummary,
 )
 from app.schemas.equipment import EquipmentRentalRequest, EquipmentRentalResponse
@@ -329,6 +330,32 @@ async def invite_player(
         tenant_id=tenant.id,
         requesting_user=current_user,
         invited_user_id=body.user_id,
+    )
+    return _build_booking_response(booking)
+
+
+@router.post("/{booking_id}/respond-invite", response_model=BookingResponse)
+async def respond_to_invite(
+    booking_id: uuid.UUID,
+    body: InviteRespondRequest,
+    club_id: uuid.UUID = Query(...),
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Invited player accepts or declines their invite.
+    - Accepting: invite_status → accepted; booking auto-confirms if threshold met.
+    - Declining: invite_status → declined; slot is freed for re-invite.
+    Only the invited player themselves can respond (not staff on their behalf).
+    """
+    svc = BookingService(db)
+    booking = await svc.respond_to_invite(
+        booking_id=booking_id,
+        club_id=club_id,
+        tenant_id=tenant.id,
+        requesting_user=current_user,
+        action=body.action,
     )
     return _build_booking_response(booking)
 

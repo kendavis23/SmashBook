@@ -49,6 +49,10 @@ class InvitePlayerRequest(BaseModel):
     user_id: uuid.UUID
 
 
+class InviteRespondRequest(BaseModel):
+    action: InviteStatus  # accepted | declined (not pending)
+
+
 class BookingUpdate(BaseModel):
     """Staff-only PATCH payload. Only provided fields are updated."""
     court_id: Optional[uuid.UUID] = None

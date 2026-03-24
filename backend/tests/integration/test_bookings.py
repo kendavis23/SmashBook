@@ -1631,3 +1631,204 @@ class TestUpdateBooking:
             if obj2:
                 await session.delete(obj2)
             await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/bookings/{id}/respond-invite
+# ---------------------------------------------------------------------------
+
+class TestRespondToInvite:
+
+    async def test_invited_player_can_accept(self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory):
+        """Invited player accepts — their invite_status becomes accepted."""
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        player2_entry = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+        assert player2_entry["invite_status"] == "accepted"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_invited_player_can_decline(self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory):
+        """Invited player declines — their invite_status becomes declined."""
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "declined"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        player2_entry = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+        assert player2_entry["invite_status"] == "declined"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_uninvited_player_cannot_respond(self, client, player_headers, player2_headers, club, court_with_hours, test_session_factory):
+        """A player who was not invited gets 404."""
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 404
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_cannot_respond_twice(self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory):
+        """Responding after already accepting/declining returns 409."""
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=player2_headers,
+        )
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "declined"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 409
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_decline_frees_slot_for_reinvite(self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory, tenant):
+        """After a player declines, the organiser can re-invite someone else to fill the freed slot."""
+        from app.core.security import get_password_hash
+        async with test_session_factory() as session:
+            player3 = User(
+                tenant_id=tenant.id,
+                email=f"player3-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Player Three",
+                hashed_password=get_password_hash("Test1234!"),
+                is_active=True,
+                role=TenantUserRole.player,
+            )
+            session.add(player3)
+            await session.commit()
+            await session.refresh(player3)
+
+        # Create a 2-player booking (organiser fills slot 1)
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, max_players=2),
+            headers=player_headers,
+        )
+        booking_id = r.json()["id"]
+
+        # Invite player2 — now both slots are taken (1 accepted + 1 pending)
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+
+        # player2 declines — slot is freed
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "declined"},
+            headers=player2_headers,
+        )
+
+        # Now invite player3 — must succeed (slot freed by decline)
+        player3_token = create_access_token({"sub": str(player3.id), "tenant_id": str(tenant.id), "club_id": str(club.id), "role": "player"})
+        player3_headers = {"Authorization": f"Bearer {player3_token}", "X-Tenant-ID": str(tenant.id)}
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player3.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200, resp.text
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+        async with test_session_factory() as session:
+            obj = await session.get(User, player3.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_tenant_isolation(self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory, plan, tenant):
+        """A token from a different tenant cannot respond to an invite in this club."""
+        from app.db.models.tenant import Tenant as TenantModel
+        subdomain = f"alien-inv-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Alien Inv", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.flush()
+            alien = User(
+                tenant_id=t2.id,
+                email=f"alien-inv-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Alien",
+                hashed_password="x",
+                is_active=True,
+                role=TenantUserRole.player,
+            )
+            session.add(alien)
+            await session.commit()
+            await session.refresh(alien)
+            t2_id, alien_id = t2.id, alien.id
+
+        alien_token = create_access_token({"sub": str(alien_id), "tenant_id": str(t2_id), "club_id": str(club.id), "role": "player"})
+        alien_headers = {"Authorization": f"Bearer {alien_token}", "X-Tenant-ID": str(tenant.id)}
+
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=alien_headers,
+        )
+        assert resp.status_code in (401, 404)
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+        async with test_session_factory() as session:
+            obj = await session.get(User, alien_id)
+            if obj:
+                await session.delete(obj)
+            obj2 = await session.get(TenantModel, t2_id)
+            if obj2:
+                await session.delete(obj2)
+            await session.commit()
