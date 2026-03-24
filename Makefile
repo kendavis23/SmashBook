@@ -78,8 +78,17 @@ issues:
 		/tmp/smashbook_issues.json /tmp/smashbook_project.json > issues.json
 	@echo "Exported → issues.json"
 
+# ── Test database ─────────────────────────────────────────────────────────────
+test-db-up:
+	docker run -d --name smashbook-test-db \
+		-e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test \
+		-p 5432:5432 postgres:16
+
+test-db-down:
+	docker stop smashbook-test-db && docker rm smashbook-test-db
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down
