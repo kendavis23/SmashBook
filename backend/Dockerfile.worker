@@ -8,5 +8,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 EXPOSE 8080
-# Override CMD per worker at Cloud Run deployment time
-# e.g. CMD ["uvicorn", "app.workers.booking_worker:app", "--host", "0.0.0.0", "--port", "8080"]
+
+# Default to booking worker — overridden per service at deploy time
+CMD ["uvicorn", "app.workers.booking_worker:app", "--host", "0.0.0.0", "--port", "8080"]
