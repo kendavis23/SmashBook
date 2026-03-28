@@ -186,7 +186,8 @@ jobs:
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --set-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
             --set-secrets="DATABASE_URL=padel-database-url:latest,DATABASE_READ_REPLICA_URL=padel-database-read-replica-url:latest,SECRET_KEY=padel-secret-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,SENDGRID_API_KEY=sendgrid-api-key:latest" \
-            --quiet
+            --allow-unauthenticated \
+            --quiet      
 
       - name: Deploy Workers
         run: |
