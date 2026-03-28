@@ -1,0 +1,234 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGION: europe-west2
+  REGISTRY: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/padel-api
+  CLOUD_SQL_INSTANCE: smashbook-488121:europe-west2:smashbook-staging
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. LINT
+  # ─────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        run: ruff check backend/
+
+  # ─────────────────────────────────────────────
+  # 2. TEST
+  # ─────────────────────────────────────────────
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Run unit tests
+        working-directory: backend
+        # Skips gracefully if tests/unit/ doesn't exist yet — remove the
+        # `|| true` once you have real tests so failures block the pipeline.
+        run: |
+          if [ -d "tests/unit" ] && [ "$(ls -A tests/unit)" ]; then
+            pytest tests/unit/ -v --tb=short
+          else
+            echo "No unit tests found — skipping (add tests to backend/tests/unit/)"
+          fi
+
+  # ─────────────────────────────────────────────
+  # 3. BUILD & PUSH
+  # ─────────────────────────────────────────────
+  build:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: set_tag
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build API image
+        run: |
+          docker build \
+            -t ${{ env.REGISTRY }}/padel-api:${{ steps.set_tag.outputs.tag }} \
+            -t ${{ env.REGISTRY }}/padel-api:latest \
+            ./backend
+
+      - name: Build Worker image
+        run: |
+          docker build \
+            -f backend/Dockerfile.worker \
+            -t ${{ env.REGISTRY }}/padel-worker:${{ steps.set_tag.outputs.tag }} \
+            -t ${{ env.REGISTRY }}/padel-worker:latest \
+            ./backend
+
+      - name: Push API image
+        run: |
+          docker push ${{ env.REGISTRY }}/padel-api:${{ steps.set_tag.outputs.tag }}
+          docker push ${{ env.REGISTRY }}/padel-api:latest
+
+      - name: Push Worker image
+        run: |
+          docker push ${{ env.REGISTRY }}/padel-worker:${{ steps.set_tag.outputs.tag }}
+          docker push ${{ env.REGISTRY }}/padel-worker:latest
+
+  # ─────────────────────────────────────────────
+  # 4. MIGRATE
+  # ─────────────────────────────────────────────
+  migrate:
+    name: Run Migrations
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      # Self-bootstrapping: creates the job on first run, updates it thereafter.
+      # This means no manual gcloud run jobs create is needed before the first push.
+      - name: Create or update migration job
+        run: |
+          if gcloud run jobs describe run-migrations \
+              --region=${{ env.REGION }} \
+              --project=${{ secrets.GCP_PROJECT_ID }} > /dev/null 2>&1; then
+            echo "Migration job exists — updating image..."
+            gcloud run jobs update run-migrations \
+              --image="${{ env.REGISTRY }}/padel-api:${{ needs.build.outputs.image_tag }}" \
+              --region=${{ env.REGION }} \
+              --project=${{ secrets.GCP_PROJECT_ID }}
+          else
+            echo "Migration job not found — creating..."
+            gcloud run jobs create run-migrations \
+              --image="${{ env.REGISTRY }}/padel-api:${{ needs.build.outputs.image_tag }}" \
+              --region=${{ env.REGION }} \
+              --set-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
+              --set-secrets="DATABASE_URL=padel-database-url:latest" \
+              --command="alembic" \
+              --args="upgrade,head" \
+              --project=${{ secrets.GCP_PROJECT_ID }}
+          fi
+
+      # --wait blocks until the execution completes; non-zero exit fails the pipeline.
+      - name: Execute migration job
+        run: |
+          gcloud run jobs execute run-migrations \
+            --region=${{ env.REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --wait
+
+  # ─────────────────────────────────────────────
+  # 5. DEPLOY
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Deploy Services
+    runs-on: ubuntu-latest
+    needs: [build, migrate]
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy API
+        run: |
+          gcloud run deploy padel-api \
+            --image="${{ env.REGISTRY }}/padel-api:${{ needs.build.outputs.image_tag }}" \
+            --region=${{ env.REGION }} \
+            --platform=managed \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --quiet
+
+      - name: Deploy Workers
+        run: |
+          for WORKER in booking-worker payment-worker notification-worker; do
+            echo "Deploying padel-${WORKER}..."
+            gcloud run deploy "padel-${WORKER}" \
+              --image="${{ env.REGISTRY }}/padel-worker:${{ needs.build.outputs.image_tag }}" \
+              --region=${{ env.REGION }} \
+              --platform=managed \
+              --project=${{ secrets.GCP_PROJECT_ID }} \
+              --quiet
+          done
+
+  # ─────────────────────────────────────────────
+  # 6. SMOKE TEST
+  # ─────────────────────────────────────────────
+  smoke:
+    name: Smoke Test
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get staging URL
+        id: get_url
+        run: |
+          URL=$(gcloud run services describe padel-api \
+            --region=${{ env.REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --format="value(status.url)")
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
+      - name: Hit /healthz
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get_url.outputs.url }}/healthz)
+          echo "Health check returned HTTP $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "Smoke test FAILED — expected 200, got $STATUS"
+            exit 1
+          fi
+          echo "Smoke test passed ✓"
