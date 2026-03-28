@@ -10,6 +10,10 @@ import json
 app = FastAPI()
 
 
+@app.get("/healthz")
+async def health():
+    return {"status": "ok"}
+
 @app.post("/")
 async def process_notification_event(request: Request):
     envelope = await request.json()

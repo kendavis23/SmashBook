@@ -10,6 +10,10 @@ import json
 app = FastAPI()
 
 
+@app.get("/healthz")
+async def health():
+    return {"status": "ok"}
+
 @app.post("/")
 async def process_booking_event(request: Request):
     """Receive Pub/Sub push delivery for booking events."""

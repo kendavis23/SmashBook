@@ -190,6 +190,11 @@ jobs:
 
       - name: Deploy Workers
         run: |
+          declare -A WORKER_MODULES
+          WORKER_MODULES["booking-worker"]="app.workers.booking_worker:app"
+          WORKER_MODULES["payment-worker"]="app.workers.payment_worker:app"
+          WORKER_MODULES["notification-worker"]="app.workers.notification_worker:app"
+
           for WORKER in booking-worker payment-worker notification-worker; do
             echo "Deploying padel-${WORKER}..."
             gcloud run deploy "padel-${WORKER}" \
@@ -199,6 +204,8 @@ jobs:
               --project=${{ secrets.GCP_PROJECT_ID }} \
               --set-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
               --set-secrets="DATABASE_URL=padel-database-url:latest,SECRET_KEY=padel-secret-key:latest" \
+              --command="uvicorn" \
+              --args="${WORKER_MODULES[$WORKER]},--host,0.0.0.0,--port,8080" \
               --quiet
           done
 
