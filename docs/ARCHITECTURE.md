@@ -1,9 +1,9 @@
-_Last updated: 2026-03-21 00:00 UTC_
+_Last updated: 2026-03-28 00:00 UTC_
 
 # SmashBook — Architecture
 
 > **Audience:** Engineering (current and future contributors), technical investors/partners  
-> **Last updated:** 2026-03 (AI architecture expanded)  
+> **Last updated:** 2026-03-28 (Service inventory added)  
 > **Status:** MVP in progress (Sprints 1–6), AI phases follow
 
 ---
@@ -47,6 +47,7 @@ _Last updated: 2026-03-21 00:00 UTC_
     - [JWT pattern](#jwt-pattern)
     - [Roles](#roles)
   - [10. Key Design Decisions (ADR Index)](#10-key-design-decisions-adr-index)
+  - [11. Full Service Inventory](#11-full-service-inventory)
 
 ---
 
@@ -613,6 +614,90 @@ Full ADR documents are in `docs/adr/`.
 | [ADR-004](adr/ADR-004-fastapi.md) | FastAPI over Django/Flask | Accepted |
 | [ADR-005](adr/ADR-005-pgvector.md) | pgvector on Cloud SQL over dedicated vector DB | Accepted |
 | [ADR-006](adr/ADR-006-service-layer-isolation.md) | Tenant isolation in service layer over RLS | Accepted |
+
+---
+
+## 11. Full Service Inventory
+
+The table below lists every server, service, and external dependency that exists when the platform is fully deployed (post Sprint 13). Services marked **MVP** are live after Sprint 6; AI phase services come online in Sprints 7–13.
+
+### Cloud Run Services (long-running)
+
+| Service name | Image | Phase | Description |
+|---|---|---|---|
+| `padel-api` | `padel-api` | MVP | FastAPI backend. All client traffic (staff portal, player web app, mobile) hits this service. Handles bookings, auth, payments, courts, players, staff, Stripe webhooks. |
+| `padel-booking-worker` | `padel-worker` | MVP | Pub/Sub consumer. Processes booking events asynchronously — confirmations, reminders, waitlist logic. |
+| `padel-payment-worker` | `padel-worker` | MVP | Pub/Sub consumer. Handles payment processing events, Stripe webhook fanout, refund flows. |
+| `padel-notification-worker` | `padel-worker` | MVP | Pub/Sub consumer. Dispatches push (Firebase), email (SendGrid), and SMS notifications. |
+| `padel-gap-detection-worker` | `padel-worker` | AI Phase 1 | Consumes `utilisation-snapshots` topic (published hourly by Cloud Scheduler). Runs gap detection via Vertex AI, writes `gap_detection_events`, triggers discount offers. |
+| `padel-campaign-worker` | `padel-worker` | AI Phase 1 | Consumes `gap-detected`, `churn-scores-updated`, and `segment-assigned` topics. Orchestrates campaign targeting and triggers notification sends. |
+| `padel-churn-worker` | `padel-worker` | AI Phase 2 | Daily scheduled scoring run. Calls Vertex AI churn model, writes `player_engagement_scores`, publishes `churn-scores-updated`. |
+| `padel-segmentation-worker` | `padel-worker` | AI Phase 2 | Consumes churn scores, runs player segment classification via Vertex AI, writes `player_segment_memberships`. |
+
+All 8 services are deployed from just **2 Docker images** (`padel-api` and `padel-worker`) — the worker image `CMD` is overridden per service at deploy time via `gcloud run deploy`.
+
+### Cloud Run Jobs (one-off / scheduled)
+
+| Job name | Trigger | Phase | Description |
+|---|---|---|---|
+| `run-migrations` | CI/CD pipeline (every deploy) | MVP | Runs `alembic upgrade head` against Cloud SQL before the new service revision receives traffic. |
+| `utilisation-snapshot-job` | Cloud Scheduler — hourly | AI Phase 1 | Computes `court_utilisation_snapshots` per court per hour. Publishes to the `utilisation-snapshots` Pub/Sub topic. |
+| `revenue-forecast-job` | Cloud Scheduler — daily | AI Phase 1 | Reads utilisation and payment history, writes AI revenue forecasts via Vertex AI. |
+
+### GCP Managed Services
+
+| Service | Purpose |
+|---|---|
+| Cloud SQL (PostgreSQL 16) | Primary database + pgvector extension. One primary instance + one read replica. All ORM access goes through async SQLAlchemy sessions. |
+| Artifact Registry | Docker image storage for `padel-api` and `padel-worker`, tagged by git SHA. Two images serve all 8 Cloud Run services. |
+| Pub/Sub | Async event bus. See topic list below. |
+| Cloud Storage | Booking receipts, exports, court media, and Terraform remote state. |
+| Secret Manager | All credentials: database URLs, Stripe keys, SendGrid API key, Firebase credentials, JWT secret. Never in env files. |
+| Cloud Scheduler | Triggers utilisation snapshot job (hourly) and churn scoring job (daily). |
+
+### Pub/Sub Topics
+
+| Topic | Published by | Consumed by | Phase |
+|---|---|---|---|
+| `booking-events` | `padel-api` | `padel-booking-worker` | MVP |
+| `payment-events` | `padel-api` | `padel-payment-worker` | MVP |
+| `notification-events` | `padel-api`, workers | `padel-notification-worker` | MVP |
+| `utilisation-snapshots` | `utilisation-snapshot-job` | `padel-gap-detection-worker` | AI Phase 1 |
+| `gap-detected` | `gap_detection_service` | `padel-campaign-worker`, `padel-notification-worker` | AI Phase 1 |
+| `churn-scores-updated` | `padel-churn-worker` | `padel-campaign-worker` | AI Phase 2 |
+| `segment-assigned` | `segmentation_service` | `padel-campaign-worker` | AI Phase 2 |
+| `recommendation-created` | `ai_recommendation_service` | `padel-notification-worker` | AI Phase 2 |
+| `campaign-triggered` | `campaign_service` | `padel-notification-worker` | AI Phase 2 |
+
+### External APIs & Third-Party Services
+
+| Service | Purpose | Phase |
+|---|---|---|
+| Stripe Connect | Payments and platform fee splitting. Stripe webhooks are the only inbound external calls to the platform. | MVP |
+| Anthropic Claude API | Language tasks: notification copy generation, AI insights dashboard summaries, re-engagement campaign text, conversational booking (Phase 3), AI support chatbot (Phase 3). | AI Phase 1 |
+| Vertex AI | Structured ML: dynamic pricing, gap detection, churn scoring, cancellation prediction, matchmaking, skill rating updates, CV court analysis (Phase 3). | AI Phase 1 |
+| SendGrid (or Mailgun) | Transactional email delivery. | MVP |
+| Firebase Cloud Messaging | Mobile push notifications to the React Native app. | MVP |
+
+### Frontend Applications
+
+| App | Tech | Phase | Notes |
+|---|---|---|---|
+| Staff Admin Portal | React (SPA) | MVP | Deployed as static assets. Connects to `padel-api` via typed OpenAPI client. |
+| Player Web App | React (SPA) | MVP | Browser-based booking and account management. |
+| Mobile App | React Native / Expo | Post-MVP | iOS and Android. Follows MVP go-live. |
+
+### Summary
+
+| Category | Count |
+|---|---|
+| Cloud Run Services | 8 |
+| Cloud Run Jobs | 3 |
+| GCP Managed Services | 6 |
+| Pub/Sub Topics | 9 |
+| External APIs / third-party | 5 |
+| Frontend apps | 3 |
+| **Total** | **34** |
 
 ---
 
