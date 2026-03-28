@@ -1,10 +1,10 @@
-_Last updated: 2026-03-21 00:00 UTC_
+_Last updated: 2026-03-28_
 
 # SmashBook — Deployment & CI/CD Runbook
 
 > **Audience:** Engineers deploying changes to SmashBook
-> **Last updated:** 2026-03
-> **Stack:** GCP Cloud Run · Cloud SQL PostgreSQL · Artifact Registry · Terraform
+> **Last updated:** 2026-03-28
+> **Stack:** GCP Cloud Run · Cloud SQL PostgreSQL · Artifact Registry · GitHub Actions
 
 ---
 
@@ -79,62 +79,136 @@ gcloud config set run/region europe-west2
 
 ## 3. First-Time GCP Setup
 
-> Run this **once** per GCP project (staging and production separately). Skip if the project is already bootstrapped.
+> **Staging is already bootstrapped** (completed 2026-03-28). Run this only for new environments (e.g. production).
 
-This script creates the service account GitHub Actions will use to deploy, enables required APIs, and creates the Artifact Registry repository.
+### 3.1 Service Account
+
+Create a service account for GitHub Actions to use, and grant it the required roles:
 
 ```bash
-cd infra/setup
-bash gcp-setup.sh <GCP_PROJECT_ID>
+PROJECT_ID=<GCP_PROJECT_ID>
+SA_NAME="github-actions-deployer"
+SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+
+# Create the service account
+gcloud iam service-accounts create $SA_NAME \
+  --display-name="GitHub Actions Deployer" \
+  --project=$PROJECT_ID
+
+# Grant required roles to the deployer SA
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/run.admin"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/artifactregistry.writer"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Allow deployer SA to act as the Compute SA (required for Cloud Run deploys)
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+gcloud iam service-accounts add-iam-policy-binding $COMPUTE_SA \
+  --member="serviceAccount:${SA_EMAIL}" \
+  --role="roles/iam.serviceAccountUser" \
+  --project=$PROJECT_ID
+
+# Create and download the key
+gcloud iam service-accounts keys create gcp-sa-key.json \
+  --iam-account=$SA_EMAIL
 ```
 
-The script will output a `gcp-sa-key.json` file. After it completes:
+### 3.2 Runtime Service Account (Compute SA) Permissions
 
-**Step 1** — Copy the key contents and add it as a GitHub Secret:
+The default Compute SA is what Cloud Run uses at runtime. Grant it:
+
+```bash
+COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+# Read secrets at runtime
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${COMPUTE_SA}" \
+  --role="roles/secretmanager.secretAccessor"
+
+# Connect to Cloud SQL
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${COMPUTE_SA}" \
+  --role="roles/cloudsql.client"
+
+# Pull images from Artifact Registry
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${COMPUTE_SA}" \
+  --role="roles/artifactregistry.reader"
+```
+
+### 3.3 Artifact Registry Repository
+
+```bash
+gcloud artifacts repositories create padel-api \
+  --repository-format=docker \
+  --location=europe-west2 \
+  --project=$PROJECT_ID
+```
+
+### 3.4 GitHub Secrets
+
+Add the key and project ID to GitHub:
 
 ```
 GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+
 Name:  GCP_SA_KEY
-Value: <paste contents of gcp-sa-key.json>
-```
+Value: <paste full contents of gcp-sa-key.json>
 
-**Step 2** — Add the project ID as a GitHub Secret:
-
-```
 Name:  GCP_PROJECT_ID
 Value: <your-gcp-project-id>
 ```
 
-**Step 3** — Delete the key file from your machine immediately:
+Then delete the key file immediately:
 
 ```bash
-rm infra/setup/gcp-sa-key.json
+rm gcp-sa-key.json
 ```
 
-**Step 4** — Create required secrets in GCP Secret Manager:
+### 3.5 GCP Secret Manager
+
+Create required secrets. Use placeholder values for Sprint 5+ secrets until real values are available.
 
 ```bash
-# Database URLs (from Cloud SQL connection details)
-echo -n 'postgresql+asyncpg://user:pass@/dbname?host=/cloudsql/PROJECT:REGION:INSTANCE' \
-  | gcloud secrets create padel-database-url --data-file=-
+# Database — primary
+echo -n 'postgresql+asyncpg://padel_user:PASSWORD@/padel_db?host=/cloudsql/PROJECT:europe-west2:INSTANCE' \
+  | gcloud secrets create padel-database-url --data-file=- --project=$PROJECT_ID
 
-echo -n 'postgresql+asyncpg://user:pass@/dbname?host=/cloudsql/PROJECT:REGION:INSTANCE' \
-  | gcloud secrets create padel-database-read-replica-url --data-file=-
+# Database — read replica (can point to same instance initially)
+echo -n 'postgresql+asyncpg://padel_user:PASSWORD@/padel_db?host=/cloudsql/PROJECT:europe-west2:INSTANCE' \
+  | gcloud secrets create padel-database-read-replica-url --data-file=- --project=$PROJECT_ID
 
-# Application secret key (generate a strong random value)
+# Application secret key (JWT signing)
 python3 -c "import secrets; print(secrets.token_hex(32))" \
-  | gcloud secrets create padel-secret-key --data-file=-
+  | gcloud secrets create padel-secret-key --data-file=- --project=$PROJECT_ID
 
-# Stripe keys (from dashboard.stripe.com)
-echo -n 'sk_live_...' | gcloud secrets create stripe-secret-key --data-file=-
-echo -n 'whsec_...'   | gcloud secrets create stripe-webhook-secret --data-file=-
+# Stripe (placeholder until Sprint 5)
+echo -n 'sk_test_placeholder' | gcloud secrets create stripe-secret-key --data-file=- --project=$PROJECT_ID
+echo -n 'whsec_placeholder'   | gcloud secrets create stripe-webhook-secret --data-file=- --project=$PROJECT_ID
 
-# SendGrid
-echo -n 'SG....' | gcloud secrets create sendgrid-api-key --data-file=-
+# SendGrid (placeholder until Sprint 5)
+echo -n 'SG.placeholder' | gcloud secrets create sendgrid-api-key --data-file=- --project=$PROJECT_ID
+```
 
-# Firebase (upload the credentials JSON file)
-gcloud secrets create firebase-credentials \
-  --data-file=/path/to/firebase-credentials.json
+> **Note:** `Settings` in `config.py` only requires `DATABASE_URL` at startup — all other fields have safe defaults. This means the migration job boots with just `padel-database-url` and the full API service picks up the rest at deploy time.
+
+### 3.6 Cloud SQL
+
+```bash
+# Reset or set the database user password
+gcloud sql users set-password padel_user \
+  --instance=<INSTANCE_NAME> \
+  --project=$PROJECT_ID \
+  --password=YOUR_PASSWORD
+
+# The password must match what is stored in padel-database-url
 ```
 
 ---
@@ -155,7 +229,6 @@ This automatically:
 **Services available at:**
 - Health check: http://localhost:8080/healthz
 - Docs (Swagger UI): http://localhost:8080/api/v1/docs
-- Any endpoint: http://localhost:8080/api/v1/...
 - PostgreSQL: `localhost:5432` (user: `padel_user`, db: `padel_db`)
 
 ### Stop the environment
@@ -196,15 +269,24 @@ docker compose up
 # Test via http://localhost:8080/docs or your API client
 ```
 
-**Step 3** — Commit and push to a feature branch:
+**Step 3** — Run the linter before committing (pipeline will fail if ruff finds errors):
+
+```bash
+cd backend
+source ../.venv/bin/activate
+ruff check . --fix   # auto-fix what it can
+ruff check .         # confirm zero errors remain
+```
+
+**Step 4** — Commit and push to `main`:
 
 ```bash
 git add backend/app/<changed-files>
 git commit -m "feat: <description>"
-git push origin <branch-name>
+git push origin main
 ```
 
-**Step 4** — Open a pull request to `main`. When merged, the CI/CD pipeline (see [Section 7](#7-cicd-pipeline)) builds and deploys to staging automatically.
+The CI/CD pipeline (see [Section 7](#7-cicd-pipeline)) builds and deploys to staging automatically.
 
 **Step 5** — After verifying on staging, promote to production (see [Section 6](#6-manual-deployment-to-staging--production)).
 
@@ -220,12 +302,7 @@ git push origin <branch-name>
 
 ```bash
 cd backend
-
-# Auto-generate a migration from model diff
 alembic revision --autogenerate -m "describe_your_change"
-
-# Example:
-alembic revision --autogenerate -m "add_player_phone_number"
 ```
 
 A new file is created in `backend/app/db/migrations/versions/`. **Review it carefully** — autogenerate is not always perfect, especially for complex changes.
@@ -233,14 +310,9 @@ A new file is created in `backend/app/db/migrations/versions/`. **Review it care
 **Step 3** — Test the migration locally:
 
 ```bash
-# Apply the migration
 alembic upgrade head
-
-# Verify the migration can be reversed
-alembic downgrade -1
-
-# Re-apply and confirm data integrity
-alembic upgrade head
+alembic downgrade -1   # verify it can be reversed
+alembic upgrade head   # re-apply
 ```
 
 **Step 4** — Commit both the model change and the migration file together:
@@ -249,12 +321,12 @@ alembic upgrade head
 git add backend/app/db/models/<changed-model>.py
 git add backend/app/db/migrations/versions/<new-migration>.py
 git commit -m "feat: add player phone number field + migration"
-git push origin <branch-name>
+git push origin main
 ```
 
-**Step 5** — After merge to `main`, the CI pipeline deploys to staging. Migrations run automatically as part of the deployment step (see [Section 6](#6-manual-deployment-to-staging--production)).
+The CI pipeline runs migrations automatically before deploying the new revision.
 
-> **Important:** Migrations on Cloud SQL are run via a dedicated Cloud Run Job before the new revision is deployed. Zero-downtime schema changes (additive only) are strongly preferred — avoid column renames or type changes in a single deployment.
+> **Important:** Migrations on Cloud SQL run via the `run-migrations` Cloud Run Job before the new API revision receives traffic. Zero-downtime schema changes (additive only) are strongly preferred — avoid column renames or type changes in a single deployment.
 
 ---
 
@@ -271,28 +343,26 @@ cd infra/terraform
 terraform init
 ```
 
-**Step 3** — Plan the changes and review the diff carefully:
+**Step 3** — Plan and review:
 
 ```bash
 terraform plan -var="project_id=<GCP_PROJECT_ID>"
 ```
 
-Check the plan output. Anything marked `destroy` or that changes a managed resource (Cloud SQL instance, VPC) requires extra scrutiny — some changes will cause downtime or data loss.
+Anything marked `destroy` or that modifies Cloud SQL or VPC requires extra scrutiny — some changes cause downtime or data loss.
 
-**Step 4** — Apply the changes:
+**Step 4** — Apply:
 
 ```bash
 terraform apply -var="project_id=<GCP_PROJECT_ID>"
 ```
 
-Type `yes` when prompted.
-
-**Step 5** — Commit the Terraform changes:
+**Step 5** — Commit:
 
 ```bash
 git add infra/terraform/
 git commit -m "infra: <description>"
-git push origin <branch-name>
+git push origin main
 ```
 
 > **Never commit `terraform.tfstate` or `terraform.tfstate.backup`** — state is stored remotely in the `padel-tf-state` GCS bucket.
@@ -306,65 +376,49 @@ Secrets are stored in GCP Secret Manager and never in code or `.env` files in pr
 **To add a new secret:**
 
 ```bash
-echo -n '<secret-value>' | gcloud secrets create <secret-name> --data-file=-
+echo -n '<secret-value>' | gcloud secrets create <secret-name> --data-file=- --project=smashbook-488121
 ```
-
-Then reference it in the Cloud Run service configuration in `infra/terraform/modules/cloud-run/main.tf`:
-
-```hcl
-env {
-  name = "MY_NEW_SECRET"
-  value_source {
-    secret_key_ref {
-      secret  = "<secret-name>"
-      version = "latest"
-    }
-  }
-}
-```
-
-Apply the Terraform change to make it available to Cloud Run (see [Section 5.3](#53-infrastructure-changes-terraform)).
 
 **To rotate an existing secret:**
 
 ```bash
 # Add a new version
-echo -n '<new-secret-value>' | gcloud secrets versions add <secret-name> --data-file=-
+echo -n '<new-secret-value>' | gcloud secrets versions add <secret-name> --data-file=- --project=smashbook-488121
 
 # Cloud Run picks up 'latest' automatically on next deployment
-# Disable the old version once confirmed:
-gcloud secrets versions disable <old-version-number> --secret=<secret-name>
+# Disable the old version once confirmed working:
+gcloud secrets versions disable <old-version-number> --secret=<secret-name> --project=smashbook-488121
+```
+
+**To verify a secret value:**
+
+```bash
+gcloud secrets versions access latest --secret=<secret-name> --project=smashbook-488121
 ```
 
 ---
 
 ## 6. Manual Deployment to Staging / Production
 
-> The CI pipeline handles staging automatically on merge to `main`. Use these steps for manual deployments or production promotions.
+> The CI pipeline handles staging automatically on merge to `main`. Use these steps for manual deployments or production promotions only.
 
 ### Build and push the Docker image
 
 ```bash
-# Set variables
-PROJECT_ID=<GCP_PROJECT_ID>
+PROJECT_ID=smashbook-488121
 REGION=europe-west2
 REGISTRY="${REGION}-docker.pkg.dev/${PROJECT_ID}/padel-api"
-IMAGE_TAG=$(git rev-parse --short HEAD)   # uses current git commit SHA
+IMAGE_TAG=$(git rev-parse --short HEAD)
 
 # Authenticate Docker to Artifact Registry
 gcloud auth configure-docker ${REGION}-docker.pkg.dev
 
-# Build the API image
-docker build -t "${REGISTRY}/padel-api:${IMAGE_TAG}" ./backend
-docker build -t "${REGISTRY}/padel-api:latest"       ./backend
+# Build (M-series Mac: must specify linux/amd64)
+docker build --platform linux/amd64 -t "${REGISTRY}/padel-api:${IMAGE_TAG}" -t "${REGISTRY}/padel-api:latest" ./backend
+docker build --platform linux/amd64 -f backend/Dockerfile.worker \
+  -t "${REGISTRY}/padel-worker:${IMAGE_TAG}" -t "${REGISTRY}/padel-worker:latest" ./backend
 
-# Build the worker image
-docker build -f backend/Dockerfile.worker \
-  -t "${REGISTRY}/padel-worker:${IMAGE_TAG}" ./backend
-docker build -f backend/Dockerfile.worker \
-  -t "${REGISTRY}/padel-worker:latest"       ./backend
-
-# Push both tags
+# Push
 docker push "${REGISTRY}/padel-api:${IMAGE_TAG}"
 docker push "${REGISTRY}/padel-api:latest"
 docker push "${REGISTRY}/padel-worker:${IMAGE_TAG}"
@@ -373,23 +427,10 @@ docker push "${REGISTRY}/padel-worker:latest"
 
 ### Run database migrations
 
-Migrations must run before the new API revision receives traffic.
-
 ```bash
-# Run migrations via a one-off Cloud Run Job
-gcloud run jobs create run-migrations \
-  --image="${REGISTRY}/padel-api:${IMAGE_TAG}" \
-  --region=${REGION} \
-  --set-cloudsql-instances=${CLOUD_SQL_CONNECTION_NAME} \
-  --set-secrets="DATABASE_URL=padel-database-url:latest" \
-  --command="alembic" \
-  --args="upgrade,head" \
-  --project=${PROJECT_ID}
-
-gcloud run jobs execute run-migrations --region=${REGION} --wait
-
-# Check the migration job completed successfully
-gcloud run jobs executions list --job=run-migrations --region=${REGION}
+# The run-migrations job is self-bootstrapping via the CI pipeline.
+# For a manual run, execute it directly:
+gcloud run jobs execute run-migrations --region=${REGION} --project=${PROJECT_ID} --wait
 ```
 
 ### Deploy the API service
@@ -417,42 +458,44 @@ done
 ### Verify the deployment
 
 ```bash
-# Get the API service URL
-gcloud run services describe padel-api \
-  --region=${REGION} \
-  --format="value(status.url)"
+URL=$(gcloud run services describe padel-api \
+  --region=${REGION} --project=${PROJECT_ID} \
+  --format="value(status.url)")
 
-# Hit the health endpoint
-curl https://<SERVICE_URL>/healthz
+curl ${URL}/healthz
+# Expected: 200 OK  {"status": "ok"}
 ```
 
 ---
 
 ## 7. CI/CD Pipeline
 
-> **Note:** GitHub Actions workflow files (`.github/workflows/`) are not yet created. The steps below describe the intended pipeline to implement. Until the workflow files exist, use the [manual deployment steps](#6-manual-deployment-to-staging--production) above.
+The pipeline is live and fully operational as of 2026-03-28.
 
-### Intended pipeline: push to `main` → staging
+### Pipeline: push to `main` → staging
 
-```
-1. Trigger:  push to main
-2. Test:     run pytest
-3. Build:    docker build (api + worker images)
-4. Push:     push images tagged with git SHA to Artifact Registry
-5. Migrate:  run alembic upgrade head via Cloud Run Job
-6. Deploy:   gcloud run deploy (api + 3 workers)
-7. Smoke:    GET /health — fail the pipeline if non-200
-```
-
-### Intended pipeline: production promotion
+File: `.github/workflows/deploy-staging.yml`
 
 ```
-1. Trigger:  manual workflow_dispatch (or tag push e.g. v1.2.3)
-2. Verify:   confirm staging is healthy
-3. Deploy:   gcloud run deploy pointing production project to the
-             same image SHA that is running on staging
-4. Migrate:  run alembic upgrade head on the production Cloud SQL instance
-5. Smoke:    GET /health on production URL
+1. Lint:     ruff check backend/
+2. Test:     pytest tests/unit/ (skips gracefully if no tests exist yet)
+3. Build:    docker build — api + worker images tagged with git SHA
+4. Push:     images pushed to Artifact Registry
+5. Migrate:  run-migrations Cloud Run Job (self-bootstrapping — creates on first run)
+6. Deploy:   gcloud run deploy — api + 3 workers
+7. Smoke:    GET /healthz — fails pipeline if non-200
+```
+
+### Pipeline: production promotion
+
+File: `.github/workflows/deploy-production.yml` _(to be created)_
+
+```
+1. Trigger:  manual workflow_dispatch or tag push (e.g. v1.2.3)
+2. Resolve:  read image SHA currently running on staging
+3. Migrate:  run alembic upgrade head on production Cloud SQL
+4. Deploy:   gcloud run deploy pointing production to same SHA as staging
+5. Smoke:    GET /healthz on production URL
 ```
 
 ### GitHub Secrets required
@@ -460,8 +503,27 @@ curl https://<SERVICE_URL>/healthz
 | Secret | Description |
 |---|---|
 | `GCP_SA_KEY` | Service account JSON key for GitHub Actions (`github-actions-deployer`) |
-| `GCP_PROJECT_ID` | GCP project ID for staging |
-| `GCP_PROJECT_ID_PROD` | GCP project ID for production |
+| `GCP_PROJECT_ID` | GCP project ID for staging (`smashbook-488121`) |
+| `GCP_SA_KEY_PROD` | Service account JSON key for production (when configured) |
+| `GCP_PROJECT_ID_PROD` | GCP project ID for production (when configured) |
+
+### GCP Secret Manager secrets required at runtime
+
+| Secret name | Required for | Notes |
+|---|---|---|
+| `padel-database-url` | API + migrations | Primary DB — always required |
+| `padel-database-read-replica-url` | API reads | Can point to primary initially |
+| `padel-secret-key` | API (JWT) | Generate with `secrets.token_hex(32)` |
+| `stripe-secret-key` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
+| `stripe-webhook-secret` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
+| `sendgrid-api-key` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
+
+### Retrigger the pipeline without a code change
+
+```bash
+git commit --allow-empty -m "ci: retrigger pipeline"
+git push origin main
+```
 
 ---
 
@@ -471,17 +533,18 @@ curl https://<SERVICE_URL>/healthz
 
 ```bash
 # List recent revisions
-gcloud run revisions list --service=padel-api --region=europe-west2
+gcloud run revisions list --service=padel-api --region=europe-west2 --project=smashbook-488121
 
 # Route 100% of traffic to a previous revision
 gcloud run services update-traffic padel-api \
   --region=europe-west2 \
-  --to-revisions=<REVISION_NAME>=100
+  --to-revisions=<REVISION_NAME>=100 \
+  --project=smashbook-488121
 ```
 
 ### Roll back a database migration
 
-> Use this only if the migration must be undone. Coordinate with the team before running on production.
+> Use this only if the migration must be undone. Data loss is possible — proceed with caution.
 
 ```bash
 # Downgrade one step
@@ -499,12 +562,13 @@ alembic current
 ```bash
 # Find the image SHA from Artifact Registry
 gcloud artifacts docker images list \
-  europe-west2-docker.pkg.dev/<PROJECT_ID>/padel-api/padel-api
+  europe-west2-docker.pkg.dev/smashbook-488121/padel-api/padel-api
 
-# Deploy the specific image SHA
+# Deploy the specific SHA
 gcloud run deploy padel-api \
-  --image="europe-west2-docker.pkg.dev/<PROJECT_ID>/padel-api/padel-api:<SHA>" \
-  --region=europe-west2
+  --image="europe-west2-docker.pkg.dev/smashbook-488121/padel-api/padel-api:<SHA>" \
+  --region=europe-west2 \
+  --project=smashbook-488121
 ```
 
 ---
@@ -514,23 +578,38 @@ gcloud run deploy padel-api \
 ### API health endpoint
 
 ```bash
-curl https://<SERVICE_URL>/healthz
+# Staging
+URL=$(gcloud run services describe padel-api \
+  --region=europe-west2 --project=smashbook-488121 \
+  --format="value(status.url)")
+curl ${URL}/healthz
 # Expected: 200 OK  {"status": "ok"}
-# Note: local dev uses http://localhost:8080/healthz
+
+# Local
+curl http://localhost:8080/healthz
 ```
 
 ### Check Cloud Run service status
 
 ```bash
-gcloud run services list --region=europe-west2
+gcloud run services list --region=europe-west2 --project=smashbook-488121
 ```
 
-### Check recent migration history
+### Check migration job status
 
 ```bash
-# Connect to Cloud SQL via proxy (local)
-cloud-sql-proxy <PROJECT>:europe-west2:<INSTANCE> &
-DATABASE_URL=postgresql://user:pass@localhost:5432/padel alembic history
+# List recent executions
+gcloud run jobs executions list \
+  --job=run-migrations \
+  --region=europe-west2 \
+  --project=smashbook-488121
+
+# View logs for a specific execution
+gcloud logging read \
+  "resource.type=cloud_run_job AND resource.labels.job_name=run-migrations" \
+  --limit=50 \
+  --format="value(timestamp, textPayload)" \
+  --project=smashbook-488121
 ```
 
 ### View Cloud Run logs
@@ -540,13 +619,15 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/padel alembic history
 gcloud logging read \
   "resource.type=cloud_run_revision AND resource.labels.service_name=padel-api" \
   --limit=50 \
-  --format="value(timestamp, textPayload)"
+  --format="value(timestamp, textPayload)" \
+  --project=smashbook-488121
 
-# Worker logs (replace with booking-worker, payment-worker, or notification-worker)
+# Worker logs (replace service name as needed)
 gcloud logging read \
   "resource.type=cloud_run_revision AND resource.labels.service_name=padel-booking-worker" \
   --limit=50 \
-  --format="value(timestamp, textPayload)"
+  --format="value(timestamp, textPayload)" \
+  --project=smashbook-488121
 ```
 
 ### Check Pub/Sub subscription backlogs
@@ -554,6 +635,20 @@ gcloud logging read \
 ```bash
 for TOPIC in booking-events payment-events notification-events; do
   gcloud pubsub subscriptions describe ${TOPIC}-sub \
-    --format="value(name, pushConfig.pushEndpoint)"
+    --format="value(name, pushConfig.pushEndpoint)" \
+    --project=smashbook-488121
 done
+```
+
+### Connect to Cloud SQL directly (via proxy)
+
+```bash
+# Install the proxy if needed
+brew install cloud-sql-proxy   # macOS
+
+# Start the proxy
+cloud-sql-proxy smashbook-488121:europe-west2:smashbook-staging &
+
+# Connect
+psql postgresql://padel_user:PASSWORD@localhost:5432/padel_db
 ```
