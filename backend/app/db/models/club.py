@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, Text, SmallInteger, Time, func
+from sqlalchemy import Column, String, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, Text, SmallInteger, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin, TenantScopedMixin

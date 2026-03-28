@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.db.session import get_db, get_read_db
-from app.api.v1.dependencies.auth import require_staff, require_ops_lead, require_admin
+from app.api.v1.dependencies.auth import require_staff, require_admin
 
 router = APIRouter(prefix="/staff", tags=["staff"])
 

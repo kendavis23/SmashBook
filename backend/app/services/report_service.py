@@ -11,7 +11,6 @@ Responsibilities:
   - Export to CSV/XLSX uploaded to GCS exports bucket
 """
 from sqlalchemy.ext.asyncio import AsyncSession
-from google.cloud import storage
 from app.core.config import get_settings
 
 settings = get_settings()

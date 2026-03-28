@@ -7,7 +7,6 @@ GET  /players/me  — success, unauthenticated, wrong tenant
 PATCH /players/me — success (partial update), unauthenticated, wrong tenant
 """
 
-import pytest
 
 
 class TestGetMyProfile:

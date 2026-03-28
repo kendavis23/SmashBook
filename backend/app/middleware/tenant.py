@@ -19,7 +19,6 @@ request body) working unchanged, and allows the ``get_tenant`` dependency
 to raise a clean 422 if a particular endpoint actually requires a tenant.
 """
 
-import re
 from typing import Optional
 from uuid import UUID
 

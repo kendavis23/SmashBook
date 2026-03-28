@@ -22,8 +22,8 @@ import pytest_asyncio
 from sqlalchemy import delete as sql_delete, select
 
 from app.core.security import create_access_token
-from app.db.models.booking import Booking, BookingPlayer, BookingStatus, InviteStatus
-from app.db.models.club import Club, OperatingHours, PricingRule
+from app.db.models.booking import Booking, BookingPlayer
+from app.db.models.club import OperatingHours, PricingRule
 from app.db.models.court import Court
 from app.db.models.user import TenantUserRole, User
 
@@ -1765,9 +1765,6 @@ class TestRespondToInvite:
         )
 
         # Now invite player3 — must succeed (slot freed by decline)
-        player3_token = create_access_token({"sub": str(player3.id), "tenant_id": str(tenant.id), "club_id": str(club.id), "role": "player"})
-        player3_headers = {"Authorization": f"Bearer {player3_token}", "X-Tenant-ID": str(tenant.id)}
-
         resp = await client.post(
             f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
             json={"user_id": str(player3.id)},

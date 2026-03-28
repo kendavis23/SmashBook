@@ -10,10 +10,8 @@ GET   /courts/{id}/availability — slot generation, booking/blackout conflicts,
 """
 
 import uuid
-from datetime import date, datetime, time, timedelta, timezone
+from datetime import datetime, timezone
 
-import pytest
-import pytest_asyncio
 from sqlalchemy import delete as sql_delete
 
 
@@ -381,7 +379,6 @@ class TestListCourts:
         free_id = await _make_court(client, staff_headers, club, name="Free Court")
 
         # Find a future Monday for the booking
-        query_date = date(2030, 1, 7)  # Known Monday
         slot_start = datetime(2030, 1, 7, 10, 0, tzinfo=timezone.utc)
         slot_end = datetime(2030, 1, 7, 11, 30, tzinfo=timezone.utc)
 

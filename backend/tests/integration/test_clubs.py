@@ -16,7 +16,6 @@ GET    /clubs/{id}/pricing-rules    — returns saved rules
 
 import uuid
 
-import pytest
 
 
 # ---------------------------------------------------------------------------

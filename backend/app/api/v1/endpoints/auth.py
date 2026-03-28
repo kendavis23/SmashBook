@@ -28,7 +28,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 async def _get_active_tenant(subdomain: str, db: AsyncSession) -> Tenant:
     result = await db.execute(
-        select(Tenant).where(Tenant.subdomain == subdomain, Tenant.is_active == True)
+        select(Tenant).where(Tenant.subdomain == subdomain, Tenant.is_active)
     )
     tenant = result.scalar_one_or_none()
     if not tenant:

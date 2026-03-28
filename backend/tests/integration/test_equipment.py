@@ -17,13 +17,12 @@ import uuid
 from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
 
-import pytest
 import pytest_asyncio
 from sqlalchemy import delete as sql_delete, select
 
 from app.core.security import create_access_token, get_password_hash
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus, PlayerRole, PaymentStatus, BookingType
-from app.db.models.club import Club, OperatingHours, PricingRule
+from app.db.models.club import OperatingHours, PricingRule
 from app.db.models.court import Court
 from app.db.models.equipment import EquipmentInventory, EquipmentRental, ItemType, ItemCondition
 from app.db.models.user import TenantUserRole, User

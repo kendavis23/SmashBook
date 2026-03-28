@@ -11,7 +11,6 @@ PATCH  /clubs/{id}/membership-plans/{pid}   — success, role enforcement, 404 p
 
 import uuid
 
-import pytest
 
 
 SILVER_PLAN = {

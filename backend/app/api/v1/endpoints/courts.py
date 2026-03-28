@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.dependencies.auth import get_current_user, require_staff
+from app.api.v1.dependencies.auth import require_staff
 from app.api.v1.dependencies.tenant import get_tenant
 from app.db.models.booking import Booking, BookingStatus
 from app.db.models.club import Club, OperatingHours, PricingRule
@@ -55,7 +55,7 @@ async def list_courts(
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
 
-    stmt = select(Court).where(Court.club_id == club_id, Court.is_active == True)
+    stmt = select(Court).where(Court.club_id == club_id, Court.is_active)
 
     if surface_type:
         stmt = stmt.where(Court.surface_type == surface_type)
@@ -129,8 +129,8 @@ async def get_court_availability(
         select(OperatingHours).where(
             OperatingHours.club_id == club.id,
             OperatingHours.day_of_week == day_of_week,
-            or_(OperatingHours.valid_from == None, OperatingHours.valid_from <= query_date),
-            or_(OperatingHours.valid_until == None, OperatingHours.valid_until >= query_date),
+            or_(OperatingHours.valid_from.is_(None), OperatingHours.valid_from <= query_date),
+            or_(OperatingHours.valid_until.is_(None), OperatingHours.valid_until >= query_date),
         )
     )
     oh_records = oh_result.scalars().all()
@@ -169,9 +169,9 @@ async def get_court_availability(
         select(PricingRule).where(
             PricingRule.club_id == club.id,
             PricingRule.day_of_week == day_of_week,
-            PricingRule.is_active == True,
-            or_(PricingRule.valid_from == None, PricingRule.valid_from <= query_date),
-            or_(PricingRule.valid_until == None, PricingRule.valid_until >= query_date),
+            PricingRule.is_active,
+            or_(PricingRule.valid_from.is_(None), PricingRule.valid_from <= query_date),
+            or_(PricingRule.valid_until.is_(None), PricingRule.valid_until >= query_date),
         )
     )
     pricing_rules = pricing_result.scalars().all()

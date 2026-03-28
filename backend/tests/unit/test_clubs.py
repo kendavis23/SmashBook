@@ -21,7 +21,7 @@ from app.api.v1.endpoints.clubs import (
     update_operating_hours,
     update_pricing_rules,
 )
-from app.db.models.club import Club, ClubSettings, OperatingHours
+from app.db.models.club import Club, ClubSettings
 from app.schemas.club import ClubCreate, ClubUpdate, OperatingHoursEntry, PricingRuleEntry
 from datetime import date, datetime, time, timezone
 

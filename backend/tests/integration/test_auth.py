@@ -18,7 +18,6 @@ Why these are integration tests (not unit tests)
 
 import uuid
 
-import pytest
 
 from app.core.security import create_access_token, create_refresh_token
 from app.db.models.tenant import Tenant as TenantModel

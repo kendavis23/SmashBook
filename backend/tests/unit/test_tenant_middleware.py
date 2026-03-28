@@ -30,7 +30,7 @@ def _make_request(headers: dict, path: str = "/api/v1/courts") -> SimpleNamespac
 # Import the private resolution helper directly so tests stay fast and pure
 # ---------------------------------------------------------------------------
 
-from app.middleware.tenant import _resolve_tenant
+from app.middleware.tenant import _resolve_tenant  # noqa: E402
 
 
 # ---------------------------------------------------------------------------

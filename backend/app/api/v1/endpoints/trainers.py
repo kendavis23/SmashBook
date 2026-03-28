@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from app.db.session import get_db, get_read_db
-from app.api.v1.dependencies.auth import get_current_user, require_ops_lead
+from app.api.v1.dependencies.auth import get_current_user
 
 router = APIRouter(prefix="/trainers", tags=["trainers"])
 

@@ -103,7 +103,7 @@ class BookingService:
         if not oh_records:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Club has no operating hours configured for this day",
+                detail="Club has no operating hours configured for this day",
             )
         # Prefer a seasonal record whose date window covers query_date over catch-all.
         # A seasonal record has valid_from set; valid_to=None means open-ended.
@@ -185,7 +185,7 @@ class BookingService:
             select(PricingRule).where(
                 PricingRule.club_id == club_id,
                 PricingRule.day_of_week == day_of_week,
-                PricingRule.is_active == True,
+                PricingRule.is_active,
                 PricingRule.start_time <= slot_time,
                 PricingRule.end_time > slot_time,
             )
@@ -517,7 +517,7 @@ class BookingService:
 
         courts_result = await self.db.execute(
             select(Court)
-            .where(Court.club_id == club_id, Court.is_active == True)
+            .where(Court.club_id == club_id, Court.is_active)
             .order_by(Court.name)
         )
         courts = courts_result.scalars().all()
@@ -574,7 +574,7 @@ class BookingService:
             .outerjoin(accepted_count_sq, accepted_count_sq.c.booking_id == Booking.id)
             .where(
                 Booking.club_id == club_id,
-                Booking.is_open_game == True,
+                Booking.is_open_game,
                 Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
                 Booking.start_datetime >= now,
                 func.coalesce(accepted_count_sq.c.cnt, 0) < Booking.max_players,
@@ -590,8 +590,8 @@ class BookingService:
             # Include games whose skill range overlaps the requested range,
             # AND include games with no skill restriction (NULL columns = open to all).
             stmt = stmt.where(
-                (Booking.min_skill_level == None) | (Booking.min_skill_level <= max_skill),
-                (Booking.max_skill_level == None) | (Booking.max_skill_level >= min_skill),
+                Booking.min_skill_level.is_(None) | (Booking.min_skill_level <= max_skill),
+                Booking.max_skill_level.is_(None) | (Booking.max_skill_level >= min_skill),
             )
 
         result = await self.db.execute(stmt)
@@ -738,7 +738,6 @@ class BookingService:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Player not found in this tenant")
 
         # Skill check bypassed for organiser and staff invites
-        club = await self.db.get(Club, club_id)
         amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
 
         bp = BookingPlayer(
