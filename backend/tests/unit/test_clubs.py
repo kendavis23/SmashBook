@@ -21,7 +21,7 @@ from app.api.v1.endpoints.clubs import (
     update_operating_hours,
     update_pricing_rules,
 )
-from app.db.models.club import Club, ClubSettings
+from app.db.models.club import Club
 from app.schemas.club import ClubCreate, ClubUpdate, OperatingHoursEntry, PricingRuleEntry
 from datetime import date, datetime, time, timezone
 
@@ -120,27 +120,11 @@ async def test_create_club_address_defaults_to_none():
 
 
 @pytest.mark.asyncio
-async def test_create_club_also_creates_default_settings():
-    """A ClubSettings row must be added in the same transaction."""
+async def test_create_club_adds_club_object():
+    """Settings are columns on Club — only the Club object should be added."""
     db = _make_db()
     await create_club(_body(), CURRENT_USER, TENANT, db)
-    settings_objects = [o for o in db._added if isinstance(o, ClubSettings)]
-    assert len(settings_objects) == 1
-
-
-@pytest.mark.asyncio
-async def test_create_club_settings_linked_to_club():
-    db = _make_db()
-    result = await create_club(_body(), CURRENT_USER, TENANT, db)
-    settings = next(o for o in db._added if isinstance(o, ClubSettings))
-    assert settings.club_id == result.id
-
-
-@pytest.mark.asyncio
-async def test_create_club_calls_refresh_for_settings_relationship():
-    db = _make_db()
-    result = await create_club(_body(), CURRENT_USER, TENANT, db)
-    db.refresh.assert_awaited_once_with(result, ["settings"])
+    assert len([o for o in db._added if isinstance(o, Club)]) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -194,21 +178,20 @@ async def test_create_club_unlimited_plan_always_succeeds():
 
 
 @pytest.mark.asyncio
-async def test_create_club_flushes_twice():
-    """Two flushes: once after Club, once after ClubSettings."""
+async def test_create_club_flushes_once():
+    """Settings are merged into Club — only one flush needed."""
     db = _make_db()
     await create_club(_body(), CURRENT_USER, TENANT, db)
-    assert db.flush.await_count == 2
+    assert db.flush.await_count == 1
 
 
 @pytest.mark.asyncio
-async def test_create_club_adds_exactly_two_objects():
-    """Only a Club and a ClubSettings should be added."""
+async def test_create_club_adds_exactly_one_object():
+    """Settings columns live on Club — only one object should be added."""
     db = _make_db()
     await create_club(_body(), CURRENT_USER, TENANT, db)
-    assert len(db._added) == 2
-    types = {type(o) for o in db._added}
-    assert types == {Club, ClubSettings}
+    assert len(db._added) == 1
+    assert isinstance(db._added[0], Club)
 
 
 # ---------------------------------------------------------------------------
@@ -234,21 +217,21 @@ async def test_list_clubs_returns_all_tenant_clubs():
         SimpleNamespace(id=uuid.uuid4(), tenant_id=TENANT_ID, name="Club B", address=None, currency="GBP", settings=None),
     ]
     db = _make_list_db(clubs)
-    result = await list_clubs(TENANT, db)
+    result = await list_clubs(CURRENT_USER, TENANT, db)
     assert result == clubs
 
 
 @pytest.mark.asyncio
 async def test_list_clubs_returns_empty_list_when_no_clubs():
     db = _make_list_db([])
-    result = await list_clubs(TENANT, db)
+    result = await list_clubs(CURRENT_USER, TENANT, db)
     assert result == []
 
 
 @pytest.mark.asyncio
 async def test_list_clubs_executes_query():
     db = _make_list_db([])
-    await list_clubs(TENANT, db)
+    await list_clubs(CURRENT_USER, TENANT, db)
     db.execute.assert_awaited_once()
 
 

@@ -6,7 +6,6 @@ Creates the minimum data needed to test auth and clubs endpoints:
   - 1 Tenant          (subdomain: "demo")
   - 1 admin User      (admin@demo.local / password: Admin1234)
   - 1 Club            (Demo Padel Club)
-  - 1 ClubSettings    (defaults)
 
 Run inside the API container:
     docker compose exec api python scripts/seed_local.py
@@ -30,7 +29,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 
 from app.core.config import get_settings
 from app.core.security import get_password_hash
-from app.db.models.club import Club, ClubSettings
+from app.db.models.club import Club
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import User, TenantUser, TenantUserRole
 from app.db.models.wallet import Wallet
@@ -114,8 +113,6 @@ async def seed():
                 currency="GBP",
             )
             db.add(club)
-            await db.flush()
-            db.add(ClubSettings(club_id=club.id))
             await db.flush()
             print(f"  Created club:   {club.name} ({club.id})")
         else:
