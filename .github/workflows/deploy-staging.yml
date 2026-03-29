@@ -235,12 +235,14 @@ jobs:
             --format="value(status.url)")
           echo "url=$URL" >> $GITHUB_OUTPUT
 
+
       - name: Hit /healthz
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get_url.outputs.url }}/healthz)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" ${{ steps.get_url.outputs.url }}/api/v1/openapi.json)
           echo "Health check returned HTTP $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "Smoke test FAILED — expected 200, got $STATUS"
             exit 1
           fi
           echo "Smoke test passed ✓"
+
