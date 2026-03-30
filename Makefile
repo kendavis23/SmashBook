@@ -82,7 +82,7 @@ issues:
 test-db-up:
 	docker run -d --name smashbook-test-db \
 		-e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test \
-		-p 5432:5432 postgres:16
+		-p 5433:5432 postgres:16
 
 test-db-down:
 	docker stop smashbook-test-db && docker rm smashbook-test-db

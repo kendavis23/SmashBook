@@ -1,7 +1,17 @@
 """
 PlayerService — player profile and skill level management.
 """
+from datetime import datetime, timezone
+from typing import Optional
+import uuid
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.db.models.booking import Booking, BookingPlayer, BookingStatus
+from app.db.models.court import Court
+from app.schemas.user import PlayerBookingItem
 
 
 class PlayerService:
@@ -33,10 +43,61 @@ class PlayerService:
         """
         pass
 
-    async def get_booking_history(self, user_id: str, upcoming_only: bool = False) -> list:
+    async def get_booking_history(
+        self,
+        user_id: uuid.UUID,
+        upcoming_only: bool = False,
+        completed_only: bool = False,
+    ) -> list[PlayerBookingItem]:
         """
-        Returns BookingPlayer records for a user joined with Booking details.
-        Sorted by start_datetime desc (or asc for upcoming).
-        Uses read replica.
+        Returns bookings the player has joined or organised, split into upcoming and past.
+
+        upcoming_only: only return pending/confirmed bookings with start_datetime >= now
+        completed_only: only return completed bookings (match history)
+        Default: all bookings, sorted by start_datetime desc.
         """
-        pass
+        now = datetime.now(tz=timezone.utc)
+
+        stmt = (
+            select(BookingPlayer)
+            .where(BookingPlayer.user_id == user_id)
+            .join(Booking, BookingPlayer.booking_id == Booking.id)
+            .options(
+                selectinload(BookingPlayer.booking).selectinload(Booking.court)
+            )
+        )
+
+        if upcoming_only:
+            stmt = stmt.where(
+                Booking.start_datetime >= now,
+                Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+            ).order_by(Booking.start_datetime.asc())
+        elif completed_only:
+            stmt = stmt.where(
+                Booking.status == BookingStatus.completed,
+            ).order_by(Booking.start_datetime.desc())
+        else:
+            stmt = stmt.order_by(Booking.start_datetime.desc())
+
+        result = await self.db.execute(stmt)
+        rows = result.scalars().all()
+
+        items = []
+        for bp in rows:
+            b = bp.booking
+            items.append(PlayerBookingItem(
+                booking_id=b.id,
+                club_id=b.club_id,
+                court_id=b.court_id,
+                court_name=b.court.name,
+                booking_type=b.booking_type,
+                status=b.status,
+                start_datetime=b.start_datetime,
+                end_datetime=b.end_datetime,
+                role=bp.role,
+                invite_status=bp.invite_status,
+                payment_status=bp.payment_status,
+                amount_due=bp.amount_due,
+            ))
+
+        return items
