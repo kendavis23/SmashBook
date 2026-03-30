@@ -7,6 +7,10 @@ services:
       - ./backend:/app        # mounts your code for hot reload
     env_file:
       - ./backend/.env
+    environment:
+      # Override .env DB URLs: inside Docker the db service is reachable as 'db', not 'localhost'
+      DATABASE_URL: postgresql+asyncpg://padel_user:padel_pass@db:5432/padel_db
+      DATABASE_READ_REPLICA_URL: postgresql+asyncpg://padel_user:padel_pass@db:5432/padel_db
     depends_on:
       db:
         condition: service_healthy

@@ -1,4 +1,4 @@
-_Last updated: 2026-03-22 23:00 UTC_
+_Last updated: 2026-03-30 00:00 UTC_
 
 # SmashBook Data Model
 
@@ -257,6 +257,9 @@ Blocks a court from being booked during a time window (maintenance, events, etc)
 | `is_recurring` | BOOLEAN | Default `false` |
 | `recurrence_rule` | TEXT | iCal RRULE string, nullable |
 | `video_upload_path` | VARCHAR(500) | GCS path, nullable |
+| `discount_amount` | NUMERIC(10,2) | Nullable |
+| `discount_source` | ENUM | Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
+| `membership_subscription_id` | UUID | FK → `membership_subscriptions`, nullable |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -393,6 +396,7 @@ Invoice fields are stored directly on this table (no separate `invoices` table).
 |---|---|---|
 | `id` | UUID | PK |
 | `booking_id` | UUID | FK → `bookings` |
+| `club_id` | UUID | FK → `clubs`, nullable |
 | `user_id` | UUID | FK → `users` |
 | `stripe_payment_intent_id` | VARCHAR(255) | Nullable |
 | `stripe_charge_id` | VARCHAR(255) | Nullable |
@@ -405,8 +409,31 @@ Invoice fields are stored directly on this table (no separate `invoices` table).
 | `stripe_invoice_id` | VARCHAR(255) | Nullable |
 | `stripe_receipt_url` | VARCHAR(500) | Nullable |
 | `pdf_storage_path` | VARCHAR(500) | GCS path, nullable |
+| `failure_reason` | TEXT | Nullable |
+| `retry_count` | INTEGER | Default `0` |
+| `next_retry_at` | TIMESTAMPTZ | Nullable |
+| `anomaly_flagged` | BOOLEAN | Default `false` |
+| `anomaly_reason` | TEXT | Nullable |
+| `dispute_status` | ENUM | Nullable — `open`, `under_review`, `won`, `lost` |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
+
+**Relationships:** `booking`, `platform_fees`
+
+---
+
+#### `platform_fees`
+SmashBook's fee ledger per transaction. Enables per-tenant revenue reconciliation.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `tenant_id` | UUID | FK → `tenants` |
+| `payment_id` | UUID | FK → `payments` |
+| `fee_type` | ENUM | `booking_fee`, `revenue_share`, `third_party_share` |
+| `amount` | NUMERIC(10,2) | |
+| `pct_applied` | NUMERIC(5,2) | Rate at time of transaction |
+| `created_at` | TIMESTAMPTZ | |
 
 ---
 
@@ -421,6 +448,9 @@ One wallet per user, holds a pre-paid credit balance.
 | `user_id` | UUID | FK → `users`, UNIQUE |
 | `balance` | NUMERIC(10,2) | Default `0.00` |
 | `currency` | VARCHAR(3) | Default `"GBP"` |
+| `auto_topup_enabled` | BOOLEAN | Default `false` |
+| `auto_topup_threshold` | NUMERIC(10,2) | Nullable — top up when balance falls below this |
+| `auto_topup_amount` | NUMERIC(10,2) | Nullable |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -550,6 +580,9 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 | `BillingPeriod` | `monthly`, `annual` |
 | `MembershipStatus` | `trialing`, `active`, `paused`, `cancelled`, `expired` |
 | `CreditType` | `booking_credit`, `guest_pass` |
+| `DisputeStatus` | `open`, `under_review`, `won`, `lost` |
+| `PlatformFeeType` | `booking_fee`, `revenue_share`, `third_party_share` |
+| `DiscountSource` | `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
 
 ---
 
@@ -583,6 +616,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `7d4d380...` | Table simplification — merge `club_settings` into `clubs`; merge `invoices` into `payments`; merge `tenant_users` role into `users`; drop `club_id` from `skill_level_history` and `trainer_availability` |
 | `7f7915bed71a` | G1 — Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` to `users`; add `notificationchannel` enum |
 | `17206ff810ef` | G2 — Add `valid_from`, `valid_until` to `operating_hours` for seasonal hour variations |
+| `8582075732fe` | G4 — `payments`: add `club_id`, `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `anomaly_reason`, `dispute_status`; new table `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id` |
 
 To run migrations:
 ```bash
