@@ -1,9 +1,11 @@
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 import uuid
 
 from pydantic import BaseModel, EmailStr, field_validator
 
+from app.db.models.booking import BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
 from app.db.models.user import NotificationChannel, TenantUserRole
 
 
@@ -73,3 +75,23 @@ class UserProfileUpdate(BaseModel):
     phone: Optional[str] = None
     photo_url: Optional[str] = None
     preferred_notification_channel: Optional[NotificationChannel] = None
+
+
+class PlayerBookingItem(BaseModel):
+    booking_id: uuid.UUID
+    club_id: uuid.UUID
+    court_id: uuid.UUID
+    court_name: str
+    booking_type: BookingType
+    status: BookingStatus
+    start_datetime: datetime
+    end_datetime: datetime
+    role: PlayerRole
+    invite_status: InviteStatus
+    payment_status: PaymentStatus
+    amount_due: Decimal
+
+
+class PlayerBookingsResponse(BaseModel):
+    upcoming: list[PlayerBookingItem]
+    past: list[PlayerBookingItem]

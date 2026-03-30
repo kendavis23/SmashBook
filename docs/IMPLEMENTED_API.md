@@ -1,4 +1,4 @@
-_Last updated: 2026-03-30 19:30 UTC_
+_Last updated: 2026-03-30 20:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -61,6 +61,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 |---|---|---|
 | `GET` | `/api/v1/players/me` | Get current player's profile |
 | `PATCH` | `/api/v1/players/me` | Update current player's profile details |
+| `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time |
+| `GET` | `/api/v1/players/me/match-history` | Get current player's completed matches, most recent first |
 
 ---
 
@@ -126,6 +128,6 @@ Staff-only CRUD for calendar blocks: maintenance windows, skill filters, trainin
 | `payments.py` | Payments, wallet top-up, refunds, invoices |
 | `staff.py` | Staff management — list, create, update, deactivate |
 | `trainers.py` | Trainer availability — get, set, clear |
-| `players.py` | `GET /me/bookings`, `GET /me/match-history`, `GET /{id}`, `GET /{id}/skill-history`, `PATCH /{id}/skill-level` |
+| `players.py` | `GET /{id}`, `GET /{id}/skill-history`, `PATCH /{id}/skill-level` |
 | `reports.py` | Utilisation, revenue, and booking reports |
 | `support.py` | Support tickets |

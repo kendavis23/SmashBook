@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db, get_read_db
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.db.models.user import User
-from app.schemas.user import UserResponse, UserProfileUpdate
+from app.schemas.user import UserResponse, UserProfileUpdate, PlayerBookingItem, PlayerBookingsResponse
+from app.services.player_service import PlayerService
 
 router = APIRouter(prefix="/players", tags=["players"])
 
@@ -27,16 +28,52 @@ async def update_my_profile(
     return current_user
 
 
-@router.get("/me/bookings")
-async def get_my_bookings(current_user=Depends(get_current_user), db=Depends(get_read_db)):
-    """View upcoming and past bookings."""
-    pass
+@router.get("/me/bookings", response_model=PlayerBookingsResponse)
+async def get_my_bookings(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """
+    View the current player's upcoming and past bookings.
+
+    Returns two lists:
+    - upcoming: pending/confirmed bookings with start time in the future, soonest first
+    - past: cancelled/completed bookings and anything in the past, most recent first
+    """
+    from datetime import datetime, timezone
+    from app.db.models.booking import BookingStatus
+
+    svc = PlayerService(db)
+    all_bookings = await svc.get_booking_history(current_user.id)
+    now = datetime.now(tz=timezone.utc)
+
+    upcoming = [
+        b for b in all_bookings
+        if b.start_datetime >= now
+        and b.status in (BookingStatus.pending, BookingStatus.confirmed)
+    ]
+    past = [
+        b for b in all_bookings
+        if b not in upcoming
+    ]
+    # upcoming sorted soonest first; past already sorted most recent first (desc)
+    upcoming.sort(key=lambda b: b.start_datetime)
+    return PlayerBookingsResponse(upcoming=upcoming, past=past)
 
 
-@router.get("/me/match-history")
-async def get_match_history(current_user=Depends(get_current_user), db=Depends(get_read_db)):
-    """View match history."""
-    pass
+@router.get("/me/match-history", response_model=list[PlayerBookingItem])
+async def get_match_history(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """
+    View the current player's completed matches, most recent first.
+
+    Returns completed bookings only. When match_results are recorded (Sprint 9),
+    scores and skill deltas will be included here.
+    """
+    svc = PlayerService(db)
+    return await svc.get_booking_history(current_user.id, completed_only=True)
 
 
 @router.get("/{player_id}")
