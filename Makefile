@@ -51,9 +51,9 @@ sql:
 # ── ERD ───────────────────────────────────────────────────────────────────────
 # Generates docs/erd.png using eralchemy2 (must be installed in the api container)
 erd:
-	eralchemy2 \
+	cd backend && .venv/bin/eralchemy2 \
 		-i "postgresql://padel_user:padel_pass@localhost:5432/padel_db" \
-		-o docs/erd.png
+		-o ../docs/erd.png
 	@echo "ERD generated → docs/erd.png"
 
 # Generates docs/SmashBook_ERD.drawio from SQLAlchemy models (no DB connection needed)

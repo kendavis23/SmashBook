@@ -2,7 +2,7 @@ from .base import Base
 from .tenant import Tenant, SubscriptionPlan
 from .user import User, TenantUserRole
 from .club import Club, OperatingHours, PricingRule
-from .court import Court, CourtBlackout
+from .court import Court, CourtBlackout, CalendarReservation, CalendarReservationType
 from .staff import StaffProfile, TrainerAvailability
 from .booking import Booking, BookingPlayer, WaitlistEntry
 from .equipment import EquipmentInventory, EquipmentRental
@@ -16,7 +16,7 @@ __all__ = [
     "Tenant", "SubscriptionPlan",
     "User", "TenantUserRole",
     "Club", "OperatingHours", "PricingRule",
-    "Court", "CourtBlackout",
+    "Court", "CourtBlackout", "CalendarReservation", "CalendarReservationType",
     "StaffProfile", "TrainerAvailability",
     "Booking", "BookingPlayer", "WaitlistEntry",
     "EquipmentInventory", "EquipmentRental",

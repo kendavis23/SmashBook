@@ -3,6 +3,7 @@ from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Numeric, Te
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
+from .booking import PaymentStatus
 
 
 class ItemType(str, enum.Enum):
@@ -29,6 +30,7 @@ class EquipmentInventory(Base, UUIDMixin, TimestampMixin):
     rental_price = Column(Numeric(10, 2), nullable=False)
     condition = Column(Enum(ItemCondition), nullable=False)
     notes = Column(Text, nullable=True)
+    reorder_threshold = Column(Integer, nullable=True)
 
     club = relationship("Club", back_populates="equipment")
     rentals = relationship("EquipmentRental", back_populates="equipment")
@@ -45,6 +47,10 @@ class EquipmentRental(Base, UUIDMixin, TimestampMixin):
     damage_reported = Column(Boolean, nullable=False, default=False)
     damage_notes = Column(Text, nullable=True)
     returned_at = Column(DateTime(timezone=True), nullable=True)
+    payment_status = Column(Enum(PaymentStatus), nullable=True)
+    payment_id = Column(UUID(as_uuid=True), ForeignKey("payments.id"), nullable=True)
+    damage_charge = Column(Numeric(10, 2), nullable=True)
 
     booking = relationship("Booking", back_populates="equipment_rentals")
     equipment = relationship("EquipmentInventory", back_populates="rentals")
+    payment = relationship("Payment", foreign_keys=[payment_id])

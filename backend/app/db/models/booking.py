@@ -80,6 +80,8 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     is_open_game = Column(Boolean, nullable=False, default=False)
     is_recurring = Column(Boolean, nullable=False, default=False)
     recurrence_rule = Column(Text, nullable=True)
+    recurrence_end_date = Column(Date, nullable=True)
+    parent_booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)
     video_upload_path = Column(String(500), nullable=True)  # GCS path
     discount_amount = Column(Numeric(10, 2), nullable=True)
     discount_source = Column(Enum(DiscountSource), nullable=True)

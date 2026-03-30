@@ -1,6 +1,185 @@
 [
   {
     "assignees": [],
+    "body": "From player and staff perspective, check availability for upcoming dates",
+    "closedAt": null,
+    "createdAt": "2026-03-30T15:54:22Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68mA",
+        "name": "Staff",
+        "description": "",
+        "color": "F9D0C4"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "Phase 1 / MVP Go-Live",
+      "description": "",
+      "dueOn": null
+    },
+    "number": 144,
+    "state": "OPEN",
+    "title": "Availability Service",
+    "updatedAt": "2026-03-30T15:54:22Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/144",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Update G5",
+    "closedAt": "2026-03-30T15:51:22Z",
+    "createdAt": "2026-03-30T15:51:16Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "Phase 1 / MVP Go-Live",
+      "description": "",
+      "dueOn": null
+    },
+    "number": 143,
+    "state": "CLOSED",
+    "title": "G5 database updates",
+    "updatedAt": "2026-03-30T15:51:22Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/143",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-03-30T15:50:47Z",
+    "createdAt": "2026-03-30T15:50:39Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "Phase 1 / MVP Go-Live",
+      "description": "",
+      "dueOn": null
+    },
+    "number": 142,
+    "state": "CLOSED",
+    "title": "G4 database updates",
+    "updatedAt": "2026-03-30T15:50:47Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/142",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "When a player books a court, calculate his price based on membership, discounts, etc. ",
+    "closedAt": null,
+    "createdAt": "2026-03-30T13:12:47Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "Phase 1 / MVP Go-Live",
+      "description": "",
+      "dueOn": null
+    },
+    "number": 141,
+    "state": "OPEN",
+    "title": "Calculate player pricing",
+    "updatedAt": "2026-03-30T13:12:47Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/141",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-03-29T11:01:23Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACcp2YHw",
+        "name": "Frontend",
+        "description": "",
+        "color": "3b1fe8"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "Phase 1 / MVP Go-Live",
+      "description": "",
+      "dueOn": null
+    },
+    "number": 140,
+    "state": "OPEN",
+    "title": "CI/CD Pipeline including Front End",
+    "updatedAt": "2026-03-29T11:01:23Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/140",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
     "body": "",
     "closedAt": null,
     "createdAt": "2026-03-28T15:02:59Z",
@@ -64,7 +243,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-30T12:37:29Z",
     "createdAt": "2026-03-25T12:47:37Z",
     "labels": [
       {
@@ -81,9 +260,9 @@
       "dueOn": null
     },
     "number": 137,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Move issues from Sprint 4 to Sprint 3 if possible",
-    "updatedAt": "2026-03-25T12:47:37Z",
+    "updatedAt": "2026-03-30T12:37:29Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/137",
     "sprint": {
       "duration": 14,
@@ -2833,9 +3012,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/46",
     "sprint": {
       "duration": 14,
-      "iterationId": "3a41d995",
-      "startDate": "2026-04-19",
-      "title": "Sprint 4"
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
     }
   },
   {
@@ -2871,8 +3050,8 @@
     },
     "number": 45,
     "state": "OPEN",
-    "title": "Staff: create recurring bookings for leagues / coaching sessions",
-    "updatedAt": "2026-03-24T23:03:33Z",
+    "title": "Staff: create recurring bookings for coaching sessions",
+    "updatedAt": "2026-03-30T12:36:29Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/45",
     "sprint": {
       "duration": 14,
@@ -2919,9 +3098,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/44",
     "sprint": {
       "duration": 14,
-      "iterationId": "3a41d995",
-      "startDate": "2026-04-19",
-      "title": "Sprint 4"
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
     }
   },
   {
@@ -2956,9 +3135,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/43",
     "sprint": {
       "duration": 14,
-      "iterationId": "3a41d995",
-      "startDate": "2026-04-19",
-      "title": "Sprint 4"
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
     }
   },
   {
@@ -4246,7 +4425,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-29T11:00:54Z",
     "createdAt": "2026-03-08T13:15:48Z",
     "labels": [
       {
@@ -4263,9 +4442,9 @@
       "dueOn": null
     },
     "number": 7,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "CI/CD pipeline live (dev > staging on Cloud Run)",
-    "updatedAt": "2026-03-28T14:48:21Z",
+    "updatedAt": "2026-03-29T11:00:54Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/7",
     "sprint": {
       "duration": 14,
