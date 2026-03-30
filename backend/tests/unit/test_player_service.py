@@ -8,9 +8,7 @@ and on the correct query path selected for each filter combination.
 import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from unittest.mock import AsyncMock, MagicMock, call, patch
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock
 
 from app.db.models.booking import BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
 from app.schemas.user import PlayerBookingItem

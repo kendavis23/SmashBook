@@ -2,7 +2,6 @@
 PlayerService — player profile and skill level management.
 """
 from datetime import datetime, timezone
-from typing import Optional
 import uuid
 
 from sqlalchemy import select
@@ -10,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus
-from app.db.models.court import Court
 from app.schemas.user import PlayerBookingItem
 
 
