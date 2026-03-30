@@ -31,20 +31,8 @@ class Court(Base, UUIDMixin):
     is_active = Column(Boolean, nullable=False, default=True)
 
     club = relationship("Club", back_populates="courts")
-    blackouts = relationship("CourtBlackout", back_populates="court")
     bookings = relationship("Booking", back_populates="court")
     calendar_reservations = relationship("CalendarReservation", back_populates="court")
-
-
-class CourtBlackout(Base, UUIDMixin):
-    __tablename__ = "court_blackouts"
-
-    court_id = Column(UUID(as_uuid=True), ForeignKey("courts.id"), nullable=False)
-    start_datetime = Column(DateTime(timezone=True), nullable=False)
-    end_datetime = Column(DateTime(timezone=True), nullable=False)
-    reason = Column(Text, nullable=True)
-
-    court = relationship("Court", back_populates="blackouts")
 
 
 class CalendarReservation(Base, UUIDMixin, TimestampMixin):

@@ -10,7 +10,7 @@ from app.api.v1.dependencies.auth import require_staff
 from app.api.v1.dependencies.tenant import get_tenant
 from app.db.models.booking import Booking, BookingStatus
 from app.db.models.club import Club, OperatingHours, PricingRule
-from app.db.models.court import Court, CourtBlackout
+from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.session import get_db, get_read_db
 from app.schemas.court import (
@@ -82,16 +82,17 @@ async def list_courts(
                 Booking.end_datetime > window_start,
             )
         )
-        blacked_out = await db.execute(
-            select(CourtBlackout.court_id)
-            .join(Court, CourtBlackout.court_id == Court.id)
+        maintenance = await db.execute(
+            select(CalendarReservation.court_id)
+            .join(Court, CalendarReservation.court_id == Court.id)
             .where(
                 Court.club_id == club_id,
-                CourtBlackout.start_datetime < window_end,
-                CourtBlackout.end_datetime > window_start,
+                CalendarReservation.reservation_type == CalendarReservationType.maintenance,
+                CalendarReservation.start_datetime < window_end,
+                CalendarReservation.end_datetime > window_start,
             )
         )
-        unavailable = {r[0] for r in booked.all()} | {r[0] for r in blacked_out.all()}
+        unavailable = {r[0] for r in booked.all()} | {r[0] for r in maintenance.all()}
         if unavailable:
             stmt = stmt.where(Court.id.notin_(unavailable))
 
@@ -156,14 +157,15 @@ async def get_court_availability(
     )
     bookings = bookings_result.scalars().all()
 
-    blackouts_result = await db.execute(
-        select(CourtBlackout).where(
-            CourtBlackout.court_id == court.id,
-            CourtBlackout.start_datetime < day_end,
-            CourtBlackout.end_datetime > day_start,
+    maintenance_result = await db.execute(
+        select(CalendarReservation).where(
+            CalendarReservation.court_id == court.id,
+            CalendarReservation.reservation_type == CalendarReservationType.maintenance,
+            CalendarReservation.start_datetime < day_end,
+            CalendarReservation.end_datetime > day_start,
         )
     )
-    blackouts = blackouts_result.scalars().all()
+    maintenance_blocks = maintenance_result.scalars().all()
 
     pricing_result = await db.execute(
         select(PricingRule).where(
@@ -188,7 +190,7 @@ async def get_court_availability(
             is_available = not any(
                 b.start_datetime < slot_end and b.end_datetime > slot_start for b in bookings
             ) and not any(
-                bl.start_datetime < slot_end and bl.end_datetime > slot_start for bl in blackouts
+                bl.start_datetime < slot_end and bl.end_datetime > slot_start for bl in maintenance_blocks
             )
 
         slot_time = slot_start.time()
@@ -285,13 +287,3 @@ async def update_court(
     return court
 
 
-@router.post("/{court_id}/blackouts")
-async def create_blackout(court_id: str, current_user=Depends(require_staff), db=Depends(get_db)):
-    """Staff: block a court for maintenance, events, or private hire."""
-    pass
-
-
-@router.delete("/{court_id}/blackouts/{blackout_id}")
-async def delete_blackout(court_id: str, blackout_id: str, current_user=Depends(require_staff), db=Depends(get_db)):
-    """Staff: remove a court blackout."""
-    pass

@@ -1,4 +1,4 @@
-_Last updated: 2026-03-30 17:00 UTC_
+_Last updated: 2026-03-30 19:30 UTC_
 
 # SmashBook Data Model
 
@@ -214,25 +214,12 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 | `lighting_surcharge` | NUMERIC(10,2) | Nullable |
 | `is_active` | BOOLEAN | Default `true` |
 
-**Relationships:** `club`, `blackouts`, `bookings`, `calendar_reservations`
-
----
-
-#### `court_blackouts`
-Blocks a court from being booked during a time window (maintenance, events, etc).
-
-| Column | Type | Notes |
-|---|---|---|
-| `id` | UUID | PK |
-| `court_id` | UUID | FK → `courts` |
-| `start_datetime` | TIMESTAMPTZ | |
-| `end_datetime` | TIMESTAMPTZ | |
-| `reason` | TEXT | Nullable |
+**Relationships:** `club`, `bookings`, `calendar_reservations`
 
 ---
 
 #### `calendar_reservations`
-Staff-created blocks that filter or restrict booking types on the calendar. Distinct from `court_blackouts` (which blocks all bookings on a court). Supports skill-level filters, training blocks, private hire, and recurring reservations.
+Staff-created blocks that filter or restrict booking types on the calendar. The `maintenance` type fully blocks a court (replacing the former `court_blackouts` table). Supports skill-level filters, training blocks, private hire, maintenance windows, and recurring reservations.
 
 | Column | Type | Notes |
 |---|---|---|
