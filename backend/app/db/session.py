@@ -13,8 +13,9 @@ settings = get_settings()
 # Primary (read/write) engine - Cloud SQL via Cloud SQL Auth Proxy
 engine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG, pool_size=10, max_overflow=20)
 
-# Read replica engine - routed to Cloud SQL read replica
-read_engine = create_async_engine(settings.DATABASE_READ_REPLICA_URL, echo=settings.DEBUG, pool_size=10, max_overflow=20)
+# Read replica engine - falls back to primary if replica URL is not set
+_read_replica_url = settings.DATABASE_READ_REPLICA_URL or settings.DATABASE_URL
+read_engine = create_async_engine(_read_replica_url, echo=settings.DEBUG, pool_size=10, max_overflow=20)
 
 AsyncSessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 AsyncReadSessionLocal = async_sessionmaker(read_engine, class_=AsyncSession, expire_on_commit=False)
