@@ -10,8 +10,9 @@ from datetime import timedelta
 from google.cloud import storage
 from app.core.config import get_settings
 
-settings = get_settings()
-gcs_client = storage.Client(project=settings.GCS_PROJECT_ID)
+def _get_client():
+    settings = get_settings()
+    return storage.Client(project=settings.GCS_PROJECT_ID)
 
 
 class StorageService:
@@ -25,6 +26,8 @@ class StorageService:
         URL expires in 15 minutes.
         After upload, caller should PATCH booking with video_upload_path.
         """
+        settings = get_settings()
+        gcs_client = _get_client()
         bucket = gcs_client.bucket(settings.GCS_BUCKET_VIDEOS)
         blob = bucket.blob(f"{tenant_id}/{booking_id}/{filename}")
         url = blob.generate_signed_url(
@@ -45,6 +48,7 @@ class StorageService:
         URL expires in 1 hour.
         gcs_path is stored in Payment.pdf_storage_path.
         """
+        gcs_client = _get_client()
         bucket_name, object_path = gcs_path.replace("gs://", "").split("/", 1)
         bucket = gcs_client.bucket(bucket_name)
         blob = bucket.blob(object_path)
@@ -61,6 +65,8 @@ class StorageService:
         Uploads a generated receipt PDF to the invoices bucket.
         Returns the GCS path to store in Payment.pdf_storage_path.
         """
+        settings = get_settings()
+        gcs_client = _get_client()
         bucket = gcs_client.bucket(settings.GCS_BUCKET_INVOICES)
         object_path = f"{tenant_id}/invoices/{invoice_id}.pdf"
         blob = bucket.blob(object_path)
@@ -75,6 +81,8 @@ class StorageService:
         Returns signed download URL valid for 1 hour.
         Auto-deleted by GCS lifecycle rule after 7 days.
         """
+        settings = get_settings()
+        gcs_client = _get_client()
         bucket = gcs_client.bucket(settings.GCS_BUCKET_EXPORTS)
         object_path = f"{club_id}/{report_type}/{filename}"
         blob = bucket.blob(object_path)
