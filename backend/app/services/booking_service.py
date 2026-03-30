@@ -40,7 +40,7 @@ from app.db.models.booking import (
 )
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.club import Club, OperatingHours, PricingRule
-from app.db.models.court import Court, CourtBlackout
+from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.user import TenantUserRole, User
 
 _STAFF_ROLES = {
@@ -158,14 +158,15 @@ class BookingService:
 
     async def _check_no_blackout(self, court_id: uuid.UUID, start: datetime, end: datetime) -> None:
         result = await self.db.execute(
-            select(CourtBlackout.id).where(
-                CourtBlackout.court_id == court_id,
-                CourtBlackout.start_datetime < end,
-                CourtBlackout.end_datetime > start,
+            select(CalendarReservation.id).where(
+                CalendarReservation.court_id == court_id,
+                CalendarReservation.reservation_type == CalendarReservationType.maintenance,
+                CalendarReservation.start_datetime < end,
+                CalendarReservation.end_datetime > start,
             )
         )
         if result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Court is blacked out during this time slot")
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Court is under maintenance during this time slot")
 
     async def _load_booking(self, booking_id: uuid.UUID) -> Booking:
         """Re-fetch booking with all relationships eagerly loaded."""

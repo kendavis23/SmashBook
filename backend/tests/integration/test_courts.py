@@ -294,10 +294,19 @@ async def _seed_booking(court_id, club_id, user_id, start_dt, end_dt, session_fa
     return b
 
 
-async def _seed_blackout(court_id, start_dt, end_dt, session_factory):
-    from app.db.models.court import CourtBlackout
+async def _seed_maintenance_block(club_id, court_id, start_dt, end_dt, user_id, session_factory):
+    from app.db.models.court import CalendarReservation, CalendarReservationType
     async with session_factory() as session:
-        bl = CourtBlackout(court_id=court_id, start_datetime=start_dt, end_datetime=end_dt)
+        bl = CalendarReservation(
+            club_id=club_id,
+            court_id=court_id,
+            reservation_type=CalendarReservationType.maintenance,
+            title="Maintenance",
+            start_datetime=start_dt,
+            end_datetime=end_dt,
+            is_recurring=False,
+            created_by=user_id,
+        )
         session.add(bl)
         await session.commit()
         await session.refresh(bl)
@@ -318,10 +327,10 @@ async def _cleanup_operating_hours(oh_ids, session_factory):
         await session.commit()
 
 
-async def _cleanup_blackouts(bl_ids, session_factory):
-    from app.db.models.court import CourtBlackout
+async def _cleanup_maintenance_blocks(bl_ids, session_factory):
+    from app.db.models.court import CalendarReservation
     async with session_factory() as session:
-        await session.execute(sql_delete(CourtBlackout).where(CourtBlackout.id.in_(bl_ids)))
+        await session.execute(sql_delete(CalendarReservation).where(CalendarReservation.id.in_(bl_ids)))
         await session.commit()
 
 
@@ -524,7 +533,7 @@ class TestCourtAvailability:
             await _cleanup_operating_hours([oh.id], test_session_factory)
 
     async def test_blackout_marks_slot_unavailable(
-        self, client, staff_headers, club, tenant, test_session_factory
+        self, client, staff_headers, staff, club, tenant, test_session_factory
     ):
         court_id = await _make_court(client, staff_headers, club)
         await _set_club_booking_window(club.id, test_session_factory)
@@ -532,7 +541,7 @@ class TestCourtAvailability:
                                           open_time="09:00", close_time="12:00")
         bl_start = datetime(2030, 1, 7, 10, 30, tzinfo=timezone.utc)
         bl_end = datetime(2030, 1, 7, 12, 0, tzinfo=timezone.utc)
-        blackout = await _seed_blackout(court_id, bl_start, bl_end, test_session_factory)
+        block = await _seed_maintenance_block(club.id, court_id, bl_start, bl_end, staff.id, test_session_factory)
         try:
             resp = await client.get(
                 f"/api/v1/courts/{court_id}/availability",
@@ -545,7 +554,7 @@ class TestCourtAvailability:
             assert slots[1]["start_time"] == "10:30"
             assert slots[1]["is_available"] is False
         finally:
-            await _cleanup_blackouts([blackout.id], test_session_factory)
+            await _cleanup_maintenance_blocks([block.id], test_session_factory)
             await _cleanup_operating_hours([oh.id], test_session_factory)
 
     async def test_includes_pricing_from_rule(

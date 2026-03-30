@@ -1,4 +1,4 @@
-_Last updated: 2026-03-24 16:00 UTC_
+_Last updated: 2026-03-30 19:30 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -104,6 +104,20 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 
 ---
 
+## Calendar Reservations — `/api/v1/calendar-reservations`
+
+Staff-only CRUD for calendar blocks: maintenance windows, skill filters, training blocks, private hire, and tournament holds. Maintenance blocks prevent bookings on the court; other types filter which booking types are permitted.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/calendar-reservations` | Create a reservation. Validates time window, skill_filter anchor, recurrence rule. court_id (optional) must belong to the club |
+| `GET` | `/api/v1/calendar-reservations` | List reservations for a club. Filters: `reservation_type`, `court_id`, `from_dt`, `to_dt`. Ordered by start_datetime |
+| `GET` | `/api/v1/calendar-reservations/{id}` | Get a single reservation |
+| `PATCH` | `/api/v1/calendar-reservations/{id}` | Update a reservation; re-validates time window, skill filter, and recurrence constraints |
+| `DELETE` | `/api/v1/calendar-reservations/{id}` | Delete a reservation (204) |
+
+---
+
 ## Not Yet Implemented (stubs)
 
 | File | Endpoints |
@@ -113,6 +127,5 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `staff.py` | Staff management — list, create, update, deactivate |
 | `trainers.py` | Trainer availability — get, set, clear |
 | `players.py` | `GET /me/bookings`, `GET /me/match-history`, `GET /{id}`, `GET /{id}/skill-history`, `PATCH /{id}/skill-level` |
-| `courts.py` | `POST /{id}/blackouts`, `DELETE /{id}/blackouts/{blackout_id}` |
 | `reports.py` | Utilisation, revenue, and booking reports |
 | `support.py` | Support tickets |
