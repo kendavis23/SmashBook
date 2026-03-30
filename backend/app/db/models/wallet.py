@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, ForeignKey, Numeric, Text, Enum
+from sqlalchemy import Column, String, ForeignKey, Numeric, Text, Boolean, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -18,6 +18,9 @@ class Wallet(Base, UUIDMixin, TimestampMixin):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, unique=True)
     balance = Column(Numeric(10, 2), nullable=False, default=0.00)
     currency = Column(String(3), nullable=False, default="GBP")
+    auto_topup_enabled = Column(Boolean, nullable=False, default=False)
+    auto_topup_threshold = Column(Numeric(10, 2), nullable=True)
+    auto_topup_amount = Column(Numeric(10, 2), nullable=True)
 
     user = relationship("User", back_populates="wallet")
     transactions = relationship("WalletTransaction", back_populates="wallet")

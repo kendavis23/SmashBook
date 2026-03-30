@@ -44,6 +44,14 @@ class WaitlistStatus(str, enum.Enum):
     expired = "expired"
 
 
+class DiscountSource(str, enum.Enum):
+    membership = "membership"
+    campaign = "campaign"
+    promo_code = "promo_code"
+    staff_manual = "staff_manual"
+    ai_gap_offer = "ai_gap_offer"
+
+
 class Booking(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "bookings"
     __table_args__ = (
@@ -73,6 +81,9 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     is_recurring = Column(Boolean, nullable=False, default=False)
     recurrence_rule = Column(Text, nullable=True)
     video_upload_path = Column(String(500), nullable=True)  # GCS path
+    discount_amount = Column(Numeric(10, 2), nullable=True)
+    discount_source = Column(Enum(DiscountSource), nullable=True)
+    membership_subscription_id = Column(UUID(as_uuid=True), ForeignKey("membership_subscriptions.id"), nullable=True)
 
     club = relationship("Club", back_populates="bookings")
     court = relationship("Court", back_populates="bookings")

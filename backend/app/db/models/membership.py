@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, ForeignKey, Numeric, Integer, Boolean, Text, Enum, DateTime
+from sqlalchemy import Column, String, ForeignKey, Numeric, Integer, Boolean, Text, Enum, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -26,6 +26,9 @@ class CreditType(str, enum.Enum):
 class MembershipPlan(Base, UUIDMixin, TimestampMixin):
     """Club-defined membership tier (e.g. Silver / Gold / Platinum)."""
     __tablename__ = "membership_plans"
+    __table_args__ = (
+        Index("ix_membership_plans_club_id", "club_id"),
+    )
 
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
     name = Column(String(100), nullable=False)
@@ -55,6 +58,10 @@ class MembershipPlan(Base, UUIDMixin, TimestampMixin):
 class MembershipSubscription(Base, UUIDMixin, TimestampMixin):
     """A player's active subscription to a MembershipPlan."""
     __tablename__ = "membership_subscriptions"
+    __table_args__ = (
+        Index("ix_membership_subscriptions_user_id", "user_id"),
+        Index("ix_membership_subscriptions_club_status", "club_id", "status"),
+    )
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     plan_id = Column(UUID(as_uuid=True), ForeignKey("membership_plans.id"), nullable=False)
@@ -82,6 +89,9 @@ class MembershipSubscription(Base, UUIDMixin, TimestampMixin):
 class MembershipCreditLog(Base, UUIDMixin):
     """Immutable audit log for booking-credit and guest-pass usage."""
     __tablename__ = "membership_credit_logs"
+    __table_args__ = (
+        Index("ix_membership_credit_logs_subscription_id", "subscription_id"),
+    )
 
     subscription_id = Column(UUID(as_uuid=True), ForeignKey("membership_subscriptions.id"), nullable=False)
     booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=True)

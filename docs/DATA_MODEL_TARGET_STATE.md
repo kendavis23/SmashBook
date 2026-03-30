@@ -1,4 +1,4 @@
-_Last updated: 2026-03-21 00:00 UTC_
+_Last updated: 2026-03-30 00:00 UTC_
 
 # SmashBook — Data Model Target State
 
@@ -79,12 +79,12 @@ Changes are grouped by the sprint that first needs them. Implement the group for
 | G1 | Sprint 1 | `users`: add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` |
 | G2 | Sprint 2 | `operating_hours`: add `valid_from`, `valid_until` for seasonal variations |
 | G3 | Sprint 3 | `bookings`: add `min_skill_level`, `max_skill_level`, `invite_confirmed`; `booking_players`: add `invite_status`; new table: `waitlist_entries` |
-| G4 | Sprint 4 | `payments`: add `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `dispute_status`, `club_id`; new table: `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount` |
-| G5 | Sprint 5 | `bookings`: add `parent_booking_id` (self-ref for recurring series); new table: `calendar_reservations`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`; `equipment_inventory`: add `reorder_threshold` |
-| G6 | Sprint 6 | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`, `discount_amount`, `discount_source`; `skill_level_history`: add `change_source`, `club_id` |
+| G4 | Sprint 4 | `payments`: add `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `dispute_status`, `club_id`; new table: `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id` |
+| G5 | Sprint 5 | `bookings`: add `parent_booking_id` (self-ref for recurring series), `recurrence_end_date`; new table: `calendar_reservations`; `clubs`: add `default_skill_range_above`, `default_skill_range_below`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`; `equipment_inventory`: add `reorder_threshold` |
+| G6 | Sprint 6 | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`; `skill_level_history`: add `change_source`, `club_id` |
 | G7 | Sprint 7 | New tables: `ai_inference_log`, `ai_feature_flags`; `subscription_plans`: add AI feature flag columns; `clubs`: add `latitude`, `longitude`, `timezone`, `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`, `weather_alerts_enabled` |
 | G8 | Sprint 8 | New tables: `court_utilisation_snapshots`, `gap_detection_events`, `notification_templates`, `notification_deliveries`, `chat_threads`, `chat_messages`; `bookings`: add `cancellation_risk_score`, `weather_alert_sent`, `campaign_id` |
-| G9 | Sprint 9 | New tables: `player_profiles` (with pgvector embedding), `player_engagement_scores`, `match_results`, `match_result_players`, `cancellation_predictions`; `bookings`: add `membership_subscription_id` |
+| G9 | Sprint 9 | New tables: `player_profiles` (with pgvector embedding), `player_engagement_scores`, `match_results`, `match_result_players`, `cancellation_predictions` |
 | G10 | Sprint 10 | New tables: `player_segments`, `player_segment_memberships`, `campaigns`, `campaign_messages`, `campaign_deliveries`, `ai_recommendations`, `equipment_maintenance_log`, `equipment_replacement_predictions`; membership v2 split: add `membership_plan_pricing`, `membership_perks` |
 | G11 | Sprint 11 | New tables: `training_recommendations`; `support_tickets`/`support_messages` AI fields; `chat_messages`: add `intent`, `ai_inference_id` |
 | G12 | Sprint 12 | New tables: `tournaments`, `tournament_registrations`, `tournament_matches`, `video_analyses`, `competitor_price_snapshots` |
@@ -228,6 +228,8 @@ No changes from current state.
 | `skill_level_min` | NUMERIC(3,1) | Default `1.0` |
 | `skill_level_max` | NUMERIC(3,1) | Default `7.0` |
 | `skill_range_allowed` | NUMERIC(3,1) | Default `1.5` |
+| `default_skill_range_above` | NUMERIC(3,1) | **NEW** Default `0.5` — default points above anchor for calendar reservations; overridable per reservation *(Migration group G5)* |
+| `default_skill_range_below` | NUMERIC(3,1) | **NEW** Default `1.0` — default points below anchor for calendar reservations; overridable per reservation *(Migration group G5)* |
 | `open_games_enabled` | BOOLEAN | Default `true` |
 | `min_players_to_confirm` | INTEGER | Default `4` |
 | `auto_cancel_hours_before` | INTEGER | Nullable |
@@ -320,7 +322,7 @@ No changes from current state.
 ## 5. Bookings
 
 ### `bookings`
-**Changes from current:** Add skill level filters for open games, invite confirmation tracking, recurring series self-reference, discount attribution, AI scores, and campaign linkage. *(Migration groups G3, G5, G6, G8, G9)*
+**Changes from current:** Add skill level filters for open games, invite confirmation tracking, recurring series self-reference, discount attribution, AI scores, and campaign linkage. *(Migration groups G3, G4, G5, G6, G8)*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -347,11 +349,12 @@ No changes from current state.
 | `is_open_game` | BOOLEAN | Default `false` |
 | `is_recurring` | BOOLEAN | Default `false` |
 | `recurrence_rule` | TEXT | iCal RRULE, nullable |
+| `recurrence_end_date` | DATE | Nullable — inclusive end date for the recurring series; null = indefinite |
 | `video_upload_path` | VARCHAR(500) | GCS path, nullable |
-| `discount_amount` | NUMERIC(10,2) | **NEW** Nullable |
-| `discount_source` | ENUM | **NEW** Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
+| `discount_amount` | NUMERIC(10,2) | **NEW** Nullable *(G4)* |
+| `discount_source` | ENUM | **NEW** Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` *(G4)* |
 | `promo_code_id` | UUID | **NEW** FK → `promo_codes`, nullable |
-| `membership_subscription_id` | UUID | **NEW** FK → `membership_subscriptions`, nullable |
+| `membership_subscription_id` | UUID | **NEW** FK → `membership_subscriptions`, nullable *(G4)* |
 | `campaign_id` | UUID | **NEW** FK → `campaigns`, nullable |
 | `cancellation_risk_score` | NUMERIC(4,3) | **NEW** Nullable — AI prediction 0–1, denormalised from `cancellation_predictions` |
 | `cancellation_risk_scored_at` | TIMESTAMPTZ | **NEW** Nullable |
@@ -975,11 +978,13 @@ Staff-created blocks that filter or restrict booking types on the calendar. Dist
 | `title` | VARCHAR(255) | |
 | `start_datetime` | TIMESTAMPTZ | |
 | `end_datetime` | TIMESTAMPTZ | |
-| `min_skill_level` | NUMERIC(3,1) | Nullable — only allow bookings at or above this level |
-| `max_skill_level` | NUMERIC(3,1) | Nullable |
+| `anchor_skill_level` | NUMERIC(3,1) | Nullable — target skill level for the session |
+| `skill_range_above` | NUMERIC(3,1) | Nullable — how many points above anchor are permitted; null = no upper bound |
+| `skill_range_below` | NUMERIC(3,1) | Nullable — how many points below anchor are permitted; null = no lower bound |
 | `allowed_booking_types` | TEXT[] | Nullable — null = all types permitted |
 | `is_recurring` | BOOLEAN | Default `false` |
 | `recurrence_rule` | TEXT | iCal RRULE, nullable |
+| `recurrence_end_date` | DATE | Nullable — inclusive end date for the recurring series; null = indefinite |
 | `created_by` | UUID | FK → `users` |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
@@ -1401,7 +1406,7 @@ All new enums must be created in Alembic migrations **before** the columns that 
 | `NotificationChannel` | `push`, `email`, `sms`, `in_app` | G1 |
 | `InviteStatus` | `pending`, `accepted`, `declined` | G3 |
 | `WaitlistStatus` | `waiting`, `offered`, `booked`, `expired` | G3 |
-| `DiscountSource` | `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` | G6 |
+| `DiscountSource` | `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` | G4 |
 | `DisputeStatus` | `open`, `under_review`, `won`, `lost` | G4 |
 | `PlatformFeeType` | `booking_fee`, `revenue_share`, `third_party_share` | G4 |
 | `PromoDiscountType` | `percentage`, `fixed_amount` | G6 |
