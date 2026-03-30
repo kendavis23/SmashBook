@@ -28,6 +28,8 @@ class Club(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     cancellation_refund_pct = Column(Integer, nullable=False, default=100)
     reminder_hours_before = Column(Integer, nullable=False, default=24)
     waitlist_enabled = Column(Boolean, nullable=False, default=True)
+    default_skill_range_above = Column(Numeric(3, 1), nullable=False, default=0.5)
+    default_skill_range_below = Column(Numeric(3, 1), nullable=False, default=1.0)
 
     tenant = relationship("Tenant", back_populates="clubs")
     operating_hours = relationship("OperatingHours", back_populates="club")
@@ -38,6 +40,7 @@ class Club(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     equipment = relationship("EquipmentInventory", back_populates="club")
     membership_plans = relationship("MembershipPlan", back_populates="club")
     membership_subscriptions = relationship("MembershipSubscription", back_populates="club")
+    calendar_reservations = relationship("CalendarReservation", back_populates="club")
 
 
 class OperatingHours(Base, UUIDMixin):

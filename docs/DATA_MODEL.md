@@ -1,4 +1,4 @@
-_Last updated: 2026-03-30 00:00 UTC_
+_Last updated: 2026-03-30 17:00 UTC_
 
 # SmashBook Data Model
 
@@ -153,10 +153,12 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 | `cancellation_refund_pct` | INTEGER | Default `100` (0–100) |
 | `reminder_hours_before` | INTEGER | Default `24` |
 | `waitlist_enabled` | BOOLEAN | Default `true` |
+| `default_skill_range_above` | NUMERIC(3,1) | Default `0.5` — default points above anchor for calendar reservations |
+| `default_skill_range_below` | NUMERIC(3,1) | Default `1.0` — default points below anchor for calendar reservations |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-**Relationships:** `tenant`, `operating_hours`, `pricing_rules`, `courts`, `staff_profiles`, `bookings`, `equipment`, `membership_plans`, `membership_subscriptions`
+**Relationships:** `tenant`, `operating_hours`, `pricing_rules`, `courts`, `staff_profiles`, `bookings`, `equipment`, `membership_plans`, `membership_subscriptions`, `calendar_reservations`
 
 ---
 
@@ -212,7 +214,7 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 | `lighting_surcharge` | NUMERIC(10,2) | Nullable |
 | `is_active` | BOOLEAN | Default `true` |
 
-**Relationships:** `club`, `blackouts`, `bookings`
+**Relationships:** `club`, `blackouts`, `bookings`, `calendar_reservations`
 
 ---
 
@@ -226,6 +228,33 @@ Blocks a court from being booked during a time window (maintenance, events, etc)
 | `start_datetime` | TIMESTAMPTZ | |
 | `end_datetime` | TIMESTAMPTZ | |
 | `reason` | TEXT | Nullable |
+
+---
+
+#### `calendar_reservations`
+Staff-created blocks that filter or restrict booking types on the calendar. Distinct from `court_blackouts` (which blocks all bookings on a court). Supports skill-level filters, training blocks, private hire, and recurring reservations.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `court_id` | UUID | FK → `courts`, nullable — null = applies to all courts |
+| `reservation_type` | ENUM | `skill_filter`, `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
+| `title` | VARCHAR(255) | |
+| `start_datetime` | TIMESTAMPTZ | |
+| `end_datetime` | TIMESTAMPTZ | |
+| `anchor_skill_level` | NUMERIC(3,1) | Nullable — target skill level for the session |
+| `skill_range_above` | NUMERIC(3,1) | Nullable — points above anchor permitted; null = no upper bound |
+| `skill_range_below` | NUMERIC(3,1) | Nullable — points below anchor permitted; null = no lower bound |
+| `allowed_booking_types` | TEXT[] | Nullable — null = all types permitted |
+| `is_recurring` | BOOLEAN | Default `false` |
+| `recurrence_rule` | TEXT | iCal RRULE, nullable |
+| `recurrence_end_date` | DATE | Nullable — inclusive end date for recurring series |
+| `created_by` | UUID | FK → `users` |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Relationships:** `club`, `court`
 
 ---
 
@@ -256,6 +285,8 @@ Blocks a court from being booked during a time window (maintenance, events, etc)
 | `is_open_game` | BOOLEAN | Default `false` |
 | `is_recurring` | BOOLEAN | Default `false` |
 | `recurrence_rule` | TEXT | iCal RRULE string, nullable |
+| `recurrence_end_date` | DATE | Nullable — inclusive end date for recurring series |
+| `parent_booking_id` | UUID | FK → `bookings` (self-ref), nullable — head of recurring series |
 | `video_upload_path` | VARCHAR(500) | GCS path, nullable |
 | `discount_amount` | NUMERIC(10,2) | Nullable |
 | `discount_source` | ENUM | Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
@@ -364,6 +395,7 @@ Tracks players waiting for a slot on a specific date/time.
 | `rental_price` | NUMERIC(10,2) | |
 | `condition` | ENUM | `good`, `fair`, `damaged`, `retired` |
 | `notes` | TEXT | Nullable |
+| `reorder_threshold` | INTEGER | Nullable — quantity below which AI triggers a purchase order |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -382,6 +414,9 @@ Tracks players waiting for a slot on a specific date/time.
 | `damage_reported` | BOOLEAN | Default `false` |
 | `damage_notes` | TEXT | Nullable |
 | `returned_at` | TIMESTAMPTZ | Nullable |
+| `payment_status` | ENUM | Nullable — `pending`, `paid`, `refunded` |
+| `payment_id` | UUID | FK → `payments`, nullable |
+| `damage_charge` | NUMERIC(10,2) | Nullable — recovery cost charged to player |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -583,6 +618,7 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 | `DisputeStatus` | `open`, `under_review`, `won`, `lost` |
 | `PlatformFeeType` | `booking_fee`, `revenue_share`, `third_party_share` |
 | `DiscountSource` | `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
+| `CalendarReservationType` | `skill_filter`, `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
 
 ---
 
