@@ -61,6 +61,15 @@ class TrainerRead(BaseModel):
     availability: list[TrainerAvailabilityRead]
 
 
+class BookingParticipant(BaseModel):
+    user_id: uuid.UUID
+    full_name: str
+    email: str
+    role: str
+    payment_status: str
+    invite_status: str
+
+
 class TrainerBookingItem(BaseModel):
     booking_id: uuid.UUID
     club_id: uuid.UUID
@@ -70,3 +79,4 @@ class TrainerBookingItem(BaseModel):
     status: BookingStatus
     start_datetime: datetime
     end_datetime: datetime
+    participants: list[BookingParticipant]
