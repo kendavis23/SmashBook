@@ -8,13 +8,14 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
-from app.db.models.booking import Booking, BookingType
+from app.db.models.booking import Booking, BookingPlayer, BookingType
 from app.db.models.club import Club
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.tenant import Tenant
 from app.db.models.user import TenantUserRole, User
 from app.db.session import get_db, get_read_db
 from app.schemas.trainer import (
+    BookingParticipant,
     TrainerAvailabilityCreate,
     TrainerAvailabilityRead,
     TrainerAvailabilityUpdate,
@@ -232,7 +233,10 @@ async def get_trainer_bookings(
             Booking.staff_profile_id == trainer_id,
             Booking.booking_type.in_([BookingType.lesson_individual, BookingType.lesson_group]),
         )
-        .options(selectinload(Booking.court))
+        .options(
+            selectinload(Booking.court),
+            selectinload(Booking.players).selectinload(BookingPlayer.user),
+        )
     )
 
     if upcoming_only:
@@ -253,6 +257,17 @@ async def get_trainer_bookings(
             status=b.status,
             start_datetime=b.start_datetime,
             end_datetime=b.end_datetime,
+            participants=[
+                BookingParticipant(
+                    user_id=p.user_id,
+                    full_name=p.user.full_name,
+                    email=p.user.email,
+                    role=p.role,
+                    payment_status=p.payment_status,
+                    invite_status=p.invite_status,
+                )
+                for p in b.players
+            ],
         )
         for b in bookings
     ]

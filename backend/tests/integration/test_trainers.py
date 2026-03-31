@@ -12,11 +12,22 @@ GET  /trainers/{id}/bookings                         — access control
 """
 
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import delete as sql_delete
+from sqlalchemy import delete as sql_delete, select
 
+from app.db.models.booking import (
+    Booking,
+    BookingPlayer,
+    BookingStatus,
+    BookingType,
+    InviteStatus,
+    PaymentStatus,
+    PlayerRole,
+)
+from app.db.models.court import Court
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.user import TenantUserRole
 
@@ -105,6 +116,72 @@ async def availability_window(trainer_profile, trainer_user, club, test_session_
 
     async with test_session_factory() as session:
         obj = await session.get(TrainerAvailability, window.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def court(club, test_session_factory):
+    async with test_session_factory() as session:
+        c = Court(club_id=club.id, name="Court T", surface_type="indoor", is_active=True)
+        session.add(c)
+        await session.commit()
+        await session.refresh(c)
+
+    yield c
+
+    async with test_session_factory() as session:
+        booking_ids = (
+            await session.execute(select(Booking.id).where(Booking.court_id == c.id))
+        ).scalars().all()
+        if booking_ids:
+            await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.booking_id.in_(booking_ids)))
+            await session.execute(sql_delete(Booking).where(Booking.id.in_(booking_ids)))
+        obj = await session.get(Court, c.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def lesson_booking_with_player(trainer_profile, trainer_user, court, club, test_session_factory):
+    """A lesson_individual booking assigned to the trainer with one enrolled player."""
+    start = datetime.now(tz=timezone.utc) + timedelta(days=1)
+    end = start + timedelta(hours=1)
+
+    async with test_session_factory() as session:
+        booking = Booking(
+            club_id=club.id,
+            court_id=court.id,
+            booking_type=BookingType.lesson_individual,
+            status=BookingStatus.confirmed,
+            start_datetime=start,
+            end_datetime=end,
+            created_by_user_id=trainer_user.id,
+            staff_profile_id=trainer_profile.id,
+            max_players=1,
+        )
+        session.add(booking)
+        await session.flush()
+
+        participant = BookingPlayer(
+            booking_id=booking.id,
+            user_id=trainer_user.id,
+            role=PlayerRole.organiser,
+            payment_status=PaymentStatus.pending,
+            amount_due=0,
+            invite_status=InviteStatus.accepted,
+        )
+        session.add(participant)
+        await session.commit()
+        await session.refresh(booking)
+
+    yield booking
+
+    async with test_session_factory() as session:
+        await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.booking_id == booking.id))
+        obj = await session.get(Booking, booking.id)
         if obj:
             await session.delete(obj)
         await session.commit()
@@ -426,3 +503,34 @@ class TestGetTrainerBookings:
             headers=player_headers,
         )
         assert resp.status_code == 403
+
+    async def test_booking_includes_participants(
+        self, client, trainer_headers, trainer_profile, lesson_booking_with_player, trainer_user
+    ):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/bookings",
+            headers=trainer_headers,
+        )
+        assert resp.status_code == 200
+        bookings = resp.json()
+        match = next((b for b in bookings if b["booking_id"] == str(lesson_booking_with_player.id)), None)
+        assert match is not None, "lesson booking not found in response"
+        assert len(match["participants"]) == 1
+        p = match["participants"][0]
+        assert p["user_id"] == str(trainer_user.id)
+        assert p["full_name"] == trainer_user.full_name
+        assert p["email"] == trainer_user.email
+        assert p["role"] == PlayerRole.organiser
+        assert p["payment_status"] == PaymentStatus.pending
+        assert p["invite_status"] == InviteStatus.accepted
+
+    async def test_booking_with_no_players_has_empty_participants(
+        self, client, trainer_headers, trainer_profile
+    ):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/bookings",
+            headers=trainer_headers,
+        )
+        assert resp.status_code == 200
+        for b in resp.json():
+            assert "participants" in b
