@@ -52,6 +52,7 @@ from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.membership import MembershipPlan
 from app.db.models.court import CalendarReservation, Court
+from app.db.models.staff import StaffProfile, TrainerAvailability
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import TenantUserRole, User
 from app.db.models.wallet import Wallet
@@ -194,6 +195,21 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
             await session.execute(
                 sql_delete(EquipmentInventory).where(EquipmentInventory.club_id.in_(club_ids))
             )
+            # Staff profiles → trainer availability (FK children must go first)
+            staff_ids = (
+                await session.execute(
+                    select(StaffProfile.id).where(StaffProfile.club_id.in_(club_ids))
+                )
+            ).scalars().all()
+            if staff_ids:
+                await session.execute(
+                    sql_delete(TrainerAvailability).where(
+                        TrainerAvailability.staff_profile_id.in_(staff_ids)
+                    )
+                )
+                await session.execute(
+                    sql_delete(StaffProfile).where(StaffProfile.club_id.in_(club_ids))
+                )
             await session.execute(
                 sql_delete(Club).where(Club.tenant_id == tenant_id)
             )
