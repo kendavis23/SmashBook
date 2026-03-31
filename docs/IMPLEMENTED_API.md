@@ -1,4 +1,4 @@
-_Last updated: 2026-03-30 20:00 UTC_
+_Last updated: 2026-03-31 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -120,6 +120,21 @@ Staff-only CRUD for calendar blocks: maintenance windows, skill filters, trainin
 
 ---
 
+## Trainers — `/api/v1/trainers`
+
+Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday 09:00–12:00"), bounded by an effective date range. A trainer may only manage their own availability; `ops_lead`, `admin`, and `owner` may manage any trainer's.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/trainers` | List all active trainers for a club with their availability embedded. Query param: `club_id` (required), `include_inactive` (default false). Requires staff+ |
+| `GET` | `/api/v1/trainers/{trainer_id}/availability` | Get all availability windows for a trainer. Requires staff+ |
+| `POST` | `/api/v1/trainers/{trainer_id}/availability` | Create an availability window. Trainer sets their own; ops_lead+ sets any. Validates `start_time < end_time` and `club_id` matches trainer's club |
+| `PUT` | `/api/v1/trainers/{trainer_id}/availability/{availability_id}` | Update an availability window (partial). Trainer edits their own; ops_lead+ edits any. Re-validates time window |
+| `DELETE` | `/api/v1/trainers/{trainer_id}/availability/{availability_id}` | Delete an availability window. Trainer deletes their own; ops_lead+ deletes any |
+| `GET` | `/api/v1/trainers/{trainer_id}/bookings` | Get lesson bookings (`lesson_individual`, `lesson_group`) for a trainer. Query param: `upcoming_only` (default true). Trainer sees their own; ops_lead+ sees any |
+
+---
+
 ## Not Yet Implemented (stubs)
 
 | File | Endpoints |
@@ -127,7 +142,6 @@ Staff-only CRUD for calendar blocks: maintenance windows, skill filters, trainin
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
 | `payments.py` | Payments, wallet top-up, refunds, invoices |
 | `staff.py` | Staff management — list, create, update, deactivate |
-| `trainers.py` | Trainer availability — get, set, clear |
 | `players.py` | `GET /{id}`, `GET /{id}/skill-history`, `PATCH /{id}/skill-level` |
 | `reports.py` | Utilisation, revenue, and booking reports |
 | `support.py` | Support tickets |
