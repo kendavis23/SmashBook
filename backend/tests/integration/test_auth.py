@@ -22,7 +22,6 @@ Why these are integration tests (not unit tests)
 import uuid
 from datetime import datetime, timezone, timedelta
 
-import pytest_asyncio
 from sqlalchemy import delete as sql_delete
 
 from app.core.security import create_access_token, create_refresh_token

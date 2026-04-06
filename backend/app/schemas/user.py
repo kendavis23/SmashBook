@@ -7,7 +7,6 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 from app.db.models.booking import BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
 from app.db.models.user import NotificationChannel, TenantUserRole
-from app.db.models.staff import StaffRole
 
 
 class UserRegister(BaseModel):

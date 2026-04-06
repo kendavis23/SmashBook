@@ -11,8 +11,6 @@ import uuid
 from typing import List, Optional
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from app.api.v1.endpoints.auth import _get_user_clubs
 from app.db.models.staff import StaffRole
 from app.db.models.user import User
