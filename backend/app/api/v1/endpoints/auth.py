@@ -76,7 +76,7 @@ async def _get_user_clubs(user: User, db: AsyncSession) -> list[ClubSummary]:
     staff_result = await db.execute(
         select(StaffProfile, Club)
         .join(Club, Club.id == StaffProfile.club_id)
-        .where(StaffProfile.user_id == user.id, StaffProfile.is_active == True)
+        .where(StaffProfile.user_id == user.id, StaffProfile.is_active)
     )
     for staff_profile, club in staff_result:
         clubs.append(ClubSummary(club_id=club.id, club_name=club.name, role=staff_profile.role.value))
