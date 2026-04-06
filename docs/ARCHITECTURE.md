@@ -1,4 +1,4 @@
-_Last updated: 2026-03-28 00:00 UTC_
+_Last updated: 2026-04-06 00:00 UTC_
 
 # SmashBook — Architecture
 
@@ -576,7 +576,28 @@ SmashBook uses a dual-token pattern:
 - **Access token** — short-lived (15 min), sent with every request
 - **Refresh token** — longer-lived (7 days), used to obtain new access tokens
 
-Both are JWTs signed with HS256. Tokens contain `user_id`, `club_id`, `role`, and `tenant_id` claims.
+Both are JWTs signed with HS256. Tokens contain `user_id` and `tenant_id` claims only — `club_id` and `role` are **not** embedded in the token.
+
+### Login response and club selection
+
+The login response (`POST /api/v1/auth/login`) returns tokens plus a `clubs` list so the client knows which clubs the user belongs to and at what role, without requiring a second API call:
+
+```json
+{
+  "access_token": "...",
+  "refresh_token": "...",
+  "token_type": "bearer",
+  "clubs": [
+    { "club_id": "uuid", "club_name": "Club A", "role": "trainer" },
+    { "club_id": "uuid", "club_name": "Club B", "role": "staff" }
+  ]
+}
+```
+
+- **Staff and trainers** — clubs are sourced from `staff_profiles` (active records only). The role is the per-club `StaffRole` value from that table.
+- **Players** — clubs are sourced from `membership_subscriptions` (active status only). Role is always `"player"`.
+
+The client stores `club_id` and `role` locally after login and sends `club_id` on every subsequent request. Because `club_id` is not in the JWT, a user with access to multiple clubs can switch clubs without re-authenticating — the server validates club membership on each request via the service layer.
 
 ### Roles
 
