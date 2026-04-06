@@ -11,10 +11,14 @@ from app.core.security import (
     get_password_hash,
     decode_token,
 )
+from app.db.models.club import Club
+from app.db.models.membership import MembershipSubscription, MembershipStatus
+from app.db.models.staff import StaffProfile
 from app.db.models.tenant import Tenant
 from app.db.models.user import User, TenantUserRole
 from app.db.models.wallet import Wallet
 from app.schemas.user import (
+    ClubSummary,
     UserRegister,
     UserLogin,
     TokenResponse,
@@ -66,6 +70,32 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
     )
 
 
+async def _get_user_clubs(user: User, db: AsyncSession) -> list[ClubSummary]:
+    clubs = []
+
+    staff_result = await db.execute(
+        select(StaffProfile, Club)
+        .join(Club, Club.id == StaffProfile.club_id)
+        .where(StaffProfile.user_id == user.id, StaffProfile.is_active == True)
+    )
+    for staff_profile, club in staff_result:
+        clubs.append(ClubSummary(club_id=club.id, club_name=club.name, role=staff_profile.role.value))
+
+    if not clubs:
+        player_result = await db.execute(
+            select(MembershipSubscription, Club)
+            .join(Club, Club.id == MembershipSubscription.club_id)
+            .where(
+                MembershipSubscription.user_id == user.id,
+                MembershipSubscription.status == MembershipStatus.active,
+            )
+        )
+        for _, club in player_result:
+            clubs.append(ClubSummary(club_id=club.id, club_name=club.name, role="player"))
+
+    return clubs
+
+
 @router.post("/login", response_model=TokenResponse)
 async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     """Login and receive access + refresh tokens."""
@@ -81,10 +111,12 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
 
+    clubs = await _get_user_clubs(user, db)
     token_data = {"sub": str(user.id), "tid": str(tenant.id)}
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
+        clubs=clubs,
     )
 
 
