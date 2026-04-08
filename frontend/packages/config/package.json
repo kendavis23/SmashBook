@@ -1,0 +1,17 @@
+{
+    "name": "@repo/config",
+    "version": "0.0.0",
+    "private": true,
+    "main": "./index.ts",
+    "types": "./index.ts",
+    "exports": {
+        ".": "./index.ts"
+    },
+    "dependencies": {
+        "zod": "3.24.1"
+    },
+    "devDependencies": {
+        "@repo/tsconfig": "workspace:*",
+        "typescript": "5.6.3"
+    }
+}

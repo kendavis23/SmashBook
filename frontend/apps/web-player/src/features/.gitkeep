@@ -1,0 +1,8 @@
+// Feature-specific stub directories.
+// Each feature follows the mandatory structure:
+//   feature-name/
+//     components/   — UI only
+//     hooks/        — wraps domain hooks
+//     types.ts      — feature-local types
+//     index.ts      — exports for app router/layout
+export {};

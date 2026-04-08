@@ -1,0 +1,22 @@
+{
+    "name": "@repo/api-client",
+    "version": "0.0.0",
+    "private": true,
+    "exports": {
+        "./modules/staff": "./modules/staff/index.ts",
+        "./modules/staff/*": "./modules/staff/*.ts",
+        "./modules/share/*": "./modules/share/*.ts",
+        "./modules/player": "./modules/player/index.ts",
+        "./modules/player/*": "./modules/player/*.ts",
+        "./core/*": "./core/*.ts"
+    },
+    "dependencies": {
+        "@tanstack/react-query": "5.62.9",
+        "@repo/auth": "workspace:*",
+        "@repo/config": "workspace:*"
+    },
+    "devDependencies": {
+        "@repo/tsconfig": "workspace:*",
+        "typescript": "5.6.3"
+    }
+}

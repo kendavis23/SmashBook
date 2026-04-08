@@ -1,0 +1,22 @@
+{
+    "name": "@repo/staff-domain",
+    "version": "0.0.0",
+    "private": true,
+    "exports": {
+        "./hooks": "./hooks/index.ts",
+        "./models": "./models/index.ts"
+    },
+    "dependencies": {
+        "@tanstack/react-query": "5.62.9",
+        "zustand": "4.5.5",
+        "@repo/api-client": "workspace:*"
+    },
+    "peerDependencies": {
+        "react": "18.3.1"
+    },
+    "devDependencies": {
+        "@repo/tsconfig": "workspace:*",
+        "@types/react": "^18.3.1",
+        "typescript": "5.6.3"
+    }
+}

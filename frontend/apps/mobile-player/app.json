@@ -1,0 +1,25 @@
+{
+    "expo": {
+        "name": "SmashBook",
+        "slug": "smashbook-mobile",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "scheme": "smashbook",
+        "userInterfaceStyle": "automatic",
+        "platforms": ["ios", "android"],
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "app.smashbook.mobile"
+        },
+        "android": {
+            "adaptiveIcon": {
+                "backgroundColor": "#ffffff"
+            },
+            "package": "app.smashbook.mobile"
+        },
+        "plugins": ["expo-router"],
+        "experiments": {
+            "typedRoutes": true
+        }
+    }
+}
