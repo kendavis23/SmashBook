@@ -3,7 +3,7 @@ name: Deploy web-staff
 on:
   push:
     branches:
-      - main
+      - frontend
     paths:
       - frontend/apps/web-staff/**
       - frontend/packages/staff-domain/**
