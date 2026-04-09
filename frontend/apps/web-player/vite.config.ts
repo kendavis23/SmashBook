@@ -5,6 +5,10 @@ import path from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
     plugins: [react()],
+    define: {
+        "import.meta.env.VITE_API_BASE_URL": JSON.stringify("http://localhost:8080"),
+        "import.meta.env.VITE_APP_ENV": JSON.stringify("development"),
+    },
     resolve: {
         alias: {
             "@": path.resolve(__dirname, "./src"),
@@ -17,9 +21,5 @@ export default defineConfig({
         environment: "jsdom",
         setupFiles: ["./src/test-setup.ts"],
         globals: true,
-        env: {
-            VITE_API_BASE_URL: "http://localhost:8080",
-            VITE_APP_ENV: "development",
-        },
     },
 });
