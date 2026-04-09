@@ -13,7 +13,16 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export type UserRole = "admin" | "owner" | "staff" | "employee" | "front_desk" | "trainer" | "ops_lead" | "viewer" | "player";
+export type UserRole =
+    | "admin"
+    | "owner"
+    | "staff"
+    | "employee"
+    | "front_desk"
+    | "trainer"
+    | "ops_lead"
+    | "viewer"
+    | "player";
 
 export interface RouteConfig {
     key: string;
@@ -182,7 +191,6 @@ export const ROUTES: RouteConfig[] = [
         breadcrumb: ["Support", "Equipment"],
         group: "Support",
     },
-
 ];
 
 /** Flattened list of all navigable routes that have a path, including children. */

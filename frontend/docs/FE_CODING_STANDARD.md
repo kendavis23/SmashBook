@@ -20,14 +20,13 @@ This document is the authoritative coding standard for the SmashBook frontend mo
 - [10. Styling Rules](#10-styling-rules)
 - [11. Auth Rules](#11-auth-rules)
 - [12. Environment & Config Rules](#12-environment--config-rules)
-- [13. i18n Rules](#13-i18n-rules)
-- [14. Testing Rules](#14-testing-rules)
-- [15. Error Handling](#15-error-handling)
-- [16. Naming Conventions](#16-naming-conventions)
-- [17. Code Quality Standards](#17-code-quality-standards)
-- [18. Anti-Patterns](#18-anti-patterns)
-- [19. PR Checklist](#19-pr-checklist)
-- [20. Decision Guide](#20-decision-guide)
+- [13. Testing Rules](#13-testing-rules)
+- [14. Error Handling](#14-error-handling)
+- [15. Naming Conventions](#15-naming-conventions)
+- [16. Code Quality Standards](#16-code-quality-standards)
+- [17. Anti-Patterns](#17-anti-patterns)
+- [18. PR Checklist](#18-pr-checklist)
+- [19. Decision Guide](#19-decision-guide)
 
 ---
 
@@ -358,7 +357,7 @@ it('calls setBookings with filtered array', ...)
 
 ---
 
-## 15. Error Handling
+## 14. Error Handling
 
 All API error handling is centralised in `packages/api-client/fetcher.ts`. Features and domain hooks **never** inspect raw HTTP status codes — they receive a typed `ApiError` and react to its `code` field.
 
@@ -489,7 +488,7 @@ export const useCreateBooking = () =>
 
 ---
 
-## 16. Naming Conventions
+## 15. Naming Conventions
 
 | Pattern               | Convention          | Example                           |
 | --------------------- | ------------------- | --------------------------------- |
@@ -505,7 +504,7 @@ export const useCreateBooking = () =>
 
 ---
 
-## 17. Code Quality Standards
+## 16. Code Quality Standards
 
 | Rule                               | Limit     |
 | ---------------------------------- | --------- |
@@ -521,7 +520,7 @@ export const useCreateBooking = () =>
 
 ---
 
-## 18. Anti-Patterns
+## 17. Anti-Patterns
 
 | Anti-pattern                           | Why it's prohibited                      |
 | -------------------------------------- | ---------------------------------------- |
@@ -535,7 +534,7 @@ export const useCreateBooking = () =>
 
 ---
 
-## 19. PR Checklist
+## 18. PR Checklist
 
 Every PR must satisfy all of the following before review:
 
@@ -558,7 +557,7 @@ Every PR must satisfy all of the following before review:
 
 ---
 
-## 20. Decision Guide
+## 19. Decision Guide
 
 When you don't know where code belongs, answer these questions in order:
 

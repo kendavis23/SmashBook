@@ -1,4 +1,5 @@
-export type UUID = string;
+import type { UUID } from "../common";
+export type { UUID };
 
 export interface ClubCreate {
     name: string;

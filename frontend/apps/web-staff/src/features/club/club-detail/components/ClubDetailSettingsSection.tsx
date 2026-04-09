@@ -1,4 +1,4 @@
-import type { ClubSettingsInput } from "../types";
+import type { ClubSettingsInput } from "../../types";
 import type { JSX } from "react";
 
 import { FormField, Toggle } from "@repo/ui";

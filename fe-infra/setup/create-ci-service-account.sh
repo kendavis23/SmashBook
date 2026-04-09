@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-PROJECT_ID="${1:?Usage: bash gcp-setup.sh <gcp-project-id>}"
+PROJECT_ID="${1:?Usage: bash create-ci-service-account.sh <gcp-project-id>}"
 SERVICE_ACCOUNT_NAME="gh-actions-fe-deployer"
 SA_EMAIL="${SERVICE_ACCOUNT_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 

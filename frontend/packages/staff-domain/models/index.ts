@@ -10,4 +10,16 @@ export type {
     StripeConnectInput,
     StripeConnectResult,
 } from "./club.model";
+export type {
+    SurfaceType,
+    CalendarReservationType,
+    Court,
+    CourtInput,
+    CourtUpdateInput,
+    TimeSlot,
+    CourtAvailability,
+    CalendarReservationInput,
+    CalendarReservationUpdateInput,
+    CalendarReservation,
+} from "./court.model";
 export type { UpdateProfileInput } from "./profile.model";

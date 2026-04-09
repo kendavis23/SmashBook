@@ -39,7 +39,7 @@ interface NavbarProps {
 
 export default function Navbar({
     mobileOpen = false,
-    onOpenMobile = () => { },
+    onOpenMobile = () => {},
 }: NavbarProps): JSX.Element | null {
     const location = useLocation();
     const currentRoute = getRouteByPath(location.pathname);
@@ -240,10 +240,11 @@ export default function Navbar({
                                                 onClick={() =>
                                                     route.path && handleSearchSelect(route.path)
                                                 }
-                                                className={`flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-[13px] transition-colors ${isActive
-                                                    ? "bg-accent text-foreground"
-                                                    : "text-foreground/60 hover:bg-muted/60 hover:text-foreground"
-                                                    }`}
+                                                className={`flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-[13px] transition-colors ${
+                                                    isActive
+                                                        ? "bg-accent text-foreground"
+                                                        : "text-foreground/60 hover:bg-muted/60 hover:text-foreground"
+                                                }`}
                                             >
                                                 <span className="font-medium">{route.label}</span>
                                                 <span className="text-[11px] text-foreground/35">
@@ -278,7 +279,9 @@ export default function Navbar({
                                         className="h-full w-full object-cover"
                                     />
                                 ) : (
-                                    <span className="text-[10px] font-bold text-white">{initials}</span>
+                                    <span className="text-[10px] font-bold text-white">
+                                        {initials}
+                                    </span>
                                 )}
                             </div>
                         </button>

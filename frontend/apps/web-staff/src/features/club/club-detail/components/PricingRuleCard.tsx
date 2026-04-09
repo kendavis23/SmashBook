@@ -1,4 +1,4 @@
-import type { PricingRule } from "../types";
+import type { PricingRule } from "../../types";
 import { Pencil, Tag, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 import type { JSX } from "react";
 import { DAY_NAMES, formatPrice } from "./pricingRulesConstants";
@@ -22,7 +22,6 @@ export function RuleCard({
                     : "border-border/50 bg-muted/30 text-muted-foreground"
             }`}
         >
-            {/* Header row */}
             <div className="flex items-center justify-between gap-2">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                     <h3 className="truncate text-sm font-semibold text-foreground">{rule.label}</h3>
@@ -51,7 +50,6 @@ export function RuleCard({
                 </div>
             </div>
 
-            {/* Time + price row */}
             <div className="mt-2 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm">
                 <p className="space-x-1.5">
                     <span className="text-xs text-muted-foreground">Time</span>
@@ -67,22 +65,21 @@ export function RuleCard({
                 </p>
             </div>
 
-            {/* Tags row */}
             <div className="mt-2 flex flex-wrap gap-1.5">
                 {rule.surge_trigger_pct ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-warning/15 px-2.5 py-0.5 text-xs font-medium text-warning">
                         <TrendingUp size={10} />
                         Surge ≥{rule.surge_trigger_pct}% (+{rule.surge_max_pct}%)
                     </span>
                 ) : null}
                 {rule.low_demand_trigger_pct ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-info/15 px-2.5 py-0.5 text-xs font-medium text-info">
                         <TrendingDown size={10} />
                         Low ≤{rule.low_demand_trigger_pct}% (-{rule.low_demand_min_pct}%)
                     </span>
                 ) : null}
                 {rule.incentive_price ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-medium text-violet-700">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
                         <Tag size={10} />
                         {formatPrice(rule.incentive_price, currency)}
                         {rule.incentive_label ? ` · ${rule.incentive_label}` : ""}
@@ -91,7 +88,7 @@ export function RuleCard({
                 {!rule.surge_trigger_pct &&
                 !rule.low_demand_trigger_pct &&
                 !rule.incentive_price ? (
-                    <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-500">
+                    <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                         Base price only
                     </span>
                 ) : null}

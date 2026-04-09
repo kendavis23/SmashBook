@@ -1,6 +1,4 @@
-import { useState } from "react";
-import { useGetOperatingHours, useGetPricingRules } from "../hooks";
-import type { Club, OperatingHours, PricingRule } from "../types";
+import type { Club, OperatingHours, PricingRule } from "../../types";
 import type { JSX } from "react";
 
 const RULES_PER_PAGE = 7;
@@ -16,7 +14,15 @@ const DAY_NAMES_FULL = [
     "Sunday",
 ];
 
-type Props = { club: Club; clubId: string };
+type Props = {
+    club: Club;
+    hours: OperatingHours[];
+    rules: PricingRule[];
+    hoursLoading: boolean;
+    rulesLoading: boolean;
+    rulesPage: number;
+    onRulesPageChange: (page: number) => void;
+};
 
 function InfoRow({
     label,
@@ -41,18 +47,20 @@ function InfoRow({
     );
 }
 
-export default function ClubDetailViewSection({ club, clubId }: Props): JSX.Element {
-    const [rulesPage, setRulesPage] = useState(0);
-    const { data: hoursData = [], isLoading: hoursLoading } = useGetOperatingHours(clubId);
-    const { data: rulesData = [], isLoading: rulesLoading } = useGetPricingRules(clubId);
-    const hours = hoursData as OperatingHours[];
-    const rules = rulesData as PricingRule[];
+export default function ClubDetailView({
+    club,
+    hours,
+    rules,
+    hoursLoading,
+    rulesLoading,
+    rulesPage,
+    onRulesPageChange,
+}: Props): JSX.Element {
     const totalPages = Math.ceil(rules.length / RULES_PER_PAGE);
     const pagedRules = rules.slice(rulesPage * RULES_PER_PAGE, (rulesPage + 1) * RULES_PER_PAGE);
 
     return (
         <div className="space-y-5">
-            {/* Booking Rules */}
             <section>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Booking Rules
@@ -69,7 +77,6 @@ export default function ClubDetailViewSection({ club, clubId }: Props): JSX.Elem
                 </div>
             </section>
 
-            {/* Player Matching */}
             <section>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Player Matching
@@ -81,7 +88,6 @@ export default function ClubDetailViewSection({ club, clubId }: Props): JSX.Elem
                 </div>
             </section>
 
-            {/* Cancellations */}
             <section>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Cancellations & Reminders
@@ -94,7 +100,6 @@ export default function ClubDetailViewSection({ club, clubId }: Props): JSX.Elem
                 </div>
             </section>
 
-            {/* Features */}
             <section>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Features
@@ -105,7 +110,6 @@ export default function ClubDetailViewSection({ club, clubId }: Props): JSX.Elem
                 </div>
             </section>
 
-            {/* Operating Hours */}
             <section>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Operating Hours
@@ -144,7 +148,6 @@ export default function ClubDetailViewSection({ club, clubId }: Props): JSX.Elem
                 )}
             </section>
 
-            {/* Pricing Rules */}
             <section>
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                     Pricing Rules
@@ -217,14 +220,14 @@ export default function ClubDetailViewSection({ club, clubId }: Props): JSX.Elem
                                 </span>
                                 <div className="flex gap-1">
                                     <button
-                                        onClick={() => setRulesPage((p) => p - 1)}
+                                        onClick={() => onRulesPageChange(rulesPage - 1)}
                                         disabled={rulesPage === 0}
                                         className="rounded border border-border px-2 py-1 disabled:opacity-40 hover:bg-muted/50"
                                     >
                                         Prev
                                     </button>
                                     <button
-                                        onClick={() => setRulesPage((p) => p + 1)}
+                                        onClick={() => onRulesPageChange(rulesPage + 1)}
                                         disabled={rulesPage === totalPages - 1}
                                         className="rounded border border-border px-2 py-1 disabled:opacity-40 hover:bg-muted/50"
                                     >

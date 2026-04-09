@@ -2,15 +2,7 @@ import type { NotificationChannel, UserResponse } from "@repo/auth";
 import { useAuthStore } from "@repo/auth";
 import { useUpdateProfile } from "@repo/player-domain";
 import { AlertToast } from "@repo/ui";
-import {
-    Bell,
-    Loader2,
-    Mail,
-    MessageSquare,
-    Smartphone,
-    Upload,
-    X,
-} from "lucide-react";
+import { Bell, Loader2, Mail, MessageSquare, Smartphone, Upload, X } from "lucide-react";
 import type { ChangeEvent, FormEvent, JSX } from "react";
 import { useState } from "react";
 import { createPortal } from "react-dom";

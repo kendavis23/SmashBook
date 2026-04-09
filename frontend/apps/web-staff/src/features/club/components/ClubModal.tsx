@@ -45,9 +45,19 @@ export default function ClubModal({ onClose, onSuccess, initialData }: Props): J
         };
 
         if (isEdit) {
-            updateClub.mutate(payload, { onSuccess: () => { onClose(); onSuccess?.("Club updated successfully."); } });
+            updateClub.mutate(payload, {
+                onSuccess: () => {
+                    onClose();
+                    onSuccess?.("Club updated successfully.");
+                },
+            });
         } else {
-            createClub.mutate(payload, { onSuccess: () => { onClose(); onSuccess?.("Club created successfully."); } });
+            createClub.mutate(payload, {
+                onSuccess: () => {
+                    onClose();
+                    onSuccess?.("Club created successfully.");
+                },
+            });
         }
     };
 
@@ -73,7 +83,13 @@ export default function ClubModal({ onClose, onSuccess, initialData }: Props): J
                 {/* Body */}
                 <form onSubmit={handleSubmit} noValidate>
                     <div className="space-y-4 px-6 py-5">
-                        {apiError ? <AlertToast title={apiError} variant="error" onClose={() => active.reset()} /> : null}
+                        {apiError ? (
+                            <AlertToast
+                                title={apiError}
+                                variant="error"
+                                onClose={() => active.reset()}
+                            />
+                        ) : null}
 
                         {/* Name */}
                         <div>

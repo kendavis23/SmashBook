@@ -224,8 +224,6 @@ describe("Sidebar — all routes visible to owner", () => {
         render(<Sidebar />);
         expect(screen.getByText("Reports")).toBeInTheDocument();
     });
-
-
 });
 
 describe("Sidebar — logout", () => {

@@ -78,18 +78,12 @@ export function AlertToast({
         >
             {/* Content */}
             <div className="flex items-start gap-3 px-4 py-3">
-                <span className="mt-0.5 opacity-90">
-                    {variantIcons[variant]}
-                </span>
+                <span className="mt-0.5 opacity-90">{variantIcons[variant]}</span>
 
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold leading-tight">
-                        {title}
-                    </p>
+                    <p className="text-sm font-semibold leading-tight">{title}</p>
                     {description && (
-                        <p className="text-xs mt-1 opacity-80 leading-snug">
-                            {description}
-                        </p>
+                        <p className="text-xs mt-1 opacity-80 leading-snug">{description}</p>
                     )}
                 </div>
 

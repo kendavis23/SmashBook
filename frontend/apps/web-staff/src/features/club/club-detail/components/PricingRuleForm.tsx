@@ -1,4 +1,4 @@
-import type { PricingRule } from "../types";
+import type { PricingRule } from "../../types";
 import { type FormEvent, type JSX } from "react";
 import { FormField } from "@repo/ui";
 import { DAY_NAMES, fieldCls, labelCls, type FormState } from "./pricingRulesConstants";

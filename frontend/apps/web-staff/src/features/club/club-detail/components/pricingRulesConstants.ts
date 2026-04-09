@@ -1,4 +1,4 @@
-import type { PricingRule } from "../types";
+import type { PricingRule } from "../../types";
 
 export const DAY_NAMES = [
     "Monday",

@@ -1,39 +1,18 @@
-import { useGetOperatingHours, useSetOperatingHours } from "../hooks";
-import type { OperatingHours } from "../types";
+import type { OperatingHours } from "../../types";
 import { AlertToast } from "@repo/ui";
 import { type JSX, useEffect, useState } from "react";
+import type { DayRow } from "./ClubDetailHoursSection";
 
 const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-const DEFAULT_OPEN = "08:00";
-const DEFAULT_CLOSE = "22:00";
 
-type DayRow = {
-    day_of_week: number;
-    isOpen: boolean;
-    open_time: string;
-    close_time: string;
-};
-
-function buildDefaultRows(existing: OperatingHours[]): DayRow[] {
-    return DAY_NAMES.map((_, day) => {
-        const found = existing.find((e) => e.day_of_week === day);
-        return {
-            day_of_week: day,
-            isOpen: !!found,
-            open_time: found?.open_time ?? DEFAULT_OPEN,
-            close_time: found?.close_time ?? DEFAULT_CLOSE,
-        };
-    });
-}
-
-interface HoursEditorProps {
+interface Props {
     initialRows: DayRow[];
     isPending: boolean;
     isSuccess: boolean;
     onSave: (payload: OperatingHours[], onSuccess: () => void) => void;
 }
 
-function HoursEditor({ initialRows, isPending, isSuccess, onSave }: HoursEditorProps): JSX.Element {
+export default function HoursEditor({ initialRows, isPending, isSuccess, onSave }: Props): JSX.Element {
     const [rows, setRows] = useState<DayRow[]>(() => initialRows);
     const [dirty, setDirty] = useState(false);
     const [dismissed, setDismissed] = useState(false);
@@ -63,10 +42,13 @@ function HoursEditor({ initialRows, isPending, isSuccess, onSave }: HoursEditorP
 
     return (
         <>
-            {/* ── Top action bar ── */}
             <div className="flex items-center justify-between pb-2">
                 {isSuccess && !dirty && !dismissed ? (
-                    <AlertToast title="Operating hours saved." variant="success" onClose={() => setDismissed(true)} />
+                    <AlertToast
+                        title="Operating hours saved."
+                        variant="success"
+                        onClose={() => setDismissed(true)}
+                    />
                 ) : (
                     <span />
                 )}
@@ -75,7 +57,6 @@ function HoursEditor({ initialRows, isPending, isSuccess, onSave }: HoursEditorP
                 </button>
             </div>
 
-            {/* Card grid — 1 col on mobile, 2 on sm, 3 on lg */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {rows.map((row) => (
                     <div
@@ -86,7 +67,6 @@ function HoursEditor({ initialRows, isPending, isSuccess, onSave }: HoursEditorP
                                 : "border-border/40 bg-muted/20 opacity-60"
                         }`}
                     >
-                        {/* ── Card header ── */}
                         <div className="flex items-center justify-between border-b border-border/60 px-4 py-3">
                             <span
                                 className={`text-sm font-semibold ${
@@ -125,7 +105,6 @@ function HoursEditor({ initialRows, isPending, isSuccess, onSave }: HoursEditorP
                             </div>
                         </div>
 
-                        {/* ── Time fields ── */}
                         <div className="space-y-3 px-4 py-4">
                             <div className="flex items-center gap-3">
                                 <span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">
@@ -161,44 +140,5 @@ function HoursEditor({ initialRows, isPending, isSuccess, onSave }: HoursEditorP
                 ))}
             </div>
         </>
-    );
-}
-
-export default function ClubDetailHoursSection({ clubId }: { clubId: string }): JSX.Element {
-    const { data: hoursData = [], isLoading, error } = useGetOperatingHours(clubId);
-    const {
-        mutate: saveHours,
-        isPending,
-        isSuccess,
-        error: saveError,
-    } = useSetOperatingHours(clubId);
-    const [errorDismissed, setErrorDismissed] = useState(false);
-
-    useEffect(() => { setErrorDismissed(false); }, [error, saveError]);
-
-    const operatingHours = hoursData as OperatingHours[];
-    const initialRows = buildDefaultRows(operatingHours);
-    const editorKey = JSON.stringify(operatingHours);
-
-    return (
-        <div className="space-y-4">
-            {error && !errorDismissed ? <AlertToast title={(error as Error).message} variant="error" onClose={() => setErrorDismissed(true)} /> : null}
-            {saveError && !errorDismissed ? <AlertToast title={(saveError as Error).message} variant="error" onClose={() => setErrorDismissed(true)} /> : null}
-
-            {isLoading ? (
-                <div className="flex items-center gap-3 py-4 text-sm text-muted-foreground">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-border border-t-cta" />
-                    Loading…
-                </div>
-            ) : (
-                <HoursEditor
-                    key={editorKey}
-                    initialRows={initialRows}
-                    isPending={isPending}
-                    isSuccess={isSuccess}
-                    onSave={(payload, onSuccess) => saveHours(payload, { onSuccess })}
-                />
-            )}
-        </div>
     );
 }

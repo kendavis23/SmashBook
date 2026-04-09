@@ -39,7 +39,7 @@ interface NavbarProps {
 
 export default function Navbar({
     mobileOpen = false,
-    onOpenMobile = () => { },
+    onOpenMobile = () => {},
 }: NavbarProps): JSX.Element | null {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -226,10 +226,11 @@ export default function Navbar({
                                                     onClick={() =>
                                                         route.path && handleSearchSelect(route.path)
                                                     }
-                                                    className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors ${isActive
+                                                    className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors ${
+                                                        isActive
                                                             ? "bg-accent text-foreground"
                                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                                        }`}
+                                                    }`}
                                                 >
                                                     <span className="font-medium">
                                                         {route.label}
@@ -258,8 +259,9 @@ export default function Navbar({
                             className="rounded-full p-1 transition-colors duration-150 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
                         >
                             <div
-                                className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full shadow-sm ${user.photo_url ? "" : bgColor
-                                    }`}
+                                className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full shadow-sm ${
+                                    user.photo_url ? "" : bgColor
+                                }`}
                             >
                                 {user.photo_url ? (
                                     <img
@@ -276,9 +278,7 @@ export default function Navbar({
                         </button>
 
                         {isDropdownOpen && (
-                            <div
-                                className="absolute right-0 z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-border bg-background shadow-lg"
-                            >
+                            <div className="absolute right-0 z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-border bg-background shadow-lg">
                                 <div className="border-b border-border px-4 py-4">
                                     <div className="flex items-center gap-3">
                                         <div
@@ -303,9 +303,7 @@ export default function Navbar({
                                             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                                                 {user.email}
                                             </p>
-                                            <span
-                                                className="mt-1.5 inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium capitalize tracking-wide text-muted-foreground"
-                                            >
+                                            <span className="mt-1.5 inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium capitalize tracking-wide text-muted-foreground">
                                                 {roleLabel}
                                             </span>
                                         </div>
@@ -321,9 +319,7 @@ export default function Navbar({
                                         }}
                                         className="group/item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 hover:bg-primary/10"
                                     >
-                                        <div
-                                            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted transition-colors group-hover/item:bg-accent"
-                                        >
+                                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted transition-colors group-hover/item:bg-accent">
                                             <Settings className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover/item:text-primary" />
                                         </div>
                                         <div className="text-left">
@@ -343,9 +339,7 @@ export default function Navbar({
                                         onClick={handleLogout}
                                         className="group/item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 hover:bg-primary/10"
                                     >
-                                        <div
-                                            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted transition-colors group-hover/item:bg-accent"
-                                        >
+                                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted transition-colors group-hover/item:bg-accent">
                                             <LogOut className="h-3.5 w-3.5 text-muted-foreground group-hover/item:text-foreground" />
                                         </div>
                                         <div className="text-left">
