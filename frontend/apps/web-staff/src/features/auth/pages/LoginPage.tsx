@@ -28,8 +28,8 @@ export default function LoginPage(): JSX.Element {
             </div>
 
             {/* RIGHT */}
-            <div className="flex items-center justify-center">
-                <div className="w-[100%] mx-auto min-h-screen flex flex-col justify-center py-12">
+            <div className="flex items-center justify-center min-h-screen lg:min-h-0">
+                <div className="w-full max-w-sm mx-auto px-6 py-12">
                     <LoginForm />
                 </div>
             </div>
