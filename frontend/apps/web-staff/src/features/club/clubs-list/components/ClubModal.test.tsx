@@ -6,8 +6,18 @@ const mockCreateMutate = vi.hoisted(() => vi.fn());
 const mockUpdateMutate = vi.hoisted(() => vi.fn());
 
 vi.mock("../../hooks", () => ({
-    useCreateClub: () => ({ mutate: mockCreateMutate, isPending: false, error: null, reset: vi.fn() }),
-    useUpdateClub: () => ({ mutate: mockUpdateMutate, isPending: false, error: null, reset: vi.fn() }),
+    useCreateClub: () => ({
+        mutate: mockCreateMutate,
+        isPending: false,
+        error: null,
+        reset: vi.fn(),
+    }),
+    useUpdateClub: () => ({
+        mutate: mockUpdateMutate,
+        isPending: false,
+        error: null,
+        reset: vi.fn(),
+    }),
 }));
 
 vi.mock("@repo/ui", () => ({

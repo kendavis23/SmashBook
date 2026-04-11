@@ -48,18 +48,10 @@ export default function PricingRulesView({
     return (
         <div className="space-y-4">
             {finalError && !toastDismissed ? (
-                <AlertToast
-                    title={finalError.message}
-                    variant="error"
-                    onClose={onToastDismiss}
-                />
+                <AlertToast title={finalError.message} variant="error" onClose={onToastDismiss} />
             ) : null}
             {success && !toastDismissed ? (
-                <AlertToast
-                    title="Changes saved."
-                    variant="success"
-                    onClose={onToastDismiss}
-                />
+                <AlertToast title="Changes saved." variant="success" onClose={onToastDismiss} />
             ) : null}
 
             {rules.length === 0 ? (

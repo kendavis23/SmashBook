@@ -58,8 +58,22 @@ describe("ClubDetailViewSection — data", () => {
 
     it("passes rules data to view", () => {
         const rules = [
-            { label: "Peak", day_of_week: 0, start_time: "08:00", end_time: "20:00", is_active: true, price_per_slot: 20 },
-            { label: "Off-Peak", day_of_week: 1, start_time: "08:00", end_time: "20:00", is_active: true, price_per_slot: 10 },
+            {
+                label: "Peak",
+                day_of_week: 0,
+                start_time: "08:00",
+                end_time: "20:00",
+                is_active: true,
+                price_per_slot: 20,
+            },
+            {
+                label: "Off-Peak",
+                day_of_week: 1,
+                start_time: "08:00",
+                end_time: "20:00",
+                is_active: true,
+                price_per_slot: 10,
+            },
         ];
         mockUseGetOperatingHours.mockReturnValue({ data: [], isLoading: false });
         mockUseGetPricingRules.mockReturnValue({ data: rules, isLoading: false });

@@ -12,7 +12,12 @@ interface Props {
     onSave: (payload: OperatingHours[], onSuccess: () => void) => void;
 }
 
-export default function HoursEditor({ initialRows, isPending, isSuccess, onSave }: Props): JSX.Element {
+export default function HoursEditor({
+    initialRows,
+    isPending,
+    isSuccess,
+    onSave,
+}: Props): JSX.Element {
     const [rows, setRows] = useState<DayRow[]>(() => initialRows);
     const [dirty, setDirty] = useState(false);
     const [dismissed, setDismissed] = useState(false);
@@ -42,15 +47,15 @@ export default function HoursEditor({ initialRows, isPending, isSuccess, onSave 
 
     return (
         <>
-            <div className="flex items-center justify-between pb-2">
-                {isSuccess && !dirty && !dismissed ? (
-                    <AlertToast
-                        title="Operating hours saved."
-                        variant="success"
-                        onClose={() => setDismissed(true)}
-                    />
-                ) : (
-                    <span />
+            <div className="relative flex items-center justify-end pb-2">
+                {isSuccess && !dirty && !dismissed && (
+                    <div className="absolute left-0">
+                        <AlertToast
+                            title="Operating hours saved."
+                            variant="success"
+                            onClose={() => setDismissed(true)}
+                        />
+                    </div>
                 )}
                 <button onClick={handleSave} disabled={isPending || !dirty} className="btn-cta">
                     {isPending ? "Saving…" : "Save Changes"}

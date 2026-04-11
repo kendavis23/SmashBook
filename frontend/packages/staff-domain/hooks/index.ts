@@ -14,12 +14,11 @@ export {
 export {
     useListCourts,
     useCreateCourt,
-    useGetCourt,
     useUpdateCourt,
-    useDeleteCourt,
     useGetCourtAvailability,
     useListCalendarReservations,
     useCreateCalendarReservation,
+    useGetCalendarReservation,
     useUpdateCalendarReservation,
     useDeleteCalendarReservation,
 } from "./court.hooks";

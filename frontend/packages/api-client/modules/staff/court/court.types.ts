@@ -1,9 +1,30 @@
 import type { UUID } from "../common";
 export type { UUID };
 
-export type SurfaceType = "artificial_grass" | "concrete" | "carpet" | "wood";
+export type SurfaceType = "indoor" | "outdoor" | "crystal" | "artificial_grass";
 
-export type CalendarReservationType = "block" | "maintenance" | "event" | "skill_filter";
+export type CalendarReservationType =
+    | "skill_filter"
+    | "training_block"
+    | "private_hire"
+    | "maintenance"
+    | "tournament_hold";
+
+export interface CourtListParams {
+    club_id?: string;
+    surface_type?: SurfaceType;
+    date?: string;
+    time_from?: string;
+    time_to?: string;
+}
+
+export interface CalendarReservationListParams {
+    club_id: string;
+    reservation_type?: CalendarReservationType;
+    court_id?: string;
+    from_dt?: string;
+    to_dt?: string;
+}
 
 export interface CourtCreate {
     club_id: UUID;

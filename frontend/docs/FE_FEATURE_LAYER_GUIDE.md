@@ -59,13 +59,13 @@ features/club/
 
 ## Layer rules (strict)
 
-| Layer | Can import from | Cannot import from |
-|---|---|---|
-| `pages/` | `components/` of the same feature | Domain packages directly, `fetch`, `useEffect` for data |
-| `components/` | `hooks/`, `types/`, `@repo/ui`, `@repo/design-system`, other feature-local components | Other features, `@repo/api-client`, DOM fetch |
-| `hooks/` | `@repo/*-domain/hooks` (re-export only) | `@repo/api-client` directly |
-| `store/` | `@repo/*-domain/store` (re-export only) | Cross-domain stores |
-| `types/` | `@repo/*-domain/models` (re-export only), local feature types | DTOs, `@repo/api-client` types |
+| Layer         | Can import from                                                                       | Cannot import from                                      |
+| ------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `pages/`      | `components/` of the same feature                                                     | Domain packages directly, `fetch`, `useEffect` for data |
+| `components/` | `hooks/`, `types/`, `@repo/ui`, `@repo/design-system`, other feature-local components | Other features, `@repo/api-client`, DOM fetch           |
+| `hooks/`      | `@repo/*-domain/hooks` (re-export only)                                               | `@repo/api-client` directly                             |
+| `store/`      | `@repo/*-domain/store` (re-export only)                                               | Cross-domain stores                                     |
+| `types/`      | `@repo/*-domain/models` (re-export only), local feature types                         | DTOs, `@repo/api-client` types                          |
 
 **Cross-feature imports are prohibited.** Features communicate only through domain packages.
 
@@ -186,11 +186,7 @@ type Props = {
 };
 
 export default function ClubDetailPageView({ club, activeTab, onTabChange }: Props): JSX.Element {
-    return (
-        <div className="w-full space-y-4">
-            {/* pure rendering — no hooks */}
-        </div>
-    );
+    return <div className="w-full space-y-4">{/* pure rendering — no hooks */}</div>;
 }
 ```
 
@@ -252,23 +248,23 @@ export const labelCls = "mb-1 block text-sm font-medium text-foreground";
 
 ### Semantic token reference
 
-| Token | Purpose |
-|---|---|
-| `bg-card` | Card / panel backgrounds |
-| `bg-muted` | Subtle backgrounds (table headers, disabled) |
-| `bg-secondary` | Badges, tags |
-| `bg-cta` | Primary action buttons |
-| `bg-destructive` | Danger/delete buttons |
-| `bg-success/15` | Success badge background |
-| `bg-warning/15` | Warning/surge badge background |
-| `bg-info/15` | Info/low-demand badge background |
-| `text-foreground` | Primary text |
-| `text-muted-foreground` | Secondary/placeholder text |
-| `text-cta` | Active link / selected tab color |
-| `text-success` | Positive status text |
-| `text-warning` | Warning status text |
-| `text-info` | Informational status text |
-| `border-border` | Default dividers and card borders |
+| Token                   | Purpose                                      |
+| ----------------------- | -------------------------------------------- |
+| `bg-card`               | Card / panel backgrounds                     |
+| `bg-muted`              | Subtle backgrounds (table headers, disabled) |
+| `bg-secondary`          | Badges, tags                                 |
+| `bg-cta`                | Primary action buttons                       |
+| `bg-destructive`        | Danger/delete buttons                        |
+| `bg-success/15`         | Success badge background                     |
+| `bg-warning/15`         | Warning/surge badge background               |
+| `bg-info/15`            | Info/low-demand badge background             |
+| `text-foreground`       | Primary text                                 |
+| `text-muted-foreground` | Secondary/placeholder text                   |
+| `text-cta`              | Active link / selected tab color             |
+| `text-success`          | Positive status text                         |
+| `text-warning`          | Warning status text                          |
+| `text-info`             | Informational status text                    |
+| `border-border`         | Default dividers and card borders            |
 
 **Never use:** `bg-[#xxx]`, `text-amber-700`, `bg-sky-50`, `bg-violet-50`, `text-gray-500` or any Tailwind palette color directly.
 
@@ -289,9 +285,7 @@ Every page-level container follows this structure:
         </header>
 
         {/* Content */}
-        <div className="mt-5">
-            {/* tab content / list / form */}
-        </div>
+        <div className="mt-5">{/* tab content / list / form */}</div>
     </section>
 </div>
 ```
@@ -312,15 +306,15 @@ Every page-level container follows this structure:
 
 ### Typography scale
 
-| Use | Class |
-|---|---|
-| Page title | `text-xl font-semibold text-foreground` |
-| Section header | `text-sm font-semibold text-foreground` |
-| Description / helper | `text-sm text-muted-foreground` |
-| Table header | `text-xs font-semibold uppercase tracking-wide text-muted-foreground` |
-| Body text | `text-sm text-foreground` |
-| Badge / label | `text-xs font-medium` |
-| Input text | `text-sm text-foreground` |
+| Use                  | Class                                                                 |
+| -------------------- | --------------------------------------------------------------------- |
+| Page title           | `text-xl font-semibold text-foreground`                               |
+| Section header       | `text-sm font-semibold text-foreground`                               |
+| Description / helper | `text-sm text-muted-foreground`                                       |
+| Table header         | `text-xs font-semibold uppercase tracking-wide text-muted-foreground` |
+| Body text            | `text-sm text-foreground`                                             |
+| Badge / label        | `text-xs font-medium`                                                 |
+| Input text           | `text-sm text-foreground`                                             |
 
 ---
 
@@ -330,12 +324,12 @@ Every feature component, utility function, and service must have tests. Tests li
 
 ### What to test
 
-| File type | Test focus |
-|---|---|
-| View component | User behavior — rendered output, user events, prop variations |
-| Container component | Loading/error/success state rendering, hook calls |
-| Utility / constants | Pure function outputs |
-| Hooks (in domain packages) | See `FE_DOMAIN_LAYER_GUIDE.md` |
+| File type                  | Test focus                                                    |
+| -------------------------- | ------------------------------------------------------------- |
+| View component             | User behavior — rendered output, user events, prop variations |
+| Container component        | Loading/error/success state rendering, hook calls             |
+| Utility / constants        | Pure function outputs                                         |
+| Hooks (in domain packages) | See `FE_DOMAIN_LAYER_GUIDE.md`                                |
 
 ### Rules
 
@@ -389,6 +383,7 @@ describe("ClubsView — club list", () => {
 ### Required test cases per component type
 
 **View component:**
+
 - Loading state renders loading indicator
 - Error state renders error message
 - Empty state renders empty message and CTA
@@ -396,32 +391,36 @@ describe("ClubsView — club list", () => {
 - User events call correct callbacks with correct arguments
 
 **Modal / dialog:**
+
 - Renders correct title for create vs edit mode
 - Validation prevents submit when required fields are empty
 - Submit calls mutation with correct payload
 - Cancel calls `onClose`
 
 **Toggle / editor (e.g. HoursEditor):**
+
 - Initial render matches props
 - Interactive change enables Save button
 - Save calls `onSave` with correct filtered payload
 - Success/error feedback shown when props change
 
 **Pure utility (constants, services):**
+
 - All exported functions tested with: zero/empty input, typical input, edge cases
 
 ---
 
 ## Code quality limits
 
-| Metric | Limit |
-|---|---|
-| File | 300 lines |
-| Function | 50 lines |
-| Component | 200 lines |
+| Metric               | Limit                                                      |
+| -------------------- | ---------------------------------------------------------- |
+| File                 | 300 lines                                                  |
+| Function             | 50 lines                                                   |
+| Component            | 200 lines                                                  |
 | Feature source files | 10 (excluding tests — split into sub-features if exceeded) |
 
 Additional rules:
+
 - No `console.log` in committed code
 - No `any` — use `unknown` and narrow
 - No non-null assertion (`!`) without an explanatory comment
@@ -432,17 +431,17 @@ Additional rules:
 
 ## Naming conventions
 
-| Pattern | Convention | Example |
-|---|---|---|
-| Container component | `<Entity>Container` | `ClubsContainer`, `ClubDetailContainer` |
-| View component | `<Entity>View` or `<Entity>PageView` | `ClubsView`, `ClubDetailPageView` |
-| Section component | `<Entity><Section>Section` | `ClubDetailHoursSection` |
-| Editor / sub-view | `<Entity>Editor` | `HoursEditor` |
-| Modal | `<Entity>Modal` | `ClubModal`, `DeleteModal` |
-| Constants file | `<domain>Constants.ts` | `pricingRulesConstants.ts` |
-| Hook re-export | `hooks/index.ts` | — |
-| Store re-export | `store/index.ts` | — |
-| Types re-export | `types/index.ts` | — |
+| Pattern             | Convention                           | Example                                 |
+| ------------------- | ------------------------------------ | --------------------------------------- |
+| Container component | `<Entity>Container`                  | `ClubsContainer`, `ClubDetailContainer` |
+| View component      | `<Entity>View` or `<Entity>PageView` | `ClubsView`, `ClubDetailPageView`       |
+| Section component   | `<Entity><Section>Section`           | `ClubDetailHoursSection`                |
+| Editor / sub-view   | `<Entity>Editor`                     | `HoursEditor`                           |
+| Modal               | `<Entity>Modal`                      | `ClubModal`, `DeleteModal`              |
+| Constants file      | `<domain>Constants.ts`               | `pricingRulesConstants.ts`              |
+| Hook re-export      | `hooks/index.ts`                     | —                                       |
+| Store re-export     | `store/index.ts`                     | —                                       |
+| Types re-export     | `types/index.ts`                     | —                                       |
 
 ---
 
@@ -470,7 +469,7 @@ Additional rules:
 
 ## Implemented features
 
-| App | Feature | Sub-features | Domain package |
-|---|---|---|---|
-| `web-staff` | `club` | `clubs-list`, `club-detail` | `@repo/staff-domain` |
-| `web-staff` | `court` | — | `@repo/staff-domain` |
+| App         | Feature | Sub-features                | Domain package       |
+| ----------- | ------- | --------------------------- | -------------------- |
+| `web-staff` | `club`  | `clubs-list`, `club-detail` | `@repo/staff-domain` |
+| `web-staff` | `court` | —                           | `@repo/staff-domain` |

@@ -10,6 +10,7 @@ import {
     Package,
     User,
     Users,
+    BookMarked,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -115,6 +116,16 @@ export const ROUTES: RouteConfig[] = [
         title: "Bookings",
         subtitle: "View and manage court reservations.",
         breadcrumb: ["Operations", "Bookings"],
+        group: "Operations",
+    },
+    {
+        key: "reservations",
+        path: "/reservations",
+        label: "Reservations",
+        icon: BookMarked,
+        title: "Reservations",
+        subtitle: "Manage calendar blocks and court reservations.",
+        breadcrumb: ["Operations", "Reservations"],
         group: "Operations",
     },
     {

@@ -24,12 +24,17 @@ const mockClub: Club = {
     waitlist_enabled: false,
 } as unknown as Club;
 
-const mockHours: OperatingHours[] = [
-    { day_of_week: 0, open_time: "09:00", close_time: "21:00" },
-];
+const mockHours: OperatingHours[] = [{ day_of_week: 0, open_time: "09:00", close_time: "21:00" }];
 
 const mockRules: PricingRule[] = [
-    { label: "Peak", day_of_week: 0, start_time: "08:00", end_time: "20:00", is_active: true, price_per_slot: 20 },
+    {
+        label: "Peak",
+        day_of_week: 0,
+        start_time: "08:00",
+        end_time: "20:00",
+        is_active: true,
+        price_per_slot: 20,
+    },
 ];
 
 describe("ClubDetailView — booking rules section", () => {

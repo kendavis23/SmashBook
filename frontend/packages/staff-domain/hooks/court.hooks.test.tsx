@@ -22,12 +22,11 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     // court endpoints
     listCourtsEndpoint: vi.fn(),
     createCourtEndpoint: vi.fn(),
-    getCourtEndpoint: vi.fn(),
     updateCourtEndpoint: vi.fn(),
-    deleteCourtEndpoint: vi.fn(),
     getCourtAvailabilityEndpoint: vi.fn(),
     listCalendarReservationsEndpoint: vi.fn(),
     createCalendarReservationEndpoint: vi.fn(),
+    getCalendarReservationEndpoint: vi.fn(),
     updateCalendarReservationEndpoint: vi.fn(),
     deleteCalendarReservationEndpoint: vi.fn(),
 }));
@@ -37,14 +36,14 @@ import * as staffApi from "@repo/api-client/modules/staff";
 import {
     useListCourts,
     useCreateCourt,
-    useGetCourt,
     useUpdateCourt,
-    useDeleteCourt,
     useGetCourtAvailability,
     useListCalendarReservations,
     useCreateCalendarReservation,
+    useGetCalendarReservation,
     useUpdateCalendarReservation,
     useDeleteCalendarReservation,
+    type ListCourtsFilters,
 } from "./court.hooks";
 
 // ---------------------------------------------------------------------------
@@ -73,7 +72,7 @@ const mockCourt = {
     id: COURT_ID,
     club_id: CLUB_ID,
     name: "Court 1",
-    surface_type: "artificial_grass" as const,
+    surface_type: "indoor" as const,
     has_lighting: true,
     lighting_surcharge: 5,
     is_active: true,
@@ -83,7 +82,7 @@ const mockReservation = {
     id: RESERVATION_ID,
     club_id: CLUB_ID,
     court_id: COURT_ID,
-    reservation_type: "block" as const,
+    reservation_type: "training_block" as const,
     title: "Maintenance",
     start_datetime: "2026-04-08T08:00:00Z",
     end_datetime: "2026-04-08T10:00:00Z",
@@ -104,46 +103,45 @@ const mockReservation = {
 // ---------------------------------------------------------------------------
 
 describe("useListCourts", () => {
-    it("returns courts for a club", async () => {
+    it("returns courts for a club with no filters", async () => {
         vi.mocked(staffApi.listCourtsEndpoint).mockResolvedValue([mockCourt]);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useListCourts(CLUB_ID), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual([mockCourt]);
-        expect(staffApi.listCourtsEndpoint).toHaveBeenCalledWith(CLUB_ID);
+        expect(staffApi.listCourtsEndpoint).toHaveBeenCalledWith({
+            club_id: CLUB_ID,
+            surface_type: undefined,
+            date: undefined,
+            time_from: undefined,
+            time_to: undefined,
+        });
+    });
+
+    it("passes filters to the endpoint", async () => {
+        vi.mocked(staffApi.listCourtsEndpoint).mockResolvedValue([mockCourt]);
+        const { Wrapper } = makeWrapper();
+        const filters: ListCourtsFilters = {
+            surfaceType: "indoor",
+            date: "2026-04-08",
+            timeFrom: "08:00",
+            timeTo: "20:00",
+        };
+        const { result } = renderHook(() => useListCourts(CLUB_ID, filters), { wrapper: Wrapper });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(staffApi.listCourtsEndpoint).toHaveBeenCalledWith({
+            club_id: CLUB_ID,
+            surface_type: "indoor",
+            date: "2026-04-08",
+            time_from: "08:00",
+            time_to: "20:00",
+        });
     });
 
     it("does not fetch when clubId is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useListCourts(""), { wrapper: Wrapper });
         expect(staffApi.listCourtsEndpoint).not.toHaveBeenCalled();
-    });
-});
-
-// ---------------------------------------------------------------------------
-// useGetCourt
-// ---------------------------------------------------------------------------
-
-describe("useGetCourt", () => {
-    it("fetches a single court by id", async () => {
-        vi.mocked(staffApi.getCourtEndpoint).mockResolvedValue(mockCourt);
-        const { Wrapper } = makeWrapper();
-        const { result } = renderHook(() => useGetCourt(CLUB_ID, COURT_ID), { wrapper: Wrapper });
-        await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(result.current.data).toEqual(mockCourt);
-        expect(staffApi.getCourtEndpoint).toHaveBeenCalledWith(CLUB_ID, COURT_ID);
-    });
-
-    it("does not fetch when clubId is empty", () => {
-        const { Wrapper } = makeWrapper();
-        renderHook(() => useGetCourt("", COURT_ID), { wrapper: Wrapper });
-        expect(staffApi.getCourtEndpoint).not.toHaveBeenCalled();
-    });
-
-    it("does not fetch when courtId is empty", () => {
-        const { Wrapper } = makeWrapper();
-        renderHook(() => useGetCourt(CLUB_ID, ""), { wrapper: Wrapper });
-        expect(staffApi.getCourtEndpoint).not.toHaveBeenCalled();
     });
 });
 
@@ -157,13 +155,10 @@ describe("useCreateCourt", () => {
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
         const { result } = renderHook(() => useCreateCourt(CLUB_ID), { wrapper: Wrapper });
-        result.current.mutate({ club_id: CLUB_ID, name: "Court 1", surface_type: "artificial_grass" });
+        const data = { club_id: CLUB_ID, name: "Court 1", surface_type: "indoor" as const };
+        result.current.mutate(data);
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.createCourtEndpoint).toHaveBeenCalledWith(CLUB_ID, {
-            club_id: CLUB_ID,
-            name: "Court 1",
-            surface_type: "artificial_grass",
-        });
+        expect(staffApi.createCourtEndpoint).toHaveBeenCalledWith(data);
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["courts", CLUB_ID] })
         );
@@ -179,32 +174,15 @@ describe("useUpdateCourt", () => {
         vi.mocked(staffApi.updateCourtEndpoint).mockResolvedValue(mockCourt);
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
-        const { result } = renderHook(() => useUpdateCourt(CLUB_ID, COURT_ID), { wrapper: Wrapper });
+        const { result } = renderHook(() => useUpdateCourt(CLUB_ID, COURT_ID), {
+            wrapper: Wrapper,
+        });
         result.current.mutate({ name: "Court A" });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.updateCourtEndpoint).toHaveBeenCalledWith(CLUB_ID, COURT_ID, { name: "Court A" });
+        expect(staffApi.updateCourtEndpoint).toHaveBeenCalledWith(COURT_ID, { name: "Court A" });
         expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["courts", CLUB_ID, COURT_ID] })
+            expect.objectContaining({ queryKey: ["courts", COURT_ID] })
         );
-        expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["courts", CLUB_ID] })
-        );
-    });
-});
-
-// ---------------------------------------------------------------------------
-// useDeleteCourt
-// ---------------------------------------------------------------------------
-
-describe("useDeleteCourt", () => {
-    it("calls deleteCourtEndpoint and invalidates courts list", async () => {
-        vi.mocked(staffApi.deleteCourtEndpoint).mockResolvedValue(undefined);
-        const { Wrapper, client } = makeWrapper();
-        const invalidate = vi.spyOn(client, "invalidateQueries");
-        const { result } = renderHook(() => useDeleteCourt(CLUB_ID), { wrapper: Wrapper });
-        result.current.mutate(COURT_ID);
-        await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.deleteCourtEndpoint).toHaveBeenCalledWith(CLUB_ID, COURT_ID);
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["courts", CLUB_ID] })
         );
@@ -220,22 +198,17 @@ describe("useGetCourtAvailability", () => {
         const mockAvailability = { court_id: COURT_ID, date: "2026-04-08", slots: [] };
         vi.mocked(staffApi.getCourtAvailabilityEndpoint).mockResolvedValue(mockAvailability);
         const { Wrapper } = makeWrapper();
-        const { result } = renderHook(
-            () => useGetCourtAvailability(CLUB_ID, COURT_ID, "2026-04-08"),
-            { wrapper: Wrapper }
-        );
+        const { result } = renderHook(() => useGetCourtAvailability(COURT_ID, "2026-04-08"), {
+            wrapper: Wrapper,
+        });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual(mockAvailability);
-        expect(staffApi.getCourtAvailabilityEndpoint).toHaveBeenCalledWith(
-            CLUB_ID,
-            COURT_ID,
-            "2026-04-08"
-        );
+        expect(staffApi.getCourtAvailabilityEndpoint).toHaveBeenCalledWith(COURT_ID, "2026-04-08");
     });
 
     it("does not fetch when date is empty", () => {
         const { Wrapper } = makeWrapper();
-        renderHook(() => useGetCourtAvailability(CLUB_ID, COURT_ID, ""), { wrapper: Wrapper });
+        renderHook(() => useGetCourtAvailability(COURT_ID, ""), { wrapper: Wrapper });
         expect(staffApi.getCourtAvailabilityEndpoint).not.toHaveBeenCalled();
     });
 });
@@ -253,7 +226,9 @@ describe("useListCalendarReservations", () => {
         });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual([mockReservation]);
-        expect(staffApi.listCalendarReservationsEndpoint).toHaveBeenCalledWith(CLUB_ID);
+        expect(staffApi.listCalendarReservationsEndpoint).toHaveBeenCalledWith({
+            club_id: CLUB_ID,
+        });
     });
 
     it("does not fetch when clubId is empty", () => {
@@ -277,17 +252,40 @@ describe("useCreateCalendarReservation", () => {
         });
         const data = {
             club_id: CLUB_ID,
-            reservation_type: "block" as const,
+            reservation_type: "training_block" as const,
             title: "Maintenance",
             start_datetime: "2026-04-08T08:00:00Z",
             end_datetime: "2026-04-08T10:00:00Z",
         };
         result.current.mutate(data);
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.createCalendarReservationEndpoint).toHaveBeenCalledWith(CLUB_ID, data);
+        expect(staffApi.createCalendarReservationEndpoint).toHaveBeenCalledWith(data);
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID] })
         );
+    });
+});
+
+// ---------------------------------------------------------------------------
+// useGetCalendarReservation
+// ---------------------------------------------------------------------------
+
+describe("useGetCalendarReservation", () => {
+    it("fetches a single reservation by id", async () => {
+        vi.mocked(staffApi.getCalendarReservationEndpoint).mockResolvedValue(mockReservation);
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(() => useGetCalendarReservation(RESERVATION_ID), {
+            wrapper: Wrapper,
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual(mockReservation);
+        expect(staffApi.getCalendarReservationEndpoint).toHaveBeenCalledWith(RESERVATION_ID);
+    });
+
+    it("does not fetch when reservationId is empty", () => {
+        const { Wrapper } = makeWrapper();
+        renderHook(() => useGetCalendarReservation(""), { wrapper: Wrapper });
+        expect(staffApi.getCalendarReservationEndpoint).not.toHaveBeenCalled();
     });
 });
 
@@ -296,23 +294,23 @@ describe("useCreateCalendarReservation", () => {
 // ---------------------------------------------------------------------------
 
 describe("useUpdateCalendarReservation", () => {
-    it("calls updateCalendarReservationEndpoint and invalidates list", async () => {
+    it("calls updateCalendarReservationEndpoint and invalidates list and detail", async () => {
         vi.mocked(staffApi.updateCalendarReservationEndpoint).mockResolvedValue(mockReservation);
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
-        const { result } = renderHook(
-            () => useUpdateCalendarReservation(CLUB_ID, RESERVATION_ID),
-            { wrapper: Wrapper }
-        );
+        const { result } = renderHook(() => useUpdateCalendarReservation(CLUB_ID, RESERVATION_ID), {
+            wrapper: Wrapper,
+        });
         result.current.mutate({ title: "Updated" });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.updateCalendarReservationEndpoint).toHaveBeenCalledWith(
-            CLUB_ID,
-            RESERVATION_ID,
-            { title: "Updated" }
-        );
+        expect(staffApi.updateCalendarReservationEndpoint).toHaveBeenCalledWith(RESERVATION_ID, {
+            title: "Updated",
+        });
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID] })
+        );
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["calendar-reservations", RESERVATION_ID] })
         );
     });
 });
@@ -331,10 +329,7 @@ describe("useDeleteCalendarReservation", () => {
         });
         result.current.mutate(RESERVATION_ID);
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.deleteCalendarReservationEndpoint).toHaveBeenCalledWith(
-            CLUB_ID,
-            RESERVATION_ID
-        );
+        expect(staffApi.deleteCalendarReservationEndpoint).toHaveBeenCalledWith(RESERVATION_ID);
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID] })
         );

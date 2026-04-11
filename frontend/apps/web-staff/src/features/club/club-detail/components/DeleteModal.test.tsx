@@ -22,14 +22,14 @@ describe("DeleteModal", () => {
         expect(handleCancel).toHaveBeenCalled();
     });
 
-    it("shows Deleting... when saving is true", () => {
+    it("shows Deleting… when saving is true", () => {
         render(<DeleteModal onConfirm={vi.fn()} onCancel={vi.fn()} saving={true} />);
-        expect(screen.getByText("Deleting...")).toBeInTheDocument();
+        expect(screen.getByText("Deleting…")).toBeInTheDocument();
     });
 
     it("delete button is disabled when saving", () => {
         render(<DeleteModal onConfirm={vi.fn()} onCancel={vi.fn()} saving={true} />);
-        expect(screen.getByText("Deleting...")).toBeDisabled();
+        expect(screen.getByText("Deleting…")).toBeDisabled();
     });
 
     it("calls onCancel when backdrop is clicked", () => {

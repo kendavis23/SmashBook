@@ -3,12 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
     listCourtsEndpoint,
     createCourtEndpoint,
-    getCourtEndpoint,
     updateCourtEndpoint,
-    deleteCourtEndpoint,
     getCourtAvailabilityEndpoint,
     listCalendarReservationsEndpoint,
     createCalendarReservationEndpoint,
+    getCalendarReservationEndpoint,
     updateCalendarReservationEndpoint,
     deleteCalendarReservationEndpoint,
 } from "@repo/api-client/modules/staff";
@@ -17,43 +16,59 @@ import type {
     CourtInput,
     CourtUpdateInput,
     CourtAvailability,
+    SurfaceType,
     CalendarReservationInput,
     CalendarReservationUpdateInput,
     CalendarReservation,
 } from "../models";
-
 // ---------------------------------------------------------------------------
 // Query keys
 // ---------------------------------------------------------------------------
 
 const courtKeys = {
     all: (clubId: string) => ["courts", clubId] as const,
-    detail: (clubId: string, courtId: string) => ["courts", clubId, courtId] as const,
-    availability: (clubId: string, courtId: string, date: string) =>
-        ["courts", clubId, courtId, "availability", date] as const,
+    detail: (courtId: string) => ["courts", courtId] as const,
+    availability: (courtId: string, date: string) =>
+        ["courts", courtId, "availability", date] as const,
     calendarReservations: (clubId: string) => ["calendar-reservations", clubId] as const,
+    calendarReservationDetail: (reservationId: string) =>
+        ["calendar-reservations", reservationId] as const,
 };
 
 // ---------------------------------------------------------------------------
-// useListCourts — GET /api/v1/clubs/:clubId/courts
+// useListCourts — GET /api/v1/courts?club_id=...
 // ---------------------------------------------------------------------------
 
-export function useListCourts(clubId: string) {
+export interface ListCourtsFilters {
+    surfaceType?: string;
+    date?: string;
+    timeFrom?: string;
+    timeTo?: string;
+}
+
+export function useListCourts(clubId: string, filters?: ListCourtsFilters) {
     return useQuery({
-        queryKey: courtKeys.all(clubId),
-        queryFn: async (): Promise<Court[]> => listCourtsEndpoint(clubId),
+        queryKey: [...courtKeys.all(clubId), filters] as const,
+        queryFn: (): Promise<Court[]> =>
+            listCourtsEndpoint({
+                club_id: clubId,
+                surface_type: filters?.surfaceType as SurfaceType | undefined,
+                date: filters?.date,
+                time_from: filters?.timeFrom,
+                time_to: filters?.timeTo,
+            }),
         enabled: Boolean(clubId),
     });
 }
 
 // ---------------------------------------------------------------------------
-// useCreateCourt — POST /api/v1/clubs/:clubId/courts
+// useCreateCourt — POST /api/v1/courts
 // ---------------------------------------------------------------------------
 
 export function useCreateCourt(clubId: string) {
     const queryClient = useQueryClient();
     return useMutation<Court, Error, CourtInput>({
-        mutationFn: (data: CourtInput) => createCourtEndpoint(clubId, data),
+        mutationFn: (data: CourtInput) => createCourtEndpoint(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: courtKeys.all(clubId) });
         },
@@ -61,81 +76,53 @@ export function useCreateCourt(clubId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// useGetCourt — GET /api/v1/clubs/:clubId/courts/:courtId
-// ---------------------------------------------------------------------------
-
-export function useGetCourt(clubId: string, courtId: string) {
-    return useQuery({
-        queryKey: courtKeys.detail(clubId, courtId),
-        queryFn: async (): Promise<Court> => getCourtEndpoint(clubId, courtId),
-        enabled: Boolean(clubId) && Boolean(courtId),
-    });
-}
-
-// ---------------------------------------------------------------------------
-// useUpdateCourt — PATCH /api/v1/clubs/:clubId/courts/:courtId
+// useUpdateCourt — PATCH /api/v1/courts/:courtId
 // ---------------------------------------------------------------------------
 
 export function useUpdateCourt(clubId: string, courtId: string) {
     const queryClient = useQueryClient();
     return useMutation<Court, Error, CourtUpdateInput>({
-        mutationFn: (data: CourtUpdateInput) => updateCourtEndpoint(clubId, courtId, data),
+        mutationFn: (data: CourtUpdateInput) => updateCourtEndpoint(courtId, data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: courtKeys.detail(clubId, courtId) });
+            queryClient.invalidateQueries({ queryKey: courtKeys.detail(courtId) });
             queryClient.invalidateQueries({ queryKey: courtKeys.all(clubId) });
         },
     });
 }
 
 // ---------------------------------------------------------------------------
-// useDeleteCourt — DELETE /api/v1/clubs/:clubId/courts/:courtId
+// useGetCourtAvailability — GET /api/v1/courts/:courtId/availability?date=...
 // ---------------------------------------------------------------------------
 
-export function useDeleteCourt(clubId: string) {
-    const queryClient = useQueryClient();
-    return useMutation<void, Error, string>({
-        mutationFn: (courtId: string) => deleteCourtEndpoint(clubId, courtId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: courtKeys.all(clubId) });
-        },
-    });
-}
-
-// ---------------------------------------------------------------------------
-// useGetCourtAvailability — GET /api/v1/clubs/:clubId/courts/:courtId/availability
-// ---------------------------------------------------------------------------
-
-export function useGetCourtAvailability(clubId: string, courtId: string, date: string) {
+export function useGetCourtAvailability(courtId: string, date: string) {
     return useQuery({
-        queryKey: courtKeys.availability(clubId, courtId, date),
-        queryFn: async (): Promise<CourtAvailability> =>
-            getCourtAvailabilityEndpoint(clubId, courtId, date),
-        enabled: Boolean(clubId) && Boolean(courtId) && Boolean(date),
+        queryKey: courtKeys.availability(courtId, date),
+        queryFn: (): Promise<CourtAvailability> => getCourtAvailabilityEndpoint(courtId, date),
+        enabled: Boolean(courtId) && Boolean(date),
     });
 }
 
 // ---------------------------------------------------------------------------
-// useListCalendarReservations — GET /api/v1/clubs/:clubId/calendar-reservations
+// useListCalendarReservations — GET /api/v1/calendar-reservations?club_id=...
 // ---------------------------------------------------------------------------
 
 export function useListCalendarReservations(clubId: string) {
     return useQuery({
         queryKey: courtKeys.calendarReservations(clubId),
-        queryFn: async (): Promise<CalendarReservation[]> =>
-            listCalendarReservationsEndpoint(clubId),
+        queryFn: (): Promise<CalendarReservation[]> =>
+            listCalendarReservationsEndpoint({ club_id: clubId }),
         enabled: Boolean(clubId),
     });
 }
 
 // ---------------------------------------------------------------------------
-// useCreateCalendarReservation — POST /api/v1/clubs/:clubId/calendar-reservations
+// useCreateCalendarReservation — POST /api/v1/calendar-reservations
 // ---------------------------------------------------------------------------
 
 export function useCreateCalendarReservation(clubId: string) {
     const queryClient = useQueryClient();
     return useMutation<CalendarReservation, Error, CalendarReservationInput>({
-        mutationFn: (data: CalendarReservationInput) =>
-            createCalendarReservationEndpoint(clubId, data),
+        mutationFn: (data: CalendarReservationInput) => createCalendarReservationEndpoint(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: courtKeys.calendarReservations(clubId) });
         },
@@ -143,29 +130,43 @@ export function useCreateCalendarReservation(clubId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// useUpdateCalendarReservation — PATCH /api/v1/clubs/:clubId/calendar-reservations/:reservationId
+// useGetCalendarReservation — GET /api/v1/calendar-reservations/:reservationId
+// ---------------------------------------------------------------------------
+
+export function useGetCalendarReservation(reservationId: string) {
+    return useQuery({
+        queryKey: courtKeys.calendarReservationDetail(reservationId),
+        queryFn: (): Promise<CalendarReservation> => getCalendarReservationEndpoint(reservationId),
+        enabled: Boolean(reservationId),
+    });
+}
+
+// ---------------------------------------------------------------------------
+// useUpdateCalendarReservation — PATCH /api/v1/calendar-reservations/:reservationId
 // ---------------------------------------------------------------------------
 
 export function useUpdateCalendarReservation(clubId: string, reservationId: string) {
     const queryClient = useQueryClient();
     return useMutation<CalendarReservation, Error, CalendarReservationUpdateInput>({
         mutationFn: (data: CalendarReservationUpdateInput) =>
-            updateCalendarReservationEndpoint(clubId, reservationId, data),
+            updateCalendarReservationEndpoint(reservationId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: courtKeys.calendarReservations(clubId) });
+            queryClient.invalidateQueries({
+                queryKey: courtKeys.calendarReservationDetail(reservationId),
+            });
         },
     });
 }
 
 // ---------------------------------------------------------------------------
-// useDeleteCalendarReservation — DELETE /api/v1/clubs/:clubId/calendar-reservations/:reservationId
+// useDeleteCalendarReservation — DELETE /api/v1/calendar-reservations/:reservationId
 // ---------------------------------------------------------------------------
 
 export function useDeleteCalendarReservation(clubId: string) {
     const queryClient = useQueryClient();
     return useMutation<void, Error, string>({
-        mutationFn: (reservationId: string) =>
-            deleteCalendarReservationEndpoint(clubId, reservationId),
+        mutationFn: (reservationId: string) => deleteCalendarReservationEndpoint(reservationId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: courtKeys.calendarReservations(clubId) });
         },

@@ -34,7 +34,6 @@ staff-domain/               # reference implementation
 - `types/` holds internal supporting types only — not part of the public `index.ts`
 - `index.ts` defines the public surface — only models and hooks are exported
 
-
 Each package that contains hooks or mappers **must** have a `vitest.config.ts`, a `vitest.setup.ts`, and test files alongside the implementation files. The `test` script in `package.json` must run `vitest run`.
 
 ---
@@ -110,11 +109,11 @@ A mapper is only needed when a field requires a transformation before it reaches
 
 ### When to add a mapper
 
-| Situation | Mapper needed? |
-|---|---|
-| API returns ISO datetime, form needs `datetime-local` | Yes |
-| API returns snake_case, UI needs camelCase | Yes |
-| Fields are structurally identical to the DTO | No — skip this step |
+| Situation                                             | Mapper needed?      |
+| ----------------------------------------------------- | ------------------- |
+| API returns ISO datetime, form needs `datetime-local` | Yes                 |
+| API returns snake_case, UI needs camelCase            | Yes                 |
+| Fields are structurally identical to the DTO          | No — skip this step |
 
 ### Example (from club module)
 
@@ -156,12 +155,12 @@ A service contains **pure business logic** — functions that take domain models
 
 ### When to add a service
 
-| Situation | Service needed? |
-|---|---|
-| Computing a derived value from domain data (e.g. "upcoming bookings") | Yes |
-| Validating domain rules before a mutation | Yes |
-| Formatting/filtering a list for display | Yes |
-| The hook just passes data straight to the API | No — skip this step |
+| Situation                                                             | Service needed?     |
+| --------------------------------------------------------------------- | ------------------- |
+| Computing a derived value from domain data (e.g. "upcoming bookings") | Yes                 |
+| Validating domain rules before a mutation                             | Yes                 |
+| Formatting/filtering a list for display                               | Yes                 |
+| The hook just passes data straight to the API                         | No — skip this step |
 
 ### Example
 
@@ -248,6 +247,7 @@ Every domain package that has mappers or hooks **must** have test files. Tests a
 Add these files once per package (copy from `packages/staff-domain/`):
 
 **`vitest.config.ts`**
+
 ```ts
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
@@ -263,11 +263,13 @@ export default defineConfig({
 ```
 
 **`vitest.setup.ts`**
+
 ```ts
 import "@testing-library/jest-dom";
 ```
 
 **`package.json` scripts**
+
 ```json
 {
     "scripts": {
@@ -287,6 +289,7 @@ import "@testing-library/jest-dom";
 ```
 
 **Run tests:**
+
 ```bash
 pnpm --filter @repo/staff-domain test
 ```
@@ -303,7 +306,13 @@ import { toPricingRule } from "./club.mapper";
 
 describe("toPricingRule", () => {
     it("passes through a rule with no incentive_expires_at unchanged", () => {
-        const rule = { label: "Peak", day_of_week: 1, start_time: "18:00", end_time: "21:00", price_per_slot: 20 };
+        const rule = {
+            label: "Peak",
+            day_of_week: 1,
+            start_time: "18:00",
+            end_time: "21:00",
+            price_per_slot: 20,
+        };
         expect(toPricingRule(rule)).toEqual(rule);
     });
 
@@ -321,6 +330,7 @@ describe("toPricingRule", () => {
 Use `renderHook` from `@testing-library/react` with a fresh `QueryClient` wrapper. Mock the entire `@repo/api-client/modules/<domain>` module — never call real endpoints.
 
 **Wrapper helper (define once per test file):**
+
 ```ts
 function makeWrapper() {
     const client = new QueryClient({
@@ -334,6 +344,7 @@ function makeWrapper() {
 ```
 
 **Mock the api-client module at the top of the file:**
+
 ```ts
 vi.mock("@repo/api-client/modules/staff", () => ({
     listCourtsEndpoint: vi.fn(),
@@ -344,9 +355,9 @@ import * as staffApi from "@repo/api-client/modules/staff";
 
 **Required test cases per hook:**
 
-| Hook type | Required tests |
-|---|---|
-| `useQuery` | success (data returned), `enabled` guard (does not fetch when param is empty) |
+| Hook type     | Required tests                                                                                                |
+| ------------- | ------------------------------------------------------------------------------------------------------------- |
+| `useQuery`    | success (data returned), `enabled` guard (does not fetch when param is empty)                                 |
 | `useMutation` | success (endpoint called with correct args), cache invalidation (`invalidateQueries` called with correct key) |
 
 ```ts
@@ -372,7 +383,11 @@ describe("useCreateCourt", () => {
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
         const { result } = renderHook(() => useCreateCourt(CLUB_ID), { wrapper: Wrapper });
-        result.current.mutate({ club_id: CLUB_ID, name: "Court 1", surface_type: "artificial_grass" });
+        result.current.mutate({
+            club_id: CLUB_ID,
+            name: "Court 1",
+            surface_type: "artificial_grass",
+        });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["courts", CLUB_ID] })
@@ -398,8 +413,6 @@ New module added to api-client?
 ```
 
 ---
-
-
 
 ## Checklist
 
@@ -428,7 +441,7 @@ New module added to api-client?
 
 ## Implemented domain modules
 
-| Domain  | Module  | Model             | Mapper             | Mapper test                  | Service | Hooks             | Hook test                    |
-|---------|---------|-------------------|--------------------|------------------------------|---------|-------------------|------------------------------|
-| `staff` | `club`  | `club.model.ts`   | `club.mapper.ts`   | `club.mapper.test.ts`        | —       | `club.hooks.ts`   | `club.hooks.test.tsx`        |
-| `staff` | `court` | `court.model.ts`  | —                  | —                            | —       | `court.hooks.ts`  | `court.hooks.test.tsx`       |
+| Domain  | Module  | Model            | Mapper           | Mapper test           | Service | Hooks            | Hook test              |
+| ------- | ------- | ---------------- | ---------------- | --------------------- | ------- | ---------------- | ---------------------- |
+| `staff` | `club`  | `club.model.ts`  | `club.mapper.ts` | `club.mapper.test.ts` | —       | `club.hooks.ts`  | `club.hooks.test.tsx`  |
+| `staff` | `court` | `court.model.ts` | —                | —                     | —       | `court.hooks.ts` | `court.hooks.test.tsx` |

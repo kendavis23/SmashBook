@@ -40,6 +40,28 @@ cd frontend
 pnpm install
 ```
 
+## Environment Variables
+
+Each app needs a `.env` file in its own directory. Vite only exposes variables prefixed with `VITE_`.
+
+**`apps/web-staff/.env`**
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+VITE_APP_ENV=development
+```
+
+**`apps/web-player/.env`**
+
+```env
+VITE_API_BASE_URL=http://localhost:8080
+VITE_APP_ENV=development
+```
+
+> `.env` files are gitignored. Never commit them. Copy the above and adjust values for staging/production.
+>
+> All env vars are validated at startup via Zod in `packages/config/env.ts` — the app will throw if a required var is missing or malformed.
+
 ## Development
 
 ```bash

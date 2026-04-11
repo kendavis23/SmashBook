@@ -13,7 +13,9 @@ describe("buildDefaultRows", () => {
     });
 
     it("marks matching day as open", () => {
-        const hours: OperatingHours[] = [{ day_of_week: 1, open_time: "09:00", close_time: "21:00" }];
+        const hours: OperatingHours[] = [
+            { day_of_week: 1, open_time: "09:00", close_time: "21:00" },
+        ];
         const rows = buildDefaultRows(hours);
         expect(rows[1]!.isOpen).toBe(true);
         expect(rows[1]!.open_time).toBe("09:00");

@@ -4,9 +4,14 @@
 
 export type UUID = string;
 
-export type SurfaceType = "artificial_grass" | "concrete" | "carpet" | "wood";
+export type SurfaceType = "indoor" | "outdoor" | "crystal" | "artificial_grass";
 
-export type CalendarReservationType = "block" | "maintenance" | "event" | "skill_filter";
+export type CalendarReservationType =
+    | "skill_filter"
+    | "training_block"
+    | "private_hire"
+    | "maintenance"
+    | "tournament_hold";
 
 export interface Court {
     id: UUID;

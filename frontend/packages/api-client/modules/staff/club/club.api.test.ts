@@ -134,7 +134,15 @@ describe("getPricingRulesEndpoint", () => {
 
 describe("setPricingRulesEndpoint", () => {
     it("calls PUT /api/v1/clubs/:id/pricing-rules with body", async () => {
-        const rules = [{ label: "Peak", day_of_week: 1, start_time: "18:00", end_time: "21:00", price_per_slot: 20 }];
+        const rules = [
+            {
+                label: "Peak",
+                day_of_week: 1,
+                start_time: "18:00",
+                end_time: "21:00",
+                price_per_slot: 20,
+            },
+        ];
         mockFetcher.mockResolvedValue(rules);
         await setPricingRulesEndpoint(CLUB_ID, rules);
         expect(mockFetcher).toHaveBeenCalledWith(`/api/v1/clubs/${CLUB_ID}/pricing-rules`, {
@@ -147,7 +155,10 @@ describe("setPricingRulesEndpoint", () => {
 
 describe("stripeConnectEndpoint", () => {
     it("calls POST /api/v1/clubs/:id/stripe-connect with body", async () => {
-        const req = { return_url: "https://example.com/return", refresh_url: "https://example.com/refresh" };
+        const req = {
+            return_url: "https://example.com/return",
+            refresh_url: "https://example.com/refresh",
+        };
         mockFetcher.mockResolvedValue({ onboarding_url: "https://stripe.com/onboard" });
         await stripeConnectEndpoint(CLUB_ID, req);
         expect(mockFetcher).toHaveBeenCalledWith(`/api/v1/clubs/${CLUB_ID}/stripe-connect`, {

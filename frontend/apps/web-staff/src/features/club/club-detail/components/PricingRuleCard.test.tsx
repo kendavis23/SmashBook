@@ -66,7 +66,9 @@ describe("RuleCard", () => {
 
     it("calls onDelete when Delete button is clicked", () => {
         const handleDelete = vi.fn();
-        render(<RuleCard rule={baseRule} currency="GBP" onEdit={vi.fn()} onDelete={handleDelete} />);
+        render(
+            <RuleCard rule={baseRule} currency="GBP" onEdit={vi.fn()} onDelete={handleDelete} />
+        );
         fireEvent.click(screen.getByText("Delete"));
         expect(handleDelete).toHaveBeenCalled();
     });

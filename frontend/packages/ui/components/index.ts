@@ -6,3 +6,5 @@ export { Breadcrumb } from "./Breadcrumb";
 export type { BreadcrumbItem } from "./Breadcrumb";
 export { FormField } from "./FormField";
 export { Toggle } from "./Toggle";
+export { ConfirmDeleteModal } from "./ConfirmDeleteModal";
+export type { ConfirmDeleteModalProps } from "./ConfirmDeleteModal";

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-08 12:00 UTC_
+_Last updated: 2026-04-11 15:00 UTC_
 
 # FE Auth Flow
 
@@ -39,6 +39,9 @@ DashboardLayout mounts
       → reads accessToken from store
       → if token is expired → tryRefreshToken() first
       → getMeService()   GET /api/v1/players/me
+      → if user.role !== "owner" AND clubs[] is empty → clearAuth() + throw
+           (non-owners must have a club; /refresh doesn't return clubs so
+            if they were never persisted the session is unusable → re-login)
       → setUser()        re-hydrates user in store
   → while isLoading → spinner shown (DashboardLayout.tsx)
   → if no token or isError → redirect to /login
@@ -166,6 +169,15 @@ const visibleTabs = TABS.filter((t) => t.id === "view" || canManage);
 ```
 
 `"view"` is always visible. `"settings"`, `"hours"`, and `"pricing"` are hidden for `staff`/`employee` roles. If the active tab becomes hidden (e.g. role changes), it falls back to `"view"`.
+
+**Action-level visibility** (`CourtsContainer.tsx` / `CourtsView.tsx`):
+
+```ts
+const { role } = useClubAccess();
+const canManageCourts = role === "owner" || role === "admin";
+```
+
+`Add Court` is rendered only when `canManageCourts` is true. Staff and other non-owner/admin roles can still view courts and inspect availability, but they do not see the create action.
 
 **Rule of thumb:**
 

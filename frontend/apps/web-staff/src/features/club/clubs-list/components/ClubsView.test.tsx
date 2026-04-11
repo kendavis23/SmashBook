@@ -10,7 +10,11 @@ const mockClubs: Club[] = [
 
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
-        <nav>{items.map((i) => <span key={i.label}>{i.label}</span>)}</nav>
+        <nav>
+            {items.map((i) => (
+                <span key={i.label}>{i.label}</span>
+            ))}
+        </nav>
     ),
 }));
 

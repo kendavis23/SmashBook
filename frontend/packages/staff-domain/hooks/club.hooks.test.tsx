@@ -256,7 +256,13 @@ describe("useGetPricingRules", () => {
 describe("useSetPricingRules", () => {
     it("calls setPricingRulesEndpoint with rules", async () => {
         const rules = [
-            { label: "Peak", day_of_week: 1, start_time: "18:00", end_time: "21:00", price_per_slot: 20 },
+            {
+                label: "Peak",
+                day_of_week: 1,
+                start_time: "18:00",
+                end_time: "21:00",
+                price_per_slot: 20,
+            },
         ];
         vi.mocked(staffApi.setPricingRulesEndpoint).mockResolvedValue(rules as never);
         const { Wrapper } = makeWrapper();
@@ -273,8 +279,13 @@ describe("useSetPricingRules", () => {
 
 describe("useStripeConnect", () => {
     it("calls stripeConnectEndpoint with data", async () => {
-        const req = { return_url: "https://example.com/return", refresh_url: "https://example.com/refresh" };
-        vi.mocked(staffApi.stripeConnectEndpoint).mockResolvedValue({ onboarding_url: "https://stripe.com/onboard" });
+        const req = {
+            return_url: "https://example.com/return",
+            refresh_url: "https://example.com/refresh",
+        };
+        vi.mocked(staffApi.stripeConnectEndpoint).mockResolvedValue({
+            onboarding_url: "https://stripe.com/onboard",
+        });
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useStripeConnect(CLUB_ID), { wrapper: Wrapper });
         result.current.mutate(req);

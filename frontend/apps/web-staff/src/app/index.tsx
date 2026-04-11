@@ -19,6 +19,8 @@ const ForgotPasswordPage = lazy(() => import("../features/auth/pages/ForgotPassw
 const ResetPasswordPage = lazy(() => import("../features/auth/pages/ResetPasswordPage"));
 const ClubsPage = lazy(() => import("../features/club/pages/ClubsPage"));
 const ClubDetailPage = lazy(() => import("../features/club/pages/ClubDetailPage"));
+const CourtsPage = lazy(() => import("../features/court/pages/CourtsPage"));
+const ReservationsPage = lazy(() => import("../features/reservation/pages/ReservationsPage"));
 
 function PageLoader() {
     return (
@@ -115,6 +117,18 @@ const clubDetailRoute = createRoute({
     component: ClubDetailPage,
 });
 
+const courtsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/courts",
+    component: CourtsPage,
+});
+
+const reservationsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/reservations",
+    component: ReservationsPage,
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     loginRoute,
@@ -122,7 +136,13 @@ const routeTree = rootRoute.addChildren([
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
-    dashboardLayoutRoute.addChildren([dashboardRoute, clubsRoute, clubDetailRoute]),
+    dashboardLayoutRoute.addChildren([
+        dashboardRoute,
+        clubsRoute,
+        clubDetailRoute,
+        courtsRoute,
+        reservationsRoute,
+    ]),
 ]);
 
 const router = createRouter({ routeTree });

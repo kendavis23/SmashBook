@@ -173,7 +173,7 @@ export default function Navbar({
         <>
             <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-5">
                 {/* ── Left: mobile trigger + page context ── */}
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                     <button
                         onClick={onOpenMobile}
                         aria-label="Open menu"
@@ -186,12 +186,14 @@ export default function Navbar({
                     </button>
 
                     {currentRoute && (
-                        <div className="hidden border-l-2 border-cta/60 pl-2.5 md:block">
-                            <p className="navbar-page-title">
+                        <div className="hidden min-w-0 border-l-2 border-cta/60 pl-2.5 md:block">
+                            <p className="navbar-page-title truncate">
                                 {currentRoute.title ?? currentRoute.label}
                             </p>
                             {currentRoute.subtitle && (
-                                <p className="navbar-page-subtitle">{currentRoute.subtitle}</p>
+                                <p className="navbar-page-subtitle truncate">
+                                    {currentRoute.subtitle}
+                                </p>
                             )}
                         </div>
                     )}

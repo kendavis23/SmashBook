@@ -72,6 +72,15 @@ export function useInitAuth() {
             }
 
             const user = await getMeService(token, state.tenantSubdomain);
+
+            // Non-owner users must have at least one club. If clubs are missing
+            // (e.g. /refresh did not return clubs and none were persisted), the
+            // session is unusable — force a fresh login.
+            if (user.role !== "owner" && state.clubs.length === 0) {
+                clearAuth();
+                throw new Error("No club assigned");
+            }
+
             setUser(user);
             return user;
         },

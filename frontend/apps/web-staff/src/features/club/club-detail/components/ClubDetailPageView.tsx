@@ -48,10 +48,7 @@ export default function ClubDetailPageView({
         <div className="w-full space-y-4">
             <div className="space-y-5">
                 <Breadcrumb
-                    items={[
-                        { label: "Clubs", onClick: onNavigateBack },
-                        { label: "Club Profile" },
-                    ]}
+                    items={[{ label: "Clubs", onClick: onNavigateBack }, { label: "Club Profile" }]}
                 />
             </div>
 
@@ -108,10 +105,7 @@ export default function ClubDetailPageView({
                                     onClose={onSettingsToastDismiss}
                                 />
                             ) : null}
-                            <ClubSettingsTable
-                                form={settingsForm}
-                                onChange={onSettingsChange}
-                            />
+                            <ClubSettingsTable form={settingsForm} onChange={onSettingsChange} />
                             <div className="flex items-center justify-end gap-3 border-t border-border pt-4">
                                 <button onClick={onSettingsCancel} className="btn-outline">
                                     Cancel

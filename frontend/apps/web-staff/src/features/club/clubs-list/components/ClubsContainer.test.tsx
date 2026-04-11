@@ -33,7 +33,11 @@ vi.mock("@repo/ui", () => ({
         </div>
     ),
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
-        <nav>{items.map((i) => <span key={i.label}>{i.label}</span>)}</nav>
+        <nav>
+            {items.map((i) => (
+                <span key={i.label}>{i.label}</span>
+            ))}
+        </nav>
     ),
 }));
 
