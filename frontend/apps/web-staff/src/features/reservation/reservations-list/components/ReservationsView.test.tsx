@@ -11,6 +11,21 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    ConfirmDeleteModal: ({
+        onConfirm,
+        onCancel,
+    }: {
+        title: string;
+        description: string;
+        saving: boolean;
+        onConfirm: () => void;
+        onCancel: () => void;
+    }) => (
+        <div>
+            <button onClick={onConfirm}>Confirm delete</button>
+            <button onClick={onCancel}>Cancel delete</button>
+        </div>
+    ),
 }));
 
 const defaultFilters: ReservationFilters = {
@@ -190,6 +205,7 @@ describe("ReservationsView — user events", () => {
         const onDeleteReservation = vi.fn();
         render(<ReservationsView {...defaultProps} onDeleteReservation={onDeleteReservation} />);
         fireEvent.click(screen.getByLabelText("Delete Morning Training"));
+        fireEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
         expect(onDeleteReservation).toHaveBeenCalledWith(mockReservations[0]);
     });
 
