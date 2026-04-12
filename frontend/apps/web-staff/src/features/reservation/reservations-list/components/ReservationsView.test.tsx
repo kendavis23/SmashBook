@@ -11,21 +11,6 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
-    ConfirmDeleteModal: ({
-        onConfirm,
-        onCancel,
-    }: {
-        title: string;
-        description: string;
-        saving: boolean;
-        onConfirm: () => void;
-        onCancel: () => void;
-    }) => (
-        <div>
-            <button onClick={onConfirm}>Confirm delete</button>
-            <button onClick={onCancel}>Cancel delete</button>
-        </div>
-    ),
 }));
 
 const defaultFilters: ReservationFilters = {
@@ -101,10 +86,8 @@ const defaultProps = {
     onFiltersChange: vi.fn(),
     onSearch: vi.fn(),
     onCreateClick: vi.fn(),
-    onEditReservation: vi.fn(),
-    onDeleteReservation: vi.fn(),
+    onManageClick: vi.fn(),
     onRefresh: vi.fn(),
-    isDeleting: false,
 };
 
 describe("ReservationsView — loading state", () => {
@@ -131,7 +114,6 @@ describe("ReservationsView — empty state", () => {
     it("shows empty message and Add Reservation CTA when canCreate", () => {
         render(<ReservationsView {...defaultProps} reservations={[]} />);
         expect(screen.getByText("No reservations")).toBeInTheDocument();
-        // CTA button in empty state
         const addButtons = screen.getAllByRole("button", { name: /add reservation/i });
         expect(addButtons.length).toBeGreaterThan(0);
     });
@@ -167,7 +149,6 @@ describe("ReservationsView — reservation list", () => {
 
     it("shows 'All courts' text when court_id is null", () => {
         render(<ReservationsView {...defaultProps} />);
-        // res-2 has court_id: null → rendered as "All courts" in the table cell
         expect(screen.getAllByText("All courts").length).toBeGreaterThan(0);
     });
 });
@@ -194,19 +175,11 @@ describe("ReservationsView — user events", () => {
         expect(onSearch).toHaveBeenCalledOnce();
     });
 
-    it("calls onEditReservation with correct reservation when Edit is clicked", () => {
-        const onEditReservation = vi.fn();
-        render(<ReservationsView {...defaultProps} onEditReservation={onEditReservation} />);
-        fireEvent.click(screen.getByLabelText("Edit Morning Training"));
-        expect(onEditReservation).toHaveBeenCalledWith(mockReservations[0]);
-    });
-
-    it("calls onDeleteReservation with correct reservation when Delete is clicked", () => {
-        const onDeleteReservation = vi.fn();
-        render(<ReservationsView {...defaultProps} onDeleteReservation={onDeleteReservation} />);
-        fireEvent.click(screen.getByLabelText("Delete Morning Training"));
-        fireEvent.click(screen.getByRole("button", { name: /confirm delete/i }));
-        expect(onDeleteReservation).toHaveBeenCalledWith(mockReservations[0]);
+    it("calls onManageClick with correct reservation id when Manage is clicked", () => {
+        const onManageClick = vi.fn();
+        render(<ReservationsView {...defaultProps} onManageClick={onManageClick} />);
+        fireEvent.click(screen.getByLabelText("Manage Morning Training"));
+        expect(onManageClick).toHaveBeenCalledWith("res-1");
     });
 
     it("calls onFiltersChange when reservation type select changes", () => {
@@ -231,11 +204,5 @@ describe("ReservationsView — user events", () => {
             ...defaultFilters,
             courtId: "court-1",
         });
-    });
-
-    it("disables Delete buttons while isDeleting", () => {
-        render(<ReservationsView {...defaultProps} isDeleting={true} />);
-        const deleteButtons = screen.getAllByRole("button", { name: /delete/i });
-        deleteButtons.forEach((btn) => expect(btn).toBeDisabled());
     });
 });

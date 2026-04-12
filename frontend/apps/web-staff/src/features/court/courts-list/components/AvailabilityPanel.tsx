@@ -1,5 +1,6 @@
 import type { Court, CourtAvailability, TimeSlot } from "../../types";
 import { X, Clock, CalendarDays } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import type { JSX } from "react";
 
 type Props = {
@@ -41,6 +42,7 @@ export default function AvailabilityPanel({
     onDateChange,
     onClose,
 }: Props): JSX.Element {
+    const navigate = useNavigate();
     const slots = availability?.slots ?? [];
     const availableCount = slots.filter((s) => s.is_available).length;
     const bookedCount = slots.length - availableCount;
@@ -179,15 +181,27 @@ export default function AvailabilityPanel({
                                                 {priceAmount ?? "—"}
                                             </td>
                                             <td className="px-4 py-3 text-right sm:px-5">
-                                                <span
-                                                    className={`inline-flex rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                                                        slot.is_available
-                                                            ? "bg-success/15 text-success"
-                                                            : "bg-muted text-muted-foreground"
-                                                    }`}
-                                                >
-                                                    {slot.is_available ? "Available" : "Booked"}
-                                                </span>
+                                                {slot.is_available ? (
+                                                    <button
+                                                        onClick={() =>
+                                                            void navigate({
+                                                                to: "/bookings/new",
+                                                                search: {
+                                                                    courtId: court.id,
+                                                                    date,
+                                                                    startTime: slot.start_time,
+                                                                },
+                                                            })
+                                                        }
+                                                        className="inline-flex rounded-md bg-cta px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cta-foreground transition hover:opacity-90"
+                                                    >
+                                                        Book
+                                                    </button>
+                                                ) : (
+                                                    <span className="inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Booked
+                                                    </span>
+                                                )}
                                             </td>
                                         </tr>
                                     );

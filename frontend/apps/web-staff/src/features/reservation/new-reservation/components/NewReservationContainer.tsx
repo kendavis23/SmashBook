@@ -1,0 +1,135 @@
+import { useState, useCallback } from "react";
+import type { FormEvent, JSX } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useCreateCalendarReservation, useListCourts } from "../../hooks";
+import { useClubAccess } from "../../store";
+import type { CalendarReservationInput, CalendarReservationType, Court } from "../../types";
+import NewReservationView from "./NewReservationView";
+import type { NewReservationFormState } from "./NewReservationView";
+
+function parseOptionalNumber(val: string): number | null {
+    const n = parseFloat(val);
+    return isNaN(n) ? null : n;
+}
+
+function createDefaultForm(): NewReservationFormState {
+    return {
+        title: "",
+        reservationType: "private_hire",
+        courtId: "",
+        startDatetime: "",
+        endDatetime: "",
+        anchorSkillLevel: "",
+        skillRangeAbove: "",
+        skillRangeBelow: "",
+        allowedBookingTypes: [],
+        isRecurring: false,
+        recurrenceRule: "",
+        recurrenceEndDate: "",
+    };
+}
+
+export default function NewReservationContainer(): JSX.Element {
+    const navigate = useNavigate();
+    const { clubId } = useClubAccess();
+
+    const { data: courts = [] } = useListCourts(clubId ?? "");
+
+    const [form, setForm] = useState<NewReservationFormState>(createDefaultForm);
+    const [titleError, setTitleError] = useState("");
+    const [dateError, setDateError] = useState("");
+
+    const createMutation = useCreateCalendarReservation(clubId ?? "");
+    const apiError = (createMutation.error as Error | null)?.message ?? "";
+
+    const handleFormChange = useCallback((patch: Partial<NewReservationFormState>): void => {
+        setForm((prev) => {
+            const next = { ...prev, ...patch };
+            if (patch.title !== undefined && patch.title.trim()) setTitleError("");
+            if (
+                (patch.startDatetime !== undefined || patch.endDatetime !== undefined) &&
+                next.startDatetime &&
+                next.endDatetime &&
+                next.startDatetime < next.endDatetime
+            ) {
+                setDateError("");
+            }
+            return next;
+        });
+    }, []);
+
+    const validate = (): boolean => {
+        let valid = true;
+        if (!form.title.trim()) {
+            setTitleError("Title is required.");
+            valid = false;
+        } else {
+            setTitleError("");
+        }
+        if (!form.startDatetime || !form.endDatetime) {
+            setDateError("Start and end date/time are required.");
+            valid = false;
+        } else if (form.startDatetime >= form.endDatetime) {
+            setDateError("End date/time must be after start.");
+            valid = false;
+        } else {
+            setDateError("");
+        }
+        return valid;
+    };
+
+    const handleSubmit = useCallback(
+        (e: FormEvent): void => {
+            e.preventDefault();
+            if (!validate()) return;
+
+            const payload: CalendarReservationInput = {
+                club_id: clubId ?? "",
+                court_id: form.courtId || null,
+                reservation_type: form.reservationType as CalendarReservationType,
+                title: form.title.trim(),
+                start_datetime: new Date(form.startDatetime).toISOString(),
+                end_datetime: new Date(form.endDatetime).toISOString(),
+                anchor_skill_level: parseOptionalNumber(form.anchorSkillLevel),
+                skill_range_above: parseOptionalNumber(form.skillRangeAbove),
+                skill_range_below: parseOptionalNumber(form.skillRangeBelow),
+                allowed_booking_types:
+                    form.allowedBookingTypes.length > 0 ? form.allowedBookingTypes : null,
+                is_recurring: form.isRecurring,
+                recurrence_rule: form.recurrenceRule || null,
+                recurrence_end_date: form.recurrenceEndDate || null,
+            };
+
+            createMutation.mutate(payload, {
+                onSuccess: () => {
+                    void navigate({ to: "/reservations" });
+                },
+            });
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [form, clubId, createMutation, navigate]
+    );
+
+    const handleCancel = useCallback((): void => {
+        void navigate({ to: "/reservations" });
+    }, [navigate]);
+
+    const handleDismissError = useCallback((): void => {
+        createMutation.reset();
+    }, [createMutation]);
+
+    return (
+        <NewReservationView
+            courts={courts as Court[]}
+            form={form}
+            titleError={titleError}
+            dateError={dateError}
+            apiError={apiError}
+            isPending={createMutation.isPending}
+            onFormChange={handleFormChange}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onDismissError={handleDismissError}
+        />
+    );
+}

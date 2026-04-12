@@ -5,28 +5,17 @@ import ReservationsContainer from "./ReservationsContainer";
 vi.mock("../../hooks", () => ({
     useListCourts: vi.fn(),
     useListCalendarReservations: vi.fn(),
-    useDeleteCalendarReservation: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
 }));
 
-vi.mock("./ReservationModal", () => ({
-    default: ({ onClose }: { onClose: () => void }) => (
-        <div role="dialog">
-            <button onClick={onClose}>Close modal</button>
-        </div>
-    ),
+vi.mock("@tanstack/react-router", () => ({
+    useNavigate: () => vi.fn(),
 }));
 
 vi.mock("@repo/ui", () => ({
-    AlertToast: ({ title, onClose }: { title: string; onClose: () => void }) => (
-        <div role="alert">
-            {title}
-            <button onClick={onClose}>Dismiss</button>
-        </div>
-    ),
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
             {items.map((i) => (
@@ -36,16 +25,11 @@ vi.mock("@repo/ui", () => ({
     ),
 }));
 
-import {
-    useListCourts,
-    useListCalendarReservations,
-    useDeleteCalendarReservation,
-} from "../../hooks";
+import { useListCourts, useListCalendarReservations } from "../../hooks";
 import { useClubAccess } from "../../store";
 
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseList = useListCalendarReservations as ReturnType<typeof vi.fn>;
-const mockUseDelete = useDeleteCalendarReservation as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 
 const mockReservations = [
@@ -79,23 +63,13 @@ function setupMocks(listOverride = {}) {
         refetch: vi.fn(),
         ...listOverride,
     });
-    mockUseDelete.mockReturnValue({
-        mutate: vi.fn(),
-        isPending: false,
-    });
     mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
 }
 
 describe("ReservationsContainer — loading state", () => {
     it("renders loading indicator", () => {
         mockUseListCourts.mockReturnValue({ data: [] });
-        mockUseList.mockReturnValue({
-            data: [],
-            isLoading: true,
-            error: null,
-            refetch: vi.fn(),
-        });
-        mockUseDelete.mockReturnValue({ mutate: vi.fn(), isPending: false });
+        mockUseList.mockReturnValue({ data: [], isLoading: true, error: null, refetch: vi.fn() });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         render(<ReservationsContainer />);
         expect(screen.getByText("Loading reservations…")).toBeInTheDocument();
@@ -111,7 +85,6 @@ describe("ReservationsContainer — error state", () => {
             error: new Error("Server error"),
             refetch: vi.fn(),
         });
-        mockUseDelete.mockReturnValue({ mutate: vi.fn(), isPending: false });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         render(<ReservationsContainer />);
         expect(screen.getByText("Server error")).toBeInTheDocument();
@@ -149,44 +122,12 @@ describe("ReservationsContainer — reservation list", () => {
     });
 });
 
-describe("ReservationsContainer — create modal", () => {
-    it("opens ReservationModal when Add Reservation is clicked", () => {
-        setupMocks({ data: [] });
-        render(<ReservationsContainer />);
-        const addBtns = screen.getAllByRole("button", { name: /add reservation/i });
-        fireEvent.click(addBtns[addBtns.length - 1]!);
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-    });
-
-    it("closes ReservationModal when onClose is called", () => {
-        setupMocks({ data: [] });
-        render(<ReservationsContainer />);
-        const addBtns = screen.getAllByRole("button", { name: /add reservation/i });
-        fireEvent.click(addBtns[addBtns.length - 1]!);
-        fireEvent.click(screen.getByText("Close modal"));
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    });
-
+describe("ReservationsContainer — access control", () => {
     it("does not show Add Reservation for non-admin roles", () => {
         mockUseListCourts.mockReturnValue({ data: [] });
-        mockUseList.mockReturnValue({
-            data: [],
-            isLoading: false,
-            error: null,
-            refetch: vi.fn(),
-        });
-        mockUseDelete.mockReturnValue({ mutate: vi.fn(), isPending: false });
+        mockUseList.mockReturnValue({ data: [], isLoading: false, error: null, refetch: vi.fn() });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "staff" });
         render(<ReservationsContainer />);
         expect(screen.queryByRole("button", { name: /add reservation/i })).not.toBeInTheDocument();
-    });
-});
-
-describe("ReservationsContainer — edit modal", () => {
-    it("opens ReservationModal when Edit is clicked", () => {
-        setupMocks();
-        render(<ReservationsContainer />);
-        fireEvent.click(screen.getByLabelText("Edit Morning Training"));
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 });

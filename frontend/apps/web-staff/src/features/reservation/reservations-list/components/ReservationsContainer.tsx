@@ -1,15 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
 import type { JSX } from "react";
-import {
-    useListCalendarReservations,
-    useDeleteCalendarReservation,
-    useListCourts,
-} from "../../hooks";
+import { useNavigate } from "@tanstack/react-router";
+import { useListCalendarReservations, useListCourts } from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { CalendarReservation, Court, ReservationFilters } from "../../types";
-import { AlertToast } from "@repo/ui";
 import ReservationsView from "./ReservationsView";
-import ReservationModal from "./ReservationModal";
 
 function createDefaultFilters(): ReservationFilters {
     return {
@@ -50,12 +45,9 @@ function applyClientFilters(
 }
 
 export default function ReservationsContainer(): JSX.Element {
+    const navigate = useNavigate();
     const [filters, setFilters] = useState<ReservationFilters>(createDefaultFilters);
     const [appliedFilters, setAppliedFilters] = useState<ReservationFilters>(createDefaultFilters);
-    const [modalReservation, setModalReservation] = useState<CalendarReservation | null | "create">(
-        null
-    );
-    const [successMsg, setSuccessMsg] = useState("");
 
     const { clubId, role } = useClubAccess();
     const canCreate = role === "owner" || role === "admin";
@@ -77,8 +69,6 @@ export default function ReservationsContainer(): JSX.Element {
         return map;
     }, [courts]);
 
-    const deleteMutation = useDeleteCalendarReservation(clubId ?? "");
-
     const filteredReservations = applyClientFilters(
         allReservations as CalendarReservation[],
         appliedFilters
@@ -90,72 +80,34 @@ export default function ReservationsContainer(): JSX.Element {
 
     const handleCreateClick = useCallback((): void => {
         if (!canCreate) return;
-        setModalReservation("create");
-    }, [canCreate]);
+        void navigate({ to: "/reservations/new" });
+    }, [canCreate, navigate]);
 
-    const handleEditReservation = useCallback((reservation: CalendarReservation): void => {
-        setModalReservation(reservation);
-    }, []);
-
-    const handleDeleteReservation = useCallback(
-        (reservation: CalendarReservation): void => {
-            deleteMutation.mutate(reservation.id, {
-                onSuccess: () => {
-                    setSuccessMsg("Reservation deleted.");
-                },
-            });
+    const handleManageClick = useCallback(
+        (reservationId: string): void => {
+            void navigate({ to: "/reservations/$reservationId", params: { reservationId } });
         },
-        [deleteMutation]
+        [navigate]
     );
-
-    const handleCloseModal = useCallback((): void => {
-        setModalReservation(null);
-    }, []);
 
     const handleRefresh = useCallback((): void => {
         void refetch();
     }, [refetch]);
 
-    const modalOpen = modalReservation !== null;
-    const editReservation =
-        modalReservation !== "create" && modalReservation !== null ? modalReservation : undefined;
-
     return (
-        <>
-            <ReservationsView
-                reservations={filteredReservations}
-                isLoading={isLoading}
-                error={error as Error | null}
-                canCreate={canCreate}
-                filters={filters}
-                courts={courts as Court[]}
-                courtNameMap={courtNameMap}
-                onFiltersChange={setFilters}
-                onSearch={handleSearch}
-                onCreateClick={handleCreateClick}
-                onEditReservation={handleEditReservation}
-                onDeleteReservation={handleDeleteReservation}
-                onRefresh={handleRefresh}
-                isDeleting={deleteMutation.isPending}
-            />
-
-            {successMsg ? (
-                <AlertToast
-                    title={successMsg}
-                    variant="success"
-                    onClose={() => setSuccessMsg("")}
-                />
-            ) : null}
-
-            {modalOpen ? (
-                <ReservationModal
-                    clubId={clubId ?? ""}
-                    courts={courts as Court[]}
-                    onClose={handleCloseModal}
-                    onSuccess={setSuccessMsg}
-                    initialData={editReservation}
-                />
-            ) : null}
-        </>
+        <ReservationsView
+            reservations={filteredReservations}
+            isLoading={isLoading}
+            error={error as Error | null}
+            canCreate={canCreate}
+            filters={filters}
+            courts={courts as Court[]}
+            courtNameMap={courtNameMap}
+            onFiltersChange={setFilters}
+            onSearch={handleSearch}
+            onCreateClick={handleCreateClick}
+            onManageClick={handleManageClick}
+            onRefresh={handleRefresh}
+        />
     );
 }

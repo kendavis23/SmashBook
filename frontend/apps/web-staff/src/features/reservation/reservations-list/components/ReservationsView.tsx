@@ -4,9 +4,8 @@ import {
     RESERVATION_TYPE_COLORS,
     RESERVATION_TYPE_OPTIONS,
 } from "../../types";
-import { Breadcrumb, ConfirmDeleteModal } from "@repo/ui";
-import { CalendarX2, Plus, RefreshCw, Search, Pencil, Trash2, Repeat } from "lucide-react";
-import { useState } from "react";
+import { Breadcrumb } from "@repo/ui";
+import { CalendarX2, Plus, RefreshCw, Search, Settings2, Repeat } from "lucide-react";
 import type { JSX } from "react";
 
 type Props = {
@@ -20,10 +19,8 @@ type Props = {
     onFiltersChange: (filters: ReservationFilters) => void;
     onSearch: () => void;
     onCreateClick: () => void;
-    onEditReservation: (reservation: CalendarReservation) => void;
-    onDeleteReservation: (reservation: CalendarReservation) => void;
+    onManageClick: (reservationId: string) => void;
     onRefresh: () => void;
-    isDeleting: boolean;
 };
 
 function formatDatetime(iso: string): string {
@@ -53,13 +50,9 @@ export default function ReservationsView({
     onFiltersChange,
     onSearch,
     onCreateClick,
-    onEditReservation,
-    onDeleteReservation,
+    onManageClick,
     onRefresh,
-    isDeleting,
 }: Props): JSX.Element {
-    const [pendingDelete, setPendingDelete] = useState<CalendarReservation | null>(null);
-
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Reservations" }]} />
@@ -346,23 +339,13 @@ export default function ReservationsView({
 
                                             {/* Actions */}
                                             <td className={`${tdCls} text-right`}>
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => onEditReservation(res)}
-                                                        className="btn-outline px-2.5 py-1.5"
-                                                        aria-label={`Edit ${res.title}`}
-                                                    >
-                                                        <Pencil size={14} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setPendingDelete(res)}
-                                                        disabled={isDeleting}
-                                                        className="inline-flex items-center justify-center rounded-lg border border-destructive/40 bg-destructive/10 px-2.5 py-1.5 text-destructive transition hover:bg-destructive/20 disabled:opacity-50"
-                                                        aria-label={`Delete ${res.title}`}
-                                                    >
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
+                                                <button
+                                                    onClick={() => onManageClick(res.id)}
+                                                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
+                                                    aria-label={`Manage ${res.title}`}
+                                                >
+                                                    <Settings2 size={13} /> Manage
+                                                </button>
                                             </td>
                                         </tr>
                                     );
@@ -372,19 +355,6 @@ export default function ReservationsView({
                     </div>
                 )}
             </section>
-
-            {pendingDelete ? (
-                <ConfirmDeleteModal
-                    title={`Delete "${pendingDelete.title}"?`}
-                    description="This reservation will be permanently deleted. This action cannot be undone."
-                    saving={isDeleting}
-                    onConfirm={() => {
-                        onDeleteReservation(pendingDelete);
-                        setPendingDelete(null);
-                    }}
-                    onCancel={() => setPendingDelete(null)}
-                />
-            ) : null}
         </div>
     );
 }

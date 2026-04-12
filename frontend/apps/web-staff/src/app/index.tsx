@@ -21,6 +21,14 @@ const ClubsPage = lazy(() => import("../features/club/pages/ClubsPage"));
 const ClubDetailPage = lazy(() => import("../features/club/pages/ClubDetailPage"));
 const CourtsPage = lazy(() => import("../features/court/pages/CourtsPage"));
 const ReservationsPage = lazy(() => import("../features/reservation/pages/ReservationsPage"));
+const NewReservationPage = lazy(() => import("../features/reservation/pages/NewReservationPage"));
+const ManageReservationPage = lazy(
+    () => import("../features/reservation/pages/ManageReservationPage")
+);
+const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
+const NewBookingPage = lazy(() => import("../features/booking/pages/NewBookingPage"));
+const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
+const CalendarPage = lazy(() => import("../features/calendar/pages/CalendarPage"));
 
 function PageLoader() {
     return (
@@ -129,6 +137,47 @@ const reservationsRoute = createRoute({
     component: ReservationsPage,
 });
 
+const newReservationRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/reservations/new",
+    component: NewReservationPage,
+});
+
+const manageReservationRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/reservations/$reservationId",
+    component: ManageReservationPage,
+});
+
+const bookingsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/bookings",
+    component: BookingsPage,
+});
+
+const newBookingRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/bookings/new",
+    validateSearch: (search: Record<string, unknown>) => ({
+        courtId: typeof search.courtId === "string" ? search.courtId : undefined,
+        date: typeof search.date === "string" ? search.date : undefined,
+        startTime: typeof search.startTime === "string" ? search.startTime : undefined,
+    }),
+    component: NewBookingPage,
+});
+
+const manageBookingRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/bookings/$bookingId",
+    component: ManageBookingPage,
+});
+
+const calendarRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/calendar",
+    component: CalendarPage,
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     loginRoute,
@@ -142,6 +191,12 @@ const routeTree = rootRoute.addChildren([
         clubDetailRoute,
         courtsRoute,
         reservationsRoute,
+        newReservationRoute,
+        manageReservationRoute,
+        bookingsRoute,
+        newBookingRoute,
+        manageBookingRoute,
+        calendarRoute,
     ]),
 ]);
 

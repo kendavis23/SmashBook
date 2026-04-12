@@ -131,10 +131,10 @@ describe("AvailabilityPanel — table rendering", () => {
         expect(screen.getAllByRole("row")).toHaveLength(mockAvailability.slots.length + 1);
     });
 
-    it("shows Available badge for available slots", () => {
+    it("shows Book button for available slots", () => {
         render(<AvailabilityPanel {...defaultProps} availability={mockAvailability} />);
-        const badges = screen.getAllByText("Available");
-        expect(badges).toHaveLength(2);
+        const buttons = screen.getAllByText("Book");
+        expect(buttons).toHaveLength(2);
     });
 
     it("shows Booked badge for unavailable slots", () => {

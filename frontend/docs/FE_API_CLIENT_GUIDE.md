@@ -1,4 +1,4 @@
-_Last updated: 2026-04-08 12:00 UTC_
+_Last updated: 2026-04-12 00:00 UTC_
 
 # Backend Schema → Frontend API Client
 
@@ -263,9 +263,13 @@ export * from "./<module>/<module>.types";
 
 ## Implemented modules
 
-| Domain   | Module    | Types file         | API file         | Test file           |
-| -------- | --------- | ------------------ | ---------------- | ------------------- |
-| `staff`  | `club`    | `club.types.ts`    | `club.api.ts`    | `club.api.test.ts`  |
-| `staff`  | `court`   | `court.types.ts`   | `court.api.ts`   | `court.api.test.ts` |
-| `player` | —         | —                  | —                | —                   |
-| `share`  | `profile` | `profile.types.ts` | `profile.api.ts` | —                   |
+| Domain   | Module       | Types file            | API file            | Test file                |
+| -------- | ------------ | --------------------- | ------------------- | ------------------------ |
+| `staff`  | `club`       | `club.types.ts`       | `club.api.ts`       | `club.api.test.ts`       |
+| `staff`  | `court`      | `court.types.ts`      | `court.api.ts`      | `court.api.test.ts`      |
+| `staff`  | `booking`    | `booking.types.ts`    | `booking.api.ts`    | `booking.api.test.ts`    |
+| `staff`  | `membership` | `membership.types.ts` | `membership.api.ts` | `membership.api.test.ts` |
+| `staff`  | `equipment`  | `equipment.types.ts`  | `equipment.api.ts`  | `equipment.api.test.ts`  |
+| `staff`  | `trainer`    | `trainer.types.ts`    | `trainer.api.ts`    | `trainer.api.test.ts`    |
+| `player` | —            | —                     | —                   | —                        |
+| `share`  | `profile`    | `profile.types.ts`    | `profile.api.ts`    | —                        |

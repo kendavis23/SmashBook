@@ -84,6 +84,11 @@
         @apply inline-flex items-center gap-1.5 rounded-md border border-border/70 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-all duration-150 hover:border-cta/30 hover:bg-cta/5 hover:text-cta active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta-ring/50;
     }
 
+    /* ── Destructive button ── */
+    .btn-destructive {
+        @apply inline-flex items-center justify-center gap-2 rounded-md bg-destructive px-3.5 py-2 text-sm font-medium text-destructive-foreground shadow-xs transition-all duration-150 hover:bg-destructive/90 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40 disabled:pointer-events-none disabled:opacity-50;
+    }
+
     /* ── Destructive ghost button (small) ── */
     .btn-destructive-sm {
         @apply inline-flex items-center gap-1.5 rounded-md border border-destructive/20 px-2.5 py-1.5 text-xs font-medium text-destructive transition-all duration-150 hover:bg-destructive/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/30;
