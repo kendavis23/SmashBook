@@ -1,20 +1,7 @@
-import {
-    BarChart2,
-    Building2,
-    Calendar,
-    CalendarCheck,
-    Circle,
-    DollarSign,
-    Headphones,
-    LayoutDashboard,
-    Package,
-    Settings,
-    User,
-    Users,
-} from "lucide-react";
+import { CalendarCheck, Circle, Headphones, LayoutDashboard, Package, User } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export type UserRole = "admin" | "owner" | "staff" | "employee";
+export type UserRole = "player";
 
 export interface RouteConfig {
     key: string;
@@ -78,16 +65,6 @@ export const ROUTES: RouteConfig[] = [
         group: "Overview",
     },
     {
-        key: "clubs",
-        path: "/clubs",
-        label: "Clubs",
-        icon: Building2,
-        title: "Clubs",
-        breadcrumb: ["Operations", "Clubs"],
-        roles: ["admin", "owner"],
-        group: "Operations",
-    },
-    {
         key: "courts",
         path: "/courts",
         label: "Courts",
@@ -106,26 +83,6 @@ export const ROUTES: RouteConfig[] = [
         group: "Operations",
     },
     {
-        key: "calendar",
-        path: "/calendar",
-        label: "Calendar",
-        icon: Calendar,
-        title: "Calendar",
-        breadcrumb: ["Operations", "Calendar"],
-        roles: ["owner", "admin"],
-        group: "Operations",
-    },
-    {
-        key: "staff",
-        path: "/staff",
-        label: "Staff",
-        icon: Users,
-        title: "Staff",
-        breadcrumb: ["People", "Staff"],
-        roles: ["owner", "admin"],
-        group: "People",
-    },
-    {
         key: "players",
         path: "/players",
         label: "Players",
@@ -133,26 +90,6 @@ export const ROUTES: RouteConfig[] = [
         title: "Players",
         breadcrumb: ["People", "Players"],
         group: "People",
-    },
-    {
-        key: "finance",
-        path: "/finance",
-        label: "Finance",
-        icon: DollarSign,
-        title: "Finance",
-        breadcrumb: ["Finance & Reports", "Finance"],
-        roles: ["owner", "admin"],
-        group: "Finance & Reports",
-    },
-    {
-        key: "reports",
-        path: "/reports",
-        label: "Reports",
-        icon: BarChart2,
-        title: "Reports",
-        breadcrumb: ["Finance & Reports", "Reports"],
-        roles: ["owner", "admin"],
-        group: "Finance & Reports",
     },
     {
         key: "support",
@@ -171,31 +108,6 @@ export const ROUTES: RouteConfig[] = [
         title: "Equipment",
         breadcrumb: ["Support", "Equipment"],
         group: "Support",
-    },
-    {
-        key: "settings",
-        label: "Settings",
-        icon: Settings,
-        roles: ["admin", "owner"],
-        group: "Settings",
-        children: [
-            {
-                key: "settings-club",
-                path: "/settings/club",
-                label: "Club Settings",
-                title: "Club Settings",
-                subtitle: "Configure your Club Settings.",
-                breadcrumb: ["Settings", "Club Settings"],
-            },
-            {
-                key: "settings-pricing",
-                path: "/settings/pricing",
-                label: "Pricing Rules",
-                title: "Pricing Settings",
-                subtitle: "Configure your Pricing Settings.",
-                breadcrumb: ["Settings", "Pricing Settings"],
-            },
-        ],
     },
 ];
 

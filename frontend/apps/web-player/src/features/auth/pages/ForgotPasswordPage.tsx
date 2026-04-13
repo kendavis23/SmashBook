@@ -58,7 +58,7 @@ export default function ForgotPasswordPage(): JSX.Element {
             <div className="hidden lg:flex flex-col justify-start pt-10 pl-12">
                 <div className="w-fit mb-10 px-6 py-3 rounded-2xl border border-border bg-background">
                     <h1 className="text-3xl xl:text-4xl font-extrabold tracking-tight text-foreground">
-                        Smash<span className="text-blue-600">Book</span>
+                        Smash<span className="text-cta">Book</span>
                     </h1>
                 </div>
                 <div className="flex-1 flex items-center justify-end pr-0">
@@ -98,7 +98,7 @@ export default function ForgotPasswordPage(): JSX.Element {
                                 <button
                                     type="button"
                                     onClick={() => void navigate({ to: "/reset-password" })}
-                                    className="text-blue-600 text-sm font-medium"
+                                    className="text-cta text-sm font-medium"
                                 >
                                     Go now
                                 </button>
@@ -189,7 +189,7 @@ export default function ForgotPasswordPage(): JSX.Element {
                         <button
                             type="button"
                             onClick={() => void navigate({ to: "/login" })}
-                            className="text-sm text-blue-600 font-medium"
+                            className="text-sm text-cta font-medium"
                         >
                             Back to sign in
                         </button>

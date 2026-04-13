@@ -12,22 +12,11 @@ describe("ROUTES", () => {
     it("contains all expected top-level route keys", () => {
         const keys = ROUTES.map((r) => r.key);
         expect(keys).toContain("dashboard");
-        expect(keys).toContain("calendar");
         expect(keys).toContain("courts");
         expect(keys).toContain("bookings");
         expect(keys).toContain("players");
-        expect(keys).toContain("staff");
         expect(keys).toContain("equipment");
-        expect(keys).toContain("finance");
-        expect(keys).toContain("reports");
         expect(keys).toContain("support");
-        expect(keys).toContain("settings");
-    });
-
-    it("Settings has children", () => {
-        const settings = ROUTES.find((r) => r.key === "settings");
-        expect(settings?.children).toBeDefined();
-        expect(settings?.children?.length).toBeGreaterThan(0);
     });
 
     it("every top-level route has a group assigned", () => {
@@ -45,12 +34,10 @@ describe("ROUTES", () => {
         }, {});
 
         expect(grouped["Overview"]).toEqual(["dashboard"]);
-        expect(grouped["Operations"]).toEqual(["clubs", "courts", "bookings", "calendar"]);
-        expect(grouped["People"]).toEqual(["staff", "players"]);
-        expect(grouped["Finance & Reports"]).toEqual(["finance", "reports"]);
+        expect(grouped["Operations"]).toEqual(["courts", "bookings"]);
+        expect(grouped["People"]).toEqual(["players"]);
         expect(grouped["Support"]).toContain("support");
         expect(grouped["Support"]).toContain("equipment");
-        expect(grouped["Settings"]).toEqual(["settings"]);
     });
 
     it("each route with a path has a title and breadcrumb", () => {
@@ -72,24 +59,19 @@ describe("getRouteByPath", () => {
         expect(result?.key).toBe("dashboard");
     });
 
-    it("returns the reports route for /reports", () => {
-        const result = getRouteByPath("/reports");
-        expect(result?.key).toBe("reports");
+    it("returns the equipment route for /equipment", () => {
+        const result = getRouteByPath("/equipment");
+        expect(result?.key).toBe("equipment");
     });
 
-    it("returns settings-club for /settings/club (more specific wins)", () => {
-        const result = getRouteByPath("/settings/club");
-        expect(result?.key).toBe("settings-club");
-    });
-
-    it("returns settings-pricing for /settings/pricing", () => {
-        const result = getRouteByPath("/settings/pricing");
-        expect(result?.key).toBe("settings-pricing");
+    it("returns the support route for /support", () => {
+        const result = getRouteByPath("/support");
+        expect(result?.key).toBe("support");
     });
 
     it("matches nested paths using substring logic", () => {
-        const result = getRouteByPath("/settings/club/preferences");
-        expect(result?.key).toBe("settings-club");
+        const result = getRouteByPath("/bookings/history");
+        expect(result?.key).toBe("bookings");
     });
 
     it("returns undefined for an unknown path", () => {
@@ -102,91 +84,51 @@ describe("getNavigableRoutes", () => {
         expect(getNavigableRoutes().every((route) => route.path !== undefined)).toBe(true);
     });
 
-    it("includes settings child routes but not the settings group", () => {
+    it("returns the same top-level route keys because there are no nested routes", () => {
         const keys = getNavigableRoutes().map((route) => route.key);
-        expect(keys).toContain("settings-club");
-        expect(keys).toContain("settings-pricing");
-        expect(keys).not.toContain("settings");
-    });
-
-    it("inherits parent role restrictions for settings children", () => {
-        const settingsClubRoute = getNavigableRoutes().find(
-            (route) => route.key === "settings-club"
-        );
-        const settingsPricingRoute = getNavigableRoutes().find(
-            (route) => route.key === "settings-pricing"
-        );
-
-        expect(settingsClubRoute?.roles).toEqual(["admin", "owner"]);
-        expect(settingsPricingRoute?.roles).toEqual(["admin", "owner"]);
+        expect(keys).toEqual(ROUTES.map((route) => route.key));
     });
 });
 
 describe("getSearchableRoutes", () => {
-    it("filters out restricted routes for staff", () => {
-        const keys = getSearchableRoutes("staff").map((route) => route.key);
+    it("returns all routes for a player", () => {
+        const keys = getSearchableRoutes("player").map((route) => route.key);
         expect(keys).toContain("dashboard");
-        expect(keys).not.toContain("finance");
-        expect(keys).not.toContain("settings-club");
-    });
-
-    it("includes authorized nested settings routes for admin", () => {
-        const keys = getSearchableRoutes("admin").map((route) => route.key);
-        expect(keys).toContain("finance");
-        expect(keys).toContain("reports");
-        expect(keys).toContain("settings-club");
-        expect(keys).toContain("settings-pricing");
-    });
-
-    it("returns only unrestricted routes when the user role is missing", () => {
-        const keys = getSearchableRoutes(undefined).map((route) => route.key);
-        expect(keys).toContain("dashboard");
+        expect(keys).toContain("courts");
+        expect(keys).toContain("bookings");
+        expect(keys).toContain("players");
         expect(keys).toContain("support");
-        expect(keys).not.toContain("calendar");
-        expect(keys).not.toContain("settings-club");
+        expect(keys).toContain("equipment");
+    });
+
+    it("returns all unrestricted routes when the user role is missing", () => {
+        const keys = getSearchableRoutes(undefined).map((route) => route.key);
+        expect(keys).toEqual(ROUTES.map((route) => route.key));
     });
 });
 
 describe("canAccess", () => {
     it("returns true when roles is undefined (unrestricted)", () => {
-        expect(canAccess(undefined, "staff")).toBe(true);
+        expect(canAccess(undefined, "player")).toBe(true);
         expect(canAccess(undefined, undefined)).toBe(true);
     });
 
     it("returns false when roles is set and userRole is undefined", () => {
-        expect(canAccess(["owner"], undefined)).toBe(false);
+        expect(canAccess(["player"], undefined)).toBe(false);
     });
 
     it("returns true when userRole is in the roles list", () => {
-        expect(canAccess(["owner", "admin"], "owner")).toBe(true);
-        expect(canAccess(["owner", "admin"], "admin")).toBe(true);
+        expect(canAccess(["player"], "player")).toBe(true);
     });
 
     it("returns false when userRole is NOT in the roles list", () => {
-        expect(canAccess(["owner"], "staff")).toBe(false);
-        expect(canAccess(["owner"], "employee")).toBe(false);
-        expect(canAccess(["owner", "admin"], "staff")).toBe(false);
+        expect(canAccess(["player"], "staff")).toBe(false);
+        expect(canAccess(["player"], "owner")).toBe(false);
     });
 
-    it("restricted routes have the expected roles", () => {
-        const calendarRoute = ROUTES.find((r) => r.key === "calendar");
-        const staffRoute = ROUTES.find((r) => r.key === "staff");
-        const financeRoute = ROUTES.find((r) => r.key === "finance");
-        const reportsRoute = ROUTES.find((r) => r.key === "reports");
-        const settingsRoute = ROUTES.find((r) => r.key === "settings");
-
-        expect(calendarRoute?.roles).toEqual(["owner", "admin"]);
-        expect(staffRoute?.roles).toEqual(["owner", "admin"]);
-        expect(financeRoute?.roles).toEqual(["owner", "admin"]);
-        expect(reportsRoute?.roles).toEqual(["owner", "admin"]);
-        expect(settingsRoute?.roles).toEqual(["admin", "owner"]);
-    });
-
-    it("unrestricted routes have no roles defined", () => {
-        const unrestricted = ["dashboard", "courts", "bookings", "players", "equipment", "support"];
-        unrestricted.forEach((key) => {
-            const route = ROUTES.find((r) => r.key === key);
-            expect(route?.roles, `${key} should be unrestricted`).toBeUndefined();
+    it("all current routes are unrestricted", () => {
+        ROUTES.forEach((route) => {
+            expect(route.roles, `${route.key} should be unrestricted`).toBeUndefined();
         });
     });
 });

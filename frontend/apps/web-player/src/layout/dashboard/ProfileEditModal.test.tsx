@@ -9,14 +9,14 @@ import ProfileEditModal from "./ProfileEditModal";
 
 const mockMutateAsync = vi.fn();
 
-vi.mock("@repo/player-domain", () => ({
+vi.mock("@repo/player-domain/hooks", () => ({
     useUpdateProfile: vi.fn(() => ({
         mutateAsync: mockMutateAsync,
         isPending: false,
     })),
 }));
 
-import { useUpdateProfile } from "@repo/player-domain";
+import { useUpdateProfile } from "@repo/player-domain/hooks";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ const mockUser = {
     id: "user-1",
     email: "john@example.com",
     full_name: "John Doe",
-    role: "player" as const,
+    role: "staff" as const,
     phone: "+1 234 567 890",
     photo_url: null,
     skill_level: null,
@@ -91,7 +91,7 @@ describe("ProfileEditModal", () => {
             wrapper,
         });
         expect(screen.getByText("john@example.com")).toBeInTheDocument();
-        expect(screen.getByText("player")).toBeInTheDocument();
+        expect(screen.getByText("staff")).toBeInTheDocument();
     });
 
     it("shows user initials in avatar when no photo_url", () => {

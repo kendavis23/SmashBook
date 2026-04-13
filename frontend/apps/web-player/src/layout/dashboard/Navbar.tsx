@@ -1,22 +1,22 @@
-import { useAuthStore } from "@repo/auth";
-import { useNavigate } from "@tanstack/react-router";
+import { useAuth, useAuthStore } from "@repo/auth";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { LogOut, Menu, Search, Settings } from "lucide-react";
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
-import { getSearchableRoutes } from "../../config/routeConfig";
+import { getRouteByPath, getSearchableRoutes } from "../../config/routeConfig";
 
 import ProfileEditModal from "./ProfileEditModal";
 
 const AVATAR_COLORS = [
-    "bg-blue-500",
-    "bg-violet-500",
-    "bg-indigo-500",
-    "bg-pink-500",
-    "bg-emerald-500",
-    "bg-rose-500",
-    "bg-amber-500",
-    "bg-teal-500",
+    "bg-blue-600",
+    "bg-violet-600",
+    "bg-indigo-600",
+    "bg-pink-600",
+    "bg-emerald-600",
+    "bg-rose-600",
+    "bg-amber-600",
+    "bg-teal-600",
 ];
 
 function getInitials(name: string): string {
@@ -41,6 +41,9 @@ export default function Navbar({
     mobileOpen = false,
     onOpenMobile = () => {},
 }: NavbarProps): JSX.Element | null {
+    const location = useLocation();
+    const currentRoute = getRouteByPath(location.pathname);
+
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -51,9 +54,10 @@ export default function Navbar({
     const searchInputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
+    const { role } = useAuth();
     const user = useAuthStore((state) => state.user);
     const clearAuth = useAuthStore((state) => state.clearAuth);
-    const searchResults = getSearchableRoutes(user?.role).filter((route) =>
+    const searchResults = getSearchableRoutes(role ?? undefined).filter((route) =>
         route.label.toLowerCase().includes(searchQuery.trim().toLowerCase())
     );
     const showSearchResults =
@@ -167,110 +171,117 @@ export default function Navbar({
 
     return (
         <>
-            <div className="relative flex w-full items-center gap-3">
-                {/* Left — brand + mobile menu trigger */}
-                <div className="flex flex-shrink-0 items-center gap-3">
+            <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-5">
+                {/* ── Left: mobile trigger + page context ── */}
+                <div className="flex min-w-0 items-center gap-3">
                     <button
                         onClick={onOpenMobile}
                         aria-label="Open menu"
-                        className={`h-10 w-10 items-center justify-center rounded-xl border border-border
-              bg-background text-foreground shadow-sm transition-all duration-200
-              hover:bg-muted md:hidden ${mobileOpen ? "pointer-events-none opacity-0" : "flex"}`}
+                        className={`h-7 w-7 flex-shrink-0 items-center justify-center rounded-md
+                            border border-border bg-transparent text-foreground/60
+                            transition-all duration-150 hover:bg-accent hover:text-foreground md:hidden
+                            ${mobileOpen ? "pointer-events-none opacity-0" : "flex"}`}
                     >
-                        <Menu size={20} />
+                        <Menu size={15} />
                     </button>
-                    <span className="select-none text-[26px] font-bold tracking-tight text-foreground">
-                        Smash<span className="text-primary">Book</span>
-                    </span>
+
+                    {currentRoute && (
+                        <div className="hidden min-w-0 border-l-2 border-cta/60 pl-2.5 md:block">
+                            <p className="navbar-page-title truncate">
+                                {currentRoute.title ?? currentRoute.label}
+                            </p>
+                            {currentRoute.subtitle && (
+                                <p className="navbar-page-subtitle truncate">
+                                    {currentRoute.subtitle}
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                {/* Center – module search */}
-                <div className="hidden flex-1 justify-center px-2 md:flex">
-                    <div ref={searchRef} className="relative w-full max-w-xl">
-                        <Search
-                            size={15}
-                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                        />
-                        <input
-                            ref={searchInputRef}
-                            type="text"
-                            value={searchQuery}
-                            placeholder="Search modules..."
-                            aria-label="Search modules"
-                            onChange={(event) => handleSearchChange(event.target.value)}
-                            onFocus={() => searchQuery.trim() && setIsSearchOpen(true)}
-                            onKeyDown={handleSearchKeyDown}
-                            className="w-full rounded-lg border border-primary/20 py-2 pl-9 pr-20 text-sm
-      text-foreground outline-none transition-all duration-200
-      placeholder:text-muted-foreground
-      focus:border-primary focus:bg-background focus:ring-2 focus:ring-primary/5 bg-background"
-                        />
-                        <span
-                            aria-hidden="true"
-                            className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-md
-        border border-border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground lg:inline-flex"
-                        >
-                            {searchShortcutLabel}
-                        </span>
+                {/* ── Center: search ── */}
+                <div
+                    ref={searchRef}
+                    className="relative w-full max-w-xl min-w-[200px] md:min-w-[400px]"
+                >
+                    <Search
+                        size={13}
+                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40"
+                    />
+                    <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={searchQuery}
+                        placeholder="Search modules..."
+                        aria-label="Search modules"
+                        onChange={(event) => handleSearchChange(event.target.value)}
+                        onFocus={() => searchQuery.trim() && setIsSearchOpen(true)}
+                        onKeyDown={handleSearchKeyDown}
+                        className="navbar-search-input"
+                    />
+                    <kbd
+                        aria-hidden="true"
+                        className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2
+                            items-center gap-0.5 rounded-md
+                            border border-border/50 bg-muted px-1.5 py-0.5
+                            text-[10px] font-medium tracking-tight text-muted-foreground/50 lg:inline-flex"
+                    >
+                        {searchShortcutLabel}
+                    </kbd>
 
-                        {showSearchResults && (
-                            <div className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-40 overflow-hidden rounded-xl border border-border bg-background shadow-md">
-                                <ul className="max-h-72 overflow-y-auto py-1.5">
-                                    {searchResults.map((route, index) => {
-                                        const isActive = index === activeSearchIndex;
-                                        return (
-                                            <li key={route.key}>
-                                                <button
-                                                    type="button"
-                                                    onMouseEnter={() => setActiveSearchIndex(index)}
-                                                    onClick={() =>
-                                                        route.path && handleSearchSelect(route.path)
-                                                    }
-                                                    className={`flex w-full items-center justify-between gap-3 px-4 py-2 text-left text-sm transition-colors ${
-                                                        isActive
-                                                            ? "bg-accent text-foreground"
-                                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                                    }`}
-                                                >
-                                                    <span className="font-medium">
-                                                        {route.label}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {route.path}
-                                                    </span>
-                                                </button>
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-                            </div>
-                        )}
-                    </div>
+                    {showSearchResults && (
+                        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-40 overflow-hidden rounded-lg border border-border bg-background shadow-lg">
+                            <ul className="max-h-64 overflow-y-auto py-1">
+                                {searchResults.map((route, index) => {
+                                    const isActive = index === activeSearchIndex;
+                                    return (
+                                        <li key={route.key}>
+                                            <button
+                                                type="button"
+                                                onMouseEnter={() => setActiveSearchIndex(index)}
+                                                onClick={() =>
+                                                    route.path && handleSearchSelect(route.path)
+                                                }
+                                                className={`flex w-full items-center justify-between gap-3 px-3.5 py-2 text-left text-[13px] transition-colors ${
+                                                    isActive
+                                                        ? "bg-accent text-foreground"
+                                                        : "text-foreground/60 hover:bg-muted/60 hover:text-foreground"
+                                                }`}
+                                            >
+                                                <span className="font-medium">{route.label}</span>
+                                                <span className="text-[11px] text-foreground/35">
+                                                    {route.path}
+                                                </span>
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
-                {/* Right */}
-                <div className="ml-auto flex flex-shrink-0 items-center gap-3">
+                {/* ── Right: profile menu ── */}
+                <div className="flex items-center justify-end">
                     <div className="relative" ref={dropdownRef}>
                         <button
                             type="button"
-                            onClick={() => setIsDropdownOpen((o) => !o)}
+                            onClick={() => setIsDropdownOpen((open) => !open)}
                             aria-label="Open profile menu"
                             aria-expanded={isDropdownOpen}
-                            className="rounded-full p-1 transition-colors duration-150 hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            className="rounded-full p-1 transition-colors duration-150 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-ring/30"
                         >
                             <div
-                                className={`flex h-8 w-8 items-center justify-center overflow-hidden rounded-full shadow-sm ${
-                                    user.photo_url ? "" : bgColor
-                                }`}
+                                className={`flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-border/60 ${user.photo_url ? "" : bgColor}`}
                             >
                                 {user.photo_url ? (
                                     <img
                                         src={user.photo_url}
                                         alt={user.full_name}
-                                        className="w-full h-full object-cover"
+                                        className="h-full w-full object-cover"
                                     />
                                 ) : (
-                                    <span className="text-xs font-bold text-primary-foreground">
+                                    <span className="text-[10px] font-bold text-white">
                                         {initials}
                                     </span>
                                 )}
@@ -278,75 +289,76 @@ export default function Navbar({
                         </button>
 
                         {isDropdownOpen && (
-                            <div className="absolute right-0 z-50 mt-3 w-72 overflow-hidden rounded-2xl border border-border bg-background shadow-lg">
-                                <div className="border-b border-border px-4 py-4">
-                                    <div className="flex items-center gap-3">
+                            <div className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border border-border/70 bg-background shadow-2xl backdrop-blur-sm">
+                                <div className="border-b border-border/70 bg-muted/30 px-4 py-4">
+                                    <div className="flex items-center gap-5">
                                         <div
-                                            className={`flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ring-1 ring-border shadow-sm ${user.photo_url ? "" : bgColor}`}
+                                            className={`flex h-14 w-14 flex-shrink-0 items-center justify-center overflow-hidden rounded-full ring-2 ring-border/60 shadow-sm ${user.photo_url ? "" : bgColor}`}
                                         >
                                             {user.photo_url ? (
                                                 <img
                                                     src={user.photo_url}
                                                     alt={user.full_name}
-                                                    className="w-full h-full object-cover"
+                                                    className="h-full w-full object-cover"
                                                 />
                                             ) : (
-                                                <span className="text-base font-bold text-primary-foreground">
+                                                <span className="text-base font-bold text-white">
                                                     {initials}
                                                 </span>
                                             )}
                                         </div>
+
                                         <div className="min-w-0 flex-1">
                                             <p className="truncate text-sm font-semibold text-foreground">
                                                 {user.full_name}
                                             </p>
-                                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                                            <p className="mt-0.5 truncate text-xs text-muted-foreground/70">
                                                 {user.email}
                                             </p>
-                                            <span className="mt-1.5 inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-medium capitalize tracking-wide text-muted-foreground">
+                                            <span className="mt-2 inline-flex rounded-full border border-border/70 bg-background px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
                                                 {roleLabel}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div className="p-2">
+                                <div className="space-y-1.5 p-2.5">
                                     <button
                                         type="button"
                                         onClick={() => {
                                             setIsProfileModalOpen(true);
                                             setIsDropdownOpen(false);
                                         }}
-                                        className="group/item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 hover:bg-primary/10"
+                                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-all duration-150 hover:bg-accent/70"
                                     >
-                                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted transition-colors group-hover/item:bg-accent">
-                                            <Settings className="h-3.5 w-3.5 text-muted-foreground transition-colors group-hover/item:text-primary" />
+                                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/70 transition-colors group-hover:bg-background group-hover:text-foreground">
+                                            <Settings size={15} />
                                         </div>
-                                        <div className="text-left">
+                                        <div>
                                             <p className="text-sm font-medium text-foreground">
                                                 Edit Profile
                                             </p>
-                                            <p className="text-[11px] text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground/70">
                                                 Update your account details
                                             </p>
                                         </div>
                                     </button>
 
-                                    <div className="mx-1 my-1 border-t border-border" />
+                                    <div className="mx-1 border-t border-border/70" />
 
                                     <button
                                         type="button"
                                         onClick={handleLogout}
-                                        className="group/item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors duration-150 hover:bg-primary/10"
+                                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-all duration-150 hover:bg-destructive/10"
                                     >
-                                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-muted transition-colors group-hover/item:bg-accent">
-                                            <LogOut className="h-3.5 w-3.5 text-muted-foreground group-hover/item:text-foreground" />
+                                        <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-muted text-destructive transition-colors group-hover:bg-background">
+                                            <LogOut size={15} />
                                         </div>
-                                        <div className="text-left">
+                                        <div>
                                             <p className="text-sm font-medium text-foreground">
                                                 Sign Out
                                             </p>
-                                            <p className="text-[11px] text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground/70">
                                                 See you soon
                                             </p>
                                         </div>

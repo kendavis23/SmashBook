@@ -16,8 +16,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     };
 });
 
-vi.mock("@repo/auth", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@repo/auth")>();
+vi.mock("../hooks", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../hooks")>();
     return {
         ...actual,
         useLogin: vi.fn(() => ({
@@ -29,7 +29,7 @@ vi.mock("@repo/auth", async (importOriginal) => {
     };
 });
 
-import { useLogin } from "@repo/auth";
+import { useLogin } from "../hooks";
 
 function wrapper({ children }: { children: ReactNode }): JSX.Element {
     return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>;

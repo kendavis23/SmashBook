@@ -1,4 +1,4 @@
-_Last updated: 2026-04-08 12:00 UTC_
+_Last updated: 2026-04-12 00:00 UTC_
 
 # Frontend Deployment
 
@@ -283,8 +283,10 @@ gs://<bucket>/
 **Deploy steps (in workflow):**
 
 1. Upload build to `gs://<bucket>/<sha>/` — never overwrites existing files
-2. `rsync -d` the versioned folder to the bucket root — this is the promotion step
+2. `cp -r` the build files to the bucket root — this is the promotion step (does **not** delete version folders)
 3. Set cache headers on the root copies
+
+> **Why `cp`, not `rsync -d`:** `gsutil rsync -r -d` deletes any destination object not present in the source. Since the source is only `dist/`, version folders at the bucket root (e.g. `<sha>/`) would be treated as "extra" and soft-deleted. Using `gsutil -m cp -r dist/. gs://<bucket>/` overwrites only the files that exist locally, leaving version folders untouched.
 
 ### Cache headers
 
@@ -299,13 +301,12 @@ GCS `not_found_page` is set to `index.html` — handles client-side routing.
 
 ## Rollback
 
-To roll back to a previous version, copy its versioned folder back to the bucket root.
+Use the rollback script in `fe-infra/setup/rollback.sh`. It promotes a versioned snapshot back to the bucket root without deleting any other version folders.
 
-### Find available versions
+### List available versions
 
 ```bash
-# List all versioned snapshots (each directory = one SHA)
-gsutil ls gs://<bucket>/ | grep -E '[a-f0-9]{40}/'
+bash fe-infra/setup/rollback.sh --bucket <bucket-name> --list
 ```
 
 Or look up the SHA from git:
@@ -317,18 +318,20 @@ git log --oneline frontend/apps/web-staff/
 ### Roll back to a specific SHA
 
 ```bash
-BUCKET=<bucket-name>
-OLD_SHA=<previous-git-sha>
+# Preview first (no changes made)
+bash fe-infra/setup/rollback.sh --bucket <bucket-name> --sha <git-sha> --dry-run
 
-# Promote old version to active (bucket root)
-gsutil -m rsync -r -d "gs://$BUCKET/$OLD_SHA/" "gs://$BUCKET/"
-
-# Re-apply cache headers
-gsutil -m setmeta -h "Cache-Control:public,max-age=31536000,immutable" "gs://$BUCKET/assets/**"
-gsutil setmeta -h "Cache-Control:no-cache,no-store,must-revalidate" "gs://$BUCKET/index.html"
+# Apply rollback
+bash fe-infra/setup/rollback.sh --bucket <bucket-name> --sha <git-sha>
 ```
 
-No infrastructure change or re-build required — rollback takes seconds.
+Short SHAs are supported (e.g. `a1b2c3d`). No infrastructure change or re-build required — rollback takes seconds.
+
+> **CDN cache:** After rollback, the CDN may continue serving stale content for up to 1h. To invalidate immediately:
+>
+> ```bash
+> gcloud compute url-maps invalidate-cdn-cache <url-map-name> --path '/*'
+> ```
 
 ## Environment Variables
 

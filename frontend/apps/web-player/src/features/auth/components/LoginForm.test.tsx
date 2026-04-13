@@ -1,4 +1,4 @@
-import { useLogin } from "@repo/auth";
+import { useLogin } from "../hooks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { JSX, ReactNode } from "react";
@@ -9,8 +9,8 @@ import LoginForm from "./LoginForm";
 const mockMutate = vi.fn();
 const mockNavigate = vi.fn();
 
-vi.mock("@repo/auth", async (importOriginal) => {
-    const actual = await importOriginal<typeof import("@repo/auth")>();
+vi.mock("../hooks", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../hooks")>();
     return {
         ...actual,
         useLogin: vi.fn(() => ({

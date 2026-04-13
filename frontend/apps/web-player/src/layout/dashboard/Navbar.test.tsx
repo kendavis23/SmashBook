@@ -15,9 +15,9 @@ let currentUser: {
     role: string;
     photo_url?: string | null;
 } | null = {
-    full_name: "Alice Admin",
+    full_name: "Pat Player",
     email: "alice@test.com",
-    role: "admin",
+    role: "player",
 };
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -58,6 +58,7 @@ vi.mock("@repo/auth", () => {
         useAuthStore,
         useAuth: () => ({
             user: currentUser,
+            role: currentUser?.role ?? null,
             isAuthenticated: currentUser !== null,
         }),
     };
@@ -66,15 +67,6 @@ vi.mock("@repo/auth", () => {
 vi.mock("./ProfileEditModal", () => ({
     default: ({ isOpen }: { isOpen: boolean }) =>
         isOpen ? <div data-testid="profile-modal">Profile modal</div> : null,
-}));
-
-vi.mock("../../providers/ThemeProvider", () => ({
-    useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
-}));
-
-vi.mock("@repo/design-system", () => ({
-    darkTheme: "dark",
-    lightTheme: "light",
 }));
 
 import Navbar from "./Navbar";
@@ -86,12 +78,12 @@ import Navbar from "./Navbar";
 describe("Navbar — brand", () => {
     beforeEach(() => {
         currentPath = "/dashboard";
-        currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentUser = { full_name: "Pat Player", email: "alice@test.com", role: "player" };
     });
 
-    it("renders the smashBook brand name", () => {
+    it("renders the search input", () => {
         render(<Navbar />);
-        expect(screen.getByText(/smash/i)).toBeInTheDocument();
+        expect(screen.getByRole("textbox", { name: /search modules/i })).toBeInTheDocument();
     });
 
     it("calls onOpenMobile when mobile menu button is clicked", () => {
@@ -105,30 +97,30 @@ describe("Navbar — brand", () => {
 describe("Navbar — user info", () => {
     beforeEach(() => {
         currentPath = "/dashboard";
-        currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentUser = { full_name: "Pat Player", email: "alice@test.com", role: "player" };
     });
 
     it("renders user initials in avatar", () => {
         render(<Navbar />);
-        expect(screen.getByText("AA")).toBeInTheDocument();
+        expect(screen.getByText("PP")).toBeInTheDocument();
     });
 
     it("does not render user details in the navbar trigger", () => {
         render(<Navbar />);
         expect(screen.queryByText("alice@test.com")).not.toBeInTheDocument();
-        expect(screen.queryByText("Admin")).not.toBeInTheDocument();
+        expect(screen.queryByText("Player")).not.toBeInTheDocument();
     });
 
     it("renders the user photo when photo_url is available", () => {
         currentUser = {
-            full_name: "Alice Admin",
+            full_name: "Pat Player",
             email: "alice@test.com",
-            role: "admin",
+            role: "player",
             photo_url: "https://example.com/avatar.png",
         };
 
         render(<Navbar />);
-        expect(screen.getByAltText("Alice Admin")).toBeInTheDocument();
+        expect(screen.getByAltText("Pat Player")).toBeInTheDocument();
     });
 
     it("returns null when no user is available", () => {
@@ -142,7 +134,7 @@ describe("Navbar — user info", () => {
 describe("Navbar — dropdown actions", () => {
     beforeEach(() => {
         currentPath = "/dashboard";
-        currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentUser = { full_name: "Pat Player", email: "alice@test.com", role: "player" };
         mockNavigate.mockClear();
         mockClearAuth.mockClear();
     });
@@ -150,9 +142,9 @@ describe("Navbar — dropdown actions", () => {
     it("opens dropdown with user details when avatar button clicked", () => {
         render(<Navbar />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
-        expect(screen.getAllByText("Alice Admin").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Pat Player").length).toBeGreaterThan(0);
         expect(screen.getByText("alice@test.com")).toBeInTheDocument();
-        expect(screen.getByText("Admin")).toBeInTheDocument();
+        expect(screen.getByText("Player")).toBeInTheDocument();
     });
 
     it("opens ProfileEditModal when Edit Profile clicked", () => {
@@ -164,19 +156,19 @@ describe("Navbar — dropdown actions", () => {
 
     it("renders the dropdown avatar image when the user has a photo", () => {
         currentUser = {
-            full_name: "Alice Admin",
+            full_name: "Pat Player",
             email: "alice@test.com",
-            role: "admin",
+            role: "player",
             photo_url: "https://example.com/avatar.png",
         };
 
         render(<Navbar />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
 
-        expect(screen.getAllByAltText("Alice Admin")).toHaveLength(2);
+        expect(screen.getAllByAltText("Pat Player")).toHaveLength(2);
     });
 
-    it("calls clearAuth and navigates to /login when Sign out clicked", () => {
+    it("calls clearAuth and navigates to /login when Sign Out clicked", () => {
         render(<Navbar />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
         fireEvent.click(screen.getByText("Sign Out"));
@@ -198,41 +190,41 @@ describe("Navbar — dropdown actions", () => {
 describe("Navbar — module search", () => {
     beforeEach(() => {
         currentPath = "/dashboard";
-        currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentUser = { full_name: "Pat Player", email: "alice@test.com", role: "player" };
         mockNavigate.mockClear();
     });
 
-    it("shows matching authorized modules in search results", () => {
+    it("shows matching current modules in search results", () => {
         render(<Navbar />);
-        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "fin" } });
-        expect(screen.getByRole("button", { name: /finance/i })).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "supp" } });
+        expect(screen.getByRole("button", { name: /support/i })).toBeInTheDocument();
     });
 
-    it("does not show restricted modules for staff role", () => {
+    it("shows unrestricted modules even for a non-player role string", () => {
         currentUser = { full_name: "Sarah Staff", email: "sarah@test.com", role: "staff" };
         render(<Navbar />);
-        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "fin" } });
-        expect(screen.queryByRole("button", { name: /finance/i })).not.toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "supp" } });
+        expect(screen.getByRole("button", { name: /support/i })).toBeInTheDocument();
     });
 
     it("navigates to the selected search result", () => {
         render(<Navbar />);
         fireEvent.change(screen.getByLabelText("Search modules"), {
-            target: { value: "club" },
+            target: { value: "support" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /club settings/i }));
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/club" });
+        fireEvent.click(screen.getByRole("button", { name: /support/i }));
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/support" });
     });
 
     it("supports keyboard navigation for search results", () => {
         render(<Navbar />);
 
         const searchInput = screen.getByLabelText("Search modules");
-        fireEvent.change(searchInput, { target: { value: "club" } });
+        fireEvent.change(searchInput, { target: { value: "support" } });
         fireEvent.keyDown(searchInput, { key: "ArrowDown" });
         fireEvent.keyDown(searchInput, { key: "Enter" });
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/club" });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/support" });
     });
 
     it("wraps to the last search result on ArrowUp from the first result", () => {
@@ -243,7 +235,7 @@ describe("Navbar — module search", () => {
         fireEvent.keyDown(searchInput, { key: "ArrowUp" });
         fireEvent.keyDown(searchInput, { key: "Enter" });
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/settings/pricing" });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/support" });
     });
 
     it("renders inactive search results and updates the active item on hover", () => {
@@ -256,7 +248,7 @@ describe("Navbar — module search", () => {
         const bookingsResult = screen.getByRole("button", { name: /bookings/i });
         const supportResult = screen.getByRole("button", { name: /support/i });
 
-        expect(bookingsResult.className).toContain("text-muted-foreground");
+        expect(bookingsResult.className).toContain("text-foreground/60");
         fireEvent.mouseEnter(supportResult);
         expect(supportResult.className).toContain("bg-accent");
     });
@@ -265,15 +257,15 @@ describe("Navbar — module search", () => {
         render(<Navbar />);
 
         const searchInput = screen.getByLabelText("Search modules");
-        fireEvent.change(searchInput, { target: { value: "club" } });
+        fireEvent.change(searchInput, { target: { value: "support" } });
 
         fireEvent.keyDown(searchInput, { key: "Escape" });
-        expect(screen.queryByRole("button", { name: /club settings/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /support/i })).not.toBeInTheDocument();
 
-        fireEvent.change(searchInput, { target: { value: "club" } });
+        fireEvent.change(searchInput, { target: { value: "support" } });
 
         fireEvent.mouseDown(document.body);
-        expect(screen.queryByRole("button", { name: /club settings/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /support/i })).not.toBeInTheDocument();
     });
 
     it("handles escape when the current search has no results", () => {

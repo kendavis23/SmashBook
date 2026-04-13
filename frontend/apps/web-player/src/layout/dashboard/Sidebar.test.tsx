@@ -45,7 +45,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 });
 
 // Mutable role so tests can switch between roles
-let currentRole: string = "staff";
+let currentRole: string = "player";
 
 vi.mock("@repo/auth", () => {
     const makeStore = (): {
@@ -84,39 +84,38 @@ import Sidebar from "./Sidebar";
 
 describe("Sidebar — brand & chrome", () => {
     beforeEach(() => {
-        currentRole = "staff";
+        currentRole = "player";
         currentPath = "/dashboard";
     });
 
     it("shows the mobile overlay when mobileOpen is true", () => {
         render(<Sidebar mobileOpen={true} onCloseMobile={vi.fn()} />);
-        const overlay = document.querySelector(".bg-foreground\\/20");
+        const overlay = document.querySelector(".bg-foreground\\/30");
         expect(overlay).toBeInTheDocument();
     });
 
     it("calls onCloseMobile when the overlay is clicked", () => {
         const mockClose = vi.fn();
         render(<Sidebar mobileOpen={true} onCloseMobile={mockClose} />);
-        const overlay = document.querySelector(".bg-foreground\\/20");
+        const overlay = document.querySelector(".bg-foreground\\/30");
         fireEvent.click(overlay as Element);
         expect(mockClose).toHaveBeenCalled();
     });
 
-    it("keeps the parent item unhighlighted when a child route is active", () => {
+    it("keeps the active route highlighted", () => {
         currentRole = "admin";
-        currentPath = "/settings";
+        currentPath = "/dashboard";
 
         render(<Sidebar />);
 
-        const settingsButton = screen.getByRole("button", { name: /settings/i });
-        expect(settingsButton.className).not.toContain("text-blue-600");
-        expect(settingsButton.className).not.toContain("border-blue-600");
+        const dashboardLink = screen.getByText("Dashboard").closest("a");
+        expect(dashboardLink).toBeInTheDocument();
     });
 });
 
-describe("Sidebar — unrestricted routes (staff role)", () => {
+describe("Sidebar — player navigation", () => {
     beforeEach(() => {
-        currentRole = "staff";
+        currentRole = "player";
         currentPath = "/dashboard";
     });
 
@@ -146,100 +145,83 @@ describe("Sidebar — unrestricted routes (staff role)", () => {
     });
 });
 
-describe("Sidebar — role-restricted routes hidden from staff", () => {
+describe("Sidebar — legacy admin links are absent", () => {
     beforeEach(() => {
-        currentRole = "staff";
+        currentRole = "player";
         currentPath = "/dashboard";
     });
 
-    it("does NOT render Calendar link for staff role", () => {
+    it("does NOT render Calendar link", () => {
         render(<Sidebar />);
         expect(screen.queryByText("Calendar")).not.toBeInTheDocument();
     });
 
-    it("does NOT render Staff link for staff role", () => {
+    it("does NOT render Staff link", () => {
         render(<Sidebar />);
         expect(screen.queryByText("Staff")).not.toBeInTheDocument();
     });
 
-    it("does NOT render Finance link for staff role", () => {
+    it("does NOT render Finance link", () => {
         render(<Sidebar />);
         expect(screen.queryByText("Finance")).not.toBeInTheDocument();
     });
 
-    it("does NOT render Reports link for staff role", () => {
+    it("does NOT render Reports link", () => {
         render(<Sidebar />);
         expect(screen.queryByText("Reports")).not.toBeInTheDocument();
     });
 
-    it("does NOT render Settings section for staff role", () => {
+    it("does NOT render Settings link", () => {
         render(<Sidebar />);
         expect(screen.queryByText("Settings")).not.toBeInTheDocument();
     });
 });
 
-describe("Sidebar — role-restricted routes visible to admin", () => {
+describe("Sidebar — route visibility is role-agnostic for unrestricted routes", () => {
     beforeEach(() => {
         currentRole = "admin";
         currentPath = "/dashboard";
     });
 
-    it("renders Calendar link for admin", () => {
+    it("still renders the player routes for admin", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Calendar")).toBeInTheDocument();
+        expect(screen.getByText("Dashboard")).toBeInTheDocument();
+        expect(screen.getByText("Courts")).toBeInTheDocument();
+        expect(screen.getByText("Bookings")).toBeInTheDocument();
     });
 
-    it("renders Staff link for admin", () => {
+    it("does not render nonexistent admin-only links", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Staff")).toBeInTheDocument();
-    });
-
-    it("renders Finance link for admin", () => {
-        render(<Sidebar />);
-        expect(screen.getByText("Finance")).toBeInTheDocument();
-    });
-
-    it("renders Settings section for admin", () => {
-        render(<Sidebar />);
-        expect(screen.getAllByText("Settings")[0]).toBeInTheDocument();
-    });
-
-    it("renders Reports link for admin", () => {
-        render(<Sidebar />);
-        expect(screen.getByText("Reports")).toBeInTheDocument();
+        expect(screen.queryByText("Staff")).not.toBeInTheDocument();
+        expect(screen.queryByText("Finance")).not.toBeInTheDocument();
+        expect(screen.queryByText("Reports")).not.toBeInTheDocument();
     });
 });
 
-describe("Sidebar — all routes visible to owner", () => {
+describe("Sidebar — owner sees the same unrestricted navigation", () => {
     beforeEach(() => {
         currentRole = "owner";
         currentPath = "/dashboard";
     });
 
-    it("renders Staff link for owner", () => {
+    it("renders the player-facing links", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Staff")).toBeInTheDocument();
+        expect(screen.getByText("Dashboard")).toBeInTheDocument();
+        expect(screen.getAllByText("Support")[0]).toBeInTheDocument();
+        expect(screen.getByText("Equipment")).toBeInTheDocument();
     });
 
-    it("renders Finance link for owner", () => {
+    it("does not render removed finance links", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Finance")).toBeInTheDocument();
-    });
-
-    it("renders Reports link for owner", () => {
-        render(<Sidebar />);
-        expect(screen.getByText("Reports")).toBeInTheDocument();
-    });
-
-    it("renders Settings section for owner", () => {
-        render(<Sidebar />);
-        expect(screen.getAllByText("Settings")[0]).toBeInTheDocument();
+        expect(screen.queryByText("Finance")).not.toBeInTheDocument();
+        expect(screen.queryByText("Reports")).not.toBeInTheDocument();
+        expect(screen.queryByText("Staff")).not.toBeInTheDocument();
     });
 });
 
 describe("Sidebar — logout", () => {
     beforeEach(() => {
-        currentRole = "staff";
+        currentRole = "player";
         currentPath = "/dashboard";
     });
 
@@ -258,10 +240,11 @@ describe("Sidebar — group headers", () => {
         currentPath = "/dashboard";
     });
 
-    it("does not render group headers for role-gated groups when role lacks access", () => {
-        currentRole = "staff";
+    it("renders the current player-facing group headers", () => {
         render(<Sidebar />);
-        // Finance & Reports is gated to owner/admin — staff should not see it
-        expect(screen.queryByText("Finance & Reports")).not.toBeInTheDocument();
+        expect(screen.getByText("Overview")).toBeInTheDocument();
+        expect(screen.getByText("Operations")).toBeInTheDocument();
+        expect(screen.getByText("People")).toBeInTheDocument();
+        expect(screen.getAllByText("Support")[0]).toBeInTheDocument();
     });
 });

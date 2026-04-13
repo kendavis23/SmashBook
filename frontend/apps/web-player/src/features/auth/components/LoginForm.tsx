@@ -1,4 +1,4 @@
-import { useLogin } from "@repo/auth";
+import { useLogin } from "../hooks";
 import { useNavigate } from "@tanstack/react-router";
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
@@ -122,7 +122,7 @@ export default function LoginForm(): JSX.Element {
                     <button
                         type="button"
                         onClick={() => void navigate({ to: "/forgot-password" })}
-                        className="text-blue-600 font-medium"
+                        className="text-cta font-medium"
                     >
                         Forgot password?
                     </button>

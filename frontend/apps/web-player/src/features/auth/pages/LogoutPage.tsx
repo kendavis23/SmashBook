@@ -41,7 +41,7 @@ export default function LogoutPage(): JSX.Element {
                 <div className="flex justify-center mb-6">
                     <div className="animate-spin">
                         <svg
-                            className="w-12 h-12 text-blue-600"
+                            className="w-12 h-12 text-cta"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -64,7 +64,7 @@ export default function LogoutPage(): JSX.Element {
 
                 {/* Message */}
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-900">
+                    <p className="text-sm text-foreground">
                         Thank you for using SmashBook. See you soon!
                     </p>
                 </div>

@@ -181,7 +181,7 @@ jobs:
 
       - name: Promote to active (bucket root)
         run: |
-          gsutil -m rsync -r -d dist/ "gs://${{ needs.secrets.outputs.bucket }}/"
+          gsutil -m cp -r dist/. "gs://${{ needs.secrets.outputs.bucket }}/"
 
       - name: Set cache headers
         run: |
