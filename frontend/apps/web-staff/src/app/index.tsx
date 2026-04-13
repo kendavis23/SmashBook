@@ -29,6 +29,7 @@ const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage")
 const NewBookingPage = lazy(() => import("../features/booking/pages/NewBookingPage"));
 const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
 const CalendarPage = lazy(() => import("../features/calendar/pages/CalendarPage"));
+const MembershipPlansPage = lazy(() => import("../features/membership/pages/MembershipPlansPage"));
 
 function PageLoader() {
     return (
@@ -178,6 +179,12 @@ const calendarRoute = createRoute({
     component: CalendarPage,
 });
 
+const membershipPlansRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/membership-plans",
+    component: MembershipPlansPage,
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     loginRoute,
@@ -197,6 +204,7 @@ const routeTree = rootRoute.addChildren([
         newBookingRoute,
         manageBookingRoute,
         calendarRoute,
+        membershipPlansRoute,
     ]),
 ]);
 
