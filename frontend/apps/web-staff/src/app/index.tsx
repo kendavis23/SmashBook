@@ -30,6 +30,12 @@ const NewBookingPage = lazy(() => import("../features/booking/pages/NewBookingPa
 const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
 const CalendarPage = lazy(() => import("../features/calendar/pages/CalendarPage"));
 const MembershipPlansPage = lazy(() => import("../features/membership/pages/MembershipPlansPage"));
+const NewMembershipPlanPage = lazy(
+    () => import("../features/membership/pages/NewMembershipPlanPage")
+);
+const EditMembershipPlanPage = lazy(
+    () => import("../features/membership/pages/EditMembershipPlanPage")
+);
 
 function PageLoader() {
     return (
@@ -182,7 +188,23 @@ const calendarRoute = createRoute({
 const membershipPlansRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/membership-plans",
+    validateSearch: (search: Record<string, unknown>) => ({
+        created: search.created === true ? true : undefined,
+        updated: search.updated === true ? true : undefined,
+    }),
     component: MembershipPlansPage,
+});
+
+const newMembershipPlanRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/membership-plans/new",
+    component: NewMembershipPlanPage,
+});
+
+const editMembershipPlanRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/membership-plans/$planId",
+    component: EditMembershipPlanPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -205,6 +227,8 @@ const routeTree = rootRoute.addChildren([
         manageBookingRoute,
         calendarRoute,
         membershipPlansRoute,
+        newMembershipPlanRoute,
+        editMembershipPlanRoute,
     ]),
 ]);
 

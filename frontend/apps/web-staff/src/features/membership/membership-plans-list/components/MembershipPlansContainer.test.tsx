@@ -1,6 +1,14 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import MembershipPlansContainer from "./MembershipPlansContainer";
+
+const mockNavigate = vi.fn();
+const mockRefetch = vi.fn();
+
+vi.mock("@tanstack/react-router", () => ({
+    useNavigate: vi.fn(() => mockNavigate),
+    useSearch: vi.fn(() => ({})),
+}));
 
 vi.mock("../../hooks", () => ({
     useListMembershipPlans: vi.fn(),
@@ -8,14 +16,6 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
-}));
-
-vi.mock("../../components/MembershipPlanModal", () => ({
-    MembershipPlanModal: ({ onClose }: { onClose: () => void }) => (
-        <div role="dialog">
-            <button onClick={onClose}>Close modal</button>
-        </div>
-    ),
 }));
 
 vi.mock("@repo/ui", () => ({
@@ -61,12 +61,13 @@ const mockPlans = [
     },
 ];
 
-function setupMocks(plansOverride = {}) {
+function setupMocks(overrides: Record<string, unknown> = {}) {
     mockUseListMembershipPlans.mockReturnValue({
         data: mockPlans,
         isLoading: false,
         error: null,
-        ...plansOverride,
+        refetch: mockRefetch,
+        ...overrides,
     });
     mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
 }
@@ -77,6 +78,7 @@ describe("MembershipPlansContainer — loading state", () => {
             data: [],
             isLoading: true,
             error: null,
+            refetch: mockRefetch,
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         render(<MembershipPlansContainer />);
@@ -90,6 +92,7 @@ describe("MembershipPlansContainer — error state", () => {
             data: [],
             isLoading: false,
             error: new Error("Network error"),
+            refetch: mockRefetch,
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         render(<MembershipPlansContainer />);
@@ -105,22 +108,27 @@ describe("MembershipPlansContainer — plans list", () => {
     });
 });
 
-describe("MembershipPlansContainer — create modal", () => {
-    it("opens modal when Add Plan is clicked", () => {
-        setupMocks({ data: [] });
-        render(<MembershipPlansContainer />);
-        const buttons = screen.getAllByText("Add Plan");
-        fireEvent.click(buttons[buttons.length - 1]!);
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+describe("MembershipPlansContainer — navigation", () => {
+    beforeEach(() => {
+        mockNavigate.mockReset();
     });
 
-    it("closes modal when onClose is called", () => {
+    it("navigates to new plan page when Add Plan is clicked", () => {
         setupMocks({ data: [] });
         render(<MembershipPlansContainer />);
         const buttons = screen.getAllByText("Add Plan");
         fireEvent.click(buttons[buttons.length - 1]!);
-        fireEvent.click(screen.getByText("Close modal"));
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/membership-plans/new" });
+    });
+
+    it("navigates to edit page when Edit is clicked on a plan", () => {
+        setupMocks();
+        render(<MembershipPlansContainer />);
+        fireEvent.click(screen.getByLabelText("Edit Gold Member"));
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: "/membership-plans/$planId",
+            params: { planId: "plan-1" },
+        });
     });
 
     it("does not show Add Plan for non-admin roles", () => {
@@ -128,6 +136,7 @@ describe("MembershipPlansContainer — create modal", () => {
             data: [],
             isLoading: false,
             error: null,
+            refetch: mockRefetch,
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "staff" });
         render(<MembershipPlansContainer />);
@@ -135,11 +144,11 @@ describe("MembershipPlansContainer — create modal", () => {
     });
 });
 
-describe("MembershipPlansContainer — edit modal", () => {
-    it("opens modal with plan data when Edit is clicked", () => {
+describe("MembershipPlansContainer — refresh", () => {
+    it("calls refetch when Refresh button is clicked", () => {
         setupMocks();
         render(<MembershipPlansContainer />);
-        fireEvent.click(screen.getByLabelText("Edit Gold Member"));
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Refresh membership plans" }));
+        expect(mockRefetch).toHaveBeenCalled();
     });
 });

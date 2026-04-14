@@ -1,7 +1,7 @@
 import type { MembershipPlan } from "../../types";
 import { BILLING_PERIOD_LABELS } from "../../types";
 import { Breadcrumb } from "@repo/ui";
-import { CreditCard, Pencil, Plus } from "lucide-react";
+import { CreditCard, Pencil, Plus, RefreshCw, Tag, Users, Zap } from "lucide-react";
 import type { JSX } from "react";
 
 type Props = {
@@ -11,12 +11,8 @@ type Props = {
     canManagePlans: boolean;
     onCreateClick: () => void;
     onEditPlan: (plan: MembershipPlan) => void;
+    onRefresh: () => void;
 };
-
-function formatPrice(price: number, billingPeriod: string): string {
-    const label = BILLING_PERIOD_LABELS[billingPeriod] ?? billingPeriod;
-    return `€${Number(price).toFixed(2)} / ${label.toLowerCase()}`;
-}
 
 export default function MembershipPlansView({
     plans,
@@ -25,6 +21,7 @@ export default function MembershipPlansView({
     canManagePlans,
     onCreateClick,
     onEditPlan,
+    onRefresh,
 }: Props): JSX.Element {
     const activePlans = plans.filter((p) => p.is_active).length;
 
@@ -32,17 +29,26 @@ export default function MembershipPlansView({
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Membership Plans" }]} />
 
-            <section className="w-full rounded-xl border border-border bg-card px-6 py-6 shadow-sm sm:px-8">
-                <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
+            <section className="card-surface overflow-hidden">
+                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
-                        <h1 className="text-xl font-semibold text-foreground">Membership Plans</h1>
+                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                            Membership Plans
+                        </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
                             {plans.length > 0
                                 ? `${activePlans} active · ${plans.length} total`
                                 : "Define membership plans for your club members"}
                         </p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <button
+                            onClick={onRefresh}
+                            className="btn-outline min-h-11 px-4"
+                            aria-label="Refresh membership plans"
+                        >
+                            <RefreshCw size={14} /> Refresh
+                        </button>
                         {canManagePlans ? (
                             <button onClick={onCreateClick} className="btn-cta min-h-11 px-4.5">
                                 <Plus size={14} /> Add Plan
@@ -51,7 +57,7 @@ export default function MembershipPlansView({
                     </div>
                 </header>
 
-                <div className="mt-5">
+                <div className="px-5 py-5 sm:px-6">
                     {isLoading ? (
                         <div className="flex items-center justify-center gap-3 py-20">
                             <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
@@ -86,84 +92,133 @@ export default function MembershipPlansView({
                             {plans.map((plan) => (
                                 <article
                                     key={plan.id}
-                                    className="flex flex-col gap-4 rounded-xl border border-border bg-background p-5 shadow-xs"
+                                    className="flex flex-col rounded-xl border border-border bg-background shadow-xs overflow-hidden"
                                 >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                                <h3 className="text-sm font-semibold text-foreground">
-                                                    {plan.name}
-                                                </h3>
-                                                <span
-                                                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${plan.is_active
-                                                            ? "bg-success/15 text-success"
-                                                            : "bg-muted text-muted-foreground"
+                                    {/* Card top accent */}
+                                    <div
+                                        className={`h-1 w-full ${plan.is_active ? "bg-cta" : "bg-muted"}`}
+                                    />
+
+                                    <div className="flex flex-col gap-4 p-5">
+                                        {/* Header row */}
+                                        <div className="flex items-start justify-between gap-2">
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h3 className="text-sm font-semibold text-foreground">
+                                                        {plan.name}
+                                                    </h3>
+                                                    <span
+                                                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                                            plan.is_active
+                                                                ? "bg-success/15 text-success"
+                                                                : "bg-muted text-muted-foreground"
                                                         }`}
-                                                >
-                                                    {plan.is_active ? "Active" : "Inactive"}
+                                                    >
+                                                        {plan.is_active ? "Active" : "Inactive"}
+                                                    </span>
+                                                </div>
+                                                {plan.description ? (
+                                                    <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
+                                                        {plan.description}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                                                <CreditCard
+                                                    size={16}
+                                                    className="text-muted-foreground"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Price */}
+                                        <div className="flex items-end gap-1">
+                                            <span className="text-2xl font-bold tracking-tight text-foreground">
+                                                €{Number(plan.price).toFixed(2)}
+                                            </span>
+                                            <span className="mb-0.5 text-xs text-muted-foreground">
+                                                /{" "}
+                                                {(
+                                                    BILLING_PERIOD_LABELS[plan.billing_period] ??
+                                                    plan.billing_period
+                                                ).toLowerCase()}
+                                            </span>
+                                        </div>
+
+                                        {/* Badges */}
+                                        {plan.trial_days > 0 || plan.discount_pct != null ? (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {plan.trial_days > 0 ? (
+                                                    <span className="inline-flex items-center gap-1 rounded-md bg-info/15 px-2 py-0.5 text-[11px] font-medium text-info">
+                                                        <Zap size={10} />
+                                                        {plan.trial_days}d free trial
+                                                    </span>
+                                                ) : null}
+                                                {plan.discount_pct != null ? (
+                                                    <span className="inline-flex items-center gap-1 rounded-md bg-warning/15 px-2 py-0.5 text-[11px] font-medium text-warning">
+                                                        <Tag size={10} />
+                                                        {plan.discount_pct}% off
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+
+                                        {/* Stats grid */}
+                                        <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-3">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Credits
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground">
+                                                    {plan.booking_credits_per_period ?? "—"}
                                                 </span>
                                             </div>
-                                            {plan.description ? (
-                                                <p className="mt-1 text-xs text-muted-foreground line-clamp-2">
-                                                    {plan.description}
-                                                </p>
-                                            ) : null}
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Guests
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground">
+                                                    {plan.guest_passes_per_period ?? "—"}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Priority
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground">
+                                                    {plan.priority_booking_days != null
+                                                        ? `${plan.priority_booking_days}d`
+                                                        : "—"}
+                                                </span>
+                                            </div>
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                                                    Member cap
+                                                </span>
+                                                <span className="text-sm font-semibold text-foreground">
+                                                    {plan.max_active_members ?? "Unlimited"}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-2">
-                                        <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-foreground">
-                                            {formatPrice(plan.price, plan.billing_period)}
-                                        </span>
-                                        {plan.trial_days > 0 ? (
-                                            <span className="rounded-md bg-info/15 px-2 py-1 text-xs font-medium text-info">
-                                                {plan.trial_days}d trial
-                                            </span>
-                                        ) : null}
-                                        {plan.discount_pct != null ? (
-                                            <span className="rounded-md bg-warning/15 px-2 py-1 text-xs font-medium text-warning">
-                                                {plan.discount_pct}% off
-                                            </span>
-                                        ) : null}
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                                        <span>
-                                            Credits:{" "}
-                                            <strong className="text-foreground">
-                                                {plan.booking_credits_per_period ?? "—"}
-                                            </strong>
-                                        </span>
-                                        <span>
-                                            Guests:{" "}
-                                            <strong className="text-foreground">
-                                                {plan.guest_passes_per_period ?? "—"}
-                                            </strong>
-                                        </span>
-                                        <span>
-                                            Priority:{" "}
-                                            <strong className="text-foreground">
-                                                {plan.priority_booking_days != null
-                                                    ? `${plan.priority_booking_days}d`
-                                                    : "—"}
-                                            </strong>
-                                        </span>
-                                        <span>
-                                            Cap:{" "}
-                                            <strong className="text-foreground">
-                                                {plan.max_active_members ?? "Unlimited"}
-                                            </strong>
-                                        </span>
-                                    </div>
-
+                                    {/* Footer */}
                                     {canManagePlans ? (
-                                        <div className="flex justify-end border-t border-border pt-3">
+                                        <div className="flex items-center justify-between border-t border-border px-5 py-3">
+                                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                <Users size={11} />
+                                                <span>
+                                                    {plan.max_active_members
+                                                        ? `Up to ${plan.max_active_members} members`
+                                                        : "Unlimited members"}
+                                                </span>
+                                            </div>
                                             <button
                                                 onClick={() => onEditPlan(plan)}
-                                                className="btn-outline px-3 py-2 text-xs"
+                                                className="btn-outline px-3 py-1.5 text-xs"
                                                 aria-label={`Edit ${plan.name}`}
                                             >
-                                                <Pencil size={12} /> Edit
+                                                <Pencil size={11} /> Edit
                                             </button>
                                         </div>
                                     ) : null}

@@ -62,6 +62,7 @@ const defaultProps = {
     canManagePlans: true,
     onCreateClick: vi.fn(),
     onEditPlan: vi.fn(),
+    onRefresh: vi.fn(),
 };
 
 describe("MembershipPlansView — loading state", () => {
@@ -89,7 +90,7 @@ describe("MembershipPlansView — empty state", () => {
         expect(screen.getAllByText("Add Plan").length).toBeGreaterThan(0);
     });
 
-    it("calls onCreateClick from empty state", () => {
+    it("calls onCreateClick from empty state button", () => {
         const handleCreate = vi.fn();
         render(<MembershipPlansView {...defaultProps} onCreateClick={handleCreate} />);
         const buttons = screen.getAllByText("Add Plan");
@@ -100,6 +101,46 @@ describe("MembershipPlansView — empty state", () => {
     it("does not show Add Plan in empty state for non-admin", () => {
         render(<MembershipPlansView {...defaultProps} canManagePlans={false} />);
         expect(screen.queryByText("Add Plan")).not.toBeInTheDocument();
+    });
+});
+
+describe("MembershipPlansView — header", () => {
+    it("shows Refresh button", () => {
+        render(<MembershipPlansView {...defaultProps} />);
+        expect(
+            screen.getByRole("button", { name: "Refresh membership plans" })
+        ).toBeInTheDocument();
+    });
+
+    it("calls onRefresh when Refresh is clicked", () => {
+        const handleRefresh = vi.fn();
+        render(<MembershipPlansView {...defaultProps} onRefresh={handleRefresh} />);
+        fireEvent.click(screen.getByRole("button", { name: "Refresh membership plans" }));
+        expect(handleRefresh).toHaveBeenCalled();
+    });
+
+    it("shows Add Plan in header for admin", () => {
+        render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
+        expect(screen.getByText("Add Plan")).toBeInTheDocument();
+    });
+
+    it("does not show Add Plan in header for non-admin", () => {
+        render(<MembershipPlansView {...defaultProps} plans={mockPlans} canManagePlans={false} />);
+        expect(screen.queryByText("Add Plan")).not.toBeInTheDocument();
+    });
+
+    it("shows summary count when plans exist", () => {
+        render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
+        expect(screen.getByText("1 active · 2 total")).toBeInTheDocument();
+    });
+
+    it("calls onCreateClick from header Add Plan button", () => {
+        const handleCreate = vi.fn();
+        render(
+            <MembershipPlansView {...defaultProps} plans={mockPlans} onCreateClick={handleCreate} />
+        );
+        fireEvent.click(screen.getByText("Add Plan"));
+        expect(handleCreate).toHaveBeenCalled();
     });
 });
 
@@ -116,15 +157,15 @@ describe("MembershipPlansView — plans list", () => {
         expect(screen.getByText("Inactive")).toBeInTheDocument();
     });
 
-    it("renders price and billing period", () => {
+    it("renders price prominently", () => {
         render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
-        expect(screen.getByText("€49.99 / monthly")).toBeInTheDocument();
-        expect(screen.getByText("€399.00 / annual")).toBeInTheDocument();
+        expect(screen.getByText("€49.99")).toBeInTheDocument();
+        expect(screen.getByText("€399.00")).toBeInTheDocument();
     });
 
-    it("renders trial days badge when plan has trial", () => {
+    it("renders trial badge when plan has trial days", () => {
         render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
-        expect(screen.getByText("7d trial")).toBeInTheDocument();
+        expect(screen.getByText("7d free trial")).toBeInTheDocument();
     });
 
     it("renders discount badge when plan has discount", () => {
@@ -149,17 +190,13 @@ describe("MembershipPlansView — plans list", () => {
         expect(screen.queryByRole("button", { name: /edit/i })).not.toBeInTheDocument();
     });
 
-    it("calls onCreateClick from header Add Plan button", () => {
-        const handleCreate = vi.fn();
-        render(
-            <MembershipPlansView {...defaultProps} plans={mockPlans} onCreateClick={handleCreate} />
-        );
-        fireEvent.click(screen.getByText("Add Plan"));
-        expect(handleCreate).toHaveBeenCalled();
+    it("shows unlimited members label when max_active_members is null", () => {
+        render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
+        expect(screen.getByText("Unlimited members")).toBeInTheDocument();
     });
 
-    it("shows summary count in header when plans exist", () => {
+    it("shows capped member count when max_active_members is set", () => {
         render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
-        expect(screen.getByText("1 active · 2 total")).toBeInTheDocument();
+        expect(screen.getByText("Up to 50 members")).toBeInTheDocument();
     });
 });

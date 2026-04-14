@@ -1,4 +1,4 @@
-_Last updated: 2026-04-08 14:00 UTC_
+_Last updated: 2026-04-13 00:00 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -278,17 +278,276 @@ Every page-level container follows this structure:
     <Breadcrumb items={[{ label: "Section" }, { label: "Page" }]} />
 
     {/* Main card */}
-    <section className="w-full rounded-xl border border-border bg-card px-6 py-6 shadow-sm sm:px-8">
-        {/* Header */}
-        <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
-            <h1 className="text-xl font-semibold text-foreground">Page Title</h1>
+    <section className="card-surface overflow-hidden">
+        {/* Header — see header patterns below */}
+        <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">Page Title</h1>
+                <p className="mt-1 text-sm text-muted-foreground">Subtitle or summary count</p>
+            </div>
         </header>
 
         {/* Content */}
-        <div className="mt-5">{/* tab content / list / form */}</div>
+        <div className="px-5 py-5 sm:px-6">{/* tab content / list / form */}</div>
     </section>
 </div>
 ```
+
+### List page header — Refresh + New button
+
+List pages always show a **Refresh** button and, for privileged roles, a **New \<Entity\>** button that navigates to a dedicated create page. Never open a modal for create/edit — use a route instead (see create/edit page patterns below).
+
+```tsx
+{
+    /* In the View component's Props */
+}
+type Props = {
+    // ...
+    canManage: boolean;
+    onRefresh: () => void;
+    onCreateClick: () => void;
+};
+
+{
+    /* Header JSX */
+}
+<header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+    <div className="min-w-0">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">Entities</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+            {items.length > 0
+                ? `${activeCount} active · ${items.length} total`
+                : "Manage your club's entities"}
+        </p>
+    </div>
+    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <button
+            onClick={onRefresh}
+            className="btn-outline min-h-11 px-4"
+            aria-label="Refresh entities"
+        >
+            <RefreshCw size={14} /> Refresh
+        </button>
+        {canManage ? (
+            <button onClick={onCreateClick} className="btn-cta min-h-11 px-4.5">
+                <Plus size={14} /> New Entity
+            </button>
+        ) : null}
+    </div>
+</header>;
+```
+
+**In the Container:** wire `onRefresh` to `refetch` from the domain hook and `onCreateClick` to `navigate({ to: "/entities/new" })`.
+
+```tsx
+// Container
+const { data, isLoading, error, refetch } = useListEntities(clubId);
+
+const handleRefresh = useCallback(() => void refetch(), [refetch]);
+const handleCreateClick = useCallback(() => void navigate({ to: "/entities/new" }), [navigate]);
+```
+
+**Success toast on return:** After create/edit navigates back, show a toast from a query-param flag (`?created=true` / `?updated=true`) — same pattern as bookings.
+
+```tsx
+// Container — read flag on mount, clear it from the URL immediately
+const search = useSearch({ strict: false }) as { created?: boolean; updated?: boolean };
+const [successMsg] = useState(
+    search.created ? "Entity created." : search.updated ? "Entity updated." : ""
+);
+useEffect(() => {
+    if (search.created || search.updated) {
+        void navigate({
+            to: "/entities",
+            search: { created: undefined, updated: undefined },
+            replace: true,
+        });
+    }
+}, []);
+```
+
+---
+
+### Create page pattern
+
+A dedicated create page lives at `/entities/new`. It is a separate sub-feature (`new-entity/`) with its own Container and View — never reuse a modal.
+
+**Folder structure:**
+
+```
+features/entity/
+  new-entity/
+    components/
+      NewEntityView.tsx        ← pure form, no hooks
+      NewEntityContainer.tsx   ← calls useCreateEntity, handles submit + cancel
+      NewEntityView.test.tsx
+      NewEntityContainer.test.tsx
+    pages/
+      NewEntityPage.tsx        ← thin shell: <NewEntityContainer />
+  pages/
+    NewEntityPage.tsx          ← re-export: export { default } from "../new-entity/pages/NewEntityPage"
+```
+
+**View pattern:**
+
+```tsx
+// NewEntityView.tsx
+export type NewEntityFormState = { name: string; /* ... */ };
+
+type Props = {
+    form: NewEntityFormState;
+    nameError: string;
+    apiError: string;
+    isPending: boolean;
+    onFormChange: (patch: Partial<NewEntityFormState>) => void;
+    onSubmit: (e: FormEvent) => void;
+    onCancel: () => void;
+    onDismissError: () => void;
+};
+
+export default function NewEntityView({ ... }: Props): JSX.Element {
+    return (
+        <div className="w-full space-y-5">
+            <Breadcrumb items={[{ label: "Entities", href: "/entities" }, { label: "New Entity" }]} />
+            <section className="card-surface overflow-hidden">
+                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6">
+                    <div className="min-w-0">
+                        <h1 className="text-xl font-semibold tracking-tight text-foreground">New Entity</h1>
+                        <p className="mt-1 text-sm text-muted-foreground">Description of what this creates.</p>
+                    </div>
+                </header>
+                <div className="px-5 py-6 sm:px-6">
+                    {apiError ? <AlertToast title={apiError} variant="error" onClose={onDismissError} /> : null}
+                    <form onSubmit={onSubmit} noValidate>
+                        {/* form sections */}
+                        <div className="mt-8 flex items-center justify-end gap-3 border-t border-border pt-5">
+                            <button type="button" onClick={onCancel} className="btn-outline">Cancel</button>
+                            <button type="submit" disabled={isPending} className="btn-cta">
+                                {isPending ? "Creating…" : "Create Entity"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    );
+}
+```
+
+**Container pattern:**
+
+```tsx
+// NewEntityContainer.tsx
+export default function NewEntityContainer(): JSX.Element {
+    const navigate = useNavigate();
+    const { clubId } = useClubAccess();
+    const [form, setForm] = useState<NewEntityFormState>(createDefaultForm);
+    const [nameError, setNameError] = useState("");
+    const createEntity = useCreateEntity(clubId ?? "");
+
+    const handleSubmit = useCallback(
+        (e: FormEvent) => {
+            e.preventDefault();
+            if (!validate()) return;
+            createEntity.mutate(buildPayload(form, clubId), {
+                onSuccess: () =>
+                    void navigate({
+                        to: "/entities",
+                        search: { created: true, updated: undefined },
+                    }),
+            });
+        },
+        [form, clubId, createEntity, navigate]
+    );
+
+    const handleCancel = useCallback(
+        () =>
+            void navigate({ to: "/entities", search: { created: undefined, updated: undefined } }),
+        [navigate]
+    );
+
+    return (
+        <NewEntityView
+            form={form}
+            nameError={nameError}
+            apiError={(createEntity.error as Error | null)?.message ?? ""}
+            isPending={createEntity.isPending}
+            onFormChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onDismissError={() => createEntity.reset()}
+        />
+    );
+}
+```
+
+**Route registration** (in `apps/web-staff/src/app/index.tsx`):
+
+```tsx
+const NewEntityPage = lazy(() => import("../features/entity/pages/NewEntityPage"));
+
+const newEntityRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/entities/new",
+    component: NewEntityPage,
+});
+```
+
+---
+
+### Edit page pattern
+
+An edit page lives at `/entities/$entityId`. It is a separate sub-feature (`edit-entity/`).
+
+**Key differences from create:**
+
+- Container fetches the entity by ID with `useGetEntity(clubId, entityId)` via `useParams`
+- Shows a loading spinner until data arrives and the form is initialised
+- Form is pre-filled once data loads (use a `initialised` flag so it only populates once)
+- Submit calls `useUpdateEntity`; navigates back with `?updated=true`
+- Includes an **Active** status toggle (create always sets `is_active: true`)
+
+**Container skeleton:**
+
+```tsx
+export default function EditEntityContainer(): JSX.Element {
+    const navigate = useNavigate();
+    const { entityId } = useParams({ strict: false }) as { entityId: string };
+    const { clubId } = useClubAccess();
+    const { data: entity, isLoading } = useGetEntity(clubId ?? "", entityId);
+    const [form, setForm] = useState<EditEntityFormState>(createEmptyForm);
+    const [initialised, setInitialised] = useState(false);
+
+    useEffect(() => {
+        if (entity && !initialised) {
+            setForm(mapEntityToForm(entity));
+            setInitialised(true);
+        }
+    }, [entity, initialised]);
+
+    if (isLoading || !initialised) {
+        return (
+            <div className="flex items-center justify-center gap-3 py-32">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
+                <span className="text-sm text-muted-foreground">Loading…</span>
+            </div>
+        );
+    }
+    // ... handleSubmit + handleCancel same as create but calls useUpdateEntity
+}
+```
+
+**Route registration:**
+
+```tsx
+const editEntityRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/entities/$entityId",
+    component: EditEntityPage,
+});
+```
+
+---
 
 ### Form section baseline
 
@@ -382,20 +641,57 @@ describe("ClubsView — club list", () => {
 
 ### Required test cases per component type
 
-**View component:**
+**List View component:**
 
 - Loading state renders loading indicator
 - Error state renders error message
 - Empty state renders empty message and CTA
 - Data state renders all items
-- User events call correct callbacks with correct arguments
+- Header: Refresh button present and calls `onRefresh`
+- Header: New Entity button present for admin, absent for non-admin
+- Header: New Entity button calls `onCreateClick`
+- Data: user events (Edit, Manage, etc.) call correct callbacks with correct arguments
 
-**Modal / dialog:**
+**List Container component:**
 
-- Renders correct title for create vs edit mode
-- Validation prevents submit when required fields are empty
-- Submit calls mutation with correct payload
-- Cancel calls `onClose`
+- Loading/error/success state rendering matches View
+- Refresh button calls `refetch` from domain hook
+- New Entity button navigates to `/entities/new`
+- Edit action navigates to `/entities/$entityId`
+- Non-admin role does not show privileged buttons
+- Success toast shown when returning with `?created=true` / `?updated=true`
+
+**Create/Edit View component:**
+
+- Page heading and breadcrumb render correctly
+- All form section headings render
+- Submit button label matches state: "Create Entity" / "Creating…" / "Save Changes" / "Saving…"
+- Submit button disabled while `isPending`
+- Validation errors display for each required field
+- API error alert renders and dismiss calls `onDismissError`
+- `onSubmit` called on form submit
+- `onCancel` called on Cancel click
+- `onFormChange` called with correct patch for each input
+
+**Create Container component:**
+
+- Renders page heading
+- Validation: empty required fields show errors and do not call `mutate`
+- Valid submit calls `mutate` with correct payload including `club_id`
+- Navigates to list page with `?created=true` on success
+- Cancel navigates to list page
+- API error alert shown and dismiss calls `reset`
+- isPending shows loading button label
+
+**Edit Container component:**
+
+- Shows loading spinner while `isLoading` is true
+- Pre-fills form fields from fetched entity data
+- Validation: cleared required field shows error and does not call `mutate`
+- Valid submit calls `mutate` with correct payload
+- Navigates to list page with `?updated=true` on success
+- Cancel navigates to list page
+- API error alert shown and dismiss calls `reset`
 
 **Toggle / editor (e.g. HoursEditor):**
 
@@ -459,17 +755,40 @@ Additional rules:
 - [ ] No `process.env` / `import.meta.env` access (use `@repo/config`)
 - [ ] File count per sub-feature ≤ 10 source files
 - [ ] All components ≤ 200 lines
+
+**Header:**
+
+- [ ] List header uses `card-surface overflow-hidden` + `px-5 py-5 sm:px-6` header padding
+- [ ] Refresh button present with `aria-label="Refresh <entities>"`
+- [ ] New button navigates to `/entities/new` (never opens a modal)
+- [ ] New button gated by role check (`canManage`)
+
+**Create / Edit pages:**
+
+- [ ] `/entities/new` route registered in `app/index.tsx`
+- [ ] `/entities/$entityId` route registered in `app/index.tsx`
+- [ ] Create/Edit breadcrumb links back to list: `[{ label: "Entities", href: "/entities" }, { label: "New Entity" }]`
+- [ ] On success, navigate with `?created=true` or `?updated=true`; list container reads and clears the flag
+- [ ] Edit container initialises form from fetched data with `initialised` guard
+- [ ] Edit form includes Active status toggle; Create always sets `is_active: true`
+
+**Tests:**
+
 - [ ] View component test file exists for every View
 - [ ] Container component test file exists for every Container
 - [ ] Utility/constants test file exists for every constants/service file
 - [ ] Tests use `getByRole`, `getByText`, `getByLabelText` — not `getByTestId`
 - [ ] Mocks defined with `vi.mock(...)` at module level
+- [ ] Container tests mock `useNavigate` and assert navigation calls
+- [ ] Container tests mock domain hooks with `vi.fn()` — never use real network calls
 
 ---
 
 ## Implemented features
 
-| App         | Feature | Sub-features                | Domain package       |
-| ----------- | ------- | --------------------------- | -------------------- |
-| `web-staff` | `club`  | `clubs-list`, `club-detail` | `@repo/staff-domain` |
-| `web-staff` | `court` | —                           | `@repo/staff-domain` |
+| App         | Feature      | Sub-features                                                           | Domain package       |
+| ----------- | ------------ | ---------------------------------------------------------------------- | -------------------- |
+| `web-staff` | `club`       | `clubs-list`, `club-detail`                                            | `@repo/staff-domain` |
+| `web-staff` | `court`      | `courts-list`                                                          | `@repo/staff-domain` |
+| `web-staff` | `booking`    | `bookings-list`, `new-booking`, `manage-booking`                       | `@repo/staff-domain` |
+| `web-staff` | `membership` | `membership-plans-list`, `new-membership-plan`, `edit-membership-plan` | `@repo/staff-domain` |

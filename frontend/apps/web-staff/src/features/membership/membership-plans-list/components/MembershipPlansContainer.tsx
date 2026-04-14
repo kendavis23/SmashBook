@@ -3,34 +3,52 @@ import { useClubAccess } from "../../store";
 import type { MembershipPlan } from "../../types";
 import { AlertToast } from "@repo/ui";
 import type { JSX } from "react";
-import { useState, useCallback } from "react";
-import { MembershipPlanModal } from "../../components/MembershipPlanModal";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import MembershipPlansView from "./MembershipPlansView";
 
 export default function MembershipPlansContainer(): JSX.Element {
-    const [modalPlan, setModalPlan] = useState<MembershipPlan | null | "create">(null);
-    const [successMsg, setSuccessMsg] = useState("");
+    const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as { created?: boolean; updated?: boolean };
+    const [successMsg, setSuccessMsg] = useState(
+        search.created === true
+            ? "Membership plan created successfully."
+            : search.updated === true
+              ? "Membership plan updated successfully."
+              : ""
+    );
+
+    useEffect(() => {
+        if (search.created === true || search.updated === true) {
+            void navigate({
+                to: "/membership-plans",
+                search: { created: undefined, updated: undefined },
+                replace: true,
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const { clubId, role } = useClubAccess();
     const canManagePlans = role === "owner" || role === "admin";
 
-    const { data: plans = [], isLoading, error } = useListMembershipPlans(clubId ?? "");
+    const { data: plans = [], isLoading, error, refetch } = useListMembershipPlans(clubId ?? "");
 
     const handleCreateClick = useCallback((): void => {
         if (!canManagePlans) return;
-        setModalPlan("create");
-    }, [canManagePlans]);
+        void navigate({ to: "/membership-plans/new" });
+    }, [canManagePlans, navigate]);
 
-    const handleEditPlan = useCallback((plan: MembershipPlan): void => {
-        setModalPlan(plan);
-    }, []);
+    const handleEditPlan = useCallback(
+        (plan: MembershipPlan): void => {
+            void navigate({ to: "/membership-plans/$planId", params: { planId: plan.id } });
+        },
+        [navigate]
+    );
 
-    const handleCloseModal = useCallback((): void => {
-        setModalPlan(null);
-    }, []);
-
-    const modalOpen = modalPlan !== null;
-    const editPlan = modalPlan !== "create" && modalPlan !== null ? modalPlan : undefined;
+    const handleRefresh = useCallback((): void => {
+        void refetch();
+    }, [refetch]);
 
     return (
         <>
@@ -41,20 +59,13 @@ export default function MembershipPlansContainer(): JSX.Element {
                 canManagePlans={canManagePlans}
                 onCreateClick={handleCreateClick}
                 onEditPlan={handleEditPlan}
+                onRefresh={handleRefresh}
             />
             {successMsg ? (
                 <AlertToast
                     title={successMsg}
                     variant="success"
                     onClose={() => setSuccessMsg("")}
-                />
-            ) : null}
-            {modalOpen && canManagePlans ? (
-                <MembershipPlanModal
-                    clubId={clubId ?? ""}
-                    onClose={handleCloseModal}
-                    onSuccess={setSuccessMsg}
-                    initialData={editPlan}
                 />
             ) : null}
         </>
