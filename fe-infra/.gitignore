@@ -1,0 +1,29 @@
+# Terraform downloaded providers and modules — large binaries, never commit
+.terraform/
+
+# Local plan files — contain sensitive resource data
+*.tfplan
+tfplan
+
+# Terraform state files — use remote GCS backend instead
+*.tfstate
+*.tfstate.backup
+*.tfstate.*.backup
+
+# Variable files that may contain secrets
+*.tfvars
+*.tfvars.json
+
+# Service account key exported by gcp-setup.sh — never commit
+gcp-sa-key.json
+*.json
+
+# Terraform crash log
+crash.log
+crash.*.log
+
+# Override files — local developer customisations, not for sharing
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json

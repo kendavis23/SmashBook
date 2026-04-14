@@ -1,0 +1,5 @@
+{
+    "extends": "@repo/tsconfig/react-native.json",
+    "include": ["app", "src"],
+    "exclude": ["node_modules"]
+}
