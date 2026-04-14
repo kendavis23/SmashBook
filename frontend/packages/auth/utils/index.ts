@@ -33,7 +33,7 @@ export function buildAuthHeaders(
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
     const env = import.meta.env.VITE_APP_ENV;
-    if (tenantSubdomain && (env === "local" || env === "development")) {
+    if (tenantSubdomain && (env === "local" || env === "development" || env === "staging")) {
         headers["X-Tenant-Subdomain"] = tenantSubdomain;
     }
     return headers;
