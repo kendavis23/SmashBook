@@ -121,7 +121,7 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(body: RefreshRequest):
+async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     """Exchange a refresh token for a new access + refresh token pair."""
     payload = decode_token(body.refresh_token)
     if not payload or payload.get("type") != "refresh":
@@ -129,9 +129,16 @@ async def refresh_token(body: RefreshRequest):
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token"
         )
     token_data = {"sub": payload["sub"], "tid": payload["tid"]}
+
+    user = await db.get(User, payload["sub"])
+    if not user or not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+
+    clubs = await _get_user_clubs(user, db)
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
+        clubs=clubs,
     )
 
 

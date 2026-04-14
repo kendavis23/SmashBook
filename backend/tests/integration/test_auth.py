@@ -400,6 +400,109 @@ class TestRefreshToken:
         body = resp.json()
         assert "access_token" in body
         assert "refresh_token" in body
+        assert "clubs" in body
+
+    async def test_player_with_active_membership_clubs_returned(
+        self, client, tenant, club, test_session_factory
+    ):
+        from datetime import datetime, timezone, timedelta
+        from sqlalchemy import delete as sql_delete
+        from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipSubscription, MembershipStatus
+
+        user = await _create_user(
+            tenant.id, "refresh-player", "Refresh Player", TenantUserRole.player, test_session_factory
+        )
+        now = datetime.now(tz=timezone.utc)
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Refresh Gold",
+                billing_period=BillingPeriod.monthly,
+                price="29.99",
+                trial_days=0,
+            )
+            session.add(plan)
+            await session.flush()
+            sub = MembershipSubscription(
+                user_id=user.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id, sub_id = plan.id, sub.id
+
+        try:
+            refresh = create_refresh_token({"sub": str(user.id), "tid": str(tenant.id)})
+            resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+            assert resp.status_code == 200
+            clubs = resp.json()["clubs"]
+            assert len(clubs) == 1
+            assert clubs[0]["club_id"] == str(club.id)
+            assert clubs[0]["role"] == "player"
+        finally:
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(MembershipSubscription).where(MembershipSubscription.id == sub_id))
+                await session.execute(sql_delete(MembershipPlan).where(MembershipPlan.id == plan_id))
+                await session.commit()
+            await _delete_user(user.id, test_session_factory)
+
+    async def test_staff_clubs_returned_on_refresh(
+        self, client, tenant, club, test_session_factory
+    ):
+        from sqlalchemy import delete as sql_delete
+        from app.db.models.staff import StaffProfile, StaffRole
+
+        user = await _create_user(
+            tenant.id, "refresh-staff", "Refresh Staff", TenantUserRole.staff, test_session_factory
+        )
+        async with test_session_factory() as session:
+            profile = StaffProfile(
+                user_id=user.id,
+                club_id=club.id,
+                role=StaffRole.admin,
+                is_active=True,
+            )
+            session.add(profile)
+            await session.commit()
+            profile_id = profile.id
+
+        try:
+            refresh = create_refresh_token({"sub": str(user.id), "tid": str(tenant.id)})
+            resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+            assert resp.status_code == 200
+            clubs = resp.json()["clubs"]
+            assert len(clubs) == 1
+            assert clubs[0]["club_id"] == str(club.id)
+            assert clubs[0]["role"] == "admin"
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(StaffProfile, profile_id)
+                if obj:
+                    await session.delete(obj)
+                await session.commit()
+            await _delete_user(user.id, test_session_factory)
+
+    async def test_inactive_user_returns_401(self, client, player, tenant, test_session_factory):
+        from app.db.models.user import User
+
+        async with test_session_factory() as session:
+            u = await session.get(User, player.id)
+            u.is_active = False
+            await session.commit()
+
+        try:
+            refresh = create_refresh_token({"sub": str(player.id), "tid": str(tenant.id)})
+            resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+            assert resp.status_code == 401
+        finally:
+            async with test_session_factory() as session:
+                u = await session.get(User, player.id)
+                u.is_active = True
+                await session.commit()
 
     async def test_access_token_rejected_as_refresh(self, client, player, tenant):
         # Passing an access token where a refresh token is expected
