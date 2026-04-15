@@ -453,7 +453,6 @@ class TestRefreshToken:
     async def test_staff_clubs_returned_on_refresh(
         self, client, tenant, club, test_session_factory
     ):
-        from sqlalchemy import delete as sql_delete
         from app.db.models.staff import StaffProfile, StaffRole
 
         user = await _create_user(
