@@ -1,10 +1,10 @@
-_Last updated: 2026-03-28_
+_Last updated: 2026-04-15 00:00 UTC_
 
 # SmashBook — Deployment & CI/CD Runbook
 
 > **Audience:** Engineers deploying changes to SmashBook
-> **Last updated:** 2026-03-28
-> **Stack:** GCP Cloud Run · Cloud SQL PostgreSQL · Artifact Registry · GitHub Actions
+> **Last updated:** 2026-04-15
+> **Stack:** GCP Cloud Run · Cloud SQL PostgreSQL · Artifact Registry · GitHub Actions · Terraform
 
 ---
 
@@ -79,77 +79,57 @@ gcloud config set run/region europe-west2
 
 ## 3. First-Time GCP Setup
 
-> **Staging is already bootstrapped** (completed 2026-03-28). Run this only for new environments (e.g. production).
+> **Staging is already bootstrapped** (completed 2026-04-15 via Terraform). Run this only for new environments (e.g. production).
+>
+> Infrastructure is managed by Terraform in `be-infra/terraform/`. Service accounts, IAM bindings, Artifact Registry, Pub/Sub, and Cloud Run configuration are all defined there — do **not** create these resources manually.
 
-### 3.1 Service Account
+### 3.1 Terraform State Bucket
 
-Create a service account for GitHub Actions to use, and grant it the required roles:
+Create the GCS bucket that stores Terraform state. This must exist before `terraform init`:
+
+```bash
+gcloud storage buckets create gs://tf-state-smashbook-488121-backend \
+  --location=europe-west2 \
+  --project=<GCP_PROJECT_ID>
+```
+
+### 3.2 Bootstrap Infrastructure with Terraform
+
+```bash
+cd be-infra/terraform
+
+# Initialise — downloads providers and connects to state backend
+terraform init
+
+# For a brand-new environment with no existing resources:
+terraform apply -var="project_id=<GCP_PROJECT_ID>"
+
+# For an environment with pre-existing resources (e.g. Cloud SQL created manually):
+# Run import.sh first to bring existing resources under Terraform management,
+# then apply to create the remainder.
+chmod +x import.sh
+./import.sh
+terraform apply -var="project_id=<GCP_PROJECT_ID>"
+```
+
+Terraform creates and manages:
+- `github-actions-deployer` service account + IAM roles for CI/CD
+- `padel-runtime` service account + IAM roles for Cloud Run runtime
+- Artifact Registry repository (`padel-api`)
+- Pub/Sub topics and push subscriptions
+- Secret Manager secret shells (values set separately — see [Section 3.4](#34-gcp-secret-manager))
+- Cloud Run services and Cloud SQL configuration
+
+### 3.3 Create GitHub Actions SA Key
+
+After Terraform has created the `github-actions-deployer` SA:
 
 ```bash
 PROJECT_ID=<GCP_PROJECT_ID>
-SA_NAME="github-actions-deployer"
-SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
+SA_EMAIL="github-actions-deployer@${PROJECT_ID}.iam.gserviceaccount.com"
 
-# Create the service account
-gcloud iam service-accounts create $SA_NAME \
-  --display-name="GitHub Actions Deployer" \
-  --project=$PROJECT_ID
-
-# Grant required roles to the deployer SA
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/run.admin"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/artifactregistry.writer"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/secretmanager.secretAccessor"
-
-# Allow deployer SA to act as the Compute SA (required for Cloud Run deploys)
-COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-gcloud iam service-accounts add-iam-policy-binding $COMPUTE_SA \
-  --member="serviceAccount:${SA_EMAIL}" \
-  --role="roles/iam.serviceAccountUser" \
-  --project=$PROJECT_ID
-
-# Create and download the key
 gcloud iam service-accounts keys create gcp-sa-key.json \
   --iam-account=$SA_EMAIL
-```
-
-### 3.2 Runtime Service Account (Compute SA) Permissions
-
-The default Compute SA is what Cloud Run uses at runtime. Grant it:
-
-```bash
-COMPUTE_SA="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
-
-# Read secrets at runtime
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${COMPUTE_SA}" \
-  --role="roles/secretmanager.secretAccessor"
-
-# Connect to Cloud SQL
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${COMPUTE_SA}" \
-  --role="roles/cloudsql.client"
-
-# Pull images from Artifact Registry
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-  --member="serviceAccount:${COMPUTE_SA}" \
-  --role="roles/artifactregistry.reader"
-```
-
-### 3.3 Artifact Registry Repository
-
-```bash
-gcloud artifacts repositories create padel-api \
-  --repository-format=docker \
-  --location=europe-west2 \
-  --project=$PROJECT_ID
 ```
 
 ### 3.4 GitHub Secrets
@@ -174,27 +154,32 @@ rm gcp-sa-key.json
 
 ### 3.5 GCP Secret Manager
 
-Create required secrets. Use placeholder values for Sprint 5+ secrets until real values are available.
+Terraform creates the secret **shells** but never manages secret **values**. Set values manually after `terraform apply`:
 
 ```bash
+PROJECT_ID=<GCP_PROJECT_ID>
+
 # Database — primary
 echo -n 'postgresql+asyncpg://padel_user:PASSWORD@/padel_db?host=/cloudsql/PROJECT:europe-west2:INSTANCE' \
-  | gcloud secrets create padel-database-url --data-file=- --project=$PROJECT_ID
+  | gcloud secrets versions add padel-database-url --data-file=- --project=$PROJECT_ID
 
 # Database — read replica (can point to same instance initially)
 echo -n 'postgresql+asyncpg://padel_user:PASSWORD@/padel_db?host=/cloudsql/PROJECT:europe-west2:INSTANCE' \
-  | gcloud secrets create padel-database-read-replica-url --data-file=- --project=$PROJECT_ID
+  | gcloud secrets versions add padel-database-read-replica-url --data-file=- --project=$PROJECT_ID
 
 # Application secret key (JWT signing)
 python3 -c "import secrets; print(secrets.token_hex(32))" \
-  | gcloud secrets create padel-secret-key --data-file=- --project=$PROJECT_ID
+  | gcloud secrets versions add padel-secret-key --data-file=- --project=$PROJECT_ID
 
 # Stripe (placeholder until Sprint 5)
-echo -n 'sk_test_placeholder' | gcloud secrets create stripe-secret-key --data-file=- --project=$PROJECT_ID
-echo -n 'whsec_placeholder'   | gcloud secrets create stripe-webhook-secret --data-file=- --project=$PROJECT_ID
+echo -n 'sk_test_placeholder' | gcloud secrets versions add stripe-secret-key --data-file=- --project=$PROJECT_ID
+echo -n 'whsec_placeholder'   | gcloud secrets versions add stripe-webhook-secret --data-file=- --project=$PROJECT_ID
 
 # SendGrid (placeholder until Sprint 5)
-echo -n 'SG.placeholder' | gcloud secrets create sendgrid-api-key --data-file=- --project=$PROJECT_ID
+echo -n 'SG.placeholder' | gcloud secrets versions add sendgrid-api-key --data-file=- --project=$PROJECT_ID
+
+# Platform API key (placeholder until feature is built)
+echo -n 'placeholder' | gcloud secrets versions add padel-platform-api-key --data-file=- --project=$PROJECT_ID
 ```
 
 > **Note:** `Settings` in `config.py` only requires `DATABASE_URL` at startup — all other fields have safe defaults. This means the migration job boots with just `padel-database-url` and the full API service picks up the rest at deploy time.
@@ -332,40 +317,42 @@ The CI pipeline runs migrations automatically before deploying the new revision.
 
 ### 5.3 Infrastructure Changes (Terraform)
 
-> Changes to Cloud Run config, Cloud SQL, Pub/Sub topics, GCS buckets, or networking.
+> Changes to Cloud Run config, Cloud SQL, Pub/Sub topics, secrets, or IAM.
+>
+> Terraform files live in `be-infra/terraform/`. State is stored remotely in GCS bucket `tf-state-smashbook-488121-backend` — never commit `.tfstate` files.
 
-**Step 1** — Make changes in `infra/terraform/`.
+**Step 1** — Make changes in `be-infra/terraform/`.
 
-**Step 2** — Initialise Terraform (first time, or after module changes):
+**Step 2** — Initialise Terraform (first time, or after provider changes):
 
 ```bash
-cd infra/terraform
+cd be-infra/terraform
 terraform init
 ```
 
 **Step 3** — Plan and review:
 
 ```bash
-terraform plan -var="project_id=<GCP_PROJECT_ID>"
+terraform plan
 ```
 
-Anything marked `destroy` or that modifies Cloud SQL or VPC requires extra scrutiny — some changes cause downtime or data loss.
+Anything marked `destroy` or that modifies Cloud SQL requires extra scrutiny — some changes cause downtime or data loss.
 
 **Step 4** — Apply:
 
 ```bash
-terraform apply -var="project_id=<GCP_PROJECT_ID>"
+terraform apply
 ```
 
 **Step 5** — Commit:
 
 ```bash
-git add infra/terraform/
+git add be-infra/terraform/
 git commit -m "infra: <description>"
 git push origin main
 ```
 
-> **Never commit `terraform.tfstate` or `terraform.tfstate.backup`** — state is stored remotely in the `padel-tf-state` GCS bucket.
+> **Never commit `.terraform/`** — it contains large provider binaries and is excluded by `be-infra/terraform/.gitignore`. State lives in GCS, not in the repo.
 
 ---
 
@@ -517,8 +504,23 @@ File: `.github/workflows/deploy-production.yml` _(to be created)_
 | `stripe-secret-key` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
 | `stripe-webhook-secret` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
 | `sendgrid-api-key` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
+| `padel-platform-api-key` | API (future) | Placeholder ok until feature is built |
 
-### Retrigger the pipeline without a code change
+### Trigger the pipeline manually
+
+The staging pipeline supports `workflow_dispatch` — trigger it without a code change from GitHub:
+
+1. Go to the repo on GitHub → **Actions** tab
+2. Select **Deploy to Staging** in the left sidebar
+3. Click **Run workflow** → **Run workflow**
+
+Or via CLI:
+
+```bash
+gh workflow run deploy-staging.yml --ref main
+```
+
+Or with an empty commit:
 
 ```bash
 git commit --allow-empty -m "ci: retrigger pipeline"
