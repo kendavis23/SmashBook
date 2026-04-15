@@ -1,0 +1,6 @@
+# terraform/.gitignore
+.terraform/          # provider plugins downloaded by terraform init
+.terraform.lock.hcl  # can be committed, but often ignored
+*.tfstate            # never commit state — it lives in GCS
+*.tfstate.backup
+*.tfvars             # often contains sensitive values
