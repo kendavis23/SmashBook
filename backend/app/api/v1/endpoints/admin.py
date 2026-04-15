@@ -1,5 +1,5 @@
 """
-Platform-admin endpoints.
+Platform-admin endpoints. Update.
 
 These routes operate outside any tenant context and are protected by a
 shared ``X-Platform-Key`` header rather than a tenant-scoped JWT.  They
