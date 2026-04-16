@@ -1,4 +1,5 @@
 // JWT decode helpers and token expiry checks.
+import { config } from "@repo/config";
 
 /** Decodes the payload of a JWT without verifying the signature. */
 export function decodeJwtPayload(token: string): Record<string, unknown> {
@@ -24,7 +25,7 @@ export function isTokenExpired(token: string): boolean {
 
 /** Builds fetch headers for auth service requests.
  *  accessToken     → Authorization: Bearer <token>
- *  tenantSubdomain → X-Tenant-Subdomain (only in local/development environments)
+ *  tenantSubdomain → X-Tenant-Subdomain (only in development/staging environments)
  */
 export function buildAuthHeaders(
     accessToken?: string | null,
@@ -32,8 +33,7 @@ export function buildAuthHeaders(
 ): Record<string, string> {
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
-    const env = import.meta.env.VITE_APP_ENV;
-    if (tenantSubdomain && (env === "local" || env === "development" || env === "staging")) {
+    if (tenantSubdomain && config.injectTenantHeader) {
         headers["X-Tenant-Subdomain"] = tenantSubdomain;
     }
     return headers;

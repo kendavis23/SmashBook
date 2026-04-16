@@ -1,4 +1,4 @@
-_Last updated: 2026-04-11 15:00 UTC_
+_Last updated: 2026-04-16 00:00 UTC_
 
 # FE Auth Flow
 
@@ -59,7 +59,7 @@ Every API call goes through the centralised fetch wrapper in `packages/api-clien
 fetcher(url, options)             (packages/api-client/core/fetcher.ts)
   → getAccessToken()              reads from Zustand store (packages/auth/store/index.ts)
   → Authorization: Bearer <token> attached to every request
-  → if appEnv === "development"
+  → if config.injectTenantHeader  (true when appEnv === "development" or "staging")
       → getTenantSubdomain()      reads from store
       → X-Tenant-Subdomain header attached
   → fetch(url, { ...options, headers })
