@@ -13,12 +13,16 @@ interface AuthStoreState {
     clubs: ClubSummary[];
     // Stored after login; used as X-Tenant-Subdomain header in dev requests.
     tenantSubdomain: string | null;
+    // Which club is currently active for any role. null = use clubs[0].
+    activeClubId: string | null;
+    activeClubName: string | null;
 }
 
 interface AuthStoreActions {
     setTokens(tokens: TokenResponse): void;
     setUser(user: UserResponse): void;
     setTenantSubdomain(subdomain: string): void;
+    setActiveClubId(clubId: string, clubName: string): void;
     clearAuth(): void;
 }
 
@@ -30,6 +34,8 @@ const initialState: AuthStoreState = {
     user: null,
     clubs: [],
     tenantSubdomain: null,
+    activeClubId: null,
+    activeClubName: null,
 };
 
 export const useAuthStore = create<AuthStore>()(
@@ -53,6 +59,10 @@ export const useAuthStore = create<AuthStore>()(
                 set({ tenantSubdomain: subdomain });
             },
 
+            setActiveClubId(clubId: string, clubName: string) {
+                set({ activeClubId: clubId, activeClubName: clubName });
+            },
+
             clearAuth() {
                 set(initialState);
             },
@@ -66,6 +76,8 @@ export const useAuthStore = create<AuthStore>()(
                 refreshToken: state.refreshToken,
                 clubs: state.clubs,
                 tenantSubdomain: state.tenantSubdomain,
+                activeClubId: state.activeClubId,
+                activeClubName: state.activeClubName,
             }),
         }
     )

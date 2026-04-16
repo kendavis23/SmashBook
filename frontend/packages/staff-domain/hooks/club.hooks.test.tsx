@@ -108,6 +108,20 @@ describe("useListClubs", () => {
         const { result } = renderHook(() => useListClubs(), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isError).toBe(true));
     });
+
+    it("does not fetch when enabled is false", () => {
+        const { Wrapper } = makeWrapper();
+        renderHook(() => useListClubs({ enabled: false }), { wrapper: Wrapper });
+        expect(staffApi.listClubsEndpoint).not.toHaveBeenCalled();
+    });
+
+    it("fetches when enabled is explicitly true", async () => {
+        vi.mocked(staffApi.listClubsEndpoint).mockResolvedValue([mockClub]);
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(() => useListClubs({ enabled: true }), { wrapper: Wrapper });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(staffApi.listClubsEndpoint).toHaveBeenCalledTimes(1);
+    });
 });
 
 // ---------------------------------------------------------------------------

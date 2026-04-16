@@ -32,6 +32,8 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
     };
 });
 
+let currentActiveClubName: string | null = "Alpha Club";
+
 vi.mock("@repo/auth", () => {
     const makeStore = (): {
         user: {
@@ -42,10 +44,12 @@ vi.mock("@repo/auth", () => {
         } | null;
         clearAuth: ReturnType<typeof vi.fn>;
         accessToken: string | null;
+        setActiveClubId: ReturnType<typeof vi.fn>;
     } => ({
         user: currentUser,
         clearAuth: mockClearAuth,
         accessToken: "test-token",
+        setActiveClubId: vi.fn(),
     });
     const useAuthStore = vi.fn((selector?: (s: ReturnType<typeof makeStore>) => unknown) => {
         const store = makeStore();
@@ -60,6 +64,8 @@ vi.mock("@repo/auth", () => {
             user: currentUser,
             role: currentUser?.role ?? null,
             isAuthenticated: currentUser !== null,
+            activeClubName: currentActiveClubName,
+            setActiveClubId: vi.fn(),
         }),
     };
 });
@@ -67,6 +73,15 @@ vi.mock("@repo/auth", () => {
 vi.mock("./ProfileEditModal", () => ({
     default: ({ isOpen }: { isOpen: boolean }) =>
         isOpen ? <div data-testid="profile-modal">Profile modal</div> : null,
+}));
+
+vi.mock("./SwitchClubModal", () => ({
+    default: ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) =>
+        isOpen ? (
+            <div data-testid="switch-club-modal">
+                <button onClick={onClose}>close-modal</button>
+            </div>
+        ) : null,
 }));
 
 import Navbar from "./Navbar";
@@ -297,5 +312,48 @@ describe("Navbar — module search", () => {
         fireEvent.keyDown(window, { key: "k", metaKey: true });
 
         expect(screen.getByLabelText("Search modules")).toHaveFocus();
+    });
+});
+
+describe("Navbar — active club pill", () => {
+    beforeEach(() => {
+        currentPath = "/dashboard";
+        currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentActiveClubName = "Alpha Club";
+    });
+
+    it("shows active club name when activeClubName is set", () => {
+        // activeClubName comes from useAuth() mock (currentActiveClubName = "Alpha Club")
+        render(<Navbar />);
+        expect(screen.getByText("Alpha Club")).toBeInTheDocument();
+    });
+
+    it("does not render the club pill when activeClubName is null", () => {
+        currentActiveClubName = null;
+        render(<Navbar />);
+        expect(screen.queryByText("Active Club")).not.toBeInTheDocument();
+    });
+});
+
+describe("Navbar — Switch Club", () => {
+    beforeEach(() => {
+        currentPath = "/dashboard";
+        currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentActiveClubName = "Alpha Club";
+    });
+
+    it("opens SwitchClubModal when Switch Club is clicked in dropdown", () => {
+        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club" }]} />);
+        fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
+        fireEvent.click(screen.getByText("Switch Club"));
+        expect(screen.getByTestId("switch-club-modal")).toBeInTheDocument();
+    });
+
+    it("closes SwitchClubModal when modal calls onClose", () => {
+        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club" }]} />);
+        fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
+        fireEvent.click(screen.getByText("Switch Club"));
+        fireEvent.click(screen.getByText("close-modal"));
+        expect(screen.queryByTestId("switch-club-modal")).not.toBeInTheDocument();
     });
 });
