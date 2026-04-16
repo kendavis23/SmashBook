@@ -40,10 +40,11 @@ const clubKeys = {
 // useListClubs — GET /api/v1/clubs
 // ---------------------------------------------------------------------------
 
-export function useListClubs() {
+export function useListClubs({ enabled = true }: { enabled?: boolean } = {}) {
     return useQuery({
         queryKey: clubKeys.all(),
         queryFn: async (): Promise<Club[]> => listClubsEndpoint(),
+        enabled,
     });
 }
 

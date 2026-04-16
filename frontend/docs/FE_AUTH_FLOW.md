@@ -1,4 +1,4 @@
-_Last updated: 2026-04-16 00:00 UTC_
+_Last updated: 2026-04-16 12:00 UTC_
 
 # FE Auth Flow
 
@@ -26,6 +26,41 @@ User fills form
 | `refreshToken`    |               |
 | `clubs`           |               |
 | `tenantSubdomain` |               |
+| `activeClubId`    |               |
+| `activeClubName`  |               |
+
+---
+
+## 1b. Club Selection (All Roles)
+
+After login, `DashboardLayout` fetches the full club list and auto-selects the first club for **all roles** (owner and non-owner alike).
+
+```
+DashboardLayout mounts
+  → useAuth()              reads role + jwtClubs from store
+  → if role === "owner"
+      → useListClubs()     GET /api/v1/clubs  (packages/staff-domain/hooks)
+  → else
+      → use jwtClubs from login response (already in store — no API call)
+      → map ClubSummary[] → ClubOption[]
+  → if activeClubId is null and clubs.length > 0
+      → setActiveClubId(clubs[0].id, clubs[0].name)  persisted to store
+  → Navbar receives clubs[] + isClubsLoading as props
+      → passes them to SwitchClubModal
+```
+
+**SwitchClubModal is data-agnostic** — it accepts `clubs: ClubOption[]` and `isLoading` as props. It does not fetch data itself. This makes it reusable by any app.
+
+**Architecture for multi-app club switching:**
+
+| App          | Club data source                           | Notes                                      |
+| ------------ | ------------------------------------------ | ------------------------------------------ |
+| `web-staff`  | `useListClubs()` from `@repo/staff-domain` | Passed via `DashboardLayout` → `Navbar`    |
+| `web-player` | Future hook from `@repo/player-domain`     | Same pattern — layout fetches, passes down |
+
+The `ClubOption { id, name }` interface is exported from `SwitchClubModal.tsx` and is the only contract the modal cares about. Domain-specific `Club` models satisfy it via structural typing.
+
+**Switch Club is visible for all roles** in the navbar dropdown. The active club name is shown in the navbar header for all roles.
 
 ---
 

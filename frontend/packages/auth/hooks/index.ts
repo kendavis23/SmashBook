@@ -31,13 +31,30 @@ export function useAuth() {
     const accessToken = useAuthStore((s) => s.accessToken);
     const clubs = useAuthStore((s) => s.clubs);
     const tenantSubdomain = useAuthStore((s) => s.tenantSubdomain);
-    const primaryClub = clubs[0];
-    const clubId = primaryClub?.club_id ?? null;
+    const activeClubId = useAuthStore((s) => s.activeClubId);
+    const activeClubName = useAuthStore((s) => s.activeClubName);
+    const setActiveClubId = useAuthStore((s) => s.setActiveClubId);
+
+    // Fall back to the first JWT club when no explicit selection has been made
+    const jwtClub = clubs[0];
+    const clubId = activeClubId ?? jwtClub?.club_id ?? null;
+    const resolvedClubName = activeClubName ?? jwtClub?.club_name ?? null;
+
     const isAuthenticated = !!accessToken && !!user;
     const role: TenantUserRole | null =
-        (primaryClub?.role as TenantUserRole | undefined) ?? user?.role ?? null;
+        (jwtClub?.role as TenantUserRole | undefined) ?? user?.role ?? null;
 
-    return { user, accessToken, clubs, clubId, tenantSubdomain, isAuthenticated, role };
+    return {
+        user,
+        accessToken,
+        clubs,
+        clubId,
+        activeClubName: resolvedClubName,
+        tenantSubdomain,
+        isAuthenticated,
+        role,
+        setActiveClubId,
+    };
 }
 
 // ---------------------------------------------------------------------------

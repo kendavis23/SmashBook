@@ -150,9 +150,9 @@
         @apply absolute right-2 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/50 transition-colors duration-100 hover:bg-accent hover:text-foreground;
     }
 
-    /* ── Navbar: search — pill shape, visible idle border, strong focus ring ── */
+    /* ── Navbar: search ── */
     .navbar-search-input {
-        @apply w-full rounded-full border border-border bg-background py-[6px] pl-8 pr-16 text-[13px] text-foreground outline-none shadow-xs placeholder:text-muted-foreground/40 transition-all duration-200 focus:border-cta/60 focus:ring-2 focus:ring-cta/20 focus:shadow-none;
+        @apply w-full rounded-full border border-border bg-background py-1.5 pl-9 pr-28 text-[13px] text-foreground outline-none placeholder:text-muted-foreground/40 transition-all duration-150 hover:border-border focus:border-border focus:ring-0;
     }
 
     /* ── Navbar: standalone icon button (theme toggle, etc.) ── */
