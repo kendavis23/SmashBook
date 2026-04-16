@@ -31,7 +31,7 @@ async function _fetcher<T>(
         headers.set("Authorization", `Bearer ${token}`);
     }
 
-    if (config.appEnv === "development") {
+    if (config.injectTenantHeader) {
         const subdomain = getTenantSubdomain();
         if (subdomain) {
             headers.set("X-Tenant-Subdomain", subdomain);
