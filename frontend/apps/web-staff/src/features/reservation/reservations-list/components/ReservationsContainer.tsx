@@ -28,17 +28,11 @@ function applyClientFilters(
                 return false;
             }
         }
-        if (filters.fromDt) {
-            const from = new Date(filters.fromDt);
-            if (new Date(res.start_datetime) < from) {
-                return false;
-            }
+        if (filters.fromDt && res.start_datetime < filters.fromDt) {
+            return false;
         }
-        if (filters.toDt) {
-            const to = new Date(filters.toDt);
-            if (new Date(res.end_datetime) > to) {
-                return false;
-            }
+        if (filters.toDt && res.end_datetime > filters.toDt) {
+            return false;
         }
         return true;
     });

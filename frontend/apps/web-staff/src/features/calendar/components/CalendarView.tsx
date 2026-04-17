@@ -3,7 +3,8 @@ import { Breadcrumb } from "@repo/ui";
 import { ChevronLeft, ChevronRight, CalendarDays, RefreshCw } from "lucide-react";
 import type { CalendarView as CalendarViewData, CalendarViewMode } from "../types";
 import { CALENDAR_VIEW_MODES, formatShortDate } from "../types";
-import CalendarDayColumn from "./CalendarDayColumn";
+import WeekTimelineBoard from "./WeekTimelineBoard";
+import DayTimelineBoard from "./DayTimelineBoard";
 
 type Props = {
     calendarData: CalendarViewData | null;
@@ -13,11 +14,15 @@ type Props = {
     anchorDate: string;
     dateFrom: string;
     dateTo: string;
+    courts: { id: string; name: string }[];
+    selectedCourtId: string;
     onPrev: () => void;
     onNext: () => void;
     onToday: () => void;
     onViewModeChange: (mode: CalendarViewMode) => void;
     onRefresh: () => void;
+    onCourtChange: (courtId: string) => void;
+    onManageClick: (bookingId: string) => void;
 };
 
 export default function CalendarView({
@@ -28,18 +33,20 @@ export default function CalendarView({
     anchorDate,
     dateFrom,
     dateTo,
+    courts,
+    selectedCourtId,
     onPrev,
     onNext,
     onToday,
     onViewModeChange,
     onRefresh,
+    onCourtChange,
+    onManageClick,
 }: Props): JSX.Element {
     const rangeLabel =
         viewMode === "day"
             ? formatShortDate(anchorDate)
             : `${formatShortDate(dateFrom)} – ${formatShortDate(dateTo)}`;
-
-    const dayCount = calendarData?.days.length ?? 7;
 
     return (
         <div className="w-full space-y-5">
@@ -56,6 +63,25 @@ export default function CalendarView({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
+                        {/* Court picker — week mode only */}
+                        {viewMode === "week" && courts.length > 0 ? (
+                            <div className="flex items-center rounded-lg border border-border bg-background px-3 py-1.5 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
+                                <select
+                                    value={selectedCourtId}
+                                    onChange={(e) => onCourtChange(e.target.value)}
+                                    className="bg-transparent text-xs font-medium text-foreground focus:outline-none"
+                                    aria-label="Select court"
+                                >
+                                    <option value="">All courts</option>
+                                    {courts.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : null}
+
                         {/* View mode toggle */}
                         <div className="flex rounded-lg border border-border bg-muted/30 p-0.5">
                             {CALENDAR_VIEW_MODES.map((mode) => (
@@ -129,16 +155,20 @@ export default function CalendarView({
                                 No bookings found for this period.
                             </p>
                         </div>
+                    ) : viewMode === "week" ? (
+                        <WeekTimelineBoard
+                            days={calendarData.days}
+                            selectedCourtId={selectedCourtId}
+                            onManageClick={onManageClick}
+                        />
                     ) : (
-                        /* Responsive grid — no horizontal scroll for ≤7 days */
-                        <div
-                            className="grid gap-3"
-                            style={{
-                                gridTemplateColumns: `repeat(${dayCount}, minmax(0, 1fr))`,
-                            }}
-                        >
+                        <div className="space-y-4">
                             {calendarData.days.map((day) => (
-                                <CalendarDayColumn key={day.date} day={day} />
+                                <DayTimelineBoard
+                                    key={day.date}
+                                    day={day}
+                                    onManageClick={onManageClick}
+                                />
                             ))}
                         </div>
                     )}

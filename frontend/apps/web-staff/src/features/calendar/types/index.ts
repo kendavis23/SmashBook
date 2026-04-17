@@ -56,18 +56,71 @@ export function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
-/** Formats ISO datetime to "HH:MM" */
-export function formatTime(iso: string): string {
-    return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+export { formatUTCDateTime, formatUTCDate, formatUTCTime } from "@repo/ui";
+export { formatUTCTime as formatTime } from "@repo/ui";
+
+const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const MONTHS_SHORT = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+] as const;
+const WEEKDAYS_LONG = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+] as const;
+const MONTHS_LONG = [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+] as const;
+
+function parseDateStr(dateStr: string): { y: number; m: number; d: number; dow: number } {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    // Zeller's formula for day-of-week (0=Sun) — no Date object needed
+    const yr = (m ?? 0) <= 2 ? (y ?? 0) - 1 : (y ?? 0);
+    const mo = (m ?? 0) <= 2 ? (m ?? 0) + 12 : (m ?? 0);
+    const k = yr % 100;
+    const j = Math.floor(yr / 100);
+    const dow =
+        ((d ?? 0) +
+            Math.floor((13 * (mo + 1)) / 5) +
+            k +
+            Math.floor(k / 4) +
+            Math.floor(j / 4) -
+            2 * j +
+            6) %
+        7;
+    return { y: y ?? 0, m: m ?? 0, d: d ?? 0, dow };
 }
 
 /** Formats "YYYY-MM-DD" to a human-readable short date */
 export function formatShortDate(dateStr: string): string {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-    });
+    const { m, d, dow } = parseDateStr(dateStr);
+    return `${WEEKDAYS_SHORT[dow]}, ${MONTHS_SHORT[m - 1]} ${d}`;
 }
 
 /** Formats currency from a numeric value or null */
@@ -82,94 +135,113 @@ export function formatCurrency(amount: number | null | string): string {
     }).format(num);
 }
 
-function toLocalIso(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
+function toDateStr(y: number, m: number, d: number): string {
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function isLeapYear(y: number): boolean {
+    return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+}
+
+function daysInMonth(y: number, m: number): number {
+    const days = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return m === 2 && isLeapYear(y) ? 29 : (days[m] ?? 30);
+}
+
+/** Adds `n` days to a "YYYY-MM-DD" string without timezone conversion */
+export function addDays(dateStr: string, n: number): string {
+    let { y, m, d } = parseDateStr(dateStr);
+    d += n;
+    while (d > daysInMonth(y, m)) {
+        d -= daysInMonth(y, m);
+        m++;
+        if (m > 12) {
+            m = 1;
+            y++;
+        }
+    }
+    while (d < 1) {
+        m--;
+        if (m < 1) {
+            m = 12;
+            y--;
+        }
+        d += daysInMonth(y, m);
+    }
+    return toDateStr(y, m, d);
 }
 
 /** Returns the Monday of the week containing the given "YYYY-MM-DD" */
 export function getWeekStart(dateStr: string): string {
-    const d = new Date(dateStr + "T00:00:00");
-    const day = d.getDay(); // 0=Sun … 6=Sat
-    const diff = day === 0 ? -6 : 1 - day; // shift to Monday
-    d.setDate(d.getDate() + diff);
-    return toLocalIso(d);
+    const { dow } = parseDateStr(dateStr);
+    const diff = dow === 0 ? -6 : 1 - dow;
+    return addDays(dateStr, diff);
 }
 
 /** Returns the Sunday of the week containing the given "YYYY-MM-DD" */
 export function getWeekEnd(dateStr: string): string {
-    const start = getWeekStart(dateStr);
-    const d = new Date(start + "T00:00:00");
-    d.setDate(d.getDate() + 6);
-    return toLocalIso(d);
-}
-
-/** Adds `days` to a "YYYY-MM-DD" string */
-export function addDays(dateStr: string, days: number): string {
-    const d = new Date(dateStr + "T00:00:00");
-    d.setDate(d.getDate() + days);
-    return toLocalIso(d);
+    return addDays(getWeekStart(dateStr), 6);
 }
 
 // ─── Calendar layout constants ─────────────────────────────────────────────
 
 export const CALENDAR_TIME_RAIL_WIDTH = 72;
 export const CALENDAR_COURT_LANE_MIN_WIDTH = 180;
-export const CALENDAR_SLOT_ROW_HEIGHT = 84;
+export const CALENDAR_SLOT_ROW_HEIGHT = 56;
 
 export interface CalendarTimeSlot {
     start_time: string;
     end_time: string;
 }
 
-/** 30-minute slots from 08:00 to 22:00 */
-export const CALENDAR_TIME_SLOTS: CalendarTimeSlot[] = Array.from({ length: 28 }, (_, i) => {
-    const totalMinutes = 8 * 60 + i * 30;
+/** 1-hour slots from 06:00 to 01:00 next day (19 slots). end_time uses 25:00 for post-midnight. */
+export const CALENDAR_TIME_SLOTS: CalendarTimeSlot[] = Array.from({ length: 19 }, (_, i) => {
+    const totalMinutes = 6 * 60 + i * 60;
     const startH = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
-    const startM = String(totalMinutes % 60).padStart(2, "0");
-    const endTotal = totalMinutes + 30;
+    const endTotal = totalMinutes + 60;
     const endH = String(Math.floor(endTotal / 60)).padStart(2, "0");
-    const endM = String(endTotal % 60).padStart(2, "0");
-    return { start_time: `${startH}:${startM}`, end_time: `${endH}:${endM}` };
+    return { start_time: `${startH}:00`, end_time: `${endH}:00` };
 });
 
 // ─── Calendar utility functions ────────────────────────────────────────────
 
-/** Formats "HH:MM" to a short time label */
+/** Formats "HH:MM" to a short time label. Supports hours >= 24 (post-midnight). */
 export function formatSlotTime(time: string): string {
-    const [h, m] = time.split(":").map(Number);
-    const date = new Date();
-    date.setHours(h ?? 0, m ?? 0, 0, 0);
-    return date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    const [hRaw, mRaw] = time.split(":").map(Number);
+    const h = (hRaw ?? 0) % 24;
+    const m = mRaw ?? 0;
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
 /** Formats "YYYY-MM-DD" to a long date like "Monday, 7 April 2026" */
 export function formatLongDate(dateStr: string): string {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-    });
+    const { y, m, d, dow } = parseDateStr(dateStr);
+    return `${WEEKDAYS_LONG[dow]}, ${d} ${MONTHS_LONG[m - 1]} ${y}`;
 }
 
-/** Formats "YYYY-MM-DD" to a short weekday like "Mon" */
+/** Formats "YYYY-MM-DD" to a full weekday like "Monday" */
 export function formatWeekday(dateStr: string): string {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString(undefined, { weekday: "long" });
+    const { dow } = parseDateStr(dateStr);
+    return WEEKDAYS_LONG[dow] ?? "";
 }
 
-/** Converts "HH:MM" to total minutes since midnight */
+/** Converts "HH:MM" to minutes since midnight. Supports hours >= 24 for post-midnight slots. */
 export function getMinutesFromTime(time: string): number {
     const [h, m] = time.split(":").map(Number);
     return (h ?? 0) * 60 + (m ?? 0);
 }
 
-/** Converts an ISO datetime string to total minutes since midnight (local time) */
+/** Converts an ISO datetime string to minutes since midnight (UTC, no timezone conversion).
+ *  Post-midnight hours (0–5) are treated as 24+h to stay within the 06:00–25:00 board range. */
 export function getMinutesFromIso(iso: string): number {
-    const d = new Date(iso);
-    return d.getHours() * 60 + d.getMinutes();
+    const timePart = iso.includes("T") ? iso.split("T")[1] : iso;
+    const [hStr, mStr] = (timePart ?? "").split(":");
+    const h = parseInt(hStr ?? "0", 10);
+    const m = parseInt(mStr ?? "0", 10);
+    const adjusted = h < 6 ? (h + 24) * 60 + m : h * 60 + m;
+    return adjusted;
 }
 
 /** Clamps a number between min and max */

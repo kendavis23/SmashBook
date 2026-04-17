@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
+import { datetimeLocalToUTC } from "@repo/ui";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import { useGetBooking, useUpdateBooking, useCancelBooking, useListCourts } from "../../hooks";
 import { useClubAccess } from "../../store";
@@ -73,7 +74,7 @@ export default function ManageBookingContainer(): JSX.Element {
             const payload = {
                 court_id: form.courtId || undefined,
                 start_datetime: form.startDatetime
-                    ? new Date(form.startDatetime).toISOString()
+                    ? datetimeLocalToUTC(form.startDatetime)
                     : undefined,
                 notes: form.notes.trim() || null,
                 event_name: form.eventName.trim() || null,

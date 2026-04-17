@@ -226,7 +226,35 @@ const ClubDetailPage = lazy(() => import("../features/club/pages/ClubDetailPage"
 
 ---
 
-## Step 6 — Styling rules
+## Step 6 — Date and time formatting
+
+Always use the helpers from `@repo/ui` to display dates and times. Never use `new Date().toLocaleString()`, `Date.toLocaleDateString()`, or manual string manipulation — these shift times by the browser's local timezone.
+
+| Helper               | Output example           | When to use                                                            |
+| -------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `formatUTCDateTime`  | `Apr 17, 2026, 10:00 AM` | Full date + time display                                               |
+| `formatUTCDate`      | `Apr 17, 2026`           | Date-only display                                                      |
+| `formatUTCTime`      | `10:00 AM`               | Time-only display                                                      |
+| `datetimeLocalToUTC` | `2026-04-17T10:00:00Z`   | Converting `<input type="datetime-local">` value before sending to API |
+
+```tsx
+import { formatUTCDateTime, formatUTCDate, formatUTCTime } from "@repo/ui";
+
+// In a View component — display a booking start time
+<span>{formatUTCDateTime(booking.start_time)}</span>
+
+// Date only
+<span>{formatUTCDate(booking.date)}</span>
+
+// Time only
+<span>{formatUTCTime(booking.start_time)}</span>
+```
+
+**Rule:** every ISO string that comes from the API must be formatted through one of these helpers before display. Import from `@repo/ui` — never from the file path directly.
+
+---
+
+## Step 7 — Styling rules
 
 All styling uses Tailwind utility classes with design tokens from `@repo/design-system`.
 

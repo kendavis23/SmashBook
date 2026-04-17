@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import type { FormEvent, JSX } from "react";
+import { datetimeLocalToUTC } from "@repo/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { useCreateCalendarReservation, useListCourts } from "../../hooks";
 import { useClubAccess } from "../../store";
@@ -88,8 +89,8 @@ export default function NewReservationContainer(): JSX.Element {
                 court_id: form.courtId || null,
                 reservation_type: form.reservationType as CalendarReservationType,
                 title: form.title.trim(),
-                start_datetime: new Date(form.startDatetime).toISOString(),
-                end_datetime: new Date(form.endDatetime).toISOString(),
+                start_datetime: datetimeLocalToUTC(form.startDatetime),
+                end_datetime: datetimeLocalToUTC(form.endDatetime),
                 anchor_skill_level: parseOptionalNumber(form.anchorSkillLevel),
                 skill_range_above: parseOptionalNumber(form.skillRangeAbove),
                 skill_range_below: parseOptionalNumber(form.skillRangeBelow),

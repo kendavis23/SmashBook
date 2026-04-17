@@ -5,13 +5,19 @@ import type { CalendarView } from "../types";
 
 const mockRefetch = vi.fn();
 const mockUseGetCalendarView = vi.fn();
+const mockNavigate = vi.fn();
 
 vi.mock("../hooks", () => ({
     useGetCalendarView: (...args: unknown[]) => mockUseGetCalendarView(...args),
+    useListCourts: () => ({ data: [] }),
 }));
 
 vi.mock("../store", () => ({
     useClubAccess: () => ({ clubId: "club-1", role: "admin" }),
+}));
+
+vi.mock("@tanstack/react-router", () => ({
+    useNavigate: () => mockNavigate,
 }));
 
 vi.mock("./CalendarView", () => ({
@@ -24,6 +30,7 @@ vi.mock("./CalendarView", () => ({
         onToday,
         onViewModeChange,
         onRefresh,
+        onManageClick,
     }: {
         isLoading: boolean;
         error: Error | null;
@@ -33,6 +40,7 @@ vi.mock("./CalendarView", () => ({
         onToday: () => void;
         onViewModeChange: (mode: string) => void;
         onRefresh: () => void;
+        onManageClick: (id: string) => void;
     }) => (
         <div>
             {isLoading && <span>loading</span>}
@@ -44,6 +52,7 @@ vi.mock("./CalendarView", () => ({
             <button onClick={() => onViewModeChange("day")}>day-mode</button>
             <button onClick={() => onViewModeChange("week")}>week-mode</button>
             <button onClick={onRefresh}>refresh</button>
+            <button onClick={() => onManageClick("booking-1")}>manage</button>
         </div>
     ),
 }));
@@ -128,7 +137,15 @@ describe("CalendarContainer — success state", () => {
     it("navigates to today", () => {
         render(<CalendarContainer />);
         fireEvent.click(screen.getByText("today"));
-        // after today click, hook is called with today's anchor_date
         expect(mockUseGetCalendarView).toHaveBeenCalled();
+    });
+
+    it("navigates to manage booking when manage is clicked", () => {
+        render(<CalendarContainer />);
+        fireEvent.click(screen.getByText("manage"));
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: "/bookings/$bookingId",
+            params: { bookingId: "booking-1" },
+        });
     });
 });

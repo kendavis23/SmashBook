@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast } from "@repo/ui";
+import { Breadcrumb, AlertToast, formatUTCDateTime } from "@repo/ui";
 import type { CalendarReservation, CalendarReservationType } from "../../types";
 import {
     RESERVATION_TYPE_LABELS,
@@ -21,13 +21,6 @@ const BOOKING_TYPE_OPTIONS = [
 ];
 
 const typeOptions = RESERVATION_TYPE_OPTIONS.filter((o) => o.value !== "");
-
-function formatDatetime(iso: string): string {
-    return new Date(iso).toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-    });
-}
 
 export type ManageReservationFormState = {
     title: string;
@@ -104,8 +97,8 @@ export default function ManageReservationView({
                             {reservation.title}
                         </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            {formatDatetime(reservation.start_datetime)} &ndash;{" "}
-                            {formatDatetime(reservation.end_datetime)}
+                            {formatUTCDateTime(reservation.start_datetime)} &ndash;{" "}
+                            {formatUTCDateTime(reservation.end_datetime)}
                         </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">

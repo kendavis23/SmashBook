@@ -64,7 +64,6 @@ packages/      → all logic, UI, and configuration
 | `@repo/config`        | **Only** place `process.env` / `import.meta.env` is read (Zod-validated) |
 | `@repo/ui`            | Shared shadcn/ui component wrappers                                      |
 | `@repo/design-system` | Design tokens, light/dark themes                                         |
-| `@repo/shared`        | Generic cross-cutting utils (not domain-specific logic)                  |
 | `@repo/testing`       | MSW handlers, shared mocks, test utilities                               |
 
 ## Key Rules
@@ -149,9 +148,8 @@ Always use container/view separation:
 4. Auth-related? → `packages/auth`
 5. Reusable UI component? → `packages/ui`
 6. Design token / theme? → `packages/design-system`
-7. Truly generic cross-domain util? → `packages/shared`
-8. Feature-specific rendering? → `apps/*/features/[name]/components`
-9. Routing or layout? → `apps/*/app` or `apps/*/layout`
+7. Feature-specific rendering? → `apps/*/features/[name]/components`
+8. Routing or layout? → `apps/*/app` or `apps/*/layout`
 
 Full architecture and coding standards: [`docs/FE_ARCHITECTURE.md`](docs/FE_ARCHITECTURE.md) and [`docs/FE_CODING_STANDARD.md`](docs/FE_CODING_STANDARD.md).
 

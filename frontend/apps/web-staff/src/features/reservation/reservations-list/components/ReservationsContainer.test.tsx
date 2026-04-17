@@ -23,6 +23,10 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    formatUTCDateTime: (iso: string) => iso,
+    formatUTCDate: (iso: string) => iso,
+    formatUTCTime: (iso: string) => iso,
+    datetimeLocalToUTC: (v: string) => v,
 }));
 
 import { useListCourts, useListCalendarReservations } from "../../hooks";

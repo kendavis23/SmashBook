@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Breadcrumb } from "@repo/ui";
+import { Breadcrumb, formatUTCDateTime } from "@repo/ui";
 import {
     CalendarDays,
     CheckCircle2,
@@ -39,13 +39,6 @@ type Props = {
 const thCls =
     "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
 const tdCls = "px-3 py-3 text-sm text-foreground align-top";
-
-function formatDatetime(iso: string): string {
-    return new Date(iso).toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-    });
-}
 
 function formatCurrency(amount: number | null): string {
     if (amount == null) return "—";
@@ -367,13 +360,13 @@ export default function BookingsView({
 
                                             <td className={tdCls}>
                                                 <span className="whitespace-nowrap text-muted-foreground">
-                                                    {formatDatetime(booking.start_datetime)}
+                                                    {formatUTCDateTime(booking.start_datetime)}
                                                 </span>
                                             </td>
 
                                             <td className={tdCls}>
                                                 <span className="whitespace-nowrap text-muted-foreground">
-                                                    {formatDatetime(booking.end_datetime)}
+                                                    {formatUTCDateTime(booking.end_datetime)}
                                                 </span>
                                             </td>
 
