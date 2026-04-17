@@ -1,4 +1,4 @@
-_Last updated: 2026-03-21 21:30 UTC_
+_Last updated: 2026-04-17 00:00 UTC_
 
 # Integration Testing
 
@@ -48,13 +48,25 @@ Every layer of the stack runs — `TenantMiddleware`, JWT validation, Pydantic s
 
 ```
 backend/tests/
-├── conftest.py              ← root: sets required env vars before any app import
-├── unit/                    ← existing unit tests (mocked DB)
+├── conftest.py                  ← root: sets required env vars before any app import
+├── unit/                        ← unit tests (mocked DB)
+│   ├── test_auth_clubs.py
+│   ├── test_clubs.py
+│   ├── test_courts.py
+│   ├── test_memberships.py
+│   ├── test_onboarding.py
+│   ├── test_player_service.py
+│   └── test_tenant_middleware.py
 └── integration/
-    ├── conftest.py          ← engine, session factory, client, seed fixtures
-    ├── test_auth.py         ← register, login, refresh, cross-tenant
-    ├── test_clubs.py        ← (next: CRUD, role enforcement, plan limits)
-    └── test_courts.py       ← (next: create, update, role enforcement)
+    ├── conftest.py              ← engine, session factory, client, seed fixtures
+    ├── test_auth.py             ← register, login (incl. clubs payload), refresh, cross-tenant
+    ├── test_clubs.py            ← CRUD, operating hours, pricing rules, plan limits
+    ├── test_courts.py           ← create/update/list, availability slots, tenant isolation
+    ├── test_bookings.py         ← full booking lifecycle, open games, calendar, on-behalf-of, invites
+    ├── test_players.py          ← player profile, bookings history, match history
+    ├── test_memberships.py      ← membership plan CRUD
+    ├── test_equipment.py        ← inventory, rentals, retire, cancel-restores-stock
+    └── test_trainers.py         ← list trainers, availability CRUD, trainer bookings
 ```
 
 ### Fixture Dependency Chain
@@ -66,10 +78,17 @@ test_engine (session-scoped)
     ├── plan (function-scoped)
     │   └── tenant (function-scoped)
     │       ├── player (function-scoped)
+    │       │   └── player2 (function-scoped, some booking tests)
     │       ├── staff (function-scoped)
     │       ├── admin (function-scoped)
+    │       ├── trainer (function-scoped, trainer tests)
+    │       ├── ops_lead (function-scoped, trainer tests)
     │       └── club (function-scoped)
-    └── player_headers / staff_headers / admin_headers (sync fixtures)
+    │           ├── court_with_hours (function-scoped, booking/court tests)
+    │           ├── racket (function-scoped, equipment tests)
+    │           └── trainer_profile (function-scoped, trainer tests)
+    └── player_headers / staff_headers / admin_headers /
+        trainer_headers / ops_lead_headers / player2_headers  (sync fixtures)
 ```
 
 ---
@@ -284,28 +303,12 @@ You do not need to run Alembic migrations — the `test_engine` fixture calls `B
 
 ## Running the Tests
 
-### Auth flows (first test suite)
+### Run a single domain
 
 ```bash
 cd backend
 .venv/bin/python -m pytest tests/integration/test_auth.py -v
-```
-
-Expected output:
-
-```
-tests/integration/test_auth.py::TestRegister::test_success PASSED
-tests/integration/test_auth.py::TestRegister::test_duplicate_email_returns_409 PASSED
-tests/integration/test_auth.py::TestRegister::test_unknown_tenant_returns_404 PASSED
-tests/integration/test_auth.py::TestRegister::test_short_password_returns_422 PASSED
-tests/integration/test_auth.py::TestLogin::test_success PASSED
-tests/integration/test_auth.py::TestLogin::test_wrong_password_returns_401 PASSED
-tests/integration/test_auth.py::TestLogin::test_unknown_email_returns_401 PASSED
-tests/integration/test_auth.py::TestLogin::test_inactive_user_returns_403 PASSED
-tests/integration/test_auth.py::TestRefreshToken::test_success PASSED
-tests/integration/test_auth.py::TestRefreshToken::test_access_token_rejected_as_refresh PASSED
-tests/integration/test_auth.py::TestRefreshToken::test_garbage_token_rejected PASSED
-tests/integration/test_auth.py::TestCrossTenantRejection::test_token_for_tenant_a_rejected_by_tenant_b PASSED
+.venv/bin/python -m pytest tests/integration/test_bookings.py -v
 ```
 
 ### All integration tests
@@ -346,6 +349,23 @@ pytest -v
 
 ---
 
+## Current Coverage
+
+| Domain | File | Status |
+|--------|------|--------|
+| Auth (register, login, refresh, clubs payload, cross-tenant) | `test_auth.py` | ✅ Complete |
+| Clubs (CRUD, settings, operating hours, pricing rules, plan limits) | `test_clubs.py` | ✅ Complete |
+| Courts (CRUD, list, availability slots, tenant isolation) | `test_courts.py` | ✅ Complete |
+| Bookings (create, list, open games, join, invite, cancel, calendar, on-behalf-of, update, respond-to-invite) | `test_bookings.py` | ✅ Complete |
+| Players (profile, bookings, match history) | `test_players.py` | ✅ Complete |
+| Membership plans (CRUD) | `test_memberships.py` | ✅ Complete |
+| Equipment (inventory, rentals, retire, cancel-restores-stock) | `test_equipment.py` | ✅ Complete |
+| Trainers (list, availability CRUD, trainer bookings) | `test_trainers.py` | ✅ Complete |
+| Payments / Wallet | — | ⬜ Not yet written |
+| Notifications | — | ⬜ Not yet written |
+
+---
+
 ## What to Test Per Endpoint (Priority Order)
 
 | Priority | What to test |
@@ -377,4 +397,4 @@ Add them to `tests/integration/conftest.py` following the same pattern: commit d
 
 ### Extending cleanup for new models
 
-If a new test creates data in tables that have FK dependencies on `clubs` or `users` (e.g. `bookings`, `staff_profiles`), extend the `_cleanup_tenant` function in `conftest.py` to delete those rows before the club/user/tenant rows. The comment in `_cleanup_tenant` marks exactly where to add this.
+If a new test creates data in tables that have FK dependencies on `clubs` or `users`, extend `_cleanup_tenant` in `conftest.py` to delete those rows before the club/user/tenant rows. The function already handles courts, bookings, booking_players, equipment_rentals, equipment_inventory, operating_hours, pricing_rules, membership_plans, staff_profiles, trainer_availability, and wallets. Add new FK children in the same FK-safe order pattern.

@@ -1,5 +1,346 @@
 [
   {
+    "assignees": [
+      {
+        "id": "MDQ6VXNlcjI5MzM3NzMw",
+        "login": "kendavis23",
+        "name": "jkd",
+        "databaseId": 29337730
+      }
+    ],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-04-17T15:34:20Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 159,
+    "state": "OPEN",
+    "title": "Downsize db for staging",
+    "updatedAt": "2026-04-17T15:34:20Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/159",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [
+      {
+        "id": "MDQ6VXNlcjI5MzM3NzMw",
+        "login": "kendavis23",
+        "name": "jkd",
+        "databaseId": 29337730
+      }
+    ],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-04-17T08:20:38Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACfUxeYA",
+        "name": "bug",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 158,
+    "state": "OPEN",
+    "title": "Update login to inlcude admin and owner detail",
+    "updatedAt": "2026-04-17T08:20:38Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/158",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [
+      {
+        "id": "MDQ6VXNlcjI5MzM3NzMw",
+        "login": "kendavis23",
+        "name": "jkd",
+        "databaseId": 29337730
+      },
+      {
+        "id": "MDQ6VXNlcjY0MzQ0Mzkz",
+        "login": "RohitBhamore",
+        "name": "Rohit Bhamore",
+        "databaseId": 64344393
+      }
+    ],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-04-15T18:27:30Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACcp2lbw",
+        "name": "Testing",
+        "description": "",
+        "color": "d463a7"
+      }
+    ],
+    "milestone": null,
+    "number": 155,
+    "state": "OPEN",
+    "title": "full end-to-end testing with test data for booking",
+    "updatedAt": "2026-04-17T14:31:28Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/155",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [
+      {
+        "id": "MDQ6VXNlcjY0MzQ0Mzkz",
+        "login": "RohitBhamore",
+        "name": "Rohit Bhamore",
+        "databaseId": 64344393
+      }
+    ],
+    "body": "",
+    "closedAt": "2026-04-17T14:31:39Z",
+    "createdAt": "2026-04-15T18:26:50Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACfUxeYA",
+        "name": "bug",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 154,
+    "state": "CLOSED",
+    "title": "Resolve issue with subdomain access after login",
+    "updatedAt": "2026-04-17T14:31:39Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/154",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-15T14:56:03Z",
+    "createdAt": "2026-04-14T15:19:24Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 152,
+    "state": "CLOSED",
+    "title": "Implement backend terraform and test",
+    "updatedAt": "2026-04-15T14:56:03Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/152",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-15T10:27:49Z",
+    "createdAt": "2026-04-14T15:18:39Z",
+    "labels": [],
+    "milestone": null,
+    "number": 151,
+    "state": "CLOSED",
+    "title": "Commit FE code",
+    "updatedAt": "2026-04-15T10:27:49Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/151",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-15T10:27:46Z",
+    "createdAt": "2026-04-14T15:18:25Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACfUxeYA",
+        "name": "bug",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 150,
+    "state": "CLOSED",
+    "title": "Fix my yaml file",
+    "updatedAt": "2026-04-15T10:27:46Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/150",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-15T18:26:12Z",
+    "createdAt": "2026-04-14T15:18:07Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACcp2lbw",
+        "name": "Testing",
+        "description": "",
+        "color": "d463a7"
+      }
+    ],
+    "milestone": null,
+    "number": 149,
+    "state": "CLOSED",
+    "title": "Add test data to staging environment",
+    "updatedAt": "2026-04-15T18:26:12Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/149",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-15T10:16:02Z",
+    "createdAt": "2026-04-14T15:17:39Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACfUxeYA",
+        "name": "bug",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 148,
+    "state": "CLOSED",
+    "title": "Fix refresh to include club id, staff role",
+    "updatedAt": "2026-04-15T10:16:02Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/148",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "a43df5a1",
+      "startDate": "2026-04-05",
+      "title": "Sprint 3"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Set rules for what happens when cancellation occurs",
+    "closedAt": null,
+    "createdAt": "2026-03-30T18:14:36Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "Phase 1 / MVP Go-Live",
+      "description": "",
+      "dueOn": null
+    },
+    "number": 146,
+    "state": "OPEN",
+    "title": "Cancellation policy",
+    "updatedAt": "2026-03-30T18:14:36Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/146",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Player books lesson not sure if player can select trainer",
+    "closedAt": null,
+    "createdAt": "2026-03-30T18:12:37Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_CnJg",
+        "name": "Coaching",
+        "description": "",
+        "color": "98ffb6"
+      }
+    ],
+    "milestone": {
+      "number": 1,
+      "title": "Phase 1 / MVP Go-Live",
+      "description": "",
+      "dueOn": null
+    },
+    "number": 145,
+    "state": "OPEN",
+    "title": "Player books lesson",
+    "updatedAt": "2026-03-30T18:12:37Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/145",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
     "assignees": [],
     "body": "From player and staff perspective, check availability for upcoming dates",
     "closedAt": null,
@@ -144,7 +485,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-15T14:55:58Z",
     "createdAt": "2026-03-29T11:01:23Z",
     "labels": [
       {
@@ -167,9 +508,9 @@
       "dueOn": null
     },
     "number": 140,
-    "state": "OPEN",
-    "title": "CI/CD Pipeline including Front End",
-    "updatedAt": "2026-03-29T11:01:23Z",
+    "state": "CLOSED",
+    "title": "Merged Terraform IaC & CI/CD Pipeline including Front End for baseline for all future development",
+    "updatedAt": "2026-04-15T14:55:58Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/140",
     "sprint": {
       "duration": 14,
@@ -274,7 +615,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-31T13:10:18Z",
     "createdAt": "2026-03-25T12:46:41Z",
     "labels": [
       {
@@ -297,9 +638,9 @@
       "dueOn": null
     },
     "number": 136,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Development process & design for front end",
-    "updatedAt": "2026-03-25T12:46:41Z",
+    "updatedAt": "2026-03-31T13:10:18Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/136",
     "sprint": {
       "duration": 14,
@@ -334,9 +675,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/135",
     "sprint": {
       "duration": 14,
-      "iterationId": "a43df5a1",
-      "startDate": "2026-04-05",
-      "title": "Sprint 3"
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
     }
   },
   {
@@ -881,7 +1222,7 @@
     "number": 115,
     "state": "OPEN",
     "title": "Staff: competitor pricing intelligence surfaced in manager dashboard",
-    "updatedAt": "2026-03-24T23:02:21Z",
+    "updatedAt": "2026-04-14T21:10:17Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/115",
     "sprint": {
       "duration": 14,
@@ -2632,7 +2973,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-31T18:44:41Z",
     "createdAt": "2026-03-08T13:55:06Z",
     "labels": [
       {
@@ -2655,9 +2996,9 @@
       "dueOn": null
     },
     "number": 55,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Trainer: view upcoming lesson bookings",
-    "updatedAt": "2026-03-24T23:03:21Z",
+    "updatedAt": "2026-03-31T18:44:41Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/55",
     "sprint": {
       "duration": 14,
@@ -2669,7 +3010,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-31T16:20:21Z",
     "createdAt": "2026-03-08T13:55:04Z",
     "labels": [
       {
@@ -2698,9 +3039,9 @@
       "dueOn": null
     },
     "number": 54,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Ops lead: edit trainer hours; view all trainer schedules in one place",
-    "updatedAt": "2026-03-24T23:03:22Z",
+    "updatedAt": "2026-03-31T16:20:21Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/54",
     "sprint": {
       "duration": 14,
@@ -2934,7 +3275,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-31T18:13:34Z",
     "createdAt": "2026-03-08T13:54:50Z",
     "labels": [
       {
@@ -2963,9 +3304,9 @@
       "dueOn": null
     },
     "number": 47,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: book court for individual or group lesson with trainer",
-    "updatedAt": "2026-03-24T23:03:30Z",
+    "updatedAt": "2026-03-31T18:13:34Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/47",
     "sprint": {
       "duration": 14,
@@ -2977,7 +3318,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-30T18:57:00Z",
     "createdAt": "2026-03-08T13:54:48Z",
     "labels": [
       {
@@ -3006,9 +3347,9 @@
       "dueOn": null
     },
     "number": 46,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: book courts for corporate events or tournaments",
-    "updatedAt": "2026-03-24T23:03:32Z",
+    "updatedAt": "2026-03-30T18:57:00Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/46",
     "sprint": {
       "duration": 14,
@@ -3063,7 +3404,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-30T18:56:56Z",
     "createdAt": "2026-03-08T13:54:45Z",
     "labels": [
       {
@@ -3092,9 +3433,9 @@
       "dueOn": null
     },
     "number": 44,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: block courts for maintenance, events, or private hire",
-    "updatedAt": "2026-03-24T23:03:34Z",
+    "updatedAt": "2026-03-30T18:56:56Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/44",
     "sprint": {
       "duration": 14,
@@ -3106,7 +3447,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-03-30T20:05:29Z",
     "createdAt": "2026-03-08T13:54:43Z",
     "labels": [
       {
@@ -3129,9 +3470,9 @@
       "dueOn": null
     },
     "number": 43,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: view match history & upcoming bookings",
-    "updatedAt": "2026-03-24T23:03:35Z",
+    "updatedAt": "2026-03-30T20:05:29Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/43",
     "sprint": {
       "duration": 14,
@@ -3258,9 +3599,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/40",
     "sprint": {
       "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
     }
   },
   {
