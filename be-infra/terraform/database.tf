@@ -8,8 +8,8 @@ resource "google_sql_database_instance" "main" {
   region           = var.region
 
   settings {
-    tier              = "db-perf-optimized-N-8"
-    edition           = "ENTERPRISE_PLUS"
+    tier              = "db-g1-small"
+    edition           = "ENTERPRISE"
     availability_type = "ZONAL"
     activation_policy = "ALWAYS"
 
@@ -40,21 +40,15 @@ resource "google_sql_database_instance" "main" {
     }
 
     disk_type             = "PD_SSD"
-    disk_size             = 100
+    disk_size             = 20
     disk_autoresize       = false
-
-    data_cache_config {
-      data_cache_enabled = true
-    }
   }
 
   deletion_protection = true
 
   lifecycle {
-    # Prevent accidental destruction of the database
     prevent_destroy = true
-    # Ignore image/revision changes managed by CI/CD
-    ignore_changes = []
+    ignore_changes  = []
   }
 }
 
