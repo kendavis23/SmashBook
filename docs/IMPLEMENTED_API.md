@@ -1,4 +1,4 @@
-_Last updated: 2026-03-31 00:00 UTC_
+_Last updated: 2026-04-17 12:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -82,6 +82,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/v1/bookings` | Create a booking (open game or private); enforces slot grid, operating hours, conflict, skill range. Staff: pass `on_behalf_of_user_id` to designate a player as organiser |
+| `POST` | `/api/v1/bookings/recurring` | Staff only: create a series of bookings from an iCal RRULE (e.g. `FREQ=WEEKLY;BYDAY=MO;COUNT=12`). Each occurrence is confirmed on creation. First booking is the series parent; others carry `parent_booking_id`. `skip_conflicts=true` skips conflicted slots instead of returning 409 |
 | `PATCH` | `/api/v1/bookings/{booking_id}` | Staff only: edit court, start time, notes, event name, contact fields. Re-validates conflict/blackout on time or court change |
 | `GET` | `/api/v1/bookings` | List bookings for a club; staff see all, players see only their own. Filters: `date_from`, `date_to`, `booking_type`, `booking_status`, `court_id`, `player_search` (staff only — name/email substring) |
 | `GET` | `/api/v1/bookings/calendar` | Staff: calendar grid view (day or week) of all non-cancelled bookings, grouped by day → court column. Params: `club_id`, `view=day\|week`, `anchor_date` |
@@ -140,8 +141,8 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | File | Endpoints |
 |---|---|
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
-| `payments.py` | Payments, wallet top-up, refunds, invoices |
-| `staff.py` | Staff management — list, create, update, deactivate |
+| `payments.py` | Stripe webhook, payment methods (save/list/delete/set-default), wallet (get/top-up/adjust), invoices (list/download), refunds, discounts, in-person payment |
+| `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
 | `players.py` | `GET /{id}`, `GET /{id}/skill-history`, `PATCH /{id}/skill-level` |
-| `reports.py` | Utilisation, revenue, and booking reports |
-| `support.py` | Support tickets |
+| `reports.py` | Dashboard, revenue, utilisation, retention, corporate events, transaction log, Stripe payouts, export |
+| `support.py` | Create/list/get ticket, respond to ticket |

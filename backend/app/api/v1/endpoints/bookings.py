@@ -25,9 +25,13 @@ from app.schemas.booking import (
     InvitePlayerRequest,
     InviteRespondRequest,
     OpenGameSummary,
+    RecurringBookingCreate,
+    RecurringBookingResponse,
+    RecurringBookingSkipped,
 )
 from app.schemas.equipment import EquipmentRentalRequest, EquipmentRentalResponse
 from app.services.booking_service import BookingService
+from app.services.court_service import CourtService
 from app.services.equipment_service import EquipmentService
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -151,6 +155,55 @@ async def create_booking(
         on_behalf_of_user_id=body.on_behalf_of_user_id,
     )
     return _build_booking_response(booking)
+
+
+@router.post("/recurring", response_model=RecurringBookingResponse, status_code=status.HTTP_201_CREATED)
+async def create_recurring_booking(
+    body: RecurringBookingCreate,
+    current_user: User = Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Staff only: create a series of bookings from an iCal RRULE.
+
+    Typical use cases: weekly coaching sessions, league slots, corporate blocks.
+
+    - booking_type should be lesson_individual, lesson_group, or another non-regular type.
+    - first_start is the datetime of the first occurrence; the RRULE expands from there.
+    - Each occurrence is created as confirmed (staff-initiated).
+    - The first booking is the series parent; all others carry parent_booking_id pointing to it.
+    - skip_conflicts=true silently skips conflicted slots instead of returning 409.
+    """
+    svc = CourtService(db)
+    result = await svc.create_recurring_booking(
+        tenant_id=tenant.id,
+        club_id=body.club_id,
+        court_id=body.court_id,
+        booking_type=body.booking_type,
+        first_start=body.first_start,
+        recurrence_rule=body.recurrence_rule,
+        recurrence_end_date=body.recurrence_end_date,
+        created_by_user=current_user,
+        staff_profile_id=body.staff_profile_id,
+        player_user_ids=body.player_user_ids,
+        notes=body.notes,
+        event_name=body.event_name,
+        contact_name=body.contact_name,
+        contact_email=body.contact_email,
+        contact_phone=body.contact_phone,
+        max_players=body.max_players,
+        skip_conflicts=body.skip_conflicts,
+    )
+
+    created_responses = [
+        _build_booking_response(b) for b in result["created"]
+    ]
+    skipped_responses = [
+        RecurringBookingSkipped(occurrence=s["occurrence"], reason=s["reason"])
+        for s in result["skipped"]
+    ]
+    return RecurringBookingResponse(created=created_responses, skipped=skipped_responses)
 
 
 @router.get("", response_model=list[BookingResponse])

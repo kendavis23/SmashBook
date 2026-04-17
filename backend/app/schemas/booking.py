@@ -45,6 +45,45 @@ class BookingCreate(BaseModel):
         return self
 
 
+class RecurringBookingCreate(BaseModel):
+    club_id: uuid.UUID
+    court_id: uuid.UUID
+    booking_type: BookingType = BookingType.lesson_individual
+    first_start: datetime
+    recurrence_rule: str = Field(
+        ...,
+        description="iCal RRULE string, e.g. FREQ=WEEKLY;BYDAY=MO;COUNT=12",
+        examples=["FREQ=WEEKLY;BYDAY=MO;COUNT=12"],
+    )
+    recurrence_end_date: Optional[date] = Field(
+        default=None,
+        description="Hard stop date (inclusive). Used with open-ended rules like FREQ=WEEKLY.",
+    )
+    max_players: int = Field(default=4, ge=1, le=20)
+    player_user_ids: list[uuid.UUID] = []
+    notes: Optional[str] = None
+    event_name: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    staff_profile_id: Optional[uuid.UUID] = None
+    skip_conflicts: bool = Field(
+        default=False,
+        description="If true, silently skip occurrences that conflict instead of returning 409",
+    )
+
+    @model_validator(mode="after")
+    def validate_end_condition(self) -> "RecurringBookingCreate":
+        rule_upper = self.recurrence_rule.upper()
+        has_count = "COUNT=" in rule_upper
+        has_until = "UNTIL=" in rule_upper
+        if not has_count and not has_until and self.recurrence_end_date is None:
+            raise ValueError(
+                "Provide recurrence_end_date or include COUNT=/UNTIL= in the recurrence_rule"
+            )
+        return self
+
+
 class InvitePlayerRequest(BaseModel):
     user_id: uuid.UUID
 
@@ -98,6 +137,16 @@ class BookingResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class RecurringBookingSkipped(BaseModel):
+    occurrence: datetime
+    reason: str
+
+
+class RecurringBookingResponse(BaseModel):
+    created: list[BookingResponse]
+    skipped: list[RecurringBookingSkipped]
 
 
 class OpenGameSummary(BaseModel):
