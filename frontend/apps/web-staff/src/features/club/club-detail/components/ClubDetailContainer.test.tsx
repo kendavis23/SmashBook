@@ -168,7 +168,9 @@ describe("ClubDetailContainer — success state", () => {
         mockUseClubAccess.mockReturnValue({ role: "owner" });
         render(<ClubDetailContainer />);
         fireEvent.click(screen.getByText("Clubs"));
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/clubs" });
+        expect(mockNavigate).toHaveBeenCalledWith(
+            expect.objectContaining({ to: "/clubs" })
+        );
     });
 });
 

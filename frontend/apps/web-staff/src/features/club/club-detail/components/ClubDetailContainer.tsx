@@ -94,7 +94,12 @@ export default function ClubDetailContainer(): JSX.Element {
                 onSettingsSave={handleSettingsSave}
                 onSettingsCancel={handleSettingsCancel}
                 onSettingsToastDismiss={() => setSettingsToastDismissed(true)}
-                onNavigateBack={() => void navigate({ to: "/clubs" })}
+                onNavigateBack={() =>
+                    void navigate({
+                        to: "/clubs",
+                        search: { created: undefined, updated: undefined },
+                    })
+                }
             />
             {clubSuccessMsg ? (
                 <AlertToast
