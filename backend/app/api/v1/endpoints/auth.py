@@ -71,6 +71,15 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
 
 
 async def _get_user_clubs(user: User, db: AsyncSession) -> list[ClubSummary]:
+    if user.role in (TenantUserRole.owner, TenantUserRole.admin):
+        result = await db.execute(
+            select(Club).where(Club.tenant_id == user.tenant_id)
+        )
+        return [
+            ClubSummary(club_id=club.id, club_name=club.name, role=user.role.value)
+            for club in result.scalars().all()
+        ]
+
     clubs = []
 
     staff_result = await db.execute(

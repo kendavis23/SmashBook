@@ -357,6 +357,53 @@ class TestLoginClubs:
                 await session.commit()
             await _delete_user(user.id, test_session_factory)
 
+    async def test_owner_sees_all_tenant_clubs(
+        self, client, tenant, test_session_factory
+    ):
+        user = await _create_user(
+            tenant.id, "owner-login", "Owner User", TenantUserRole.owner, test_session_factory
+        )
+        async with test_session_factory() as session:
+            club_a = Club(tenant_id=tenant.id, name="Owner Club A", address="1 A St", currency="GBP")
+            club_b = Club(tenant_id=tenant.id, name="Owner Club B", address="2 B St", currency="GBP")
+            session.add_all([club_a, club_b])
+            await session.commit()
+            club_a_id, club_b_id = club_a.id, club_b.id
+
+        try:
+            resp = await client.post("/api/v1/auth/login", json=self._login_payload(tenant, user))
+            assert resp.status_code == 200
+            clubs = resp.json()["clubs"]
+            assert len(clubs) == 2
+            assert all(c["role"] == "owner" for c in clubs)
+            ids = {c["club_id"] for c in clubs}
+            assert str(club_a_id) in ids
+            assert str(club_b_id) in ids
+        finally:
+            async with test_session_factory() as session:
+                for cid in [club_a_id, club_b_id]:
+                    obj = await session.get(Club, cid)
+                    if obj:
+                        await session.delete(obj)
+                await session.commit()
+            await _delete_user(user.id, test_session_factory)
+
+    async def test_admin_sees_all_tenant_clubs(
+        self, client, tenant, club, test_session_factory
+    ):
+        user = await _create_user(
+            tenant.id, "admin-login", "Admin User", TenantUserRole.admin, test_session_factory
+        )
+        try:
+            resp = await client.post("/api/v1/auth/login", json=self._login_payload(tenant, user))
+            assert resp.status_code == 200
+            clubs = resp.json()["clubs"]
+            assert len(clubs) >= 1
+            assert all(c["role"] == "admin" for c in clubs)
+            assert str(club.id) in {c["club_id"] for c in clubs}
+        finally:
+            await _delete_user(user.id, test_session_factory)
+
     async def test_user_with_no_clubs_returns_empty_list(self, client, tenant, player):
         """Newly seeded player with no membership should get an empty clubs list."""
         resp = await client.post(
@@ -480,6 +527,34 @@ class TestRefreshToken:
         finally:
             async with test_session_factory() as session:
                 obj = await session.get(StaffProfile, profile_id)
+                if obj:
+                    await session.delete(obj)
+                await session.commit()
+            await _delete_user(user.id, test_session_factory)
+
+    async def test_owner_clubs_returned_on_refresh(
+        self, client, tenant, test_session_factory
+    ):
+        user = await _create_user(
+            tenant.id, "refresh-owner", "Refresh Owner", TenantUserRole.owner, test_session_factory
+        )
+        async with test_session_factory() as session:
+            c = Club(tenant_id=tenant.id, name="Owner Refresh Club", address="1 R St", currency="GBP")
+            session.add(c)
+            await session.commit()
+            club_id = c.id
+
+        try:
+            refresh = create_refresh_token({"sub": str(user.id), "tid": str(tenant.id)})
+            resp = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh})
+            assert resp.status_code == 200
+            clubs = resp.json()["clubs"]
+            assert len(clubs) >= 1
+            assert all(c["role"] == "owner" for c in clubs)
+            assert str(club_id) in {c["club_id"] for c in clubs}
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(Club, club_id)
                 if obj:
                     await session.delete(obj)
                 await session.commit()

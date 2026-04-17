@@ -3,6 +3,7 @@ Unit tests for _get_user_clubs() in app.api.v1.endpoints.auth.
 
 The DB session is mocked — no Postgres required.
 Tests focus on the branching logic:
+  - Owner/Admin → all clubs for their tenant, role from user.role (single DB call)
   - Staff users → sourced from staff_profiles (active only)
   - Players     → sourced from membership_subscriptions (active only), only when no staff clubs found
   - Empty list  → returned when neither table has matching rows
@@ -13,7 +14,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from app.api.v1.endpoints.auth import _get_user_clubs
 from app.db.models.staff import StaffRole
-from app.db.models.user import User
+from app.db.models.user import TenantUserRole, User
 
 
 # ---------------------------------------------------------------------------
@@ -56,6 +57,83 @@ def _mock_db(staff_rows: List, player_rows: Optional[List] = None) -> AsyncMock:
         side_effects.append(player_rows)
     db.execute.side_effect = side_effects
     return db
+
+
+def _mock_db_scalars(clubs: List) -> AsyncMock:
+    """Mock DB for the owner/admin path — result.scalars().all() returns clubs."""
+    db = AsyncMock()
+    scalars_mock = MagicMock()
+    scalars_mock.all.return_value = clubs
+    result_mock = MagicMock()
+    result_mock.scalars.return_value = scalars_mock
+    db.execute.return_value = result_mock
+    return db
+
+
+# ---------------------------------------------------------------------------
+# Owner / Admin scenarios
+# ---------------------------------------------------------------------------
+
+
+class TestGetUserClubsOwnerAdmin:
+    async def test_owner_returns_all_tenant_clubs(self):
+        user = _make_user()
+        user.role = TenantUserRole.owner
+        user.tenant_id = uuid.uuid4()
+        club_a = _make_club("Club A")
+        club_b = _make_club("Club B")
+        db = _mock_db_scalars([club_a, club_b])
+
+        result = await _get_user_clubs(user, db)
+
+        assert len(result) == 2
+        assert all(r.role == "owner" for r in result)
+        assert {r.club_name for r in result} == {"Club A", "Club B"}
+
+    async def test_admin_returns_all_tenant_clubs(self):
+        user = _make_user()
+        user.role = TenantUserRole.admin
+        user.tenant_id = uuid.uuid4()
+        club = _make_club("Admin Club")
+        db = _mock_db_scalars([club])
+
+        result = await _get_user_clubs(user, db)
+
+        assert len(result) == 1
+        assert result[0].role == "admin"
+        assert result[0].club_name == "Admin Club"
+
+    async def test_owner_admin_makes_single_db_call(self):
+        user = _make_user()
+        user.role = TenantUserRole.owner
+        user.tenant_id = uuid.uuid4()
+        db = _mock_db_scalars([_make_club()])
+
+        await _get_user_clubs(user, db)
+
+        assert db.execute.call_count == 1
+
+    async def test_owner_with_no_clubs_returns_empty_list(self):
+        user = _make_user()
+        user.role = TenantUserRole.owner
+        user.tenant_id = uuid.uuid4()
+        db = _mock_db_scalars([])
+
+        result = await _get_user_clubs(user, db)
+
+        assert result == []
+
+    async def test_owner_result_includes_club_id(self):
+        user = _make_user()
+        user.role = TenantUserRole.owner
+        user.tenant_id = uuid.uuid4()
+        club = _make_club("HQ")
+        db = _mock_db_scalars([club])
+
+        result = await _get_user_clubs(user, db)
+
+        assert result[0].club_id == club.id
+        assert result[0].club_name == "HQ"
 
 
 # ---------------------------------------------------------------------------

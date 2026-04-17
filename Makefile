@@ -87,8 +87,15 @@ test-db-up:
 test-db-down:
 	docker stop smashbook-test-db && docker rm smashbook-test-db
 
+# ── Staging ───────────────────────────────────────────────────────────────────
+seed-staging:
+	gcloud run jobs execute seed-staging \
+		--region=europe-west2 \
+		--project=smashbook-488121 \
+		--wait
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging
