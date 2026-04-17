@@ -10,7 +10,7 @@ import uuid
 from datetime import datetime, date, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -182,7 +182,7 @@ class TestHappyPath:
         db.execute.side_effect = list(db.execute.side_effect) + [reload_result] * 4
 
         svc = _make_svc(db)
-        result = await svc.create_recurring_booking(**_recurring_kwargs())
+        await svc.create_recurring_booking(**_recurring_kwargs())
 
         # Inspect the Booking objects added to the session
         bookings = [o for o in db._added if hasattr(o, "is_recurring")]
@@ -224,7 +224,6 @@ class TestHappyPath:
     @pytest.mark.asyncio
     async def test_organiser_booking_player_added(self):
         """The creating staff user must be added as an organiser BookingPlayer."""
-        from app.db.models.booking import BookingPlayer, PlayerRole
         db = _make_db()
         loaded = SimpleNamespace(id=uuid.uuid4(), players=[], court=_COURT)
         reload_result = MagicMock()

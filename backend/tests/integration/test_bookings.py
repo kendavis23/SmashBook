@@ -2044,7 +2044,7 @@ class TestCreateRecurringBooking:
     ):
         """player_user_ids adds the player as a BookingPlayer on every occurrence."""
         from sqlalchemy import select as sa_select
-        from app.db.models.booking import Booking, BookingPlayer
+        from app.db.models.booking import BookingPlayer
 
         first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
         resp = await client.post(
