@@ -2,6 +2,7 @@ import type { FormEvent, JSX } from "react";
 import { Breadcrumb, AlertToast, DatePicker, NumberInput, SelectInput } from "@repo/ui";
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
+import { formatSlotTime } from "../../utils/slotTime";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
@@ -182,7 +183,7 @@ export default function NewBookingView({
 
                                     {/* Start time */}
                                     <div className="w-44 shrink-0">
-                                        <label htmlFor="bk-start-time" className={labelCls}>
+                                        <label className={labelCls}>
                                             Start Time <span className="text-destructive">*</span>
                                         </label>
                                         {!courtSelected || !form.bookingDate ? (
@@ -213,12 +214,8 @@ export default function NewBookingView({
                                                 options={slots.map((slot) => ({
                                                     value: slot.start_time,
                                                     label:
-                                                        slot.start_time +
-                                                        (!slot.is_available
-                                                            ? " — Booked"
-                                                            : slot.price_label
-                                                              ? ` — ${slot.price_label}`
-                                                              : ""),
+                                                        formatSlotTime(slot.start_time) +
+                                                        (!slot.is_available ? " — Booked" : ""),
                                                     disabled: !slot.is_available,
                                                 }))}
                                                 className={

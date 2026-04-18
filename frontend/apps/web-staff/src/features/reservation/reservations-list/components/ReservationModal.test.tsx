@@ -47,7 +47,7 @@ vi.mock("@repo/ui", () => ({
             aria-label="Date time"
         />
     ),
-    NumberInput: ({ className, ...props }: { className?: string;[k: string]: unknown }) => (
+    NumberInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
         <input type="number" className={className} {...(props as object)} />
     ),
     SelectInput: ({

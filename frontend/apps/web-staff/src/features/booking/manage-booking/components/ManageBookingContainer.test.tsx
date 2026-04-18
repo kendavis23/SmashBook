@@ -17,6 +17,7 @@ vi.mock("../../hooks", () => ({
     useUpdateBooking: vi.fn(),
     useCancelBooking: vi.fn(),
     useListCourts: vi.fn(),
+    useGetCourtAvailability: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
@@ -52,12 +53,12 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onCancel}>Keep</button>
         </div>
     ),
-    DateTimePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
         <input
-            type="datetime-local"
+            type="date"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            aria-label="Pick date and time"
+            aria-label="Pick a date"
         />
     ),
     SelectInput: ({
@@ -68,7 +69,7 @@ vi.mock("@repo/ui", () => ({
     }: {
         value: string;
         onValueChange: (v: string) => void;
-        options: { value: string; label: string }[];
+        options: { value: string; label: string; disabled?: boolean }[];
         placeholder?: string;
     }) => (
         <select
@@ -77,7 +78,7 @@ vi.mock("@repo/ui", () => ({
             aria-label={placeholder ?? "select"}
         >
             {options.map((option) => (
-                <option key={option.value} value={option.value}>
+                <option key={option.value} value={option.value} disabled={option.disabled}>
                     {option.label}
                 </option>
             ))}
@@ -87,13 +88,20 @@ vi.mock("@repo/ui", () => ({
     datetimeLocalToUTC: (value: string) => value,
 }));
 
-import { useCancelBooking, useGetBooking, useListCourts, useUpdateBooking } from "../../hooks";
+import {
+    useCancelBooking,
+    useGetBooking,
+    useGetCourtAvailability,
+    useListCourts,
+    useUpdateBooking,
+} from "../../hooks";
 import { useClubAccess } from "../../store";
 
 const mockUseGetBooking = useGetBooking as ReturnType<typeof vi.fn>;
 const mockUseUpdateBooking = useUpdateBooking as ReturnType<typeof vi.fn>;
 const mockUseCancelBooking = useCancelBooking as ReturnType<typeof vi.fn>;
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
+const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 
 const booking = {
@@ -129,6 +137,12 @@ function setupMocks(overrides?: { isLoading?: boolean; error?: Error | null; dat
             { id: "court-1", name: "Court 1" },
             { id: "court-2", name: "Court 2" },
         ],
+    });
+    mockUseGetCourtAvailability.mockReturnValue({
+        data: {
+            slots: [{ start_time: "10:00", is_available: true, price_label: null }],
+        },
+        isLoading: false,
     });
     mockUseUpdateBooking.mockReturnValue({
         mutate: mockUpdateMutate,
@@ -188,6 +202,7 @@ describe("ManageBookingContainer", () => {
                 contact_email: "staff@example.com",
                 notes: "Updated note",
             }),
+            // datetimeLocalToUTC is mocked as identity
             expect.objectContaining({
                 onSuccess: expect.any(Function),
                 onError: expect.any(Function),

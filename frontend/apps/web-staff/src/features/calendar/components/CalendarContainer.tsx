@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useGetCalendarView, useListCourts } from "../hooks";
@@ -23,6 +23,12 @@ export default function CalendarContainer(): JSX.Element {
     });
 
     const { data: courts = [] } = useListCourts(clubId ?? "");
+
+    useEffect(() => {
+        if (courts.length > 0 && !selectedCourtId) {
+            setSelectedCourtId((courts[0] as { id: string }).id);
+        }
+    }, [courts, selectedCourtId]);
 
     const handlePrev = useCallback((): void => {
         setAnchorDate((prev) => addDays(prev, viewMode === "week" ? -7 : -1));

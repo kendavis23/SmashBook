@@ -46,6 +46,7 @@ describe("useAuth — clubId resolution", () => {
             useAuthStore.getState().setTokens({
                 access_token: "tok",
                 refresh_token: "ref",
+                token_type: "bearer",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
             });
         });
@@ -58,6 +59,7 @@ describe("useAuth — clubId resolution", () => {
             useAuthStore.getState().setTokens({
                 access_token: "tok",
                 refresh_token: "ref",
+                token_type: "bearer",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
             });
             useAuthStore.getState().setActiveClubId("c2", "Club Two", "admin");
@@ -82,6 +84,7 @@ describe("useAuth — activeClubName resolution", () => {
             useAuthStore.getState().setTokens({
                 access_token: "tok",
                 refresh_token: "ref",
+                token_type: "bearer",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
             });
         });
@@ -129,6 +132,7 @@ describe("useAuth — role resolution", () => {
             useAuthStore.getState().setTokens({
                 access_token: "tok",
                 refresh_token: "ref",
+                token_type: "bearer",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "admin" }],
             });
         });

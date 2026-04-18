@@ -49,12 +49,12 @@ export default function CalendarView({
             : `${formatShortDate(dateFrom)} – ${formatShortDate(dateTo)}`;
 
     return (
-        <div className="w-full space-y-5">
+        <div className="flex h-[calc(100vh-var(--nav-height)-var(--page-padding)-var(--page-padding))] flex-col gap-5">
             <Breadcrumb items={[{ label: "Operations" }, { label: "Calendar" }]} />
 
-            <section className="w-full rounded-xl border border-border bg-card shadow-sm">
+            <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card shadow-sm">
                 {/* Header */}
-                <header className="flex flex-col gap-4 border-b border-border px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+                <header className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
                         <h1 className="text-xl font-semibold tracking-tight text-foreground">
                             Calendar
@@ -63,15 +63,20 @@ export default function CalendarView({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                        {/* Court picker — week mode only */}
+                        {/* Court picker — week view only */}
                         {viewMode === "week" && courts.length > 0 ? (
                             <SelectInput
                                 value={selectedCourtId}
                                 onValueChange={(v) => onCourtChange(v)}
                                 options={courts.map((c) => ({ value: c.id, label: c.name }))}
-                                clearLabel="All courts"
                                 aria-label="Select court"
+                                className="w-auto min-w-[13rem]"
                             />
+                        ) : null}
+
+                        {/* Divider */}
+                        {viewMode === "week" && courts.length > 0 ? (
+                            <span className="hidden h-5 w-px bg-border lg:block" />
                         ) : null}
 
                         {/* View mode toggle */}
@@ -93,24 +98,24 @@ export default function CalendarView({
                         </div>
 
                         {/* Navigation */}
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center">
                             <button
                                 onClick={onPrev}
                                 aria-label="Previous"
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-8 w-8 items-center justify-center rounded-l-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <ChevronLeft size={14} />
                             </button>
                             <button
                                 onClick={onToday}
-                                className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
+                                className="-mx-px h-8 border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-muted"
                             >
                                 Today
                             </button>
                             <button
                                 onClick={onNext}
                                 aria-label="Next"
-                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-8 w-8 items-center justify-center rounded-r-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <ChevronRight size={14} />
                             </button>
@@ -127,7 +132,7 @@ export default function CalendarView({
                 </header>
 
                 {/* Content */}
-                <div className="p-4 sm:p-5">
+                <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
                     {isLoading ? (
                         <div className="flex items-center justify-center gap-3 py-24">
                             <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
@@ -154,7 +159,7 @@ export default function CalendarView({
                             onManageClick={onManageClick}
                         />
                     ) : (
-                        <div className="space-y-4">
+                        <div className="min-h-0 flex-1 space-y-4">
                             {calendarData.days.map((day) => (
                                 <DayTimelineBoard
                                     key={day.date}

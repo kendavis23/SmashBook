@@ -22,11 +22,11 @@ export const CALENDAR_VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
 ];
 
 export const BOOKING_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-    regular: { bg: "bg-cta/10", text: "text-cta", border: "border-cta/30" },
-    lesson_individual: { bg: "bg-success/10", text: "text-success", border: "border-success/30" },
-    lesson_group: { bg: "bg-success/10", text: "text-success", border: "border-success/30" },
-    corporate_event: { bg: "bg-warning/10", text: "text-warning", border: "border-warning/30" },
-    tournament: { bg: "bg-info/10", text: "text-info", border: "border-info/30" },
+    regular: { bg: "bg-cta/15", text: "text-cta", border: "border-cta/40" },
+    lesson_individual: { bg: "bg-success/15", text: "text-success", border: "border-success/40" },
+    lesson_group: { bg: "bg-success/15", text: "text-success", border: "border-success/40" },
+    corporate_event: { bg: "bg-warning/15", text: "text-warning", border: "border-warning/40" },
+    tournament: { bg: "bg-info/15", text: "text-info", border: "border-info/40" },
 };
 
 export const BOOKING_TYPE_LABELS: Record<string, string> = {
@@ -185,7 +185,7 @@ export function getWeekEnd(dateStr: string): string {
 
 // ─── Calendar layout constants ─────────────────────────────────────────────
 
-export const CALENDAR_TIME_RAIL_WIDTH = 72;
+export const CALENDAR_TIME_RAIL_WIDTH = 88;
 export const CALENDAR_COURT_LANE_MIN_WIDTH = 180;
 export const CALENDAR_SLOT_ROW_HEIGHT = 56;
 
@@ -207,12 +207,11 @@ export const CALENDAR_TIME_SLOTS: CalendarTimeSlot[] = Array.from({ length: 19 }
 
 /** Formats "HH:MM" to a short time label. Supports hours >= 24 (post-midnight). */
 export function formatSlotTime(time: string): string {
-    const [hRaw, mRaw] = time.split(":").map(Number);
+    const [hRaw] = time.split(":").map(Number);
     const h = (hRaw ?? 0) % 24;
-    const m = mRaw ?? 0;
     const ampm = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 || 12;
-    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+    return `${h12} ${ampm}`;
 }
 
 /** Formats "YYYY-MM-DD" to a long date like "Monday, 7 April 2026" */
