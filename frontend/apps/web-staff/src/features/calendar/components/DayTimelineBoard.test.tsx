@@ -57,7 +57,9 @@ describe("DayTimelineBoard", () => {
 
         expect(screen.getByText("Court 1")).toBeInTheDocument();
         expect(screen.getByText("League Match")).toBeInTheDocument();
-        expect(screen.getAllByText(/1 booking/i)).toHaveLength(2);
+        expect(screen.getByText(/1 booking/i)).toBeInTheDocument();
+        expect(screen.getByText("20")).toBeInTheDocument();
+        expect(screen.getByText("Apr")).toBeInTheDocument();
     });
 
     it("shows empty state when no courts exist", () => {

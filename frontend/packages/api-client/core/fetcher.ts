@@ -60,20 +60,21 @@ async function _fetcher<T>(
         let message = "Request failed";
 
         // Handle 422 validation errors — surface field-level messages
-        if (response.status === 422 && Array.isArray((detail as { detail?: unknown[] })?.detail)) {
-            message = (detail as { detail: { loc?: string[]; msg: string }[] }).detail
+        const detailField = (detail as { detail?: unknown })?.detail;
+        if (response.status === 422 && Array.isArray(detailField)) {
+            message = (detailField as { loc?: string[]; msg: string }[])
                 .map((e) => {
                     const field = e.loc?.[e.loc.length - 1];
                     return `${field}: ${e.msg}`;
                 })
                 .join(", ");
+        } else if (response.status === 422 && typeof detailField === "string") {
+            message = detailField;
         } else {
             message =
-                (
-                    detail as { detail?: { detail?: string } | string; message?: string }
-                )?.detail?.toString() ||
-                (detail as { message?: string })?.message ||
-                "Request failed";
+                typeof detailField === "string"
+                    ? detailField
+                    : (detail as { message?: string })?.message || "Request failed";
         }
 
         throw {

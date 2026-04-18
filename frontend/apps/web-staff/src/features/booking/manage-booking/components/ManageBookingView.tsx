@@ -3,12 +3,13 @@ import {
     Breadcrumb,
     AlertToast,
     ConfirmDeleteModal,
-    DateTimePicker,
+    DatePicker,
     formatUTCDateTime,
     SelectInput,
 } from "@repo/ui";
-import type { Booking } from "../../types";
+import type { Booking, TimeSlot } from "../../types";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } from "../../types";
+import { formatSlotTime } from "../../utils/slotTime";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
@@ -27,7 +28,8 @@ function formatCurrency(amount: number | null): string {
 
 export type ManageBookingFormState = {
     courtId: string;
-    startDatetime: string;
+    bookingDate: string;
+    startTime: string;
     notes: string;
     eventName: string;
     contactName: string;
@@ -38,6 +40,8 @@ export type ManageBookingFormState = {
 type Props = {
     booking: Booking;
     courts: { id: string; name: string }[];
+    slots: TimeSlot[];
+    slotsLoading: boolean;
     form: ManageBookingFormState;
     isDirty: boolean;
     apiError: string;
@@ -57,6 +61,8 @@ type Props = {
 export default function ManageBookingView({
     booking,
     courts,
+    slots,
+    slotsLoading,
     form,
     isDirty,
     apiError,
@@ -277,7 +283,9 @@ export default function ManageBookingView({
                                         </label>
                                         <SelectInput
                                             value={form.courtId}
-                                            onValueChange={(v) => onFormChange({ courtId: v })}
+                                            onValueChange={(v) =>
+                                                onFormChange({ courtId: v, startTime: "" })
+                                            }
                                             options={courts.map((c) => ({
                                                 value: c.id,
                                                 label: c.name,
@@ -285,13 +293,52 @@ export default function ManageBookingView({
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="mb-start" className={labelCls}>
-                                            Start
+                                        <label htmlFor="mb-date" className={labelCls}>
+                                            Date
                                         </label>
-                                        <DateTimePicker
-                                            value={form.startDatetime}
-                                            onChange={(v) => onFormChange({ startDatetime: v })}
+                                        <DatePicker
+                                            value={form.bookingDate}
+                                            onChange={(v) =>
+                                                onFormChange({ bookingDate: v, startTime: "" })
+                                            }
                                         />
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Start Time</label>
+                                        {!form.bookingDate ? (
+                                            <div
+                                                className={`${fieldCls} cursor-not-allowed opacity-50`}
+                                            >
+                                                <span className="text-muted-foreground">—</span>
+                                            </div>
+                                        ) : slotsLoading ? (
+                                            <div className={`${fieldCls} opacity-60`}>
+                                                <span className="text-muted-foreground">
+                                                    Loading…
+                                                </span>
+                                            </div>
+                                        ) : slots.length === 0 ? (
+                                            <div className={`${fieldCls} opacity-60`}>
+                                                <span className="text-muted-foreground">
+                                                    No slots
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <SelectInput
+                                                value={form.startTime}
+                                                onValueChange={(v) =>
+                                                    onFormChange({ startTime: v })
+                                                }
+                                                placeholder="Select time"
+                                                options={slots.map((slot) => ({
+                                                    value: slot.start_time,
+                                                    label:
+                                                        formatSlotTime(slot.start_time) +
+                                                        (!slot.is_available ? " — Booked" : ""),
+                                                    disabled: !slot.is_available,
+                                                }))}
+                                            />
+                                        )}
                                     </div>
                                 </div>
                             </section>

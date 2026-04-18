@@ -88,18 +88,16 @@ export default function WeekTimelineBoard({
     }
 
     return (
-        <section className="card-surface overflow-hidden">
-            <div
-                ref={scrollRef}
-                className="max-h-[calc(100vh-260px)] overflow-y-auto overflow-x-auto"
-            >
+        <section className="card-surface flex min-h-0 flex-1 flex-col overflow-hidden">
+            {/* Single scroll container — header and body share horizontal scroll so borders align */}
+            <div ref={scrollRef} className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
                 <div className="min-w-fit">
-                    {/* Day column headers */}
+                    {/* Sticky day-column header row */}
                     <div
-                        className="sticky top-0 z-30 grid border-b border-border bg-muted/20"
+                        className="sticky top-0 z-30 grid border-b border-border bg-card"
                         style={{ gridTemplateColumns }}
                     >
-                        <div className="sticky left-0 z-20 border-r border-border bg-card px-4 py-3">
+                        <div className="sticky left-0 z-40 flex items-center border-r border-border bg-card px-4 py-3">
                             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Time
                             </span>
@@ -121,31 +119,35 @@ export default function WeekTimelineBoard({
                                     }`}
                                 >
                                     <p
-                                        className={`text-[11px] font-semibold uppercase tracking-wide ${
+                                        className={`text-[11px] font-semibold uppercase tracking-widest ${
                                             isToday ? "text-cta" : "text-muted-foreground"
                                         }`}
                                     >
                                         {weekday}
                                     </p>
+                                    <div className="flex items-baseline justify-center gap-1">
+                                        <p
+                                            className={`text-base font-semibold leading-none ${
+                                                isToday ? "text-cta" : "text-foreground"
+                                            }`}
+                                        >
+                                            {dateNum}
+                                        </p>
+                                        <p
+                                            className={`text-xs font-medium ${
+                                                isToday ? "text-cta/70" : "text-muted-foreground"
+                                            }`}
+                                        >
+                                            {monthLabel}
+                                        </p>
+                                    </div>
                                     <p
-                                        className={`mt-0.5 text-base font-bold leading-none ${
-                                            isToday ? "text-cta" : "text-foreground"
-                                        }`}
+                                        className={`mt-0.5 text-[10px] ${isToday ? "text-cta/70" : "text-muted-foreground"}`}
                                     >
-                                        {dateNum}
+                                        {bookings.length === 0
+                                            ? "No bookings"
+                                            : `${bookings.length} booking${bookings.length === 1 ? "" : "s"}`}
                                     </p>
-                                    <p
-                                        className={`mt-0.5 text-[10px] ${
-                                            isToday ? "text-cta/70" : "text-muted-foreground"
-                                        }`}
-                                    >
-                                        {monthLabel}
-                                    </p>
-                                    {bookings.length > 0 ? (
-                                        <span className="mt-1.5 inline-block rounded-full bg-cta/15 px-1.5 py-0.5 text-[9px] font-semibold text-cta">
-                                            {bookings.length}
-                                        </span>
-                                    ) : null}
                                 </div>
                             );
                         })}
@@ -169,14 +171,14 @@ export default function WeekTimelineBoard({
                         ) : null}
 
                         {/* Time rail */}
-                        <div className="sticky left-0 z-10 border-r border-border bg-card">
+                        <div className="sticky left-0 z-10 overflow-hidden border-r border-border bg-card">
                             {CALENDAR_TIME_SLOTS.map((slot) => (
                                 <div
                                     key={`${slot.start_time}-${slot.end_time}`}
-                                    className="flex items-start border-b border-border/50 px-3 py-2 last:border-b-0"
+                                    className="flex items-start border-b border-border/50 px-3 pt-1.5 last:border-b-0"
                                     style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
                                 >
-                                    <p className="text-xs font-medium text-muted-foreground">
+                                    <p className="w-full whitespace-nowrap text-right text-xs font-medium text-muted-foreground">
                                         {formatSlotTime(slot.start_time)}
                                     </p>
                                 </div>

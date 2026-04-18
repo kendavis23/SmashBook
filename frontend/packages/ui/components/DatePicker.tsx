@@ -294,6 +294,18 @@ export function DateTimePicker({
     const datePart = value ? (value.split("T")[0] ?? "") : "";
     const parsedTime = parsed ?? { hours: 0, minutes: 0 };
 
+    const rawHours = parsedTime.hours;
+    const ampm = rawHours >= 12 ? "PM" : "AM";
+    const display12 = rawHours % 12 || 12;
+
+    function handleAmPmChange(newAmPm: "AM" | "PM") {
+        let h = parsedTime.hours;
+        if (newAmPm === "AM" && h >= 12) h -= 12;
+        if (newAmPm === "PM" && h < 12) h += 12;
+        const currentDate = datePart || `${viewYear}-${pad(viewMonth + 1)}-01`;
+        onChange(`${currentDate}T${pad(h)}:${pad(parsedTime.minutes)}`);
+    }
+
     function prevMonth() {
         if (viewMonth === 0) {
             setViewYear((y) => y - 1);
@@ -320,12 +332,17 @@ export function DateTimePicker({
         // Don't close — let the user also pick the time
     }
 
-    function handleTimeChange(field: "hours" | "minutes", rawValue: string) {
-        const num = Math.max(0, Math.min(field === "hours" ? 23 : 59, parseInt(rawValue, 10) || 0));
+    function handleTimeChange(field: "hours12" | "minutes", rawValue: string) {
         const currentDate = datePart || `${viewYear}-${pad(viewMonth + 1)}-01`;
-        const hh = field === "hours" ? num : (parsed?.hours ?? 0);
-        const mm = field === "minutes" ? num : (parsed?.minutes ?? 0);
-        onChange(`${currentDate}T${pad(hh)}:${pad(mm)}`);
+        if (field === "hours12") {
+            let h12 = Math.max(1, Math.min(12, parseInt(rawValue, 10) || 1));
+            let h24 = h12 % 12;
+            if (ampm === "PM") h24 += 12;
+            onChange(`${currentDate}T${pad(h24)}:${pad(parsedTime.minutes)}`);
+        } else {
+            const mm = Math.max(0, Math.min(59, parseInt(rawValue, 10) || 0));
+            onChange(`${currentDate}T${pad(parsedTime.hours)}:${pad(mm)}`);
+        }
     }
 
     const selectCls =
@@ -347,7 +364,7 @@ export function DateTimePicker({
                 <PopoverPrimitive.Content
                     sideOffset={4}
                     align="start"
-                    className="z-50 w-72 rounded-xl border border-border bg-background p-4 shadow-md"
+                    className="z-50 w-80 rounded-xl border border-border bg-background p-4 shadow-md"
                 >
                     <CalendarGrid
                         viewYear={viewYear}
@@ -358,53 +375,72 @@ export function DateTimePicker({
                         onSelectDay={handleSelectDay}
                     />
 
-                    {/* Time row */}
-                    <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-                        <span className="text-xs font-medium text-muted-foreground">Time</span>
-                        <div className="flex items-center gap-1">
-                            <input
-                                type="number"
-                                min={0}
-                                max={23}
-                                value={pad(parsedTime.hours)}
-                                onChange={(e) => handleTimeChange("hours", e.target.value)}
-                                className={selectCls}
-                                aria-label="Hour"
-                            />
-                            <span className="text-sm font-semibold text-foreground">:</span>
-                            <input
-                                type="number"
-                                min={0}
-                                max={59}
-                                value={pad(parsedTime.minutes)}
-                                onChange={(e) => handleTimeChange("minutes", e.target.value)}
-                                className={selectCls}
-                                aria-label="Minute"
-                            />
+                    {/* Footer */}
+                    <div className="mt-3 border-t border-border pt-3 space-y-2">
+                        {/* Time controls */}
+                        <div className="flex items-center gap-2">
+                            <span className="w-8 shrink-0 text-xs font-medium text-muted-foreground">
+                                Time
+                            </span>
+                            <div className="flex flex-1 items-center gap-1.5">
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={12}
+                                    value={pad(display12)}
+                                    onChange={(e) => handleTimeChange("hours12", e.target.value)}
+                                    className={selectCls}
+                                    aria-label="Hour"
+                                />
+                                <span className="text-sm font-semibold text-foreground">:</span>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={59}
+                                    value={pad(parsedTime.minutes)}
+                                    onChange={(e) => handleTimeChange("minutes", e.target.value)}
+                                    className={selectCls}
+                                    aria-label="Minute"
+                                />
+                                <div className="flex overflow-hidden rounded-md border border-border text-xs font-medium">
+                                    {(["AM", "PM"] as const).map((period) => (
+                                        <button
+                                            key={period}
+                                            type="button"
+                                            onClick={() => handleAmPmChange(period)}
+                                            className={`px-3 py-1.5 transition ${ampm === period ? "bg-cta text-cta-foreground" : "text-foreground hover:bg-muted"}`}
+                                        >
+                                            {period}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => setOpen(false)}
-                            className="ml-auto rounded-md bg-cta px-3 py-1 text-xs font-medium text-cta-foreground hover:bg-cta-hover transition"
-                        >
-                            Done
-                        </button>
-                    </div>
-
-                    {value && (
-                        <div className="mt-2 flex justify-start">
+                        {/* Actions */}
+                        <div className="flex items-center justify-between">
+                            {value ? (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onChange("");
+                                        setOpen(false);
+                                    }}
+                                    className="text-xs text-muted-foreground transition hover:text-foreground"
+                                >
+                                    Clear
+                                </button>
+                            ) : (
+                                <span />
+                            )}
                             <button
                                 type="button"
-                                onClick={() => {
-                                    onChange("");
-                                    setOpen(false);
-                                }}
-                                className="text-xs text-muted-foreground transition hover:text-foreground"
+                                onClick={() => setOpen(false)}
+                                className="rounded-md bg-cta px-4 py-1.5 text-xs font-medium text-cta-foreground transition hover:bg-cta-hover"
                             >
-                                Clear
+                                Done
                             </button>
                         </div>
-                    )}
+                    </div>
                 </PopoverPrimitive.Content>
             </PopoverPrimitive.Portal>
         </PopoverPrimitive.Root>

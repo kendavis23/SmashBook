@@ -33,12 +33,12 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onCancel}>Keep</button>
         </div>
     ),
-    DateTimePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
         <input
-            type="datetime-local"
+            type="date"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            aria-label="Pick date and time"
+            aria-label="Pick a date"
         />
     ),
     SelectInput: ({
@@ -49,7 +49,7 @@ vi.mock("@repo/ui", () => ({
     }: {
         value: string;
         onValueChange: (v: string) => void;
-        options: { value: string; label: string }[];
+        options: { value: string; label: string; disabled?: boolean }[];
         placeholder?: string;
     }) => (
         <select
@@ -58,7 +58,7 @@ vi.mock("@repo/ui", () => ({
             aria-label={placeholder ?? "select"}
         >
             {options.map((option) => (
-                <option key={option.value} value={option.value}>
+                <option key={option.value} value={option.value} disabled={option.disabled}>
                     {option.label}
                 </option>
             ))}
@@ -99,7 +99,8 @@ const booking = {
 
 const form: ManageBookingFormState = {
     courtId: "court-1",
-    startDatetime: "2026-04-20T10:00",
+    bookingDate: "2026-04-20",
+    startTime: "10:00",
     notes: "Remember balls",
     eventName: "Cup",
     contactName: "Taylor",
@@ -110,6 +111,16 @@ const form: ManageBookingFormState = {
 const defaultProps = {
     booking: booking as never,
     courts: [{ id: "court-1", name: "Court 1" }],
+    slots: [
+        {
+            start_time: "10:00",
+            end_time: "11:30",
+            is_available: true,
+            price: null,
+            price_label: null,
+        },
+    ],
+    slotsLoading: false,
     form,
     isDirty: true,
     apiError: "",

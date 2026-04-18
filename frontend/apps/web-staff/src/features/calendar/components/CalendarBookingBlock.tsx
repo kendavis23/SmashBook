@@ -6,7 +6,6 @@ import {
     BOOKING_TYPE_COLORS,
     BOOKING_TYPE_LABELS,
     clampNumber,
-    formatCurrency,
     formatTime,
     getMinutesFromIso,
 } from "../types";
@@ -19,8 +18,8 @@ type Props = {
     onManageClick: (bookingId: string) => void;
 };
 
-const BLOCK_VERTICAL_GAP = 8;
-const MIN_BLOCK_HEIGHT = 52;
+const BLOCK_VERTICAL_GAP = 4;
+const MIN_BLOCK_HEIGHT = 36;
 
 export default function CalendarBookingBlock({
     booking,
@@ -54,8 +53,8 @@ export default function CalendarBookingBlock({
 
     const rawTop = ((clampedStart - startOfDayMinutes) / totalMinutes) * boardHeight;
     const rawHeight = ((clampedEnd - clampedStart) / totalMinutes) * boardHeight;
-    const top = Math.max(rawTop + BLOCK_VERTICAL_GAP / 2, 4);
-    const availableHeight = Math.max(boardHeight - top - 4, MIN_BLOCK_HEIGHT);
+    const top = Math.max(rawTop + BLOCK_VERTICAL_GAP / 2, 2);
+    const availableHeight = Math.max(boardHeight - top - 2, MIN_BLOCK_HEIGHT);
     const height = Math.min(
         Math.max(rawHeight - BLOCK_VERTICAL_GAP, MIN_BLOCK_HEIGHT),
         availableHeight
@@ -63,25 +62,10 @@ export default function CalendarBookingBlock({
 
     const title = booking.event_name ?? BOOKING_TYPE_LABELS[booking.booking_type] ?? "Booking";
     const timeLabel = `${formatTime(booking.start_datetime)} – ${formatTime(booking.end_datetime)}`;
-    const participantSummary = booking.players
-        .slice(0, 2)
-        .map((player) => player.full_name)
-        .join(", ");
-    const slotsLabel =
-        booking.slots_available > 0
-            ? `${booking.slots_available} slot${booking.slots_available === 1 ? "" : "s"} left`
-            : "Full";
-    const ariaLabel = [
-        title,
-        timeLabel,
-        BOOKING_STATUS_LABELS[booking.status] ?? booking.status,
-        booking.court_name,
-        participantSummary || "No players yet",
-        slotsLabel,
-    ].join(" • ");
+    const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
+    const ariaLabel = `${title} • ${timeLabel} • ${statusLabel}`;
 
-    const showExpandedMeta = height >= 92;
-    const showPlayers = height >= 74 && participantSummary.length > 0;
+    const showStatus = height >= 56;
 
     return (
         <button
@@ -89,48 +73,27 @@ export default function CalendarBookingBlock({
             aria-label={ariaLabel}
             title={ariaLabel}
             onClick={() => onManageClick(booking.id)}
-            className={`absolute left-2 right-2 z-10 cursor-pointer rounded-xl border px-2.5 py-2 shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${typeColors.bg} ${typeColors.border} text-left`}
+            className={`absolute left-1 right-1 z-10 cursor-pointer overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${typeColors.border} text-left`}
             style={{ top: `${top}px`, height: `${height}px` }}
         >
-            <div className="flex h-full flex-col justify-between gap-2 overflow-hidden">
-                <div className="min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                        <p className={`truncate text-xs font-semibold ${typeColors.text}`}>
-                            {title}
-                        </p>
-                        {booking.is_open_game ? (
-                            <span className="shrink-0 rounded-full bg-info/15 px-1.5 py-0.5 text-[10px] font-semibold text-info">
-                                Open
-                            </span>
-                        ) : null}
-                    </div>
-
-                    <p className="mt-1 text-[11px] font-medium text-foreground">{timeLabel}</p>
-
-                    {showPlayers ? (
-                        <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                            {participantSummary}
-                            {booking.players.length > 2 ? ` +${booking.players.length - 2}` : ""}
-                        </p>
-                    ) : null}
-                </div>
-
-                {showExpandedMeta ? (
-                    <div className="flex items-end justify-between gap-2">
-                        <span
-                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${statusColors.bg} ${statusColors.text}`}
-                        >
-                            {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
-                        </span>
-                        <div className="text-right">
-                            <p className="text-[10px] font-medium text-muted-foreground">
-                                {formatCurrency(booking.total_price)}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">{slotsLabel}</p>
-                        </div>
-                    </div>
+            {/* Opaque background — covers grid lines beneath the block */}
+            <span className={`pointer-events-none absolute inset-0 bg-card`} />
+            <span className={`pointer-events-none absolute inset-0 ${typeColors.bg}`} />
+            <span className="relative">
+                <p
+                    className={`truncate text-[11px] font-semibold leading-tight ${typeColors.text}`}
+                >
+                    {title}
+                </p>
+                <p className="truncate text-[10px] leading-tight text-foreground/70">{timeLabel}</p>
+                {showStatus ? (
+                    <span
+                        className={`mt-1 inline-block rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight ${statusColors.bg} ${statusColors.text}`}
+                    >
+                        {statusLabel}
+                    </span>
                 ) : null}
-            </div>
+            </span>
         </button>
     );
 }

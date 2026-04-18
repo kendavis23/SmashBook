@@ -2,21 +2,23 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { useGetBooking, useUpdateBooking, useCancelBooking, useListCourts } from "../../hooks";
+import {
+    useGetBooking,
+    useUpdateBooking,
+    useCancelBooking,
+    useListCourts,
+    useGetCourtAvailability,
+} from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { Booking } from "../../types";
 import ManageBookingView from "./ManageBookingView";
 import type { ManageBookingFormState } from "./ManageBookingView";
 
-function toDatetimeLocal(iso: string): string {
-    // Converts ISO 8601 to "YYYY-MM-DDTHH:mm" for datetime-local input
-    return iso.slice(0, 16);
-}
-
 function buildInitialForm(booking: Booking): ManageBookingFormState {
     return {
         courtId: booking.court_id,
-        startDatetime: toDatetimeLocal(booking.start_datetime),
+        bookingDate: booking.start_datetime.slice(0, 10),
+        startTime: booking.start_datetime.slice(11, 16),
         notes: booking.notes ?? "",
         eventName: booking.event_name ?? "",
         contactName: "",
@@ -38,6 +40,12 @@ export default function ManageBookingContainer(): JSX.Element {
     const cancelMutation = useCancelBooking(clubId ?? "");
 
     const [form, setForm] = useState<ManageBookingFormState | null>(null);
+
+    const { data: availabilityData, isLoading: slotsLoading } = useGetCourtAvailability(
+        form?.courtId ?? "",
+        form?.bookingDate ?? ""
+    );
+    const slots = availabilityData?.slots ?? [];
     const [apiError, setApiError] = useState("");
     const [updateSuccess, setUpdateSuccess] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
@@ -71,10 +79,13 @@ export default function ManageBookingContainer(): JSX.Element {
             e.preventDefault();
             if (!form) return;
 
+            const startDatetimeLocal =
+                form.bookingDate && form.startTime ? `${form.bookingDate}T${form.startTime}` : null;
+
             const payload = {
                 court_id: form.courtId || undefined,
-                start_datetime: form.startDatetime
-                    ? datetimeLocalToUTC(form.startDatetime)
+                start_datetime: startDatetimeLocal
+                    ? datetimeLocalToUTC(startDatetimeLocal)
                     : undefined,
                 notes: form.notes.trim() || null,
                 event_name: form.eventName.trim() || null,
@@ -90,7 +101,9 @@ export default function ManageBookingContainer(): JSX.Element {
                     setTimeout(() => setUpdateSuccess(false), 3000);
                 },
                 onError: (err) => {
-                    setApiError(err instanceof Error ? err.message : "Failed to update booking.");
+                    setApiError(
+                        (err as { message?: string })?.message || "Failed to update booking."
+                    );
                 },
             });
         },
@@ -139,6 +152,8 @@ export default function ManageBookingContainer(): JSX.Element {
         <ManageBookingView
             booking={booking as Booking}
             courts={courts as { id: string; name: string }[]}
+            slots={slots}
+            slotsLoading={slotsLoading}
             form={form}
             isDirty={isDirty}
             apiError={apiError}
