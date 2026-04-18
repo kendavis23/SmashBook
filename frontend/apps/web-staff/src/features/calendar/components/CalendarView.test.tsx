@@ -11,10 +11,41 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+        "aria-label": ariaLabel,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: { value: string; label: string }[];
+        placeholder?: string;
+        "aria-label"?: string;
+    }) => (
+        <select
+            value={value ?? ""}
+            onChange={(e) => onValueChange(e.target.value)}
+            aria-label={ariaLabel ?? placeholder ?? "select"}
+        >
+            {(options ?? []).map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
 }));
 
-vi.mock("./CalendarDayColumn", () => ({
-    default: ({ day }: { day: { date: string } }) => <div data-testid="day-col">{day.date}</div>,
+vi.mock("./WeekTimelineBoard", () => ({
+    default: ({ days }: { days: { date: string }[] }) => (
+        <div data-testid="week-board">{days.map((d) => d.date).join(",")}</div>
+    ),
+}));
+
+vi.mock("./DayTimelineBoard", () => ({
+    default: ({ day }: { day: { date: string } }) => <div data-testid="day-board">{day.date}</div>,
 }));
 
 const baseProps = {
@@ -25,11 +56,15 @@ const baseProps = {
     anchorDate: "2026-04-06",
     dateFrom: "2026-04-06",
     dateTo: "2026-04-12",
+    courts: [],
+    selectedCourtId: "",
     onPrev: vi.fn(),
     onNext: vi.fn(),
     onToday: vi.fn(),
     onViewModeChange: vi.fn(),
     onRefresh: vi.fn(),
+    onCourtChange: vi.fn(),
+    onManageClick: vi.fn(),
 };
 
 const mockCalendarData: CalendarViewData = {
@@ -74,13 +109,69 @@ describe("CalendarView — empty state", () => {
     });
 });
 
-describe("CalendarView — data state", () => {
-    it("renders a day column for each day", () => {
+describe("CalendarView — week mode", () => {
+    it("renders WeekTimelineBoard when viewMode is week", () => {
         render(<CalendarView {...baseProps} calendarData={mockCalendarData} />);
-        const cols = screen.getAllByTestId("day-col");
-        expect(cols).toHaveLength(2);
+        expect(screen.getByTestId("week-board")).toBeInTheDocument();
     });
 
+    it("does not render DayTimelineBoard in week mode", () => {
+        render(<CalendarView {...baseProps} calendarData={mockCalendarData} />);
+        expect(screen.queryByTestId("day-board")).not.toBeInTheDocument();
+    });
+
+    it("shows court picker when courts are available in week mode", () => {
+        render(
+            <CalendarView
+                {...baseProps}
+                calendarData={mockCalendarData}
+                courts={[{ id: "c1", name: "Court 1" }]}
+            />
+        );
+        expect(screen.getByLabelText("Select court")).toBeInTheDocument();
+    });
+
+    it("calls onCourtChange when court picker changes", () => {
+        const onCourtChange = vi.fn();
+        render(
+            <CalendarView
+                {...baseProps}
+                calendarData={mockCalendarData}
+                courts={[{ id: "c1", name: "Court 1" }]}
+                onCourtChange={onCourtChange}
+            />
+        );
+        fireEvent.change(screen.getByLabelText("Select court"), { target: { value: "c1" } });
+        expect(onCourtChange).toHaveBeenCalledWith("c1");
+    });
+});
+
+describe("CalendarView — day mode", () => {
+    it("renders DayTimelineBoard for each day in day mode", () => {
+        render(<CalendarView {...baseProps} viewMode="day" calendarData={mockCalendarData} />);
+        const boards = screen.getAllByTestId("day-board");
+        expect(boards).toHaveLength(2);
+    });
+
+    it("does not render WeekTimelineBoard in day mode", () => {
+        render(<CalendarView {...baseProps} viewMode="day" calendarData={mockCalendarData} />);
+        expect(screen.queryByTestId("week-board")).not.toBeInTheDocument();
+    });
+
+    it("does not show court picker in day mode", () => {
+        render(
+            <CalendarView
+                {...baseProps}
+                viewMode="day"
+                calendarData={mockCalendarData}
+                courts={[{ id: "c1", name: "Court 1" }]}
+            />
+        );
+        expect(screen.queryByLabelText("Select court")).not.toBeInTheDocument();
+    });
+});
+
+describe("CalendarView — breadcrumb", () => {
     it("renders breadcrumb with correct labels", () => {
         render(<CalendarView {...baseProps} calendarData={mockCalendarData} />);
         expect(screen.getByText("Operations")).toBeInTheDocument();

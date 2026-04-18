@@ -9,6 +9,7 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
+    canManageReservation: vi.fn((role: string) => ["owner", "admin", "ops_lead"].includes(role)),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -22,6 +23,54 @@ vi.mock("@repo/ui", () => ({
                 <span key={i.label}>{i.label}</span>
             ))}
         </nav>
+    ),
+    formatUTCDateTime: (iso: string) => iso,
+    formatUTCDate: (iso: string) => iso,
+    formatUTCTime: (iso: string) => iso,
+    datetimeLocalToUTC: (v: string) => v,
+    DateTimePicker: ({
+        value,
+        onChange,
+        className,
+    }: {
+        value: string;
+        onChange: (v: string) => void;
+        className?: string;
+    }) => (
+        <input
+            type="datetime-local"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className={className}
+        />
+    ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+        clearLabel,
+        "aria-label": ariaLabel,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: { value: string; label: string }[];
+        placeholder?: string;
+        clearLabel?: string;
+        "aria-label"?: string;
+    }) => (
+        <select
+            value={value ?? ""}
+            onChange={(e) => onValueChange(e.target.value)}
+            aria-label={ariaLabel ?? placeholder ?? "select"}
+        >
+            {clearLabel !== undefined && <option value="">{clearLabel}</option>}
+            {(options ?? []).map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
     ),
 }));
 

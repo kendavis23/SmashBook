@@ -1,5 +1,12 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast, ConfirmDeleteModal } from "@repo/ui";
+import {
+    Breadcrumb,
+    AlertToast,
+    ConfirmDeleteModal,
+    DateTimePicker,
+    formatUTCDateTime,
+    SelectInput,
+} from "@repo/ui";
 import type { Booking } from "../../types";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } from "../../types";
 
@@ -8,13 +15,6 @@ const fieldCls =
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
 const labelCls = "mb-1 block text-sm font-medium text-foreground";
-
-function formatDatetime(iso: string): string {
-    return new Date(iso).toLocaleString(undefined, {
-        dateStyle: "medium",
-        timeStyle: "short",
-    });
-}
 
 function formatCurrency(amount: number | null): string {
     if (amount == null) return "—";
@@ -89,8 +89,8 @@ export default function ManageBookingView({
                             {booking.court_name}
                         </h1>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            {formatDatetime(booking.start_datetime)} &ndash;{" "}
-                            {formatDatetime(booking.end_datetime)}
+                            {formatUTCDateTime(booking.start_datetime)} &ndash;{" "}
+                            {formatUTCDateTime(booking.end_datetime)}
                         </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -150,7 +150,7 @@ export default function ManageBookingView({
                             <div>
                                 <dt className="text-xs font-medium text-muted-foreground">End</dt>
                                 <dd className="mt-0.5 text-sm text-foreground">
-                                    {formatDatetime(booking.end_datetime)}
+                                    {formatUTCDateTime(booking.end_datetime)}
                                 </dd>
                             </div>
                             <div>
@@ -196,7 +196,7 @@ export default function ManageBookingView({
                                     Created
                                 </dt>
                                 <dd className="mt-0.5 text-sm text-foreground">
-                                    {formatDatetime(booking.created_at)}
+                                    {formatUTCDateTime(booking.created_at)}
                                 </dd>
                             </div>
                         </dl>
@@ -275,33 +275,22 @@ export default function ManageBookingView({
                                         <label htmlFor="mb-court" className={labelCls}>
                                             Court
                                         </label>
-                                        <select
-                                            id="mb-court"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.courtId}
-                                            onChange={(e) =>
-                                                onFormChange({ courtId: e.target.value })
-                                            }
-                                        >
-                                            {courts.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onValueChange={(v) => onFormChange({ courtId: v })}
+                                            options={courts.map((c) => ({
+                                                value: c.id,
+                                                label: c.name,
+                                            }))}
+                                        />
                                     </div>
                                     <div>
                                         <label htmlFor="mb-start" className={labelCls}>
                                             Start
                                         </label>
-                                        <input
-                                            id="mb-start"
-                                            type="datetime-local"
-                                            className={fieldCls}
+                                        <DateTimePicker
                                             value={form.startDatetime}
-                                            onChange={(e) =>
-                                                onFormChange({ startDatetime: e.target.value })
-                                            }
+                                            onChange={(v) => onFormChange({ startDatetime: v })}
                                         />
                                     </div>
                                 </div>

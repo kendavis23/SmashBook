@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
+import { datetimeLocalToUTC } from "@repo/ui";
 import { useParams, useNavigate } from "@tanstack/react-router";
 import {
     useGetCalendarReservation,
@@ -7,7 +8,7 @@ import {
     useDeleteCalendarReservation,
     useListCourts,
 } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageReservation } from "../../store";
 import type { CalendarReservation, CalendarReservationType } from "../../types";
 import { ConfirmDeleteModal } from "@repo/ui";
 import ManageReservationView from "./ManageReservationView";
@@ -38,7 +39,7 @@ export default function ManageReservationContainer(): JSX.Element {
     const { reservationId } = useParams({ strict: false }) as { reservationId: string };
     const navigate = useNavigate();
     const { clubId, role } = useClubAccess();
-    const canEdit = role === "owner" || role === "admin";
+    const canEdit = canManageReservation(role);
 
     const { data: reservation, isLoading, error } = useGetCalendarReservation(reservationId);
     const { data: courts = [] } = useListCourts(clubId ?? "");
@@ -84,11 +85,9 @@ export default function ManageReservationContainer(): JSX.Element {
                 reservation_type: form.reservationType as CalendarReservationType,
                 court_id: form.courtId || null,
                 start_datetime: form.startDatetime
-                    ? new Date(form.startDatetime).toISOString()
+                    ? datetimeLocalToUTC(form.startDatetime)
                     : undefined,
-                end_datetime: form.endDatetime
-                    ? new Date(form.endDatetime).toISOString()
-                    : undefined,
+                end_datetime: form.endDatetime ? datetimeLocalToUTC(form.endDatetime) : undefined,
                 anchor_skill_level: form.anchorSkillLevel ? Number(form.anchorSkillLevel) : null,
                 skill_range_above: form.skillRangeAbove ? Number(form.skillRangeAbove) : null,
                 skill_range_below: form.skillRangeBelow ? Number(form.skillRangeBelow) : null,

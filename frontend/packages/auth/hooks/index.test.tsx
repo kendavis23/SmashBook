@@ -60,7 +60,7 @@ describe("useAuth — clubId resolution", () => {
                 refresh_token: "ref",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
             });
-            useAuthStore.getState().setActiveClubId("c2", "Club Two");
+            useAuthStore.getState().setActiveClubId("c2", "Club Two", "admin");
         });
         const { result } = renderHook(() => useAuth());
         expect(result.current.clubId).toBe("c2");
@@ -91,7 +91,7 @@ describe("useAuth — activeClubName resolution", () => {
 
     it("returns the explicit activeClubName when set", () => {
         act(() => {
-            useAuthStore.getState().setActiveClubId("c2", "Club Two");
+            useAuthStore.getState().setActiveClubId("c2", "Club Two", "staff");
         });
         const { result } = renderHook(() => useAuth());
         expect(result.current.activeClubName).toBe("Club Two");
@@ -106,10 +106,11 @@ describe("useAuth — setActiveClubId", () => {
     it("exposes setActiveClubId which updates the store", () => {
         const { result } = renderHook(() => useAuth());
         act(() => {
-            result.current.setActiveClubId("c3", "Club Three");
+            result.current.setActiveClubId("c3", "Club Three", "viewer");
         });
         expect(useAuthStore.getState().activeClubId).toBe("c3");
         expect(useAuthStore.getState().activeClubName).toBe("Club Three");
+        expect(useAuthStore.getState().activeRole).toBe("viewer");
     });
 });
 

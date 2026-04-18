@@ -26,7 +26,9 @@ describe("ClubsView — loading state", () => {
                 search=""
                 isLoading={true}
                 error={null}
+                canCreate={false}
                 onSearchChange={vi.fn()}
+                onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={vi.fn()}
             />
@@ -43,7 +45,9 @@ describe("ClubsView — error state", () => {
                 search=""
                 isLoading={false}
                 error={new Error("Network error")}
+                canCreate={false}
                 onSearchChange={vi.fn()}
+                onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={vi.fn()}
             />
@@ -60,13 +64,15 @@ describe("ClubsView — empty state", () => {
                 search=""
                 isLoading={false}
                 error={null}
+                canCreate={true}
                 onSearchChange={vi.fn()}
+                onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={vi.fn()}
             />
         );
         expect(screen.getByText("No clubs yet")).toBeInTheDocument();
-        expect(screen.getAllByText("+ Create Club").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("New Club").length).toBeGreaterThanOrEqual(1);
     });
 
     it("shows no-match message when search has no results", () => {
@@ -76,7 +82,9 @@ describe("ClubsView — empty state", () => {
                 search="xyz"
                 isLoading={false}
                 error={null}
+                canCreate={false}
                 onSearchChange={vi.fn()}
+                onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={vi.fn()}
             />
@@ -93,7 +101,9 @@ describe("ClubsView — club list", () => {
                 search=""
                 isLoading={false}
                 error={null}
+                canCreate={false}
                 onSearchChange={vi.fn()}
+                onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={vi.fn()}
             />
@@ -110,6 +120,8 @@ describe("ClubsView — club list", () => {
                 search=""
                 isLoading={false}
                 error={null}
+                canCreate={false}
+                onRefresh={vi.fn()}
                 onSearchChange={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={handleManage}
@@ -128,12 +140,14 @@ describe("ClubsView — club list", () => {
                 search=""
                 isLoading={false}
                 error={null}
+                canCreate={true}
+                onRefresh={vi.fn()}
                 onSearchChange={vi.fn()}
                 onCreateClick={handleCreate}
                 onManageClub={vi.fn()}
             />
         );
-        fireEvent.click(screen.getByText("+ Create Club"));
+        fireEvent.click(screen.getAllByText("New Club")[0]!);
         expect(handleCreate).toHaveBeenCalled();
     });
 });
@@ -147,7 +161,9 @@ describe("ClubsView — search", () => {
                 search=""
                 isLoading={false}
                 error={null}
+                canCreate={false}
                 onSearchChange={handleSearch}
+                onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={vi.fn()}
             />
@@ -165,7 +181,9 @@ describe("ClubsView — search", () => {
                 search="alpha"
                 isLoading={false}
                 error={null}
+                canCreate={false}
                 onSearchChange={handleSearch}
+                onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClub={vi.fn()}
             />

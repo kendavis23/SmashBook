@@ -33,6 +33,9 @@ vi.mock("@repo/ui", () => ({
             toggle
         </button>
     ),
+    NumberInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="number" className={className} {...(props as object)} />
+    ),
 }));
 
 describe("ClubSettingsTable", () => {

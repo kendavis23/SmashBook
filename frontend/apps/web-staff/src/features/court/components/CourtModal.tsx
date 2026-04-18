@@ -1,6 +1,7 @@
 import { useCreateCourt, useUpdateCourt } from "../hooks";
 import type { Court, CourtInput, SurfaceType } from "../types";
-import { AlertToast } from "@repo/ui";
+import { AlertToast, NumberInput, SelectInput } from "@repo/ui";
+import type { SelectOption } from "@repo/ui";
 import { X } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
@@ -10,7 +11,7 @@ const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
-const SURFACE_OPTIONS: { value: SurfaceType; label: string }[] = [
+const SURFACE_OPTIONS: SelectOption[] = [
     { value: "indoor", label: "Indoor" },
     { value: "outdoor", label: "Outdoor" },
     { value: "crystal", label: "Crystal" },
@@ -152,18 +153,13 @@ export default function CourtModal({
                             >
                                 Surface Type
                             </label>
-                            <select
-                                id="court-surface"
-                                className={fieldCls}
+                            <SelectInput
+                                name="court-surface"
                                 value={surfaceType}
-                                onChange={(e) => setSurfaceType(e.target.value as SurfaceType)}
-                            >
-                                {SURFACE_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
+                                options={SURFACE_OPTIONS}
+                                onValueChange={(v) => setSurfaceType(v as SurfaceType)}
+                                placeholder="Select surface"
+                            />
                         </div>
 
                         {/* Lighting */}
@@ -211,9 +207,8 @@ export default function CourtModal({
                                 >
                                     Lighting Surcharge
                                 </label>
-                                <input
+                                <NumberInput
                                     id="court-surcharge"
-                                    type="number"
                                     min="0"
                                     step="0.01"
                                     className={fieldCls}

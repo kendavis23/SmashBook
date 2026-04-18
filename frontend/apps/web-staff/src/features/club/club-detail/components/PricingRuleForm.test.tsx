@@ -12,6 +12,35 @@ vi.mock("@repo/ui", () => ({
             {children}
         </div>
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+    }) => (
+        <select value={value} onChange={(e) => onValueChange(e.target.value)}>
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
+    NumberInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="number" className={className} {...(props as object)} />
+    ),
+    TimeInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="time" className={className} {...(props as object)} />
+    ),
+    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+        <input type="date" value={value} onChange={(e) => onChange(e.target.value)} />
+    ),
+    DateTimePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+        <input type="datetime-local" value={value} onChange={(e) => onChange(e.target.value)} />
+    ),
 }));
 
 const baseForm: FormState = { ...EMPTY_RULE, label: "Peak" };

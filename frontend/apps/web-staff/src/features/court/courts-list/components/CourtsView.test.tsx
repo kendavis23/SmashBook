@@ -11,6 +11,40 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+        placeholder?: string;
+    }) => (
+        <select
+            value={value}
+            aria-label={placeholder}
+            onChange={(e) => onValueChange(e.target.value)}
+        >
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
+    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+        <input
+            type="date"
+            aria-label="Filter by date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+    TimeInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="time" className={className} {...(props as object)} />
+    ),
 }));
 
 vi.mock("./AvailabilityPanel", () => ({
@@ -62,6 +96,7 @@ const defaultProps = {
     isLoading: false,
     error: null,
     canCreateCourt: true,
+    canEditCourt: true,
     filters: defaultFilters,
     hasPendingServerFilters: false,
     hasActiveServerFilters: false,
@@ -191,6 +226,11 @@ describe("CourtsView — court list", () => {
     it("does not show header Add Court button when user cannot manage courts", () => {
         render(<CourtsView {...defaultProps} courts={mockCourts} canCreateCourt={false} />);
         expect(screen.queryByText("Add Court")).not.toBeInTheDocument();
+    });
+
+    it("does not show Edit button when user cannot manage courts", () => {
+        render(<CourtsView {...defaultProps} courts={mockCourts} canEditCourt={false} />);
+        expect(screen.queryByLabelText(/Edit Court/i)).not.toBeInTheDocument();
     });
 
     it("calls onRefresh when Refresh is clicked", () => {

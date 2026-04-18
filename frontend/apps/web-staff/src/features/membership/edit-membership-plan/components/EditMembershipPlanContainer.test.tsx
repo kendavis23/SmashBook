@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import EditMembershipPlanContainer from "./EditMembershipPlanContainer";
@@ -33,6 +34,35 @@ vi.mock("@repo/ui", () => ({
             {title}
             <button onClick={onClose}>Dismiss</button>
         </div>
+    ),
+    NumberInput: ({
+        className,
+        ...props
+    }: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+        <input type="number" className={className} {...props} />
+    ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: { value: string; label: string }[];
+        placeholder?: string;
+    }) => (
+        <select
+            value={value ?? ""}
+            onChange={(e) => onValueChange(e.target.value)}
+            aria-label={placeholder ?? "select"}
+        >
+            {(options ?? []).map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
     ),
 }));
 

@@ -23,7 +23,7 @@ export interface AvailabilityFilters {
 }
 
 export const SURFACE_FILTER_OPTIONS: { value: string; label: string }[] = [
-    { value: "", label: "All surfaces" },
+    { value: "all", label: "All surfaces" },
     { value: "indoor", label: "Indoor" },
     { value: "outdoor", label: "Outdoor" },
     { value: "crystal", label: "Crystal" },

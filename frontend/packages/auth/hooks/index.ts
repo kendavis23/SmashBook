@@ -33,16 +33,21 @@ export function useAuth() {
     const tenantSubdomain = useAuthStore((s) => s.tenantSubdomain);
     const activeClubId = useAuthStore((s) => s.activeClubId);
     const activeClubName = useAuthStore((s) => s.activeClubName);
+    const activeRole = useAuthStore((s) => s.activeRole);
     const setActiveClubId = useAuthStore((s) => s.setActiveClubId);
 
-    // Fall back to the first JWT club when no explicit selection has been made
-    const jwtClub = clubs[0];
-    const clubId = activeClubId ?? jwtClub?.club_id ?? null;
-    const resolvedClubName = activeClubName ?? jwtClub?.club_name ?? null;
+    // Resolve active club — fall back to first club when no explicit selection has been made
+    const firstClub = clubs[0];
+    const clubId = activeClubId ?? firstClub?.club_id ?? null;
+    const resolvedClubName = activeClubName ?? firstClub?.club_name ?? null;
+
+    // Role comes from the active club entry so it switches when the active club changes.
+    const resolvedRole: TenantUserRole | null =
+        (activeRole as TenantUserRole | null) ??
+        (firstClub?.role as TenantUserRole | undefined) ??
+        null;
 
     const isAuthenticated = !!accessToken && !!user;
-    const role: TenantUserRole | null =
-        (jwtClub?.role as TenantUserRole | undefined) ?? user?.role ?? null;
 
     return {
         user,
@@ -52,7 +57,7 @@ export function useAuth() {
         activeClubName: resolvedClubName,
         tenantSubdomain,
         isAuthenticated,
-        role,
+        role: resolvedRole,
         setActiveClubId,
     };
 }
@@ -90,10 +95,10 @@ export function useInitAuth() {
 
             const user = await getMeService(token, state.tenantSubdomain);
 
-            // Non-owner users must have at least one club. If clubs are missing
-            // (e.g. /refresh did not return clubs and none were persisted), the
-            // session is unusable — force a fresh login.
-            if (user.role !== "owner" && state.clubs.length === 0) {
+            // All roles must have at least one club. If clubs are missing
+            // (e.g. /refresh did not return clubs and none were persisted),
+            // the session is unusable — force a fresh login.
+            if (state.clubs.length === 0) {
                 clearAuth();
                 throw new Error("No club assigned");
             }
@@ -114,11 +119,22 @@ export function useInitAuth() {
 export function useLogin() {
     return useMutation({
         mutationFn: async (credentials: UserLogin): Promise<UserResponse> => {
-            const { setTokens, setUser, setTenantSubdomain } = useAuthStore.getState();
+            const { setTokens, setUser, setTenantSubdomain, setActiveClubId, clearAuth } =
+                useAuthStore.getState();
 
             const tokens = await loginService(credentials);
+
+            if (!tokens.clubs || tokens.clubs.length === 0) {
+                clearAuth();
+                throw new Error("Your account has no clubs assigned. Contact your administrator.");
+            }
+
             setTokens(tokens);
             setTenantSubdomain(credentials.tenant_subdomain);
+
+            // Auto-select the first club and its role immediately on login.
+            const firstClub = tokens.clubs[0]!;
+            setActiveClubId(firstClub.club_id, firstClub.club_name, firstClub.role);
 
             const user = await getMeService(tokens.access_token, credentials.tenant_subdomain);
             setUser(user);

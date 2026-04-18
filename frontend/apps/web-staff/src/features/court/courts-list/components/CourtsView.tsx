@@ -1,6 +1,6 @@
 import type { Court, CourtAvailability, TimeSlot, AvailabilityFilters } from "../../types";
 import { SURFACE_TYPE_LABELS, SURFACE_FILTER_OPTIONS } from "../../types";
-import { Breadcrumb } from "@repo/ui";
+import { Breadcrumb, DatePicker, SelectInput, TimeInput } from "@repo/ui";
 import { Circle, Pencil, CalendarSearch, RefreshCw, Plus, Search, Layers } from "lucide-react";
 import type { JSX } from "react";
 import AvailabilityPanel from "./AvailabilityPanel";
@@ -10,6 +10,7 @@ type Props = {
     isLoading: boolean;
     error: Error | null;
     canCreateCourt: boolean;
+    canEditCourt: boolean;
     filters: AvailabilityFilters;
     hasPendingServerFilters: boolean;
     hasActiveServerFilters: boolean;
@@ -50,6 +51,7 @@ export default function CourtsView({
     isLoading,
     error,
     canCreateCourt,
+    canEditCourt,
     filters,
     hasPendingServerFilters,
     hasActiveServerFilters,
@@ -118,23 +120,18 @@ export default function CourtsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Surface
                             </span>
-                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <Layers size={13} className="shrink-0 text-muted-foreground" />
-                                <select
-                                    value={filters.surfaceType}
-                                    onChange={(e) =>
-                                        onFiltersChange({ ...filters, surfaceType: e.target.value })
-                                    }
-                                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                                    aria-label="Filter by surface type"
-                                >
-                                    {SURFACE_FILTER_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectInput
+                                value={filters.surfaceType === "" ? "all" : filters.surfaceType}
+                                options={SURFACE_FILTER_OPTIONS}
+                                onValueChange={(v) =>
+                                    onFiltersChange({
+                                        ...filters,
+                                        surfaceType: v === "all" ? "" : v,
+                                    })
+                                }
+                                placeholder="Filter by surface type"
+                                startIcon={<Layers size={13} />}
+                            />
                         </div>
 
                         {/* Date */}
@@ -142,14 +139,11 @@ export default function CourtsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Date
                             </span>
-                            <input
-                                type="date"
+                            <DatePicker
                                 value={filters.date}
-                                onChange={(e) =>
-                                    onFiltersChange({ ...filters, date: e.target.value })
-                                }
-                                className="input-base rounded-lg px-3 py-2 text-sm"
-                                aria-label="Filter by date"
+                                onChange={(v) => onFiltersChange({ ...filters, date: v })}
+                                placeholder="Pick a date"
+                                className="input-base"
                             />
                         </div>
 
@@ -158,8 +152,7 @@ export default function CourtsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 From
                             </span>
-                            <input
-                                type="time"
+                            <TimeInput
                                 value={filters.timeFrom}
                                 onChange={(e) =>
                                     onFiltersChange({ ...filters, timeFrom: e.target.value })
@@ -174,8 +167,7 @@ export default function CourtsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 To
                             </span>
-                            <input
-                                type="time"
+                            <TimeInput
                                 value={filters.timeTo}
                                 onChange={(e) =>
                                     onFiltersChange({ ...filters, timeTo: e.target.value })
@@ -313,13 +305,15 @@ export default function CourtsView({
                                                     </div>
 
                                                     <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-stretch">
-                                                        <button
-                                                            onClick={() => onEditCourt(court)}
-                                                            className="btn-outline min-w-[104px] justify-center px-3 py-2 text-xs sm:text-sm"
-                                                            aria-label={`Edit ${court.name}`}
-                                                        >
-                                                            <Pencil size={12} /> Edit
-                                                        </button>
+                                                        {canEditCourt ? (
+                                                            <button
+                                                                onClick={() => onEditCourt(court)}
+                                                                className="btn-outline min-w-[104px] justify-center px-3 py-2 text-xs sm:text-sm"
+                                                                aria-label={`Edit ${court.name}`}
+                                                            >
+                                                                <Pencil size={12} /> Edit
+                                                            </button>
+                                                        ) : null}
                                                         <button
                                                             onClick={() =>
                                                                 onCheckAvailability(court)

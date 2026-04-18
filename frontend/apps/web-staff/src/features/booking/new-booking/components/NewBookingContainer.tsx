@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
+import { datetimeLocalToUTC } from "@repo/ui";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useCreateBooking, useListCourts, useGetCourtAvailability } from "../../hooks";
 import { useClubAccess } from "../../store";
@@ -114,7 +115,7 @@ export default function NewBookingContainer(): JSX.Element {
             if (!validate()) return;
 
             // Combine date + time into an ISO datetime string
-            const startDatetime = new Date(`${form.bookingDate}T${form.startTime}`).toISOString();
+            const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
 
             const payload: BookingInput = {
                 club_id: clubId ?? "",

@@ -1,6 +1,13 @@
 import type { PricingRule } from "../../types";
 import { type FormEvent, type JSX } from "react";
-import { FormField } from "@repo/ui";
+import {
+    FormField,
+    SelectInput,
+    NumberInput,
+    TimeInput,
+    DatePicker,
+    DateTimePicker,
+} from "@repo/ui";
 import { DAY_NAMES, fieldCls, labelCls, type FormState } from "./pricingRulesConstants";
 
 export function RuleForm({
@@ -37,23 +44,16 @@ export function RuleForm({
                     </FormField>
 
                     <FormField labelClassName={labelCls} label="Day *">
-                        <select
-                            className={fieldCls}
-                            value={form.day_of_week}
-                            onChange={(e) => onChange("day_of_week", e.target.value)}
-                        >
-                            {DAY_NAMES.map((d, i) => (
-                                <option key={i} value={i}>
-                                    {d}
-                                </option>
-                            ))}
-                        </select>
+                        <SelectInput
+                            value={String(form.day_of_week)}
+                            onValueChange={(v) => onChange("day_of_week", Number(v))}
+                            options={DAY_NAMES.map((d, i) => ({ value: String(i), label: d }))}
+                        />
                     </FormField>
 
                     <FormField labelClassName={labelCls} label={`Base price (${currency}) *`}>
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="0.01"
                             min="0"
                             className={fieldCls}
@@ -63,9 +63,8 @@ export function RuleForm({
                     </FormField>
 
                     <FormField labelClassName={labelCls} label="Start time *">
-                        <input
+                        <TimeInput
                             required
-                            type="time"
                             className={fieldCls}
                             value={form.start_time}
                             onChange={(e) => onChange("start_time", e.target.value)}
@@ -73,9 +72,8 @@ export function RuleForm({
                     </FormField>
 
                     <FormField labelClassName={labelCls} label="End time *">
-                        <input
+                        <TimeInput
                             required
-                            type="time"
                             className={fieldCls}
                             value={form.end_time}
                             onChange={(e) => onChange("end_time", e.target.value)}
@@ -93,8 +91,7 @@ export function RuleForm({
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <FormField labelClassName={labelCls} label="Surge trigger %">
-                                <input
-                                    type="number"
+                                <NumberInput
                                     step="0.01"
                                     min="0"
                                     max="100"
@@ -105,8 +102,7 @@ export function RuleForm({
                                 />
                             </FormField>
                             <FormField labelClassName={labelCls} label="Surge max %">
-                                <input
-                                    type="number"
+                                <NumberInput
                                     step="0.01"
                                     min="0"
                                     className={fieldCls}
@@ -129,8 +125,7 @@ export function RuleForm({
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <FormField labelClassName={labelCls} label="Low-demand trigger %">
-                                <input
-                                    type="number"
+                                <NumberInput
                                     step="0.01"
                                     min="0"
                                     max="100"
@@ -143,8 +138,7 @@ export function RuleForm({
                                 />
                             </FormField>
                             <FormField labelClassName={labelCls} label="Low-demand discount %">
-                                <input
-                                    type="number"
+                                <NumberInput
                                     step="0.01"
                                     min="0"
                                     className={fieldCls}
@@ -170,8 +164,7 @@ export function RuleForm({
                                 labelClassName={labelCls}
                                 label={`Promo price (${currency})`}
                             >
-                                <input
-                                    type="number"
+                                <NumberInput
                                     step="0.01"
                                     min="0"
                                     className={fieldCls}
@@ -189,12 +182,10 @@ export function RuleForm({
                                 />
                             </FormField>
                             <FormField labelClassName={labelCls} label="Promo expires">
-                                <input
-                                    type="datetime-local"
-                                    className={fieldCls}
+                                <DateTimePicker
                                     value={form.incentive_expires_at ?? ""}
-                                    onChange={(e) =>
-                                        onChange("incentive_expires_at", e.target.value)
+                                    onChange={(v) =>
+                                        onChange("incentive_expires_at", v || undefined)
                                     }
                                 />
                             </FormField>
@@ -212,19 +203,15 @@ export function RuleForm({
                         </div>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <FormField labelClassName={labelCls} label="Valid from">
-                                <input
-                                    type="date"
-                                    className={fieldCls}
+                                <DatePicker
                                     value={form.valid_from ?? ""}
-                                    onChange={(e) => onChange("valid_from", e.target.value)}
+                                    onChange={(v) => onChange("valid_from", v || undefined)}
                                 />
                             </FormField>
                             <FormField labelClassName={labelCls} label="Valid until">
-                                <input
-                                    type="date"
-                                    className={fieldCls}
+                                <DatePicker
                                     value={form.valid_until ?? ""}
-                                    onChange={(e) => onChange("valid_until", e.target.value)}
+                                    onChange={(v) => onChange("valid_until", v || undefined)}
                                 />
                             </FormField>
                         </div>

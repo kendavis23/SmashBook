@@ -1,4 +1,4 @@
-_Last updated: 2026-04-13 00:00 UTC_
+_Last updated: 2026-04-18 14:30 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -92,14 +92,44 @@ export {
 
 ---
 
-## Step 2 — Create `store/index.ts`
+## Step 2 — Create `store/index.ts` and `store/access.ts`
 
-Re-export domain store slices the feature needs.
+### `store/index.ts`
+
+Re-export domain store slices the feature needs, plus all access functions from `access.ts`.
 
 ```ts
 // features/club/store/index.ts
 export { useClubAccess } from "@repo/staff-domain/store";
+export { canManageClub, canCreateClub, canViewClubList } from "./access";
 ```
+
+### `store/access.ts` — single source of truth for role checks
+
+All role-to-permission logic for the feature lives **exclusively** in `access.ts`. Components and containers import and call these functions — they never write inline role comparisons (`role === "owner" || role === "admin"`).
+
+```ts
+// features/club/store/access.ts
+import type { TenantUserRole } from "@repo/auth";
+
+// To extend access to additional roles, add them to the relevant array.
+const MANAGE_ROLES: TenantUserRole[] = ["owner", "admin"];
+const CREATE_CLUB_ROLES: TenantUserRole[] = ["owner"];
+
+export function canManageClub(role: TenantUserRole | null): boolean {
+    return role !== null && MANAGE_ROLES.includes(role);
+}
+
+export function canCreateClub(role: TenantUserRole | null): boolean {
+    return role !== null && CREATE_CLUB_ROLES.includes(role);
+}
+
+export function canViewClubList(role: TenantUserRole | null): boolean {
+    return role === "owner";
+}
+```
+
+**Rule:** every feature that has role-gated UI must have an `access.ts`. Containers read `role` from `useClubAccess()` and pass the result of an access function to the View as a boolean prop (`canCreate`, `canManage`, etc.). Views never import `access.ts` directly.
 
 ---
 
@@ -226,7 +256,35 @@ const ClubDetailPage = lazy(() => import("../features/club/pages/ClubDetailPage"
 
 ---
 
-## Step 6 — Styling rules
+## Step 6 — Date and time formatting
+
+Always use the helpers from `@repo/ui` to display dates and times. Never use `new Date().toLocaleString()`, `Date.toLocaleDateString()`, or manual string manipulation — these shift times by the browser's local timezone.
+
+| Helper               | Output example           | When to use                                                            |
+| -------------------- | ------------------------ | ---------------------------------------------------------------------- |
+| `formatUTCDateTime`  | `Apr 17, 2026, 10:00 AM` | Full date + time display                                               |
+| `formatUTCDate`      | `Apr 17, 2026`           | Date-only display                                                      |
+| `formatUTCTime`      | `10:00 AM`               | Time-only display                                                      |
+| `datetimeLocalToUTC` | `2026-04-17T10:00:00Z`   | Converting `<input type="datetime-local">` value before sending to API |
+
+```tsx
+import { formatUTCDateTime, formatUTCDate, formatUTCTime } from "@repo/ui";
+
+// In a View component — display a booking start time
+<span>{formatUTCDateTime(booking.start_time)}</span>
+
+// Date only
+<span>{formatUTCDate(booking.date)}</span>
+
+// Time only
+<span>{formatUTCTime(booking.start_time)}</span>
+```
+
+**Rule:** every ISO string that comes from the API must be formatted through one of these helpers before display. Import from `@repo/ui` — never from the file path directly.
+
+---
+
+## Step 7 — Styling rules
 
 All styling uses Tailwind utility classes with design tokens from `@repo/design-system`.
 
@@ -267,6 +325,73 @@ export const labelCls = "mb-1 block text-sm font-medium text-foreground";
 | `border-border`         | Default dividers and card borders            |
 
 **Never use:** `bg-[#xxx]`, `text-amber-700`, `bg-sky-50`, `bg-violet-50`, `text-gray-500` or any Tailwind palette color directly.
+
+### Form inputs
+
+**Never use bare `<input>`, `<select>`, or `<input type="date">` elements in feature components.** Native inputs render inconsistently across browsers (Chrome vs Safari) and carry no shared styles. Always use the shared components from `@repo/ui`.
+
+| Use case                | Component                                         | Import     |
+| ----------------------- | ------------------------------------------------- | ---------- |
+| Text / email / password | native `<input>` is fine — no cross-browser issue | —          |
+| Number field            | `NumberInput`                                     | `@repo/ui` |
+| Time field              | `TimeInput`                                       | `@repo/ui` |
+| Date field              | `DatePicker`                                      | `@repo/ui` |
+| Date + time field       | `DateTimePicker`                                  | `@repo/ui` |
+| Dropdown / select       | `SelectInput`                                     | `@repo/ui` |
+
+```tsx
+import { NumberInput, TimeInput, DatePicker, DateTimePicker, SelectInput } from "@repo/ui";
+import type { SelectOption } from "@repo/ui";
+
+const DAY_OPTIONS: SelectOption[] = [
+    { value: "0", label: "Monday" },
+    { value: "1", label: "Tuesday" },
+    // ...
+];
+
+// ✅ Correct — use shared components
+<NumberInput
+    className="input-base"
+    value={form.capacity}
+    min={1}
+    onChange={(e) => onChange({ capacity: Number(e.target.value) })}
+/>
+
+<TimeInput
+    className="input-base"
+    value={form.open_time}
+    onChange={(e) => onChange({ open_time: e.target.value })}
+/>
+
+<DatePicker
+    className="input-base"
+    value={form.valid_from}          // "YYYY-MM-DD"
+    onChange={(v) => onChange({ valid_from: v })}
+/>
+
+<DateTimePicker
+    className="input-base"
+    value={form.expires_at}          // "YYYY-MM-DDTHH:MM"
+    onChange={(v) => onChange({ expires_at: v })}
+/>
+
+<SelectInput
+    name="day_of_week"
+    value={form.day_of_week}
+    options={DAY_OPTIONS}
+    onValueChange={(v) => onChange({ day_of_week: v })}
+    placeholder="Select day"
+/>
+
+// ❌ Wrong — never write these in feature components
+<input type="number" ... />
+<input type="time" ... />
+<input type="date" ... />
+<input type="datetime-local" ... />
+<select>...</select>
+```
+
+**Rule:** if you need a new input variant that `@repo/ui` does not yet export, add the component to `packages/ui/components/` first, export it from `packages/ui/components/index.ts`, then consume it in the feature. Never build a one-off styled input inside a feature.
 
 ### Page layout baseline
 
@@ -744,12 +869,14 @@ Additional rules:
 ## Checklist — new feature
 
 - [ ] `hooks/index.ts` — re-exports from domain package only
-- [ ] `store/index.ts` — re-exports from domain package only
+- [ ] `store/index.ts` — re-exports from domain package + access functions
+- [ ] `store/access.ts` — all role-to-permission logic for the feature (no inline `role ===` comparisons in components)
 - [ ] `types/index.ts` — re-exports domain models + feature-only types
 - [ ] Every data-fetching component split into Container + View
 - [ ] Pages are thin shells (no logic)
 - [ ] `pages/` contains re-export files pointing to sub-feature pages
 - [ ] No hardcoded colors (`bg-[#xxx]`, `text-amber-700`, etc.)
+- [ ] No bare `<input type="number|time|date|datetime-local">` or `<select>` — use `NumberInput`, `TimeInput`, `DatePicker`, `DateTimePicker`, `SelectInput` from `@repo/ui`
 - [ ] No cross-feature imports
 - [ ] No imports from `@repo/api-client` inside features
 - [ ] No `process.env` / `import.meta.env` access (use `@repo/config`)

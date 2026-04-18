@@ -5,6 +5,9 @@ import type { DayRow } from "./ClubDetailHoursSection";
 
 vi.mock("@repo/ui", () => ({
     AlertToast: ({ title }: { title: string }) => <div role="alert">{title}</div>,
+    TimeInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="time" className={className} {...(props as object)} />
+    ),
 }));
 
 const makeRows = (): DayRow[] =>

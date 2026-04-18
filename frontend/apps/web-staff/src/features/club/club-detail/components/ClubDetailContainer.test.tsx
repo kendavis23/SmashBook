@@ -16,6 +16,8 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
+    canManageClub: vi.fn((role: string) => role === "owner" || role === "admin"),
+    canCreateClub: vi.fn((role: string) => role === "owner" || role === "admin"),
 }));
 
 vi.mock("../../components/ClubModal", () => ({
@@ -168,7 +170,7 @@ describe("ClubDetailContainer — success state", () => {
         mockUseClubAccess.mockReturnValue({ role: "owner" });
         render(<ClubDetailContainer />);
         fireEvent.click(screen.getByText("Clubs"));
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/clubs" });
+        expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/clubs" }));
     });
 });
 

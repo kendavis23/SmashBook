@@ -99,7 +99,7 @@ describe("getSearchableRoutes", () => {
 
     it("includes authorized routes for admin", () => {
         const keys = getSearchableRoutes("admin").map((route) => route.key);
-        expect(keys).toContain("finance");
+        expect(keys).not.toContain("finance");
         expect(keys).toContain("reports");
         expect(keys).toContain("calendar");
         expect(keys).toContain("staff");
@@ -108,8 +108,8 @@ describe("getSearchableRoutes", () => {
     it("returns only unrestricted routes when the user role is missing", () => {
         const keys = getSearchableRoutes(undefined).map((route) => route.key);
         expect(keys).toContain("dashboard");
-        expect(keys).toContain("support");
-        expect(keys).not.toContain("calendar");
+        expect(keys).not.toContain("support");
+        expect(keys).not.toContain("finance");
         expect(keys).not.toContain("settings-club");
     });
 });
@@ -136,18 +136,16 @@ describe("canAccess", () => {
     });
 
     it("restricted routes have the expected roles", () => {
-        const calendarRoute = ROUTES.find((r) => r.key === "calendar");
         const staffRoute = ROUTES.find((r) => r.key === "staff");
         const financeRoute = ROUTES.find((r) => r.key === "finance");
         const reportsRoute = ROUTES.find((r) => r.key === "reports");
-        expect(calendarRoute?.roles).toEqual(["owner", "admin"]);
         expect(staffRoute?.roles).toEqual(["owner", "admin"]);
-        expect(financeRoute?.roles).toEqual(["owner", "admin"]);
+        expect(financeRoute?.roles).toEqual(["owner"]);
         expect(reportsRoute?.roles).toEqual(["owner", "admin"]);
     });
 
     it("unrestricted routes have no roles defined", () => {
-        const unrestricted = ["dashboard", "courts", "bookings", "players", "equipment", "support"];
+        const unrestricted = ["dashboard"];
         unrestricted.forEach((key) => {
             const route = ROUTES.find((r) => r.key === key);
             expect(route?.roles, `${key} should be unrestricted`).toBeUndefined();

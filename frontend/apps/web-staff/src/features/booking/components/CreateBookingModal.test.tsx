@@ -14,6 +14,10 @@ vi.mock("../hooks", () => ({
 
 vi.mock("@repo/ui", () => ({
     AlertToast: ({ title }: { title: string }) => <div role="alert">{title}</div>,
+    formatUTCDateTime: (iso: string) => iso,
+    formatUTCDate: (iso: string) => iso,
+    formatUTCTime: (iso: string) => iso,
+    datetimeLocalToUTC: (v: string) => v,
 }));
 
 // createPortal renders into document.body in tests

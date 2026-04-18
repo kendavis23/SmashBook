@@ -1,5 +1,5 @@
 import { useGetClub, useUpdateClubSettings } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageClub, canCreateClub } from "../../store";
 import type { Club, ClubSettingsInput, Tab } from "../../types";
 import { TABS } from "../../types";
 import { AlertToast } from "@repo/ui";
@@ -13,7 +13,8 @@ export default function ClubDetailContainer(): JSX.Element {
     const navigate = useNavigate();
     const { role } = useClubAccess();
 
-    const canManage = role === "owner" || role === "admin";
+    const canManage = canManageClub(role);
+    const canEdit = canCreateClub(role);
     const visibleTabs = TABS.filter((t) => t.id === "view" || canManage);
 
     const [tab, setTab] = useState<Tab>("view");
@@ -88,13 +89,19 @@ export default function ClubDetailContainer(): JSX.Element {
                 updateSettingsIsSuccess={updateSettings.isSuccess}
                 updateSettingsError={updateSettings.error as Error | null}
                 settingsToastDismissed={settingsToastDismissed}
+                canEdit={canEdit}
                 onTabChange={setTab}
                 onEditOpen={() => setEditOpen(true)}
                 onSettingsChange={handleSettingsChange}
                 onSettingsSave={handleSettingsSave}
                 onSettingsCancel={handleSettingsCancel}
                 onSettingsToastDismiss={() => setSettingsToastDismissed(true)}
-                onNavigateBack={() => void navigate({ to: "/clubs" })}
+                onNavigateBack={() =>
+                    void navigate({
+                        to: "/clubs",
+                        search: { created: undefined, updated: undefined },
+                    })
+                }
             />
             {clubSuccessMsg ? (
                 <AlertToast

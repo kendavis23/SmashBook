@@ -28,6 +28,26 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onClose}>Dismiss</button>
         </div>
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+    }) => (
+        <select value={value} onChange={(e) => onValueChange(e.target.value)}>
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
+    NumberInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="number" className={className} {...(props as object)} />
+    ),
 }));
 
 const existingCourt: Court = {

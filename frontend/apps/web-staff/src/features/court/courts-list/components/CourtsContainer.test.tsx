@@ -9,14 +9,12 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
+    canManageCourts: vi.fn(),
 }));
 
-vi.mock("../../components/CourtModal", () => ({
-    default: ({ onClose }: { onClose: () => void }) => (
-        <div role="dialog">
-            <button onClick={onClose}>Close modal</button>
-        </div>
-    ),
+vi.mock("@tanstack/react-router", () => ({
+    useNavigate: vi.fn(() => vi.fn()),
+    useSearch: vi.fn(() => ({})),
 }));
 
 vi.mock("@repo/ui", () => ({
@@ -33,14 +31,52 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+        placeholder?: string;
+    }) => (
+        <select
+            value={value}
+            aria-label={placeholder}
+            onChange={(e) => onValueChange(e.target.value)}
+        >
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
+    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+        <input
+            type="date"
+            aria-label="Filter by date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+    TimeInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="time" className={className} {...(props as object)} />
+    ),
 }));
 
 import { useListCourts, useGetCourtAvailability } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageCourts } from "../../store";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
+const mockCanManageCourts = canManageCourts as ReturnType<typeof vi.fn>;
+const mockUseNavigate = useNavigate as ReturnType<typeof vi.fn>;
+const mockUseSearch = useSearch as ReturnType<typeof vi.fn>;
 
 const mockCourts = [
     {
@@ -69,7 +105,10 @@ if (!firstCourt) {
     throw new Error("Expected at least one mock court");
 }
 
-function setupMocks(courtsOverride = {}) {
+function setupMocks(courtsOverride = {}, canManage = true) {
+    const mockNavigate = vi.fn();
+    mockUseNavigate.mockReturnValue(mockNavigate);
+    mockUseSearch.mockReturnValue({});
     mockUseListCourts.mockReturnValue({
         data: mockCourts,
         isLoading: false,
@@ -82,11 +121,16 @@ function setupMocks(courtsOverride = {}) {
         isLoading: false,
         error: null,
     });
-    mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
+    mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: canManage ? "owner" : "staff" });
+    mockCanManageCourts.mockReturnValue(canManage);
+    return { mockNavigate };
 }
 
 describe("CourtsContainer — loading state", () => {
     it("renders loading indicator", () => {
+        const mockNavigate = vi.fn();
+        mockUseNavigate.mockReturnValue(mockNavigate);
+        mockUseSearch.mockReturnValue({});
         mockUseListCourts.mockReturnValue({
             data: [],
             isLoading: true,
@@ -99,6 +143,7 @@ describe("CourtsContainer — loading state", () => {
             error: null,
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
+        mockCanManageCourts.mockReturnValue(true);
         render(<CourtsContainer />);
         expect(screen.getByText("Loading courts…")).toBeInTheDocument();
     });
@@ -106,6 +151,9 @@ describe("CourtsContainer — loading state", () => {
 
 describe("CourtsContainer — error state", () => {
     it("renders error message", () => {
+        const mockNavigate = vi.fn();
+        mockUseNavigate.mockReturnValue(mockNavigate);
+        mockUseSearch.mockReturnValue({});
         mockUseListCourts.mockReturnValue({
             data: [],
             isLoading: false,
@@ -118,6 +166,7 @@ describe("CourtsContainer — error state", () => {
             error: null,
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
+        mockCanManageCourts.mockReturnValue(true);
         render(<CourtsContainer />);
         expect(screen.getByText("Network error")).toBeInTheDocument();
     });
@@ -153,9 +202,9 @@ describe("CourtsContainer — court list", () => {
     });
 });
 
-describe("CourtsContainer — create modal", () => {
-    it("opens CourtModal when Add Court is clicked", () => {
-        setupMocks({ data: [] });
+describe("CourtsContainer — Add Court navigation", () => {
+    it("navigates to /courts/new when Add Court is clicked (owner)", () => {
+        const { mockNavigate } = setupMocks({ data: [] });
         render(<CourtsContainer />);
         const addCourtButtons = screen.getAllByRole("button", { name: /Add Court/i });
         const emptyStateButton = addCourtButtons[addCourtButtons.length - 1];
@@ -165,50 +214,31 @@ describe("CourtsContainer — create modal", () => {
         }
 
         fireEvent.click(emptyStateButton);
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
-    });
-
-    it("closes CourtModal when onClose is called", () => {
-        setupMocks({ data: [] });
-        render(<CourtsContainer />);
-        const addCourtButtons = screen.getAllByRole("button", { name: /Add Court/i });
-        const emptyStateButton = addCourtButtons[addCourtButtons.length - 1];
-
-        if (!emptyStateButton) {
-            throw new Error("Expected an Add Court button in the empty state");
-        }
-
-        fireEvent.click(emptyStateButton);
-        fireEvent.click(screen.getByText("Close modal"));
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/courts/new" });
     });
 
     it("does not show Add Court actions for non-admin non-owner roles", () => {
-        mockUseListCourts.mockReturnValue({
-            data: [],
-            isLoading: false,
-            error: null,
-            refetch: vi.fn(),
-        });
-        mockUseGetCourtAvailability.mockReturnValue({
-            data: undefined,
-            isLoading: false,
-            error: null,
-        });
-        mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "staff" });
-
+        setupMocks({ data: [] }, false);
         render(<CourtsContainer />);
-
         expect(screen.queryByRole("button", { name: /add court/i })).not.toBeInTheDocument();
     });
 });
 
-describe("CourtsContainer — edit modal", () => {
-    it("opens CourtModal with court data when Edit is clicked", () => {
-        setupMocks();
+describe("CourtsContainer — Edit Court navigation", () => {
+    it("navigates to /courts/:courtId when Edit is clicked (owner)", () => {
+        const { mockNavigate } = setupMocks();
         render(<CourtsContainer />);
         fireEvent.click(screen.getByLabelText("Edit Court Alpha"));
-        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: "/courts/$courtId",
+            params: { courtId: "court-1" },
+        });
+    });
+
+    it("does not show Edit button for non-admin non-owner roles", () => {
+        setupMocks({}, false);
+        render(<CourtsContainer />);
+        expect(screen.queryByLabelText(/Edit Court/i)).not.toBeInTheDocument();
     });
 });
 
@@ -217,7 +247,6 @@ describe("CourtsContainer — availability panel", () => {
         setupMocks();
         render(<CourtsContainer />);
         fireEvent.click(screen.getByLabelText("Check availability for Court Alpha"));
-        // Availability panel is rendered (panel header with court name shows)
         expect(screen.getAllByText("Court Alpha").length).toBeGreaterThan(0);
     });
 
@@ -226,11 +255,8 @@ describe("CourtsContainer — availability panel", () => {
         const { container } = render(<CourtsContainer />);
         const availabilityButton = screen.getByLabelText("Check availability for Court Alpha");
         fireEvent.click(availabilityButton);
-        // Panel visible — court name appears twice (table + panel)
         expect(screen.getAllByText(firstCourt.name).length).toBeGreaterThan(1);
-        // Click again to close
         fireEvent.click(screen.getByLabelText("Check availability for Court Alpha"));
-        // Now court name appears only once (table row)
         expect(screen.getAllByText(firstCourt.name).length).toBe(1);
         void container;
     });

@@ -11,6 +11,52 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    DatePicker: ({
+        value,
+        onChange,
+        placeholder,
+    }: {
+        value: string;
+        onChange: (v: string) => void;
+        placeholder?: string;
+    }) => (
+        <input
+            type="date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={placeholder ?? "Pick a date"}
+        />
+    ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+        clearLabel,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: { value: string; label: string }[];
+        placeholder?: string;
+        clearLabel?: string;
+    }) => (
+        <select
+            value={value ?? ""}
+            onChange={(e) => onValueChange(e.target.value)}
+            aria-label={placeholder ?? "select"}
+        >
+            {clearLabel !== undefined && <option value="">{clearLabel}</option>}
+            {(options ?? []).map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
+    formatUTCDateTime: (iso: string) => iso,
+    formatUTCDate: (iso: string) => iso,
+    formatUTCTime: (iso: string) => iso,
+    datetimeLocalToUTC: (v: string) => v,
 }));
 
 const defaultFilters: BookingsListFilters = {

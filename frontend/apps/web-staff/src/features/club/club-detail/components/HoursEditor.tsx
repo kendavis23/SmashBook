@@ -1,5 +1,5 @@
 import type { OperatingHours } from "../../types";
-import { AlertToast } from "@repo/ui";
+import { AlertToast, TimeInput } from "@repo/ui";
 import { type JSX, useEffect, useState } from "react";
 import type { DayRow } from "./ClubDetailHoursSection";
 
@@ -115,8 +115,7 @@ export default function HoursEditor({
                                 <span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">
                                     Open Time
                                 </span>
-                                <input
-                                    type="time"
+                                <TimeInput
                                     className="input-base"
                                     disabled={!row.isOpen}
                                     value={row.open_time}
@@ -130,8 +129,7 @@ export default function HoursEditor({
                                 <span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">
                                     Close Time
                                 </span>
-                                <input
-                                    type="time"
+                                <TimeInput
                                     className="input-base"
                                     disabled={!row.isOpen}
                                     value={row.close_time}

@@ -1,14 +1,14 @@
 export type UUID = string;
 
 export type TenantUserRole =
-    | "player"
-    | "viewer"
-    | "staff"
-    | "trainer"
-    | "ops_lead"
-    | "admin"
     | "owner"
-    | "front_desk";
+    | "admin"
+    | "ops_lead"
+    | "staff"
+    | "front_desk"
+    | "trainer"
+    | "viewer"
+    | "player";
 
 export type NotificationChannel = "email" | "sms" | "push" | "in_app";
 

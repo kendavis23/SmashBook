@@ -16,6 +16,7 @@ type Props = {
     boardHeight: number;
     startOfDayMinutes: number;
     endOfDayMinutes: number;
+    onManageClick: (bookingId: string) => void;
 };
 
 const BLOCK_VERTICAL_GAP = 8;
@@ -26,6 +27,7 @@ export default function CalendarBookingBlock({
     boardHeight,
     startOfDayMinutes,
     endOfDayMinutes,
+    onManageClick,
 }: Props): JSX.Element | null {
     const typeColors = BOOKING_TYPE_COLORS[booking.booking_type] ?? BOOKING_TYPE_COLORS.regular;
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS.pending;
@@ -58,6 +60,7 @@ export default function CalendarBookingBlock({
         Math.max(rawHeight - BLOCK_VERTICAL_GAP, MIN_BLOCK_HEIGHT),
         availableHeight
     );
+
     const title = booking.event_name ?? BOOKING_TYPE_LABELS[booking.booking_type] ?? "Booking";
     const timeLabel = `${formatTime(booking.start_datetime)} – ${formatTime(booking.end_datetime)}`;
     const participantSummary = booking.players
@@ -68,7 +71,7 @@ export default function CalendarBookingBlock({
         booking.slots_available > 0
             ? `${booking.slots_available} slot${booking.slots_available === 1 ? "" : "s"} left`
             : "Full";
-    const detailLabel = [
+    const ariaLabel = [
         title,
         timeLabel,
         BOOKING_STATUS_LABELS[booking.status] ?? booking.status,
@@ -76,16 +79,18 @@ export default function CalendarBookingBlock({
         participantSummary || "No players yet",
         slotsLabel,
     ].join(" • ");
+
     const showExpandedMeta = height >= 92;
     const showPlayers = height >= 74 && participantSummary.length > 0;
 
     return (
-        <div
-            aria-label={detailLabel}
-            className={`absolute left-2 right-2 z-10 rounded-xl border px-2.5 py-2 shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-within:z-20 focus-within:shadow-md ${typeColors.bg} ${typeColors.border}`}
+        <button
+            type="button"
+            aria-label={ariaLabel}
+            title={ariaLabel}
+            onClick={() => onManageClick(booking.id)}
+            className={`absolute left-2 right-2 z-10 cursor-pointer rounded-xl border px-2.5 py-2 shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${typeColors.bg} ${typeColors.border} text-left`}
             style={{ top: `${top}px`, height: `${height}px` }}
-            tabIndex={0}
-            title={detailLabel}
         >
             <div className="flex h-full flex-col justify-between gap-2 overflow-hidden">
                 <div className="min-w-0">
@@ -126,6 +131,6 @@ export default function CalendarBookingBlock({
                     </div>
                 ) : null}
             </div>
-        </div>
+        </button>
     );
 }

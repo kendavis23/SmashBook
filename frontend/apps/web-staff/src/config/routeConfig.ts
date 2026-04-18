@@ -16,15 +16,13 @@ import {
 import type { LucideIcon } from "lucide-react";
 
 export type UserRole =
-    | "admin"
     | "owner"
+    | "admin"
+    | "ops_lead"
     | "staff"
-    | "employee"
     | "front_desk"
     | "trainer"
-    | "ops_lead"
-    | "viewer"
-    | "player";
+    | "viewer";
 
 export interface RouteConfig {
     key: string;
@@ -96,7 +94,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Clubs",
         subtitle: "Manage your clubs and locations.",
         breadcrumb: ["Operations", "Clubs"],
-        roles: ["admin", "owner", "front_desk"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "Operations",
     },
     {
@@ -107,6 +105,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Courts",
         subtitle: "Configure and manage playing courts.",
         breadcrumb: ["Operations", "Courts"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "Operations",
     },
     {
@@ -117,6 +116,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Bookings",
         subtitle: "View and manage court reservations.",
         breadcrumb: ["Operations", "Bookings"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "Operations",
     },
     {
@@ -127,6 +127,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Reservations",
         subtitle: "Manage calendar blocks and court reservations.",
         breadcrumb: ["Operations", "Reservations"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "Operations",
     },
     {
@@ -137,7 +138,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Calendar",
         subtitle: "Visualise availability and schedules.",
         breadcrumb: ["Operations", "Calendar"],
-        roles: ["owner", "admin"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "Operations",
     },
     {
@@ -170,6 +171,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Players",
         subtitle: "View and manage registered players.",
         breadcrumb: ["People", "Players"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "People",
     },
     {
@@ -180,7 +182,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Finance",
         subtitle: "Track revenue, payouts, and transactions.",
         breadcrumb: ["Finance & Reports", "Finance"],
-        roles: ["owner", "admin"],
+        roles: ["owner"],
         group: "Finance & Reports",
     },
     {
@@ -202,6 +204,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Support",
         subtitle: "Handle player queries and issues.",
         breadcrumb: ["Support", "Support"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "Support",
     },
     {
@@ -212,6 +215,7 @@ export const ROUTES: RouteConfig[] = [
         title: "Equipment",
         subtitle: "Track gear, inventory, and condition.",
         breadcrumb: ["Support", "Equipment"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "Support",
     },
 ];

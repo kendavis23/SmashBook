@@ -1,5 +1,4 @@
 import { useAuth, useAuthStore, useInitAuth } from "@repo/auth";
-import { useListClubs } from "@repo/staff-domain/hooks";
 import { Outlet, useNavigate } from "@tanstack/react-router";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
@@ -15,20 +14,17 @@ export default function DashboardLayout(): JSX.Element {
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
 
-    const { role, clubs: jwtClubs } = useAuth();
-    const isOwner = role === "owner";
+    const { clubs: jwtClubs } = useAuth();
 
-    // Owners fetch the full club list from the API.
-    // Non-owners use the clubs array already present in the login response (JWT clubs).
-    const { data: apiClubs = [], isLoading: isClubsLoading } = useListClubs({ enabled: isOwner });
-    const clubs = isOwner ? apiClubs : jwtClubs.map((c) => ({ id: c.club_id, name: c.club_name }));
+    // All roles use the clubs array from the login response (JWT clubs).
+    const clubs = jwtClubs.map((c) => ({ id: c.club_id, name: c.club_name, role: c.role }));
 
-    // Auto-select the first club for all roles when none is set yet
+    // Auto-select the first club for all roles when none is set yet.
     useEffect(() => {
         if (!activeClubId && clubs.length > 0) {
             const first = clubs[0];
             if (first) {
-                setActiveClubId(first.id, first.name);
+                setActiveClubId(first.id, first.name, first.role);
             }
         }
     }, [activeClubId, clubs, setActiveClubId]);
@@ -66,7 +62,7 @@ export default function DashboardLayout(): JSX.Element {
                         mobileOpen={mobileOpen}
                         onOpenMobile={() => setMobileOpen(true)}
                         clubs={clubs}
-                        isClubsLoading={isClubsLoading}
+                        isClubsLoading={false}
                     />
                 </header>
 

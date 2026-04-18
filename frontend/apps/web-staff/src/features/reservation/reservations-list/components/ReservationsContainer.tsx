@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import type { JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useListCalendarReservations, useListCourts } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageReservation } from "../../store";
 import type { CalendarReservation, Court, ReservationFilters } from "../../types";
 import ReservationsView from "./ReservationsView";
 
@@ -28,17 +28,11 @@ function applyClientFilters(
                 return false;
             }
         }
-        if (filters.fromDt) {
-            const from = new Date(filters.fromDt);
-            if (new Date(res.start_datetime) < from) {
-                return false;
-            }
+        if (filters.fromDt && res.start_datetime < filters.fromDt) {
+            return false;
         }
-        if (filters.toDt) {
-            const to = new Date(filters.toDt);
-            if (new Date(res.end_datetime) > to) {
-                return false;
-            }
+        if (filters.toDt && res.end_datetime > filters.toDt) {
+            return false;
         }
         return true;
     });
@@ -50,7 +44,7 @@ export default function ReservationsContainer(): JSX.Element {
     const [appliedFilters, setAppliedFilters] = useState<ReservationFilters>(createDefaultFilters);
 
     const { clubId, role } = useClubAccess();
-    const canCreate = role === "owner" || role === "admin";
+    const canCreate = canManageReservation(role);
 
     const {
         data: allReservations = [],

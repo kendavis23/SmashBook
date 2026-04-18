@@ -151,9 +151,9 @@ describe("Sidebar — role-restricted routes hidden from staff", () => {
         currentPath = "/dashboard";
     });
 
-    it("does NOT render Calendar link for staff role", () => {
+    it("renders Calendar link for staff role", () => {
         render(<Sidebar />);
-        expect(screen.queryByText("Calendar")).not.toBeInTheDocument();
+        expect(screen.getByText("Calendar")).toBeInTheDocument();
     });
 
     it("does NOT render Staff link for staff role", () => {
@@ -193,9 +193,9 @@ describe("Sidebar — role-restricted routes visible to admin", () => {
         expect(screen.getByText("Staff")).toBeInTheDocument();
     });
 
-    it("renders Finance link for admin", () => {
+    it("does NOT render Finance link for admin (owner only)", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Finance")).toBeInTheDocument();
+        expect(screen.queryByText("Finance")).not.toBeInTheDocument();
     });
 
     it("renders Reports link for admin", () => {

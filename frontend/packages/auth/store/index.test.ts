@@ -14,19 +14,21 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("useAuthStore — setActiveClubId", () => {
-    it("sets activeClubId and activeClubName", () => {
-        useAuthStore.getState().setActiveClubId("club-1", "Padel Pro");
+    it("sets activeClubId, activeClubName, and activeRole", () => {
+        useAuthStore.getState().setActiveClubId("club-1", "Padel Pro", "admin");
         const state = useAuthStore.getState();
         expect(state.activeClubId).toBe("club-1");
         expect(state.activeClubName).toBe("Padel Pro");
+        expect(state.activeRole).toBe("admin");
     });
 
     it("overrides a previously set active club", () => {
-        useAuthStore.getState().setActiveClubId("club-1", "First Club");
-        useAuthStore.getState().setActiveClubId("club-2", "Second Club");
+        useAuthStore.getState().setActiveClubId("club-1", "First Club", "staff");
+        useAuthStore.getState().setActiveClubId("club-2", "Second Club", "owner");
         const state = useAuthStore.getState();
         expect(state.activeClubId).toBe("club-2");
         expect(state.activeClubName).toBe("Second Club");
+        expect(state.activeRole).toBe("owner");
     });
 });
 
@@ -35,12 +37,13 @@ describe("useAuthStore — setActiveClubId", () => {
 // ---------------------------------------------------------------------------
 
 describe("useAuthStore — clearAuth", () => {
-    it("clears activeClubId and activeClubName on sign-out", () => {
-        useAuthStore.getState().setActiveClubId("club-1", "Test Club");
+    it("clears activeClubId, activeClubName, and activeRole on sign-out", () => {
+        useAuthStore.getState().setActiveClubId("club-1", "Test Club", "admin");
         useAuthStore.getState().clearAuth();
         const state = useAuthStore.getState();
         expect(state.activeClubId).toBeNull();
         expect(state.activeClubName).toBeNull();
+        expect(state.activeRole).toBeNull();
     });
 });
 
@@ -49,9 +52,10 @@ describe("useAuthStore — clearAuth", () => {
 // ---------------------------------------------------------------------------
 
 describe("useAuthStore — initial state", () => {
-    it("starts with null activeClubId and activeClubName", () => {
+    it("starts with null activeClubId, activeClubName, and activeRole", () => {
         const state = useAuthStore.getState();
         expect(state.activeClubId).toBeNull();
         expect(state.activeClubName).toBeNull();
+        expect(state.activeRole).toBeNull();
     });
 });

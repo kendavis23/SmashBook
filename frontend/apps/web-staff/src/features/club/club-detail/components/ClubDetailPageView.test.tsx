@@ -85,6 +85,7 @@ const defaultProps = {
     onSettingsCancel: vi.fn(),
     onSettingsToastDismiss: vi.fn(),
     onNavigateBack: vi.fn(),
+    canEdit: true,
 };
 
 describe("ClubDetailPageView", () => {

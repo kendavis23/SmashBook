@@ -10,12 +10,8 @@ import type { PricingRule } from "../models/club.model";
  * format required by <input type="datetime-local" /> ("YYYY-MM-DDTHH:mm").
  */
 function toDatetimeLocal(iso: string): string {
-    const d = new Date(iso);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return (
-        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-        `T${pad(d.getHours())}:${pad(d.getMinutes())}`
-    );
+    const stripped = iso.replace("Z", "").replace(/[+-]\d{2}:\d{2}$/, "");
+    return stripped.slice(0, 16); // "YYYY-MM-DDTHH:mm"
 }
 
 /**

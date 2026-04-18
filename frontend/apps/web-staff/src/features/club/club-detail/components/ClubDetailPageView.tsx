@@ -18,6 +18,7 @@ type Props = {
     updateSettingsError: Error | null;
     settingsToastDismissed: boolean;
     onTabChange: (tab: Tab) => void;
+    canEdit: boolean;
     onEditOpen: () => void;
     onSettingsChange: (key: keyof ClubSettingsInput, val: unknown) => void;
     onSettingsSave: () => void;
@@ -36,6 +37,7 @@ export default function ClubDetailPageView({
     updateSettingsIsSuccess,
     updateSettingsError,
     settingsToastDismissed,
+    canEdit,
     onTabChange,
     onEditOpen,
     onSettingsChange,
@@ -65,9 +67,11 @@ export default function ClubDetailPageView({
                             Currency: {club.currency}
                         </p>
                     </div>
-                    <button onClick={onEditOpen} className="btn-ghost-sm shrink-0">
-                        <Pencil size={12} /> Edit Club
-                    </button>
+                    {canEdit ? (
+                        <button onClick={onEditOpen} className="btn-ghost-sm shrink-0">
+                            <Pencil size={12} /> Edit Club
+                        </button>
+                    ) : null}
                 </header>
 
                 <div className="mt-4 flex border-b border-border">

@@ -1,6 +1,6 @@
 import type { Club } from "../../types";
 import { Breadcrumb } from "@repo/ui";
-import { Building2, Search, Settings, X } from "lucide-react";
+import { Building2, Plus, RefreshCw, Settings, Search } from "lucide-react";
 import type { JSX } from "react";
 
 type Props = {
@@ -8,7 +8,9 @@ type Props = {
     search: string;
     isLoading: boolean;
     error: Error | null;
+    canCreate: boolean;
     onSearchChange: (value: string) => void;
+    onRefresh: () => void;
     onCreateClick: () => void;
     onManageClub: (id: string) => void;
 };
@@ -18,47 +20,81 @@ export default function ClubsView({
     search,
     isLoading,
     error,
+    canCreate,
     onSearchChange,
+    onRefresh,
     onCreateClick,
     onManageClub,
 }: Props): JSX.Element {
+    const activeCount = clubs.length;
+
     return (
         <div className="w-full space-y-5">
-            <div className="flex items-center justify-between">
-                <div className="">
-                    <Breadcrumb items={[{ label: "Clubs" }]} />
-                </div>
-            </div>
+            <Breadcrumb items={[{ label: "Clubs" }]} />
 
-            <div className="card-surface overflow-hidden">
-                <div className="border-b border-border px-5 py-3 flex items-center justify-between gap-3">
-                    <div className="relative flex w-full max-w-xs items-center">
-                        <Search
-                            size={14}
-                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Search clubs…"
-                            className="search-input"
-                            value={search}
-                            onChange={(e) => onSearchChange(e.target.value)}
-                        />
-                        {search && (
-                            <button
-                                type="button"
-                                onClick={() => onSearchChange("")}
-                                className="search-clear-btn"
-                                aria-label="Clear search"
-                            >
-                                <X size={11} />
-                            </button>
-                        )}
+            <section className="card-surface overflow-hidden">
+                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0">
+                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                            Clubs
+                        </h1>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {clubs.length > 0
+                                ? `${activeCount} total`
+                                : "Manage your organisation's clubs"}
+                        </p>
                     </div>
-                    <div>
-                        <button onClick={onCreateClick} className="btn-cta">
-                            + Create Club
+                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <button
+                            onClick={onRefresh}
+                            className="btn-outline min-h-11 px-4"
+                            aria-label="Refresh clubs"
+                        >
+                            <RefreshCw size={14} /> Refresh
                         </button>
+                        {canCreate ? (
+                            <button onClick={onCreateClick} className="btn-cta min-h-11 px-4">
+                                <Plus size={14} /> New Club
+                            </button>
+                        ) : null}
+                    </div>
+                </header>
+
+                <div className="border-b border-border bg-muted/20 px-5 py-4 sm:px-6">
+                    <div className="mb-3 flex items-center gap-2">
+                        <Search size={13} className="text-muted-foreground" />
+                        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Filters
+                        </span>
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[11px] font-medium text-muted-foreground">
+                                Search
+                            </span>
+                            <div className="relative flex items-center">
+                                <div className="flex w-full max-w-xs items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
+                                    <Search size={13} className="shrink-0 text-muted-foreground" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search clubs…"
+                                        className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                                        value={search}
+                                        onChange={(e) => onSearchChange(e.target.value)}
+                                    />
+                                    {search && (
+                                        <button
+                                            type="button"
+                                            onClick={() => onSearchChange("")}
+                                            className="text-muted-foreground hover:text-foreground"
+                                            aria-label="Clear search"
+                                        >
+                                            ×
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -80,9 +116,9 @@ export default function ClubsView({
                                 ? "Try a different search term."
                                 : "Create your first club to start managing courts, bookings, and players."}
                         </p>
-                        {!search ? (
+                        {!search && canCreate ? (
                             <button onClick={onCreateClick} className="btn-cta mt-5">
-                                + Create Club
+                                <Plus size={14} /> New Club
                             </button>
                         ) : null}
                     </section>
@@ -127,7 +163,7 @@ export default function ClubsView({
                         </table>
                     </div>
                 )}
-            </div>
+            </section>
         </div>
     );
 }

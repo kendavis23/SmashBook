@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import type { JSX } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useListBookings, useListCourts } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageBooking } from "../../store";
 import type { Booking, BookingsListFilters } from "../../types";
 import BookingsView from "./BookingsView";
 
@@ -38,10 +38,7 @@ export default function BookingsContainer(): JSX.Element {
     }, []);
 
     const { clubId, role } = useClubAccess();
-    const canManage = useMemo(
-        () => role === "owner" || role === "admin" || role === "staff",
-        [role]
-    );
+    const canManage = useMemo(() => canManageBooking(role), [role]);
 
     const {
         data: bookings = [],

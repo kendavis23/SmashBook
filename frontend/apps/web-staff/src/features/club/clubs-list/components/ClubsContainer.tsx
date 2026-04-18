@@ -1,35 +1,66 @@
 import { useListClubs } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canViewClubList, canCreateClub } from "../../store";
 import type { Club } from "../../types";
 import { AlertToast } from "@repo/ui";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { JSX } from "react";
-import { useEffect, useState } from "react";
-import ClubModal from "../../components/ClubModal";
+import { useCallback, useEffect, useState } from "react";
 import ClubsView from "./ClubsView";
 
 export default function ClubsContainer(): JSX.Element {
     const [search, setSearch] = useState("");
-    const [modalOpen, setModalOpen] = useState(false);
-    const [successMsg, setSuccessMsg] = useState("");
 
-    const { data: clubs = [], isLoading, error } = useListClubs();
+    const { data: clubs = [], isLoading, error, refetch } = useListClubs();
     const navigate = useNavigate();
-    const { isOwner, clubId } = useClubAccess();
+    const { role, clubId } = useClubAccess();
+
+    const searchParams = useSearch({ strict: false }) as {
+        created?: boolean;
+        updated?: boolean;
+    };
+    const [successMsg] = useState(
+        searchParams.created
+            ? "Club created successfully."
+            : searchParams.updated
+              ? "Club updated successfully."
+              : ""
+    );
+    const [showSuccess, setShowSuccess] = useState(!!successMsg);
 
     useEffect(() => {
-        if (!isOwner && clubId) {
+        if (searchParams.created || searchParams.updated) {
+            void navigate({
+                to: "/clubs",
+                search: { created: undefined, updated: undefined },
+                replace: true,
+            });
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!canViewClubList(role) && clubId) {
             void navigate({ to: "/clubs/$clubId", params: { clubId } });
         }
-    }, [isOwner, clubId, navigate]);
+    }, [role, clubId, navigate]);
 
     const filtered = (clubs as Club[]).filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase())
     );
 
-    function handleNavigateToClub(id: string): void {
-        void navigate({ to: "/clubs/$clubId", params: { clubId: id } });
-    }
+    const handleRefresh = useCallback(() => void refetch(), [refetch]);
+
+    const handleCreateClick = useCallback(
+        () =>
+            void navigate({
+                to: "/clubs/new",
+            }),
+        [navigate]
+    );
+
+    const handleNavigateToClub = useCallback(
+        (id: string) => void navigate({ to: "/clubs/$clubId", params: { clubId: id } }),
+        [navigate]
+    );
 
     return (
         <>
@@ -38,19 +69,18 @@ export default function ClubsContainer(): JSX.Element {
                 search={search}
                 isLoading={isLoading}
                 error={error as Error | null}
+                canCreate={canCreateClub(role)}
                 onSearchChange={setSearch}
-                onCreateClick={() => setModalOpen(true)}
+                onRefresh={handleRefresh}
+                onCreateClick={handleCreateClick}
                 onManageClub={handleNavigateToClub}
             />
-            {successMsg ? (
+            {showSuccess ? (
                 <AlertToast
                     title={successMsg}
                     variant="success"
-                    onClose={() => setSuccessMsg("")}
+                    onClose={() => setShowSuccess(false)}
                 />
-            ) : null}
-            {modalOpen ? (
-                <ClubModal onClose={() => setModalOpen(false)} onSuccess={setSuccessMsg} />
             ) : null}
         </>
     );
