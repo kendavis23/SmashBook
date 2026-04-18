@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -163,7 +163,8 @@ class OpenGameSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CalendarBooking(BaseModel):
+class CalendarBookingItem(BaseModel):
+    kind: Literal["booking"] = "booking"
     id: uuid.UUID
     court_id: uuid.UUID
     court_name: str
@@ -180,10 +181,31 @@ class CalendarBooking(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CalendarBlockItem(BaseModel):
+    kind: Literal["block"] = "block"
+    id: uuid.UUID
+    court_id: Optional[uuid.UUID] = None
+    start_datetime: datetime
+    end_datetime: datetime
+    reservation_type: str
+    title: str
+    anchor_skill_level: Optional[Decimal] = None
+    skill_range_above: Optional[Decimal] = None
+    skill_range_below: Optional[Decimal] = None
+
+    model_config = {"from_attributes": True}
+
+
+CalendarSlot = Annotated[
+    Union[CalendarBookingItem, CalendarBlockItem],
+    Field(discriminator="kind"),
+]
+
+
 class CalendarCourtColumn(BaseModel):
     court_id: uuid.UUID
     court_name: str
-    bookings: list[CalendarBooking]
+    slots: list[CalendarSlot]
 
 
 class CalendarDay(BaseModel):

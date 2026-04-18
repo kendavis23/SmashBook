@@ -1,4 +1,4 @@
-_Last updated: 2026-04-17 12:00 UTC_
+_Last updated: 2026-04-18 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -85,7 +85,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `POST` | `/api/v1/bookings/recurring` | Staff only: create a series of bookings from an iCal RRULE (e.g. `FREQ=WEEKLY;BYDAY=MO;COUNT=12`). Each occurrence is confirmed on creation. First booking is the series parent; others carry `parent_booking_id`. `skip_conflicts=true` skips conflicted slots instead of returning 409 |
 | `PATCH` | `/api/v1/bookings/{booking_id}` | Staff only: edit court, start time, notes, event name, contact fields. Re-validates conflict/blackout on time or court change |
 | `GET` | `/api/v1/bookings` | List bookings for a club; staff see all, players see only their own. Filters: `date_from`, `date_to`, `booking_type`, `booking_status`, `court_id`, `player_search` (staff only — name/email substring) |
-| `GET` | `/api/v1/bookings/calendar` | Staff: calendar grid view (day or week) of all non-cancelled bookings, grouped by day → court column. Params: `club_id`, `view=day\|week`, `anchor_date` |
+| `GET` | `/api/v1/bookings/calendar` | Staff: calendar grid view (day or week) grouped by day → court column → `slots[]`. Each slot is a discriminated union: `kind="booking"` (non-cancelled booking with players/price) or `kind="block"` (CalendarReservation — maintenance, skill filter, training block, etc.). Club-wide blocks (court_id=null) appear in every court column. Slots are sorted by `start_datetime`. Params: `club_id`, `view=day\|week`, `anchor_date` |
 | `GET` | `/api/v1/bookings/open-games` | Browse publicly joinable open games; filterable by date and skill range (no auth) |
 | `GET` | `/api/v1/bookings/{booking_id}` | Get booking detail; players can only see their own or open games |
 | `POST` | `/api/v1/bookings/{booking_id}/join` | Player self-joins an open game; enforces skill range and capacity |
