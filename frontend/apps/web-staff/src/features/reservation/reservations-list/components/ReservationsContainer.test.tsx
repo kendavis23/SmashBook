@@ -9,6 +9,7 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
+    canManageReservation: vi.fn((role: string) => ["owner", "admin", "ops_lead"].includes(role)),
 }));
 
 vi.mock("@tanstack/react-router", () => ({

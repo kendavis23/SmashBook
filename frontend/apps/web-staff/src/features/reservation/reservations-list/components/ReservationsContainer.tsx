@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo } from "react";
 import type { JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useListCalendarReservations, useListCourts } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageReservation } from "../../store";
 import type { CalendarReservation, Court, ReservationFilters } from "../../types";
 import ReservationsView from "./ReservationsView";
 
@@ -44,7 +44,7 @@ export default function ReservationsContainer(): JSX.Element {
     const [appliedFilters, setAppliedFilters] = useState<ReservationFilters>(createDefaultFilters);
 
     const { clubId, role } = useClubAccess();
-    const canCreate = role === "owner" || role === "admin";
+    const canCreate = canManageReservation(role);
 
     const {
         data: allReservations = [],

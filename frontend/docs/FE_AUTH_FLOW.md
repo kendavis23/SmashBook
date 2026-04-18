@@ -1,4 +1,4 @@
-_Last updated: 2026-04-18 09:40 UTC_
+_Last updated: 2026-04-18 11:00 UTC_
 
 # FE Auth Flow
 
@@ -214,28 +214,57 @@ Role controls both page-level access and intra-page element visibility. The patt
 
 **Auth source:** Always read role via a domain store hook (e.g. `useClubAccess()` from `@repo/staff-domain/store`), which wraps `useAuth()` internally. Features re-export it from their local `store/index.ts`. Pages do not call `useAuth()` directly.
 
-**Page-level redirect** (`ClubsPage.tsx`):
+**Access functions — single source of truth:**
+
+Each feature defines an `access.ts` file inside its `store/` folder. This is the **only** place role-to-permission logic is written. Components and containers call these functions — they never repeat inline role comparisons.
+
+```
+features/<feature>/store/access.ts   ← all role checks live here
+features/<feature>/store/index.ts    ← re-exports useClubAccess + access functions
+```
+
+Example (`features/club/store/access.ts`):
 
 ```ts
-const { isOwner, clubId } = useClubAccess();
+const MANAGE_ROLES: TenantUserRole[] = ["owner", "admin"];
+const CREATE_CLUB_ROLES: TenantUserRole[] = ["owner"];
+
+export function canManageClub(role) {
+    return role !== null && MANAGE_ROLES.includes(role);
+}
+export function canCreateClub(role) {
+    return role !== null && CREATE_CLUB_ROLES.includes(role);
+}
+export function canViewClubList(role) {
+    return role === "owner";
+}
+```
+
+To extend access (e.g. grant `staff` the ability to manage settings), edit **only** the relevant array in `access.ts`.
+
+**Page-level redirect** (`ClubsContainer.tsx`):
+
+```ts
+const { role, clubId } = useClubAccess();
 
 useEffect(() => {
-    if (!isOwner && clubId) {
+    if (!canViewClubList(role) && clubId) {
         void navigate({ to: "/clubs/$clubId", params: { clubId } });
     }
-}, [isOwner, clubId, navigate]);
+}, [role, clubId, navigate]);
 ```
 
 Non-owners are redirected to their own club detail page immediately on mount.
 
-**Tab-level visibility** (`ClubDetailPage.tsx`):
+**Tab-level visibility** (`ClubDetailContainer.tsx`):
 
 ```ts
-const canManage = role === "owner" || role === "admin";
+const { role } = useClubAccess();
+const canManage = canManageClub(role);
 const visibleTabs = TABS.filter((t) => t.id === "view" || canManage);
 ```
 
-`"view"` is always visible. `"settings"`, `"hours"`, and `"pricing"` are hidden for `staff`/`employee` roles. If the active tab becomes hidden (e.g. role changes), it falls back to `"view"`.
+`"view"` is always visible. `"settings"`, `"hours"`, and `"pricing"` are hidden unless `canManageClub` returns true. If the active tab becomes hidden (e.g. role changes), it falls back to `"view"`.
 
 **Action-level visibility** (`CourtsContainer.tsx` / `CourtsView.tsx`):
 
@@ -249,8 +278,9 @@ const canManageCourts = role === "owner" || role === "admin";
 **Rule of thumb:**
 
 - Sidebar route gating → `canAccess()` in `routeConfig.ts`
-- Page-level redirect → feature store + `useEffect` in the page
-- Intra-page elements (tabs, buttons) → derive `canManage` from store role, filter inline
+- Page-level redirect → `access.ts` function + `useEffect` in the container
+- Intra-page elements (tabs, buttons) → `access.ts` function, result passed as prop to View
+- **Never** write `role === "owner" || role === "admin"` inline in a component — always call an `access.ts` function
 
 ---
 

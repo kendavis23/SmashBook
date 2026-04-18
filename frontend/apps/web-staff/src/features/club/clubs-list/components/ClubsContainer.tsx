@@ -1,5 +1,5 @@
 import { useListClubs } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canViewClubList, canCreateClub } from "../../store";
 import type { Club } from "../../types";
 import { AlertToast } from "@repo/ui";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -12,7 +12,7 @@ export default function ClubsContainer(): JSX.Element {
 
     const { data: clubs = [], isLoading, error, refetch } = useListClubs();
     const navigate = useNavigate();
-    const { isOwner, clubId } = useClubAccess();
+    const { role, clubId } = useClubAccess();
 
     const searchParams = useSearch({ strict: false }) as {
         created?: boolean;
@@ -38,10 +38,10 @@ export default function ClubsContainer(): JSX.Element {
     }, []);
 
     useEffect(() => {
-        if (!isOwner && clubId) {
+        if (!canViewClubList(role) && clubId) {
             void navigate({ to: "/clubs/$clubId", params: { clubId } });
         }
-    }, [isOwner, clubId, navigate]);
+    }, [role, clubId, navigate]);
 
     const filtered = (clubs as Club[]).filter((c) =>
         c.name.toLowerCase().includes(search.toLowerCase())
@@ -69,6 +69,7 @@ export default function ClubsContainer(): JSX.Element {
                 search={search}
                 isLoading={isLoading}
                 error={error as Error | null}
+                canCreate={canCreateClub(role)}
                 onSearchChange={setSearch}
                 onRefresh={handleRefresh}
                 onCreateClick={handleCreateClick}

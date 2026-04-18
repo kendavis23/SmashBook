@@ -15,6 +15,8 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
+    canViewClubList: vi.fn(),
+    canCreateClub: vi.fn(),
 }));
 
 vi.mock("@repo/ui", () => ({
@@ -34,10 +36,12 @@ vi.mock("@repo/ui", () => ({
 }));
 
 import { useListClubs } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canViewClubList, canCreateClub } from "../../store";
 
 const mockUseListClubs = useListClubs as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
+const mockCanViewClubList = canViewClubList as ReturnType<typeof vi.fn>;
+const mockCanCreateClub = canCreateClub as ReturnType<typeof vi.fn>;
 
 const mockClubs = [
     { id: "club-1", name: "Alpha Club", address: "1 Main St", currency: "GBP" },
@@ -52,7 +56,9 @@ describe("ClubsContainer — loading state", () => {
             error: null,
             refetch: vi.fn(),
         });
-        mockUseClubAccess.mockReturnValue({ isOwner: true, clubId: undefined });
+        mockUseClubAccess.mockReturnValue({ role: "owner", clubId: undefined });
+        mockCanViewClubList.mockReturnValue(true);
+        mockCanCreateClub.mockReturnValue(true);
         render(<ClubsContainer />);
         expect(screen.getByText("Loading clubs…")).toBeInTheDocument();
     });
@@ -66,7 +72,9 @@ describe("ClubsContainer — error state", () => {
             error: new Error("Network error"),
             refetch: vi.fn(),
         });
-        mockUseClubAccess.mockReturnValue({ isOwner: true, clubId: undefined });
+        mockUseClubAccess.mockReturnValue({ role: "owner", clubId: undefined });
+        mockCanViewClubList.mockReturnValue(true);
+        mockCanCreateClub.mockReturnValue(true);
         render(<ClubsContainer />);
         expect(screen.getByText("Network error")).toBeInTheDocument();
     });
@@ -80,7 +88,9 @@ describe("ClubsContainer — club list", () => {
             error: null,
             refetch: vi.fn(),
         });
-        mockUseClubAccess.mockReturnValue({ isOwner: true, clubId: undefined });
+        mockUseClubAccess.mockReturnValue({ role: "owner", clubId: undefined });
+        mockCanViewClubList.mockReturnValue(true);
+        mockCanCreateClub.mockReturnValue(true);
         render(<ClubsContainer />);
         expect(screen.getByText("Alpha Club")).toBeInTheDocument();
         expect(screen.getByText("Beta Club")).toBeInTheDocument();
@@ -93,7 +103,9 @@ describe("ClubsContainer — club list", () => {
             error: null,
             refetch: vi.fn(),
         });
-        mockUseClubAccess.mockReturnValue({ isOwner: true, clubId: undefined });
+        mockUseClubAccess.mockReturnValue({ role: "owner", clubId: undefined });
+        mockCanViewClubList.mockReturnValue(true);
+        mockCanCreateClub.mockReturnValue(true);
         render(<ClubsContainer />);
         fireEvent.change(screen.getByPlaceholderText("Search clubs…"), {
             target: { value: "alpha" },
@@ -109,7 +121,9 @@ describe("ClubsContainer — club list", () => {
             error: null,
             refetch: vi.fn(),
         });
-        mockUseClubAccess.mockReturnValue({ isOwner: true, clubId: undefined });
+        mockUseClubAccess.mockReturnValue({ role: "owner", clubId: undefined });
+        mockCanViewClubList.mockReturnValue(true);
+        mockCanCreateClub.mockReturnValue(true);
         render(<ClubsContainer />);
         fireEvent.click(screen.getAllByText("Manage")[0]!);
         expect(mockNavigate).toHaveBeenCalledWith({
@@ -127,22 +141,40 @@ describe("ClubsContainer — create club navigation", () => {
             error: null,
             refetch: vi.fn(),
         });
-        mockUseClubAccess.mockReturnValue({ isOwner: true, clubId: undefined });
+        mockUseClubAccess.mockReturnValue({ role: "owner", clubId: undefined });
+        mockCanViewClubList.mockReturnValue(true);
+        mockCanCreateClub.mockReturnValue(true);
         render(<ClubsContainer />);
         fireEvent.click(screen.getAllByText("New Club")[0]!);
         expect(mockNavigate).toHaveBeenCalledWith({ to: "/clubs/new" });
     });
+
+    it("hides New Club button for non-owner roles", () => {
+        mockUseListClubs.mockReturnValue({
+            data: mockClubs,
+            isLoading: false,
+            error: null,
+            refetch: vi.fn(),
+        });
+        mockUseClubAccess.mockReturnValue({ role: "admin", clubId: "club-1" });
+        mockCanViewClubList.mockReturnValue(false);
+        mockCanCreateClub.mockReturnValue(false);
+        render(<ClubsContainer />);
+        expect(screen.queryByText("New Club")).not.toBeInTheDocument();
+    });
 });
 
 describe("ClubsContainer — non-owner redirect", () => {
-    it("redirects to club detail when not owner and clubId is set", () => {
+    it("redirects to club detail when canViewClubList is false and clubId is set", () => {
         mockUseListClubs.mockReturnValue({
             data: [],
             isLoading: false,
             error: null,
             refetch: vi.fn(),
         });
-        mockUseClubAccess.mockReturnValue({ isOwner: false, clubId: "club-99" });
+        mockUseClubAccess.mockReturnValue({ role: "staff", clubId: "club-99" });
+        mockCanViewClubList.mockReturnValue(false);
+        mockCanCreateClub.mockReturnValue(false);
         render(<ClubsContainer />);
         expect(mockNavigate).toHaveBeenCalledWith({
             to: "/clubs/$clubId",

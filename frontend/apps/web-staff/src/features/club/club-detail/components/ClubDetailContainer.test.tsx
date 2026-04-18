@@ -16,6 +16,8 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(),
+    canManageClub: vi.fn((role: string) => role === "owner" || role === "admin"),
+    canCreateClub: vi.fn((role: string) => role === "owner" || role === "admin"),
 }));
 
 vi.mock("../../components/ClubModal", () => ({

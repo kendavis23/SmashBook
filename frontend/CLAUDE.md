@@ -20,10 +20,11 @@ pnpm --filter mobile-player start # mobile app
 pnpm build
 pnpm --filter web-staff build
 
-# Test
+# Test (maxForks=2 is enforced in vitest.config.ts — do NOT pass --reporter=verbose --pool=vmThreads or raise forks above 2; it overloads CPU on Mac)
 pnpm test
 pnpm --filter web-staff test
 pnpm --filter @repo/api-client test
+pnpm --filter web-staff test --run   # sequential, no watch
 
 # Type checking & linting
 pnpm type-check

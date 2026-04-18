@@ -62,6 +62,7 @@ const defaultProps = {
     isLoading: false,
     error: null,
     canCreateCourt: true,
+    canEditCourt: true,
     filters: defaultFilters,
     hasPendingServerFilters: false,
     hasActiveServerFilters: false,
@@ -191,6 +192,11 @@ describe("CourtsView — court list", () => {
     it("does not show header Add Court button when user cannot manage courts", () => {
         render(<CourtsView {...defaultProps} courts={mockCourts} canCreateCourt={false} />);
         expect(screen.queryByText("Add Court")).not.toBeInTheDocument();
+    });
+
+    it("does not show Edit button when user cannot manage courts", () => {
+        render(<CourtsView {...defaultProps} courts={mockCourts} canEditCourt={false} />);
+        expect(screen.queryByLabelText(/Edit Court/i)).not.toBeInTheDocument();
     });
 
     it("calls onRefresh when Refresh is clicked", () => {

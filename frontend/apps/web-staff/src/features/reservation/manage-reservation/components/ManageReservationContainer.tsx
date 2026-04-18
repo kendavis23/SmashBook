@@ -8,7 +8,7 @@ import {
     useDeleteCalendarReservation,
     useListCourts,
 } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageReservation } from "../../store";
 import type { CalendarReservation, CalendarReservationType } from "../../types";
 import { ConfirmDeleteModal } from "@repo/ui";
 import ManageReservationView from "./ManageReservationView";
@@ -39,7 +39,7 @@ export default function ManageReservationContainer(): JSX.Element {
     const { reservationId } = useParams({ strict: false }) as { reservationId: string };
     const navigate = useNavigate();
     const { clubId, role } = useClubAccess();
-    const canEdit = role === "owner" || role === "admin";
+    const canEdit = canManageReservation(role);
 
     const { data: reservation, isLoading, error } = useGetCalendarReservation(reservationId);
     const { data: courts = [] } = useListCourts(clubId ?? "");

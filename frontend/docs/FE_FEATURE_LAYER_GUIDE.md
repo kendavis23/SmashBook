@@ -1,4 +1,4 @@
-_Last updated: 2026-04-13 00:00 UTC_
+_Last updated: 2026-04-18 11:00 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -92,14 +92,44 @@ export {
 
 ---
 
-## Step 2 — Create `store/index.ts`
+## Step 2 — Create `store/index.ts` and `store/access.ts`
 
-Re-export domain store slices the feature needs.
+### `store/index.ts`
+
+Re-export domain store slices the feature needs, plus all access functions from `access.ts`.
 
 ```ts
 // features/club/store/index.ts
 export { useClubAccess } from "@repo/staff-domain/store";
+export { canManageClub, canCreateClub, canViewClubList } from "./access";
 ```
+
+### `store/access.ts` — single source of truth for role checks
+
+All role-to-permission logic for the feature lives **exclusively** in `access.ts`. Components and containers import and call these functions — they never write inline role comparisons (`role === "owner" || role === "admin"`).
+
+```ts
+// features/club/store/access.ts
+import type { TenantUserRole } from "@repo/auth";
+
+// To extend access to additional roles, add them to the relevant array.
+const MANAGE_ROLES: TenantUserRole[] = ["owner", "admin"];
+const CREATE_CLUB_ROLES: TenantUserRole[] = ["owner"];
+
+export function canManageClub(role: TenantUserRole | null): boolean {
+    return role !== null && MANAGE_ROLES.includes(role);
+}
+
+export function canCreateClub(role: TenantUserRole | null): boolean {
+    return role !== null && CREATE_CLUB_ROLES.includes(role);
+}
+
+export function canViewClubList(role: TenantUserRole | null): boolean {
+    return role === "owner";
+}
+```
+
+**Rule:** every feature that has role-gated UI must have an `access.ts`. Containers read `role` from `useClubAccess()` and pass the result of an access function to the View as a boolean prop (`canCreate`, `canManage`, etc.). Views never import `access.ts` directly.
 
 ---
 
@@ -772,7 +802,8 @@ Additional rules:
 ## Checklist — new feature
 
 - [ ] `hooks/index.ts` — re-exports from domain package only
-- [ ] `store/index.ts` — re-exports from domain package only
+- [ ] `store/index.ts` — re-exports from domain package + access functions
+- [ ] `store/access.ts` — all role-to-permission logic for the feature (no inline `role ===` comparisons in components)
 - [ ] `types/index.ts` — re-exports domain models + feature-only types
 - [ ] Every data-fetching component split into Container + View
 - [ ] Pages are thin shells (no logic)

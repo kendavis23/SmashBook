@@ -17,6 +17,7 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("../../store", () => ({
     useClubAccess: vi.fn(() => ({ clubId: "club-1", role: "admin", isOwner: false })),
+    canManageBooking: vi.fn((role: string) => ["owner", "admin", "ops_lead", "staff", "front_desk"].includes(role)),
 }));
 
 vi.mock("@repo/ui", () => ({

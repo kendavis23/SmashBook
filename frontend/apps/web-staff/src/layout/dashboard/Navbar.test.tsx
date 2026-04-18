@@ -212,8 +212,8 @@ describe("Navbar — module search", () => {
 
     it("shows matching authorized modules in search results", () => {
         render(<Navbar />);
-        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "fin" } });
-        expect(screen.getByRole("button", { name: /finance/i })).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "rep" } });
+        expect(screen.getByRole("button", { name: /reports/i })).toBeInTheDocument();
     });
 
     it("does not show restricted modules for staff role", () => {
@@ -226,21 +226,21 @@ describe("Navbar — module search", () => {
     it("navigates to the selected search result", () => {
         render(<Navbar />);
         fireEvent.change(screen.getByLabelText("Search modules"), {
-            target: { value: "finance" },
+            target: { value: "reports" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /finance/i }));
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/finance" });
+        fireEvent.click(screen.getByRole("button", { name: /reports/i }));
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reports" });
     });
 
     it("supports keyboard navigation for search results", () => {
         render(<Navbar />);
 
         const searchInput = screen.getByLabelText("Search modules");
-        fireEvent.change(searchInput, { target: { value: "finance" } });
+        fireEvent.change(searchInput, { target: { value: "reports" } });
         fireEvent.keyDown(searchInput, { key: "ArrowDown" });
         fireEvent.keyDown(searchInput, { key: "Enter" });
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/finance" });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reports" });
     });
 
     it("wraps to the last search result on ArrowUp from the first result", () => {

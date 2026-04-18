@@ -10,6 +10,7 @@ type Props = {
     isLoading: boolean;
     error: Error | null;
     canCreateCourt: boolean;
+    canEditCourt: boolean;
     filters: AvailabilityFilters;
     hasPendingServerFilters: boolean;
     hasActiveServerFilters: boolean;
@@ -50,6 +51,7 @@ export default function CourtsView({
     isLoading,
     error,
     canCreateCourt,
+    canEditCourt,
     filters,
     hasPendingServerFilters,
     hasActiveServerFilters,
@@ -313,13 +315,15 @@ export default function CourtsView({
                                                     </div>
 
                                                     <div className="flex flex-wrap items-center gap-2 lg:flex-col lg:items-stretch">
-                                                        <button
-                                                            onClick={() => onEditCourt(court)}
-                                                            className="btn-outline min-w-[104px] justify-center px-3 py-2 text-xs sm:text-sm"
-                                                            aria-label={`Edit ${court.name}`}
-                                                        >
-                                                            <Pencil size={12} /> Edit
-                                                        </button>
+                                                        {canEditCourt ? (
+                                                            <button
+                                                                onClick={() => onEditCourt(court)}
+                                                                className="btn-outline min-w-[104px] justify-center px-3 py-2 text-xs sm:text-sm"
+                                                                aria-label={`Edit ${court.name}`}
+                                                            >
+                                                                <Pencil size={12} /> Edit
+                                                            </button>
+                                                        ) : null}
                                                         <button
                                                             onClick={() =>
                                                                 onCheckAvailability(court)

@@ -8,6 +8,7 @@ type Props = {
     search: string;
     isLoading: boolean;
     error: Error | null;
+    canCreate: boolean;
     onSearchChange: (value: string) => void;
     onRefresh: () => void;
     onCreateClick: () => void;
@@ -19,6 +20,7 @@ export default function ClubsView({
     search,
     isLoading,
     error,
+    canCreate,
     onSearchChange,
     onRefresh,
     onCreateClick,
@@ -50,9 +52,11 @@ export default function ClubsView({
                         >
                             <RefreshCw size={14} /> Refresh
                         </button>
-                        <button onClick={onCreateClick} className="btn-cta min-h-11 px-4">
-                            <Plus size={14} /> New Club
-                        </button>
+                        {canCreate ? (
+                            <button onClick={onCreateClick} className="btn-cta min-h-11 px-4">
+                                <Plus size={14} /> New Club
+                            </button>
+                        ) : null}
                     </div>
                 </header>
 
@@ -112,7 +116,7 @@ export default function ClubsView({
                                 ? "Try a different search term."
                                 : "Create your first club to start managing courts, bookings, and players."}
                         </p>
-                        {!search ? (
+                        {!search && canCreate ? (
                             <button onClick={onCreateClick} className="btn-cta mt-5">
                                 <Plus size={14} /> New Club
                             </button>

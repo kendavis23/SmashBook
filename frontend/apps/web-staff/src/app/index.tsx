@@ -21,6 +21,8 @@ const ClubsPage = lazy(() => import("../features/club/pages/ClubsPage"));
 const NewClubPage = lazy(() => import("../features/club/pages/NewClubPage"));
 const ClubDetailPage = lazy(() => import("../features/club/pages/ClubDetailPage"));
 const CourtsPage = lazy(() => import("../features/court/pages/CourtsPage"));
+const NewCourtPage = lazy(() => import("../features/court/pages/NewCourtPage"));
+const EditCourtPage = lazy(() => import("../features/court/pages/EditCourtPage"));
 const ReservationsPage = lazy(() => import("../features/reservation/pages/ReservationsPage"));
 const NewReservationPage = lazy(() => import("../features/reservation/pages/NewReservationPage"));
 const ManageReservationPage = lazy(
@@ -146,7 +148,23 @@ const clubDetailRoute = createRoute({
 const courtsRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/courts",
+    validateSearch: (search: Record<string, unknown>) => ({
+        created: search.created === true ? true : undefined,
+        updated: search.updated === true ? true : undefined,
+    }),
     component: CourtsPage,
+});
+
+const newCourtRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/courts/new",
+    component: NewCourtPage,
+});
+
+const editCourtRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/courts/$courtId",
+    component: EditCourtPage,
 });
 
 const reservationsRoute = createRoute({
@@ -231,6 +249,8 @@ const routeTree = rootRoute.addChildren([
         newClubRoute,
         clubDetailRoute,
         courtsRoute,
+        newCourtRoute,
+        editCourtRoute,
         reservationsRoute,
         newReservationRoute,
         manageReservationRoute,

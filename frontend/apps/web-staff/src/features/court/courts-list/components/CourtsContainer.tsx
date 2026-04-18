@@ -1,10 +1,10 @@
 import { useListCourts, useGetCourtAvailability } from "../../hooks";
-import { useClubAccess } from "../../store";
+import { useClubAccess, canManageCourts } from "../../store";
 import type { Court, TimeSlot, AvailabilityFilters } from "../../types";
-import { AlertToast } from "@repo/ui";
 import type { JSX } from "react";
-import { useState, useCallback } from "react";
-import CourtModal from "../../components/CourtModal";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { AlertToast } from "@repo/ui";
 import CourtsView from "./CourtsView";
 
 function todayIso(): string {
@@ -43,8 +43,24 @@ function hasSameServerFilters(
 }
 
 export default function CourtsContainer(): JSX.Element {
-    const [modalCourt, setModalCourt] = useState<Court | null | "create">(null);
-    const [successMsg, setSuccessMsg] = useState("");
+    const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as { created?: boolean; updated?: boolean };
+    const [successMsg] = useState(
+        search.created ? "Court created." : search.updated ? "Court updated." : ""
+    );
+
+    const [successToast, setSuccessToast] = useState(successMsg);
+
+    useEffect(() => {
+        if (search.created || search.updated) {
+            void navigate({
+                to: "/courts",
+                search: { created: undefined, updated: undefined },
+                replace: true,
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Availability panel state
     const [availabilityCourt, setAvailabilityCourt] = useState<Court | null>(null);
@@ -56,7 +72,7 @@ export default function CourtsContainer(): JSX.Element {
     const [appliedFilters, setAppliedFilters] = useState<AvailabilityFilters>(createDefaultFilters);
 
     const { clubId, role } = useClubAccess();
-    const canManageCourts = role === "owner" || role === "admin";
+    const canManage = canManageCourts(role);
 
     const {
         data: courts = [],
@@ -92,16 +108,15 @@ export default function CourtsContainer(): JSX.Element {
     }, [appliedFilters, filters, refetch]);
 
     const handleCreateClick = useCallback((): void => {
-        if (!canManageCourts) {
-            return;
-        }
+        void navigate({ to: "/courts/new" });
+    }, [navigate]);
 
-        setModalCourt("create");
-    }, [canManageCourts]);
-
-    const handleEditCourt = useCallback((court: Court): void => {
-        setModalCourt(court);
-    }, []);
+    const handleEditCourt = useCallback(
+        (court: Court): void => {
+            void navigate({ to: "/courts/$courtId", params: { courtId: court.id } });
+        },
+        [navigate]
+    );
 
     const handleCheckAvailability = useCallback(
         (court: Court): void => {
@@ -120,10 +135,6 @@ export default function CourtsContainer(): JSX.Element {
         setSelectedSlot(null);
     }, []);
 
-    const handleCloseModal = useCallback((): void => {
-        setModalCourt(null);
-    }, []);
-
     const handleRefresh = useCallback((): void => {
         void refetch();
     }, [refetch]);
@@ -132,8 +143,6 @@ export default function CourtsContainer(): JSX.Element {
         // TODO: navigate to booking flow when that feature is built
     }, []);
 
-    const modalOpen = modalCourt !== null;
-    const editCourt = modalCourt !== "create" && modalCourt !== null ? modalCourt : undefined;
     const hasPendingServerFilters = !hasSameServerFilters(
         toServerFilters(filters),
         toServerFilters(appliedFilters)
@@ -149,7 +158,8 @@ export default function CourtsContainer(): JSX.Element {
                 courts={courts as Court[]}
                 isLoading={isLoading}
                 error={error as Error | null}
-                canCreateCourt={canManageCourts}
+                canCreateCourt={canManage}
+                canEditCourt={canManage}
                 filters={filters}
                 hasPendingServerFilters={hasPendingServerFilters}
                 hasActiveServerFilters={hasActiveServerFilters}
@@ -170,19 +180,11 @@ export default function CourtsContainer(): JSX.Element {
                 onSelectSlot={setSelectedSlot}
                 onBookSlot={handleBookSlot}
             />
-            {successMsg ? (
+            {successToast ? (
                 <AlertToast
-                    title={successMsg}
+                    title={successToast}
                     variant="success"
-                    onClose={() => setSuccessMsg("")}
-                />
-            ) : null}
-            {modalOpen && canManageCourts ? (
-                <CourtModal
-                    clubId={clubId ?? ""}
-                    onClose={handleCloseModal}
-                    onSuccess={setSuccessMsg}
-                    initialData={editCourt}
+                    onClose={() => setSuccessToast("")}
                 />
             ) : null}
         </>
