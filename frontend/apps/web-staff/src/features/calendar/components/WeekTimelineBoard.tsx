@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import type { CalendarDay, CalendarBooking } from "../types";
+import type { CalendarBlockItem, CalendarBookingItem, CalendarDay } from "../types";
 import {
     CALENDAR_SLOT_ROW_HEIGHT,
     CALENDAR_TIME_RAIL_WIDTH,
@@ -10,11 +10,13 @@ import {
     todayIso,
 } from "../types";
 import CalendarBookingBlock from "./CalendarBookingBlock";
+import CalendarReservationBlock from "./CalendarReservationBlock";
 
 type Props = {
     days: CalendarDay[];
     selectedCourtId: string;
     onManageClick: (bookingId: string) => void;
+    onManageReservationClick: (reservationId: string) => void;
 };
 
 const DAY_COLUMN_MIN_WIDTH = 140;
@@ -38,6 +40,7 @@ export default function WeekTimelineBoard({
     days,
     selectedCourtId,
     onManageClick,
+    onManageReservationClick,
 }: Props): JSX.Element {
     const scrollRef = useRef<HTMLDivElement>(null);
     const currentTimeMinutes = useCurrentTimeMinutes();
@@ -80,11 +83,18 @@ export default function WeekTimelineBoard({
         );
     }
 
-    function getBookingsForDay(day: CalendarDay): CalendarBooking[] {
-        if (!selectedCourtId) {
-            return day.courts.flatMap((c) => c.bookings);
-        }
-        return day.courts.find((c) => c.court_id === selectedCourtId)?.bookings ?? [];
+    function getBookingsForDay(day: CalendarDay): CalendarBookingItem[] {
+        const slots = selectedCourtId
+            ? (day.courts.find((c) => c.court_id === selectedCourtId)?.slots ?? [])
+            : day.courts.flatMap((c) => c.slots);
+        return slots.filter((s): s is CalendarBookingItem => s.kind === "booking");
+    }
+
+    function getBlocksForDay(day: CalendarDay): CalendarBlockItem[] {
+        const slots = selectedCourtId
+            ? (day.courts.find((c) => c.court_id === selectedCourtId)?.slots ?? [])
+            : day.courts.flatMap((c) => c.slots);
+        return slots.filter((s): s is CalendarBlockItem => s.kind === "block");
     }
 
     return (
@@ -188,6 +198,7 @@ export default function WeekTimelineBoard({
                         {/* Day columns */}
                         {days.map((day) => {
                             const bookings = getBookingsForDay(day);
+                            const blocks = getBlocksForDay(day);
 
                             return (
                                 <div
@@ -211,6 +222,17 @@ export default function WeekTimelineBoard({
                                             startOfDayMinutes={startOfDayMinutes}
                                             endOfDayMinutes={endOfDayMinutes}
                                             onManageClick={onManageClick}
+                                        />
+                                    ))}
+
+                                    {blocks.map((block) => (
+                                        <CalendarReservationBlock
+                                            key={block.id}
+                                            block={block}
+                                            boardHeight={boardHeight}
+                                            startOfDayMinutes={startOfDayMinutes}
+                                            endOfDayMinutes={endOfDayMinutes}
+                                            onManageClick={onManageReservationClick}
                                         />
                                     ))}
                                 </div>

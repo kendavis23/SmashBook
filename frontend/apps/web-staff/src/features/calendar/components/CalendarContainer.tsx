@@ -57,6 +57,13 @@ export default function CalendarContainer(): JSX.Element {
         [navigate]
     );
 
+    const handleManageReservationClick = useCallback(
+        (reservationId: string): void => {
+            void navigate({ to: "/reservations/$reservationId", params: { reservationId } });
+        },
+        [navigate]
+    );
+
     return (
         <CalendarView
             calendarData={data ?? null}
@@ -75,6 +82,7 @@ export default function CalendarContainer(): JSX.Element {
             onRefresh={handleRefresh}
             onCourtChange={setSelectedCourtId}
             onManageClick={handleManageClick}
+            onManageReservationClick={handleManageReservationClick}
         />
     );
 }

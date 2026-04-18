@@ -23,6 +23,7 @@ type Props = {
     onRefresh: () => void;
     onCourtChange: (courtId: string) => void;
     onManageClick: (bookingId: string) => void;
+    onManageReservationClick: (reservationId: string) => void;
 };
 
 export default function CalendarView({
@@ -42,6 +43,7 @@ export default function CalendarView({
     onRefresh,
     onCourtChange,
     onManageClick,
+    onManageReservationClick,
 }: Props): JSX.Element {
     const rangeLabel =
         viewMode === "day"
@@ -162,6 +164,7 @@ export default function CalendarView({
                             days={calendarData.days}
                             selectedCourtId={selectedCourtId}
                             onManageClick={onManageClick}
+                            onManageReservationClick={onManageReservationClick}
                         />
                     ) : (
                         <div className="flex min-h-0 flex-1 flex-col">
@@ -170,6 +173,7 @@ export default function CalendarView({
                                     key={day.date}
                                     day={day}
                                     onManageClick={onManageClick}
+                                    onManageReservationClick={onManageReservationClick}
                                 />
                             ))}
                         </div>

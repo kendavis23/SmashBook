@@ -1,25 +1,24 @@
 import type { JSX } from "react";
-import type { CalendarBooking } from "../types";
+import type { CalendarBookingItem } from "../types";
 import {
+    BLOCK_VERTICAL_GAP,
     BOOKING_STATUS_COLORS,
     BOOKING_STATUS_LABELS,
     BOOKING_TYPE_COLORS,
     BOOKING_TYPE_LABELS,
+    MIN_BLOCK_HEIGHT,
     clampNumber,
     formatTime,
     getMinutesFromIso,
 } from "../types";
 
 type Props = {
-    booking: CalendarBooking;
+    booking: CalendarBookingItem;
     boardHeight: number;
     startOfDayMinutes: number;
     endOfDayMinutes: number;
     onManageClick: (bookingId: string) => void;
 };
-
-const BLOCK_VERTICAL_GAP = 4;
-const MIN_BLOCK_HEIGHT = 36;
 
 export default function CalendarBookingBlock({
     booking,

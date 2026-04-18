@@ -121,7 +121,8 @@ export interface OpenGameSummary {
     total_price: number | null;
 }
 
-export interface CalendarBooking {
+export interface CalendarBookingItem {
+    kind: "booking";
     id: UUID;
     court_id: UUID;
     court_name: string;
@@ -136,10 +137,25 @@ export interface CalendarBooking {
     total_price: number | null;
 }
 
+export interface CalendarBlockItem {
+    kind: "block";
+    id: UUID;
+    court_id: UUID | null;
+    start_datetime: string;
+    end_datetime: string;
+    reservation_type: string;
+    title: string;
+    anchor_skill_level: number | null;
+    skill_range_above: number | null;
+    skill_range_below: number | null;
+}
+
+export type CalendarSlot = CalendarBookingItem | CalendarBlockItem;
+
 export interface CalendarCourtColumn {
     court_id: UUID;
     court_name: string;
-    bookings: CalendarBooking[];
+    slots: CalendarSlot[];
 }
 
 export interface CalendarDay {

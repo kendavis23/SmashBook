@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState, type JSX } from "react";
-import type { CalendarCourtColumn, CalendarDay } from "../types";
+import type {
+    CalendarBlockItem,
+    CalendarBookingItem,
+    CalendarCourtColumn,
+    CalendarDay,
+} from "../types";
 import {
     CALENDAR_COURT_LANE_MIN_WIDTH,
     CALENDAR_SLOT_ROW_HEIGHT,
@@ -12,6 +17,7 @@ import {
 } from "../types";
 
 import CalendarBookingBlock from "./CalendarBookingBlock";
+import CalendarReservationBlock from "./CalendarReservationBlock";
 
 const MONTHS_SHORT = [
     "Jan",
@@ -42,6 +48,7 @@ function parseMonthShort(dateStr: string): string {
 type Props = {
     day: CalendarDay;
     onManageClick: (bookingId: string) => void;
+    onManageReservationClick: (reservationId: string) => void;
 };
 
 function useCurrentTimeMinutes(): number {
@@ -59,7 +66,11 @@ function useCurrentTimeMinutes(): number {
     return minutes;
 }
 
-export default function DayTimelineBoard({ day, onManageClick }: Props): JSX.Element {
+export default function DayTimelineBoard({
+    day,
+    onManageClick,
+    onManageReservationClick,
+}: Props): JSX.Element {
     const isToday = day.date === todayIso();
     const currentTimeMinutes = useCurrentTimeMinutes();
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -156,9 +167,14 @@ export default function DayTimelineBoard({ day, onManageClick }: Props): JSX.Ele
                                         {court.court_name}
                                     </p>
                                     <p className="text-[10px] text-muted-foreground">
-                                        {court.bookings.length === 0
-                                            ? "No bookings"
-                                            : `${court.bookings.length} booking${court.bookings.length === 1 ? "" : "s"}`}
+                                        {(() => {
+                                            const n = court.slots.filter(
+                                                (s) => s.kind === "booking"
+                                            ).length;
+                                            return n === 0
+                                                ? "No bookings"
+                                                : `${n} booking${n === 1 ? "" : "s"}`;
+                                        })()}
                                     </p>
                                 </div>
                             ))}
@@ -212,16 +228,30 @@ export default function DayTimelineBoard({ day, onManageClick }: Props): JSX.Ele
                                     />
                                 ))}
 
-                                {court.bookings.map((booking) => (
-                                    <CalendarBookingBlock
-                                        key={booking.id}
-                                        booking={booking}
-                                        boardHeight={boardHeight}
-                                        startOfDayMinutes={startOfDayMinutes}
-                                        endOfDayMinutes={endOfDayMinutes}
-                                        onManageClick={onManageClick}
-                                    />
-                                ))}
+                                {court.slots
+                                    .filter((s): s is CalendarBookingItem => s.kind === "booking")
+                                    .map((booking) => (
+                                        <CalendarBookingBlock
+                                            key={booking.id}
+                                            booking={booking}
+                                            boardHeight={boardHeight}
+                                            startOfDayMinutes={startOfDayMinutes}
+                                            endOfDayMinutes={endOfDayMinutes}
+                                            onManageClick={onManageClick}
+                                        />
+                                    ))}
+                                {court.slots
+                                    .filter((s): s is CalendarBlockItem => s.kind === "block")
+                                    .map((block) => (
+                                        <CalendarReservationBlock
+                                            key={block.id}
+                                            block={block}
+                                            boardHeight={boardHeight}
+                                            startOfDayMinutes={startOfDayMinutes}
+                                            endOfDayMinutes={endOfDayMinutes}
+                                            onManageClick={onManageReservationClick}
+                                        />
+                                    ))}
                             </div>
                         ))}
                     </div>
