@@ -16,13 +16,15 @@ interface AuthStoreState {
     // Which club is currently active for any role. null = use clubs[0].
     activeClubId: string | null;
     activeClubName: string | null;
+    // Role of the currently active club — switches when the active club changes.
+    activeRole: string | null;
 }
 
 interface AuthStoreActions {
     setTokens(tokens: TokenResponse): void;
     setUser(user: UserResponse): void;
     setTenantSubdomain(subdomain: string): void;
-    setActiveClubId(clubId: string, clubName: string): void;
+    setActiveClubId(clubId: string, clubName: string, role: string): void;
     clearAuth(): void;
 }
 
@@ -36,6 +38,7 @@ const initialState: AuthStoreState = {
     tenantSubdomain: null,
     activeClubId: null,
     activeClubName: null,
+    activeRole: null,
 };
 
 export const useAuthStore = create<AuthStore>()(
@@ -59,8 +62,8 @@ export const useAuthStore = create<AuthStore>()(
                 set({ tenantSubdomain: subdomain });
             },
 
-            setActiveClubId(clubId: string, clubName: string) {
-                set({ activeClubId: clubId, activeClubName: clubName });
+            setActiveClubId(clubId: string, clubName: string, role: string) {
+                set({ activeClubId: clubId, activeClubName: clubName, activeRole: role });
             },
 
             clearAuth() {
@@ -78,6 +81,7 @@ export const useAuthStore = create<AuthStore>()(
                 tenantSubdomain: state.tenantSubdomain,
                 activeClubId: state.activeClubId,
                 activeClubName: state.activeClubName,
+                activeRole: state.activeRole,
             }),
         }
     )

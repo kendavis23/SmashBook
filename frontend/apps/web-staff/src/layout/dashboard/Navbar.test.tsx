@@ -65,6 +65,7 @@ vi.mock("@repo/auth", () => {
             role: currentUser?.role ?? null,
             isAuthenticated: currentUser !== null,
             activeClubName: currentActiveClubName,
+            clubs: [],
             setActiveClubId: vi.fn(),
         }),
     };
@@ -343,14 +344,14 @@ describe("Navbar — Switch Club", () => {
     });
 
     it("opens SwitchClubModal when Switch Club is clicked in dropdown", () => {
-        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club" }]} />);
+        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club", role: "admin" }]} />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
         fireEvent.click(screen.getByText("Switch Club"));
         expect(screen.getByTestId("switch-club-modal")).toBeInTheDocument();
     });
 
     it("closes SwitchClubModal when modal calls onClose", () => {
-        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club" }]} />);
+        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club", role: "admin" }]} />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
         fireEvent.click(screen.getByText("Switch Club"));
         fireEvent.click(screen.getByText("close-modal"));

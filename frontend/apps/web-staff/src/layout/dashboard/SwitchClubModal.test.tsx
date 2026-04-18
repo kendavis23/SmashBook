@@ -21,8 +21,8 @@ vi.mock("@repo/auth", () => ({
 import SwitchClubModal from "./SwitchClubModal";
 
 const CLUBS = [
-    { id: "c1", name: "Alpha Club" },
-    { id: "c2", name: "Beta Club" },
+    { id: "c1", name: "Alpha Club", role: "admin" },
+    { id: "c2", name: "Beta Club", role: "staff" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ describe("SwitchClubModal — selection", () => {
         const onClose = vi.fn();
         render(<SwitchClubModal isOpen={true} onClose={onClose} clubs={CLUBS} />);
         fireEvent.click(screen.getByText("Beta Club"));
-        expect(mockSetActiveClubId).toHaveBeenCalledWith("c2", "Beta Club");
+        expect(mockSetActiveClubId).toHaveBeenCalledWith("c2", "Beta Club", "staff");
         expect(onClose).toHaveBeenCalled();
     });
 });

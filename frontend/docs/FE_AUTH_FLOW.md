@@ -1,4 +1,4 @@
-_Last updated: 2026-04-16 12:00 UTC_
+_Last updated: 2026-04-18 09:40 UTC_
 
 # FE Auth Flow
 
@@ -11,8 +11,13 @@ User fills form
   → LoginForm.tsx  (features/auth/components/LoginForm.tsx)
   → useLogin()     (packages/auth/hooks/index.ts)
       → loginService()   POST /api/v1/auth/login   → returns { access_token, refresh_token, clubs }
+      → if clubs[] is empty → clearAuth() + throw
+           "Your account has no clubs assigned. Contact your administrator."
+           (applies to ALL roles — owner, admin, staff, etc.)
       → setTokens()      persists tokens + clubs to Zustand store + localStorage
       → setTenantSubdomain()
+      → setActiveClubId(clubs[0].club_id, clubs[0].club_name, clubs[0].role)
+           auto-selects the first club AND its role on login
       → getMeService()   GET /api/v1/players/me    → returns UserResponse
       → setUser()        hydrates user in store (in-memory only, not persisted)
   → navigate("/dashboard")
@@ -28,37 +33,36 @@ User fills form
 | `tenantSubdomain` |               |
 | `activeClubId`    |               |
 | `activeClubName`  |               |
+| `activeRole`      |               |
 
 ---
 
 ## 1b. Club Selection (All Roles)
 
-After login, `DashboardLayout` fetches the full club list and auto-selects the first club for **all roles** (owner and non-owner alike).
+After login, `DashboardLayout` uses the clubs array from the login response for **all roles** (owner and non-owner alike). No additional API call is made.
 
 ```
 DashboardLayout mounts
-  → useAuth()              reads role + jwtClubs from store
-  → if role === "owner"
-      → useListClubs()     GET /api/v1/clubs  (packages/staff-domain/hooks)
-  → else
-      → use jwtClubs from login response (already in store — no API call)
-      → map ClubSummary[] → ClubOption[]
+  → useAuth()              reads clubs (JWT clubs from login response) for all roles
+  → clubs = jwtClubs.map(c => ({ id, name, role }))
   → if activeClubId is null and clubs.length > 0
-      → setActiveClubId(clubs[0].id, clubs[0].name)  persisted to store
-  → Navbar receives clubs[] + isClubsLoading as props
+      → setActiveClubId(clubs[0].id, clubs[0].name, clubs[0].role)  persisted to store
+  → Navbar receives clubs[] + isClubsLoading=false as props
       → passes them to SwitchClubModal
 ```
+
+**No owner API call:** Owners no longer call `GET /api/v1/clubs`. All roles use the `clubs` array returned by the login response.
 
 **SwitchClubModal is data-agnostic** — it accepts `clubs: ClubOption[]` and `isLoading` as props. It does not fetch data itself. This makes it reusable by any app.
 
 **Architecture for multi-app club switching:**
 
-| App          | Club data source                           | Notes                                      |
-| ------------ | ------------------------------------------ | ------------------------------------------ |
-| `web-staff`  | `useListClubs()` from `@repo/staff-domain` | Passed via `DashboardLayout` → `Navbar`    |
-| `web-player` | Future hook from `@repo/player-domain`     | Same pattern — layout fetches, passes down |
+| App          | Club data source                       | Notes                                      |
+| ------------ | -------------------------------------- | ------------------------------------------ |
+| `web-staff`  | JWT clubs from login response          | Passed via `DashboardLayout` → `Navbar`    |
+| `web-player` | Future hook from `@repo/player-domain` | Same pattern — layout fetches, passes down |
 
-The `ClubOption { id, name }` interface is exported from `SwitchClubModal.tsx` and is the only contract the modal cares about. Domain-specific `Club` models satisfy it via structural typing.
+The `ClubOption { id, name, role }` interface is exported from `SwitchClubModal.tsx` and is the only contract the modal cares about.
 
 **Switch Club is visible for all roles** in the navbar dropdown. The active club name is shown in the navbar header for all roles.
 
@@ -66,7 +70,7 @@ The `ClubOption { id, name }` interface is exported from `SwitchClubModal.tsx` a
 
 ## 2. Session Restore (Page Refresh)
 
-Tokens and `clubs` survive a refresh (localStorage), but `user` does not. `useInitAuth` re-hydrates the user.
+Tokens, `clubs`, and `activeRole` survive a refresh (localStorage), but `user` does not. `useInitAuth` re-hydrates the user.
 
 ```
 DashboardLayout mounts
@@ -74,9 +78,8 @@ DashboardLayout mounts
       → reads accessToken from store
       → if token is expired → tryRefreshToken() first
       → getMeService()   GET /api/v1/players/me
-      → if user.role !== "owner" AND clubs[] is empty → clearAuth() + throw
-           (non-owners must have a club; /refresh doesn't return clubs so
-            if they were never persisted the session is unusable → re-login)
+      → if clubs[] is empty → clearAuth() + throw
+           (all roles must have a club — if none persisted the session is unusable → re-login)
       → setUser()        re-hydrates user in store
   → while isLoading → spinner shown (DashboardLayout.tsx)
   → if no token or isError → redirect to /login
@@ -141,12 +144,13 @@ Navbar → handleLogout()           (apps/web-staff/src/layout/dashboard/Navbar.
 
 ## 6. Role-Based Module Visibility
 
-After login, the server returns a `clubs` array. Each club has a `role` field. The active club's role controls which sidebar routes are shown or hidden.
+The login response returns a `clubs` array. Each club entry carries a `role` field. The **active club's role** controls which sidebar routes are shown or hidden. Switching clubs switches the role too.
 
 ```
 Login → loginService() returns { access_token, refresh_token, clubs }
   → clubs stored in useAuthStore  (packages/auth/store/index.ts)
-  → useAuth() derives `role` from the active club entry
+  → first club's role stored in activeRole
+  → useAuth() reads activeRole → role
 
 DashboardLayout renders → Sidebar + Navbar
   → Sidebar reads role via useAuth()
@@ -176,7 +180,35 @@ canAccess(roles, userRole);
 
 ---
 
-## 7. Role-Based UI Access
+## 7. Role per Club — Club Switching
+
+A single user can have a different role in each club. Switching the active club switches the active role automatically.
+
+```
+Example: john@example.com
+  Club A → role: admin
+  Club B → role: staff
+  Club C → role: viewer
+```
+
+```
+SwitchClubModal — user selects Club B
+  → handleSelect(club.id, club.name, club.role)
+  → setActiveClubId(id, name, role)   persisted to store (activeClubId, activeClubName, activeRole)
+  → useAuth() now returns role = "staff"
+  → Sidebar re-renders with routes filtered for "staff"
+```
+
+**Roles available per app:**
+
+| Application  | Audience                    | Roles Available                                            |
+| ------------ | --------------------------- | ---------------------------------------------------------- |
+| `web-player` | Players / end-users         | `player` only                                              |
+| `web-staff`  | Internal staff / management | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer` |
+
+---
+
+## 8. Role-Based UI Access
 
 Role controls both page-level access and intra-page element visibility. The pattern is consistent across features:
 
@@ -222,7 +254,7 @@ const canManageCourts = role === "owner" || role === "admin";
 
 ---
 
-## 8. Key Files at a Glance
+## 9. Key Files at a Glance
 
 | Concern                                                   | File                                                      |
 | --------------------------------------------------------- | --------------------------------------------------------- |

@@ -61,10 +61,6 @@ vi.mock("@repo/auth", () => {
     };
 });
 
-vi.mock("@repo/staff-domain/hooks", () => ({
-    useListClubs: () => ({ data: [], isLoading: false }),
-}));
-
 import DashboardLayout from "./DashboardLayout";
 
 function wrapper({ children }: { children: ReactNode }): JSX.Element {

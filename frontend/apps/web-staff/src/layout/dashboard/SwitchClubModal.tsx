@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 export interface ClubOption {
     id: string;
     name: string;
+    role: string;
 }
 
 interface SwitchClubModalProps {
@@ -46,8 +47,8 @@ export default function SwitchClubModal({
 
     if (!isOpen) return null;
 
-    const handleSelect = (id: string, name: string): void => {
-        setActiveClubId(id, name);
+    const handleSelect = (id: string, name: string, role: string): void => {
+        setActiveClubId(id, name, role);
         onClose();
     };
 
@@ -105,7 +106,9 @@ export default function SwitchClubModal({
                                         <button
                                             key={club.id}
                                             type="button"
-                                            onClick={() => handleSelect(club.id, club.name)}
+                                            onClick={() =>
+                                                handleSelect(club.id, club.name, club.role)
+                                            }
                                             aria-pressed={active}
                                             className={`group flex w-full items-center gap-3.5 rounded-xl border px-4 py-3 text-left transition-all duration-150 ${
                                                 active

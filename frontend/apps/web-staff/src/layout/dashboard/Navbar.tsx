@@ -170,7 +170,9 @@ export default function Navbar({
 
     const initials = getInitials(user.full_name || "U");
     const bgColor = avatarBgColor(user.full_name || "U");
-    const roleLabel = user.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "";
+    // Show the role for the currently active club, not the static user.role from /me.
+    const activeRole = role ?? user.role;
+    const roleLabel = activeRole ? activeRole.charAt(0).toUpperCase() + activeRole.slice(1) : "";
 
     return (
         <>
