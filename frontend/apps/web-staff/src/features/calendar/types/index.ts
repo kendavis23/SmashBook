@@ -3,7 +3,9 @@ export type {
     CalendarViewFilters,
     CalendarDay,
     CalendarCourtColumn,
-    CalendarBooking,
+    CalendarBookingItem,
+    CalendarBlockItem,
+    CalendarSlot,
     BookingType,
     BookingStatus,
     BookingPlayer,
@@ -11,6 +13,11 @@ export type {
     PaymentStatus,
     InviteStatus,
 } from "@repo/staff-domain/models";
+
+// ─── Calendar block layout constants ──────────────────────────────────────
+
+export const BLOCK_VERTICAL_GAP = 4;
+export const MIN_BLOCK_HEIGHT = 36;
 
 // ─── Feature-specific types ────────────────────────────────────────────────
 

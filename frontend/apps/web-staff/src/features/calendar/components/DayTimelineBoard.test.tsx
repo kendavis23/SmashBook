@@ -16,14 +16,25 @@ vi.mock("./CalendarBookingBlock", () => ({
     ),
 }));
 
+vi.mock("./CalendarReservationBlock", () => ({
+    default: ({
+        block,
+        onManageClick,
+    }: {
+        block: { id: string; title: string };
+        onManageClick: (id: string) => void;
+    }) => <button onClick={() => onManageClick(block.id)}>{block.title}</button>,
+}));
+
 const day = {
     date: "2026-04-20",
     courts: [
         {
             court_id: "court-1",
             court_name: "Court 1",
-            bookings: [
+            slots: [
                 {
+                    kind: "booking",
                     id: "booking-1",
                     court_id: "court-1",
                     court_name: "Court 1",
@@ -36,6 +47,18 @@ const day = {
                     players: [],
                     slots_available: 2,
                     total_price: 20,
+                },
+                {
+                    kind: "block",
+                    id: "block-1",
+                    court_id: "court-1",
+                    start_datetime: "2026-04-20T07:00:00Z",
+                    end_datetime: "2026-04-20T09:00:00Z",
+                    reservation_type: "private_hire",
+                    title: "Morning Training block",
+                    anchor_skill_level: null,
+                    skill_range_above: null,
+                    skill_range_below: null,
                 },
             ],
         },
@@ -52,11 +75,18 @@ describe("DayTimelineBoard", () => {
         vi.useRealTimers();
     });
 
-    it("renders day metadata, courts, and bookings", () => {
-        render(<DayTimelineBoard day={day as never} onManageClick={vi.fn()} />);
+    it("renders day metadata, courts, bookings, and blocks", () => {
+        render(
+            <DayTimelineBoard
+                day={day as never}
+                onManageClick={vi.fn()}
+                onManageReservationClick={vi.fn()}
+            />
+        );
 
         expect(screen.getByText("Court 1")).toBeInTheDocument();
         expect(screen.getByText("League Match")).toBeInTheDocument();
+        expect(screen.getByText("Morning Training block")).toBeInTheDocument();
         expect(screen.getByText(/1 booking/i)).toBeInTheDocument();
         expect(screen.getByText("20")).toBeInTheDocument();
         expect(screen.getByText("Apr")).toBeInTheDocument();
@@ -67,6 +97,7 @@ describe("DayTimelineBoard", () => {
             <DayTimelineBoard
                 day={{ date: "2026-04-20", courts: [] } as never}
                 onManageClick={vi.fn()}
+                onManageReservationClick={vi.fn()}
             />
         );
 
@@ -75,9 +106,29 @@ describe("DayTimelineBoard", () => {
 
     it("passes manage click through to booking blocks", () => {
         const onManageClick = vi.fn();
-        render(<DayTimelineBoard day={day as never} onManageClick={onManageClick} />);
+        render(
+            <DayTimelineBoard
+                day={day as never}
+                onManageClick={onManageClick}
+                onManageReservationClick={vi.fn()}
+            />
+        );
 
         fireEvent.click(screen.getByText("League Match"));
         expect(onManageClick).toHaveBeenCalledWith("booking-1");
+    });
+
+    it("passes manage reservation click through to block items", () => {
+        const onManageReservationClick = vi.fn();
+        render(
+            <DayTimelineBoard
+                day={day as never}
+                onManageClick={vi.fn()}
+                onManageReservationClick={onManageReservationClick}
+            />
+        );
+
+        fireEvent.click(screen.getByText("Morning Training block"));
+        expect(onManageReservationClick).toHaveBeenCalledWith("block-1");
     });
 });

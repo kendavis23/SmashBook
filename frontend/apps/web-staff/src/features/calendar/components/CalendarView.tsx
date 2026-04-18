@@ -23,6 +23,7 @@ type Props = {
     onRefresh: () => void;
     onCourtChange: (courtId: string) => void;
     onManageClick: (bookingId: string) => void;
+    onManageReservationClick: (reservationId: string) => void;
 };
 
 export default function CalendarView({
@@ -42,6 +43,7 @@ export default function CalendarView({
     onRefresh,
     onCourtChange,
     onManageClick,
+    onManageReservationClick,
 }: Props): JSX.Element {
     const rangeLabel =
         viewMode === "day"
@@ -50,33 +52,38 @@ export default function CalendarView({
 
     return (
         <div className="flex h-[calc(100vh-var(--nav-height)-var(--page-padding)-var(--page-padding))] flex-col gap-5">
-            <Breadcrumb items={[{ label: "Operations" }, { label: "Calendar" }]} />
+            <Breadcrumb items={[{ label: "Calendar" }]} />
 
-            <section className="flex min-h-0 flex-1 flex-col rounded-xl border border-border bg-card shadow-sm">
+            <section className="card-surface flex min-h-0 flex-1 flex-col overflow-hidden">
                 {/* Header */}
-                <header className="flex flex-col gap-3 border-b border-border px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                            Calendar
-                        </h1>
-                        <p className="mt-0.5 text-sm text-muted-foreground">{rangeLabel}</p>
+                <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0 shrink-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                                <CalendarDays size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                    Calendar
+                                </h1>
+                                <p className="mt-0.5 text-sm text-muted-foreground">{rangeLabel}</p>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex items-center gap-2">
                         {/* Court picker — week view only */}
                         {viewMode === "week" && courts.length > 0 ? (
-                            <SelectInput
-                                value={selectedCourtId}
-                                onValueChange={(v) => onCourtChange(v)}
-                                options={courts.map((c) => ({ value: c.id, label: c.name }))}
-                                aria-label="Select court"
-                                className="w-auto min-w-[13rem]"
-                            />
-                        ) : null}
-
-                        {/* Divider */}
-                        {viewMode === "week" && courts.length > 0 ? (
-                            <span className="hidden h-5 w-px bg-border lg:block" />
+                            <>
+                                <SelectInput
+                                    value={selectedCourtId}
+                                    onValueChange={(v) => onCourtChange(v)}
+                                    options={courts.map((c) => ({ value: c.id, label: c.name }))}
+                                    aria-label="Select court"
+                                    className="w-52"
+                                />
+                                <span className="h-5 w-px bg-border" />
+                            </>
                         ) : null}
 
                         {/* View mode toggle */}
@@ -85,7 +92,7 @@ export default function CalendarView({
                                 <button
                                     key={mode.id}
                                     onClick={() => onViewModeChange(mode.id)}
-                                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                                    className={`rounded-md px-3 py-2 text-xs font-medium transition ${
                                         viewMode === mode.id
                                             ? "bg-card text-foreground shadow-sm"
                                             : "text-muted-foreground hover:text-foreground"
@@ -102,20 +109,20 @@ export default function CalendarView({
                             <button
                                 onClick={onPrev}
                                 aria-label="Previous"
-                                className="flex h-8 w-8 items-center justify-center rounded-l-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-9 w-9 items-center justify-center rounded-l-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <ChevronLeft size={14} />
                             </button>
                             <button
                                 onClick={onToday}
-                                className="-mx-px h-8 border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-muted"
+                                className="-mx-px h-9 border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-muted"
                             >
                                 Today
                             </button>
                             <button
                                 onClick={onNext}
                                 aria-label="Next"
-                                className="flex h-8 w-8 items-center justify-center rounded-r-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-9 w-9 items-center justify-center rounded-r-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <ChevronRight size={14} />
                             </button>
@@ -124,7 +131,7 @@ export default function CalendarView({
                         <button
                             onClick={onRefresh}
                             aria-label="Refresh calendar"
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
                         >
                             <RefreshCw size={14} />
                         </button>
@@ -132,14 +139,14 @@ export default function CalendarView({
                 </header>
 
                 {/* Content */}
-                <div className="flex min-h-0 flex-1 flex-col p-4 sm:p-5">
+                <div className="flex min-h-0 flex-1 flex-col">
                     {isLoading ? (
                         <div className="flex items-center justify-center gap-3 py-24">
                             <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
                             <span className="text-sm text-muted-foreground">Loading calendar…</span>
                         </div>
                     ) : error ? (
-                        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                        <div className="m-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                             {error.message}
                         </div>
                     ) : !calendarData || calendarData.days.length === 0 ? (
@@ -157,14 +164,16 @@ export default function CalendarView({
                             days={calendarData.days}
                             selectedCourtId={selectedCourtId}
                             onManageClick={onManageClick}
+                            onManageReservationClick={onManageReservationClick}
                         />
                     ) : (
-                        <div className="min-h-0 flex-1 space-y-4">
+                        <div className="flex min-h-0 flex-1 flex-col">
                             {calendarData.days.map((day) => (
                                 <DayTimelineBoard
                                     key={day.date}
                                     day={day}
                                     onManageClick={onManageClick}
+                                    onManageReservationClick={onManageReservationClick}
                                 />
                             ))}
                         </div>

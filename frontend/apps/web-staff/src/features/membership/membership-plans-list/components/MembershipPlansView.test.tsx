@@ -131,7 +131,8 @@ describe("MembershipPlansView — header", () => {
 
     it("shows summary count when plans exist", () => {
         render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
-        expect(screen.getByText("1 active · 2 total")).toBeInTheDocument();
+        expect(screen.getByText("2 total")).toBeInTheDocument();
+        expect(screen.getByText(/1 active/)).toBeInTheDocument();
     });
 
     it("calls onCreateClick from header Add Plan button", () => {

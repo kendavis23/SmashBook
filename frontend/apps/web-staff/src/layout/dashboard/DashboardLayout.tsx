@@ -53,9 +53,9 @@ export default function DashboardLayout(): JSX.Element {
             <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
 
             {/* Right column — navbar + scrollable content */}
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="flex min-w-0 flex-1 flex-col">
                 <header
-                    className="sticky top-0 z-20 flex h-[var(--nav-height)] flex-shrink-0
+                    className="sticky top-0 z-30 flex h-[var(--nav-height)] flex-shrink-0
                         items-center border-b border-border bg-background px-5"
                 >
                     <Navbar

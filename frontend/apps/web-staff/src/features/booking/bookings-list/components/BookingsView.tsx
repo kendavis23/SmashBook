@@ -87,27 +87,39 @@ export default function BookingsView({
 
             <section className="card-surface overflow-hidden">
                 {/* Header */}
-                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+                <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                            Bookings
-                        </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {bookings.length > 0
-                                ? `${bookings.length} booking${bookings.length !== 1 ? "s" : ""}`
-                                : "Manage all court bookings for your club"}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                                <CalendarDays size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                        Bookings
+                                    </h1>
+                                    {bookings.length > 0 ? (
+                                        <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
+                                            {bookings.length} total
+                                        </span>
+                                    ) : null}
+                                </div>
+                                <p className="mt-0.5 text-sm text-muted-foreground">
+                                    Manage all court bookings for your club
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <button
                             onClick={onRefresh}
-                            className="btn-outline min-h-11 px-4"
+                            className="btn-outline min-h-10 px-4"
                             aria-label="Refresh bookings"
                         >
                             <RefreshCw size={14} /> Refresh
                         </button>
                         {canManage ? (
-                            <button onClick={onCreateClick} className="btn-cta min-h-11 px-4.5">
+                            <button onClick={onCreateClick} className="btn-cta min-h-10 px-4">
                                 <Plus size={14} /> New Booking
                             </button>
                         ) : null}
@@ -123,8 +135,8 @@ export default function BookingsView({
                         </span>
                     </div>
 
-                    {/* Unified 4-column grid — row 1: From / To / Player / Search, row 2: Type / Status / Court */}
-                    <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-4">
+                    {/* Unified 4-column grid — row 1: From / To / Player / Search (30/30/30/10), row 2: Type / Status / Court */}
+                    <div className="grid grid-cols-1 gap-x-3 gap-y-3 sm:grid-cols-[3fr_3fr_3fr_1fr]">
                         {/* From */}
                         <div className="flex flex-col gap-1">
                             <span className="text-[11px] font-medium text-muted-foreground">
@@ -172,16 +184,8 @@ export default function BookingsView({
                             </div>
                         </div>
 
-                        {/* Search button — col 4, row 1 */}
-                        <div className="flex flex-col justify-end">
-                            <button
-                                onClick={onSearch}
-                                className="btn-cta h-[38px] w-full whitespace-nowrap px-5"
-                                aria-label="Apply filters"
-                            >
-                                <Search size={14} /> Search
-                            </button>
-                        </div>
+                        {/* col 4, row 1 — intentionally empty */}
+                        <div className="hidden sm:block" />
 
                         {/* Type — col 1, row 2 */}
                         <div className="flex flex-col gap-1">
@@ -229,8 +233,16 @@ export default function BookingsView({
                             />
                         </div>
 
-                        {/* col 4, row 2 — intentionally empty for alignment */}
-                        <div className="hidden sm:block" />
+                        {/* Search button — col 4, row 2 */}
+                        <div className="flex flex-col justify-end">
+                            <button
+                                onClick={onSearch}
+                                className="btn-cta h-[38px] w-full whitespace-nowrap px-2"
+                                aria-label="Apply filters"
+                            >
+                                <Search size={14} /> Search
+                            </button>
+                        </div>
                     </div>
                 </div>
 

@@ -65,6 +65,7 @@ const baseProps = {
     onRefresh: vi.fn(),
     onCourtChange: vi.fn(),
     onManageClick: vi.fn(),
+    onManageReservationClick: vi.fn(),
 };
 
 const mockCalendarData: CalendarViewData = {
@@ -174,7 +175,6 @@ describe("CalendarView — day mode", () => {
 describe("CalendarView — breadcrumb", () => {
     it("renders breadcrumb with correct labels", () => {
         render(<CalendarView {...baseProps} calendarData={mockCalendarData} />);
-        expect(screen.getByText("Operations")).toBeInTheDocument();
         expect(screen.getAllByText("Calendar").length).toBeGreaterThanOrEqual(1);
     });
 });
