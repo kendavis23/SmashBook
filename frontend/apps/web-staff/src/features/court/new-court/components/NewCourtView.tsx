@@ -49,15 +49,13 @@ export default function NewCourtView({
             <Breadcrumb items={[{ label: "Courts", href: "/courts" }, { label: "New Court" }]} />
 
             <section className="card-surface overflow-hidden">
-                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                            New Court
-                        </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            Add a new court to your club.
-                        </p>
-                    </div>
+                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                        New Court
+                    </h1>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                        Add a new court to your club.
+                    </p>
                 </header>
 
                 <div className="px-5 py-6 sm:px-6">

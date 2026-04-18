@@ -67,12 +67,17 @@ export default function NewBookingView({
                 items={[{ label: "Bookings", href: "/bookings" }, { label: "New Booking" }]}
             />
 
-            <section className="w-full rounded-xl border border-border bg-card px-6 py-6 shadow-sm sm:px-8">
-                <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
-                    <h1 className="text-xl font-semibold text-foreground">New Booking</h1>
+            <section className="card-surface overflow-hidden">
+                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                        New Booking
+                    </h1>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                        Create a new court booking for your club.
+                    </p>
                 </header>
 
-                <div className="mt-5">
+                <div className="px-5 py-6 sm:px-6">
                     {apiError ? (
                         <div className="mb-5">
                             <AlertToast title={apiError} variant="error" onClose={onDismissError} />

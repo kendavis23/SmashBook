@@ -1,5 +1,5 @@
 import { AlertToast, Breadcrumb, SelectInput } from "@repo/ui";
-import { Building2, MapPin, Coins, Loader2 } from "lucide-react";
+import { Building2, Coins, Loader2 } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 
 const fieldCls =
@@ -53,18 +53,13 @@ export default function NewClubView({
             <Breadcrumb items={[{ label: "Clubs", href: "/clubs" }, { label: "New Club" }]} />
 
             <section className="card-surface overflow-hidden">
-                <header className="flex items-start gap-4 border-b border-border px-5 py-5 sm:px-6">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-cta/10">
-                        <Building2 size={20} className="text-cta" />
-                    </div>
-                    <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                            New Club
-                        </h1>
-                        <p className="mt-0.5 text-sm text-muted-foreground">
-                            Create a new club under your organisation.
-                        </p>
-                    </div>
+                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                        New Club
+                    </h1>
+                    <p className="mt-0.5 text-sm text-muted-foreground">
+                        Create a new club under your organisation.
+                    </p>
                 </header>
 
                 <div className="px-5 py-6 sm:px-6">
@@ -85,7 +80,7 @@ export default function NewClubView({
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-5 max-w-md">
+                            <div className="grid grid-cols-1 gap-4">
                                 {/* Club Name */}
                                 <div>
                                     <label htmlFor="club-name" className={labelCls}>
@@ -128,22 +123,14 @@ export default function NewClubView({
                                     <label htmlFor="club-address" className={labelCls}>
                                         Address
                                     </label>
-                                    <div className="relative">
-                                        <MapPin
-                                            size={15}
-                                            className="pointer-events-none absolute left-3 top-3 text-muted-foreground"
-                                        />
-                                        <textarea
-                                            id="club-address"
-                                            rows={2}
-                                            className={`${fieldCls} resize-none pl-9`}
-                                            placeholder="e.g. 123 Main Street, Madrid"
-                                            value={form.address}
-                                            onChange={(e) =>
-                                                onFormChange({ address: e.target.value })
-                                            }
-                                        />
-                                    </div>
+                                    <textarea
+                                        id="club-address"
+                                        rows={3}
+                                        className={fieldCls}
+                                        placeholder="e.g. 123 Main Street, Madrid"
+                                        value={form.address}
+                                        onChange={(e) => onFormChange({ address: e.target.value })}
+                                    />
                                 </div>
 
                                 {/* Currency */}

@@ -88,7 +88,7 @@ export default function WeekTimelineBoard({
     }
 
     return (
-        <section className="card-surface flex min-h-0 flex-1 flex-col overflow-hidden">
+        <section className="isolate flex min-h-0 flex-1 flex-col overflow-hidden">
             {/* Single scroll container — header and body share horizontal scroll so borders align */}
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
                 <div className="min-w-fit">

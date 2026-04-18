@@ -33,27 +33,39 @@ export default function ClubsView({
             <Breadcrumb items={[{ label: "Clubs" }]} />
 
             <section className="card-surface overflow-hidden">
-                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+                <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                            Clubs
-                        </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {clubs.length > 0
-                                ? `${activeCount} total`
-                                : "Manage your organisation's clubs"}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                                <Building2 size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                        Clubs
+                                    </h1>
+                                    {clubs.length > 0 ? (
+                                        <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
+                                            {activeCount} total
+                                        </span>
+                                    ) : null}
+                                </div>
+                                <p className="mt-0.5 text-sm text-muted-foreground">
+                                    Manage your organisation&apos;s clubs
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <button
                             onClick={onRefresh}
-                            className="btn-outline min-h-11 px-4"
+                            className="btn-outline min-h-10 px-4"
                             aria-label="Refresh clubs"
                         >
                             <RefreshCw size={14} /> Refresh
                         </button>
                         {canCreate ? (
-                            <button onClick={onCreateClick} className="btn-cta min-h-11 px-4">
+                            <button onClick={onCreateClick} className="btn-cta min-h-10 px-4">
                                 <Plus size={14} /> New Club
                             </button>
                         ) : null}

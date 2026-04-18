@@ -53,7 +53,7 @@ export default function CourtsView({
     canCreateCourt,
     canEditCourt,
     filters,
-    hasPendingServerFilters,
+    hasPendingServerFilters: _hasPendingServerFilters,
     hasActiveServerFilters,
     onFiltersChange,
     onSearch,
@@ -72,35 +72,44 @@ export default function CourtsView({
     onSelectSlot,
     onBookSlot,
 }: Props): JSX.Element {
-    const activeCount = courts.filter((c) => c.is_active).length;
-    const searchButtonLabel = hasPendingServerFilters ? "Search" : "Refresh";
-
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Courts" }]} />
 
             <section className="card-surface overflow-hidden">
-                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+                <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-                            Courts
-                        </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {courts.length > 0
-                                ? `${activeCount} active · ${courts.length} total`
-                                : "Manage your club's courts and availability"}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                                <Circle size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                        Courts
+                                    </h1>
+                                    {courts.length > 0 ? (
+                                        <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
+                                            {courts.length} total
+                                        </span>
+                                    ) : null}
+                                </div>
+                                <p className="mt-0.5 text-sm text-muted-foreground">
+                                    Manage your club&apos;s courts and availability
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <button
                             onClick={onRefresh}
-                            className="btn-outline min-h-11 px-4"
+                            className="btn-outline min-h-10 px-4"
                             aria-label="Refresh courts"
                         >
                             <RefreshCw size={14} /> Refresh
                         </button>
                         {canCreateCourt ? (
-                            <button onClick={onCreateClick} className="btn-cta min-h-11 px-4.5">
+                            <button onClick={onCreateClick} className="btn-cta min-h-10 px-4">
                                 <Plus size={14} /> Add Court
                             </button>
                         ) : null}
@@ -185,7 +194,7 @@ export default function CourtsView({
                                 aria-label="Apply filters"
                             >
                                 <Search size={14} />
-                                {searchButtonLabel}
+                                Search
                             </button>
                         </div>
                     </div>

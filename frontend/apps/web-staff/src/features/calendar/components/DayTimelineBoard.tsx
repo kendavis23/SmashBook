@@ -98,11 +98,7 @@ export default function DayTimelineBoard({ day, onManageClick }: Props): JSX.Ele
     }
 
     return (
-        <section
-            ref={scrollRef}
-            className="card-surface overflow-auto"
-            style={{ maxHeight: "70vh" }}
-        >
+        <section ref={scrollRef} className="isolate min-h-0 flex-1 overflow-auto">
             {day.courts.length === 0 ? (
                 <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                     No courts found for this day.

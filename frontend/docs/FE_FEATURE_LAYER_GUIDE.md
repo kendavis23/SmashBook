@@ -1,4 +1,4 @@
-_Last updated: 2026-04-18 14:30 UTC_
+_Last updated: 2026-04-18 16:00 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -404,11 +404,51 @@ Every page-level container follows this structure:
 
     {/* Main card */}
     <section className="card-surface overflow-hidden">
-        {/* Header — see header patterns below */}
-        <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+        {/*
+          Header anatomy (list pages):
+          ┌─────────────────────────────────────────────────────────┐
+          │  [icon]  Title               count badge                │
+          │          subtitle                    [Refresh] [+ New]  │
+          └─────────────────────────────────────────────────────────┘
+
+          • Outer <header>: flex-col on mobile → flex-row (items-center,
+            justify-between) from lg breakpoint.
+          • Left side: icon square (h-9 w-9, rounded-xl, bg-secondary) +
+            title block (h1 + optional count badge inline + <p> subtitle).
+          • Right side: action buttons (Refresh always, New gated by canCreate).
+          • Background: bg-muted/10 with a bottom border.
+        */}
+        <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+            {/* Left — icon + title block */}
             <div className="min-w-0">
-                <h1 className="text-xl font-semibold tracking-tight text-foreground">Page Title</h1>
-                <p className="mt-1 text-sm text-muted-foreground">Subtitle or summary count</p>
+                <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Section icon */}
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                        <SomeIcon size={16} />
+                    </div>
+                    <div className="min-w-0">
+                        {/* Title row: heading + inline count badge */}
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                Page Title
+                            </h1>
+                            {items.length > 0 ? (
+                                <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
+                                    {items.length} total
+                                </span>
+                            ) : null}
+                        </div>
+                        {/* Subtitle */}
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            Manage your organisation's entities
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Right — action buttons */}
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                {/* Standalone actions only — never style these like a segmented toggle */}
             </div>
         </header>
 
@@ -423,44 +463,76 @@ Every page-level container follows this structure:
 List pages always show a **Refresh** button and, for privileged roles, a **New \<Entity\>** button that navigates to a dedicated create page. Never open a modal for create/edit — use a route instead (see create/edit page patterns below).
 
 ```tsx
-{
-    /* In the View component's Props */
-}
+// Props
 type Props = {
     // ...
-    canManage: boolean;
+    items: Entity[];
+    canCreate: boolean; // true only for privileged roles
     onRefresh: () => void;
     onCreateClick: () => void;
 };
 
-{
-    /* Header JSX */
-}
-<header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6 lg:flex-row lg:items-start lg:justify-between">
+// Header JSX — copy this block verbatim and swap Entity / SomeIcon
+import { EntityIcon, Plus, RefreshCw } from "lucide-react";
+
+<header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+    {/* Left — icon + title block */}
     <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Entities</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-            {items.length > 0
-                ? `${activeCount} active · ${items.length} total`
-                : "Manage your club's entities"}
-        </p>
+        <div className="flex flex-wrap items-center gap-2.5">
+            {/* 36×36 icon square */}
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                <EntityIcon size={16} />
+            </div>
+            <div className="min-w-0">
+                {/* Title + inline count badge */}
+                <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                        Entities
+                    </h1>
+                    {items.length > 0 ? (
+                        <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
+                            {items.length} total
+                        </span>
+                    ) : null}
+                </div>
+                {/* Subtitle */}
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                    Manage your organisation's entities
+                </p>
+            </div>
+        </div>
     </div>
+
+    {/* Right — action buttons */}
     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
         <button
             onClick={onRefresh}
-            className="btn-outline min-h-11 px-4"
+            className="btn-outline min-h-10 px-4"
             aria-label="Refresh entities"
         >
             <RefreshCw size={14} /> Refresh
         </button>
-        {canManage ? (
-            <button onClick={onCreateClick} className="btn-cta min-h-11 px-4.5">
+        {canCreate ? (
+            <button onClick={onCreateClick} className="btn-cta min-h-10 px-4">
                 <Plus size={14} /> New Entity
             </button>
         ) : null}
     </div>
 </header>;
 ```
+
+**Token / class reference for the header:**
+
+| Element        | Classes                                                                                                                   |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `<header>`     | `flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between` |
+| Icon square    | `flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs`                    |
+| Icon size      | `size={16}` (Lucide prop)                                                                                                 |
+| Title          | `text-lg font-semibold tracking-tight text-foreground`                                                                    |
+| Count badge    | `rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs`   |
+| Subtitle       | `mt-0.5 text-sm text-muted-foreground`                                                                                    |
+| Refresh button | `btn-outline min-h-10 px-4`                                                                                               |
+| New button     | `btn-cta min-h-10 px-4`                                                                                                   |
 
 **In the Container:** wire `onRefresh` to `refetch` from the domain hook and `onCreateClick` to `navigate({ to: "/entities/new" })`.
 
@@ -535,11 +607,9 @@ export default function NewEntityView({ ... }: Props): JSX.Element {
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Entities", href: "/entities" }, { label: "New Entity" }]} />
             <section className="card-surface overflow-hidden">
-                <header className="flex flex-col gap-4 border-b border-border px-5 py-5 sm:px-6">
-                    <div className="min-w-0">
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">New Entity</h1>
-                        <p className="mt-1 text-sm text-muted-foreground">Description of what this creates.</p>
-                    </div>
+                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <h1 className="text-lg font-semibold tracking-tight text-foreground">New Entity</h1>
+                    <p className="mt-0.5 text-sm text-muted-foreground">Description of what this creates.</p>
                 </header>
                 <div className="px-5 py-6 sm:px-6">
                     {apiError ? <AlertToast title={apiError} variant="error" onClose={onDismissError} /> : null}
