@@ -14,7 +14,6 @@ from app.schemas.booking import (
     CalendarBlockItem,
     CalendarBookingItem,
     CalendarCourtColumn,
-    CalendarDay,
     CalendarSlot,
 )
 
