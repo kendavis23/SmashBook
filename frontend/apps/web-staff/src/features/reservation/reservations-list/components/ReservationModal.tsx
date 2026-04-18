@@ -6,7 +6,14 @@ import type {
     Court,
 } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
-import { AlertToast, datetimeLocalToUTC } from "@repo/ui";
+import {
+    AlertToast,
+    DatePicker,
+    DateTimePicker,
+    datetimeLocalToUTC,
+    NumberInput,
+    SelectInput,
+} from "@repo/ui";
 import { X } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
@@ -231,20 +238,13 @@ export default function ReservationModal({
                             <label htmlFor="res-type" className={labelCls}>
                                 Reservation Type
                             </label>
-                            <select
-                                id="res-type"
-                                className={fieldCls}
+                            <SelectInput
                                 value={reservationType}
-                                onChange={(e) =>
-                                    setReservationType(e.target.value as CalendarReservationType)
+                                onValueChange={(v) =>
+                                    setReservationType(v as CalendarReservationType)
                                 }
-                            >
-                                {typeOptions.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                        {opt.label}
-                                    </option>
-                                ))}
-                            </select>
+                                options={typeOptions}
+                            />
                         </div>
 
                         {/* Court */}
@@ -255,19 +255,16 @@ export default function ReservationModal({
                                     (optional — leave blank to apply to all courts)
                                 </span>
                             </label>
-                            <select
-                                id="res-court"
-                                className={fieldCls}
+                            <SelectInput
                                 value={courtId}
-                                onChange={(e) => setCourtId(e.target.value)}
-                            >
-                                <option value="">All courts</option>
-                                {courts.map((court) => (
-                                    <option key={court.id} value={court.id}>
-                                        {court.name}
-                                    </option>
-                                ))}
-                            </select>
+                                onValueChange={setCourtId}
+                                options={courts.map((court) => ({
+                                    value: court.id,
+                                    label: court.name,
+                                }))}
+                                placeholder="All courts"
+                                clearLabel="All courts"
+                            />
                         </div>
 
                         {/* Start / End datetimes */}
@@ -276,30 +273,34 @@ export default function ReservationModal({
                                 <label htmlFor="res-start" className={labelCls}>
                                     Start <span className="text-destructive">*</span>
                                 </label>
-                                <input
-                                    id="res-start"
-                                    type="datetime-local"
-                                    className={`${fieldCls} ${dateError ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
+                                <DateTimePicker
                                     value={startDatetime}
-                                    onChange={(e) => {
-                                        setStartDatetime(e.target.value);
+                                    onChange={(v) => {
+                                        setStartDatetime(v);
                                         if (dateError) setDateError("");
                                     }}
+                                    className={
+                                        dateError
+                                            ? "border-destructive focus:border-destructive focus:ring-destructive/20"
+                                            : ""
+                                    }
                                 />
                             </div>
                             <div>
                                 <label htmlFor="res-end" className={labelCls}>
                                     End <span className="text-destructive">*</span>
                                 </label>
-                                <input
-                                    id="res-end"
-                                    type="datetime-local"
-                                    className={`${fieldCls} ${dateError ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
+                                <DateTimePicker
                                     value={endDatetime}
-                                    onChange={(e) => {
-                                        setEndDatetime(e.target.value);
+                                    onChange={(v) => {
+                                        setEndDatetime(v);
                                         if (dateError) setDateError("");
                                     }}
+                                    className={
+                                        dateError
+                                            ? "border-destructive focus:border-destructive focus:ring-destructive/20"
+                                            : ""
+                                    }
                                 />
                             </div>
                         </div>
@@ -315,11 +316,10 @@ export default function ReservationModal({
                                     <label htmlFor="res-anchor-skill" className={labelCls}>
                                         Anchor
                                     </label>
-                                    <input
+                                    <NumberInput
                                         id="res-anchor-skill"
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
+                                        min={0}
+                                        step={0.1}
                                         className={fieldCls}
                                         placeholder="e.g. 3.5"
                                         value={anchorSkillLevel}
@@ -330,11 +330,10 @@ export default function ReservationModal({
                                     <label htmlFor="res-skill-above" className={labelCls}>
                                         Range Above
                                     </label>
-                                    <input
+                                    <NumberInput
                                         id="res-skill-above"
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
+                                        min={0}
+                                        step={0.1}
                                         className={fieldCls}
                                         placeholder="e.g. 1.0"
                                         value={skillRangeAbove}
@@ -345,11 +344,10 @@ export default function ReservationModal({
                                     <label htmlFor="res-skill-below" className={labelCls}>
                                         Range Below
                                     </label>
-                                    <input
+                                    <NumberInput
                                         id="res-skill-below"
-                                        type="number"
-                                        min="0"
-                                        step="0.1"
+                                        min={0}
+                                        step={0.1}
                                         className={fieldCls}
                                         placeholder="e.g. 1.0"
                                         value={skillRangeBelow}
@@ -434,12 +432,9 @@ export default function ReservationModal({
                                     <label htmlFor="res-rrule-end" className={labelCls}>
                                         Recurrence End Date
                                     </label>
-                                    <input
-                                        id="res-rrule-end"
-                                        type="date"
-                                        className={fieldCls}
+                                    <DatePicker
                                         value={recurrenceEndDate}
-                                        onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                                        onChange={setRecurrenceEndDate}
                                     />
                                 </div>
                             </>

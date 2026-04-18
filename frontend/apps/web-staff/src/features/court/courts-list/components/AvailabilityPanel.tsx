@@ -2,6 +2,7 @@ import type { Court, CourtAvailability, TimeSlot } from "../../types";
 import { X, Clock, CalendarDays } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import type { JSX } from "react";
+import { DatePicker } from "@repo/ui";
 
 type Props = {
     court: Court;
@@ -94,13 +95,13 @@ export default function AvailabilityPanel({
                         <CalendarDays size={12} className="flex-shrink-0" />
                         <span className="font-semibold uppercase tracking-wide">Date</span>
                     </label>
-                    <input
-                        type="date"
-                        value={date}
-                        onChange={(e) => onDateChange(e.target.value)}
-                        className="mt-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30"
-                        aria-label="Select date"
-                    />
+                    <div className="mt-1">
+                        <DatePicker
+                            value={date}
+                            onChange={onDateChange}
+                            className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30"
+                        />
+                    </div>
                 </div>
 
                 {!isLoading && !error && slots.length > 0 && (

@@ -1,5 +1,6 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast } from "@repo/ui";
+import { Breadcrumb, AlertToast, NumberInput, SelectInput } from "@repo/ui";
+import type { SelectOption } from "@repo/ui";
 import type { SurfaceType } from "../../types";
 
 const fieldCls =
@@ -8,7 +9,7 @@ const fieldCls =
 
 const labelCls = "mb-1 block text-sm font-medium text-foreground";
 
-const SURFACE_OPTIONS: { value: SurfaceType; label: string }[] = [
+const SURFACE_OPTIONS: SelectOption[] = [
     { value: "indoor", label: "Indoor" },
     { value: "outdoor", label: "Outdoor" },
     { value: "crystal", label: "Crystal" },
@@ -101,22 +102,15 @@ export default function NewCourtView({
                                         <label htmlFor="court-surface" className={labelCls}>
                                             Surface Type
                                         </label>
-                                        <select
-                                            id="court-surface"
-                                            className={fieldCls}
+                                        <SelectInput
+                                            name="court-surface"
                                             value={form.surfaceType}
-                                            onChange={(e) =>
-                                                onFormChange({
-                                                    surfaceType: e.target.value as SurfaceType,
-                                                })
+                                            options={SURFACE_OPTIONS}
+                                            onValueChange={(v) =>
+                                                onFormChange({ surfaceType: v as SurfaceType })
                                             }
-                                        >
-                                            {SURFACE_OPTIONS.map((opt) => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            placeholder="Select surface"
+                                        />
                                     </div>
 
                                     <div className="flex items-end pb-1">
@@ -144,9 +138,8 @@ export default function NewCourtView({
                                             <label htmlFor="court-surcharge" className={labelCls}>
                                                 Lighting Surcharge
                                             </label>
-                                            <input
+                                            <NumberInput
                                                 id="court-surcharge"
-                                                type="number"
                                                 min="0"
                                                 step="0.01"
                                                 className={fieldCls}

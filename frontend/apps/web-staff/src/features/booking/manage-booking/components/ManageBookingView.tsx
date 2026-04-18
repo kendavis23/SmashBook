@@ -1,5 +1,12 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast, ConfirmDeleteModal, formatUTCDateTime } from "@repo/ui";
+import {
+    Breadcrumb,
+    AlertToast,
+    ConfirmDeleteModal,
+    DateTimePicker,
+    formatUTCDateTime,
+    SelectInput,
+} from "@repo/ui";
 import type { Booking } from "../../types";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } from "../../types";
 
@@ -268,33 +275,22 @@ export default function ManageBookingView({
                                         <label htmlFor="mb-court" className={labelCls}>
                                             Court
                                         </label>
-                                        <select
-                                            id="mb-court"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.courtId}
-                                            onChange={(e) =>
-                                                onFormChange({ courtId: e.target.value })
-                                            }
-                                        >
-                                            {courts.map((c) => (
-                                                <option key={c.id} value={c.id}>
-                                                    {c.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onValueChange={(v) => onFormChange({ courtId: v })}
+                                            options={courts.map((c) => ({
+                                                value: c.id,
+                                                label: c.name,
+                                            }))}
+                                        />
                                     </div>
                                     <div>
                                         <label htmlFor="mb-start" className={labelCls}>
                                             Start
                                         </label>
-                                        <input
-                                            id="mb-start"
-                                            type="datetime-local"
-                                            className={fieldCls}
+                                        <DateTimePicker
                                             value={form.startDatetime}
-                                            onChange={(e) =>
-                                                onFormChange({ startDatetime: e.target.value })
-                                            }
+                                            onChange={(v) => onFormChange({ startDatetime: v })}
                                         />
                                     </div>
                                 </div>

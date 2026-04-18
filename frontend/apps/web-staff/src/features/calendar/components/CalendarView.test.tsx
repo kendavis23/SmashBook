@@ -11,6 +11,31 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+        "aria-label": ariaLabel,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: { value: string; label: string }[];
+        placeholder?: string;
+        "aria-label"?: string;
+    }) => (
+        <select
+            value={value ?? ""}
+            onChange={(e) => onValueChange(e.target.value)}
+            aria-label={ariaLabel ?? placeholder ?? "select"}
+        >
+            {(options ?? []).map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
 }));
 
 vi.mock("./WeekTimelineBoard", () => ({

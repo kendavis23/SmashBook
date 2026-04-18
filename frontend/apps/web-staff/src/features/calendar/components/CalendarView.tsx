@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Breadcrumb } from "@repo/ui";
+import { Breadcrumb, SelectInput } from "@repo/ui";
 import { ChevronLeft, ChevronRight, CalendarDays, RefreshCw } from "lucide-react";
 import type { CalendarView as CalendarViewData, CalendarViewMode } from "../types";
 import { CALENDAR_VIEW_MODES, formatShortDate } from "../types";
@@ -65,21 +65,13 @@ export default function CalendarView({
                     <div className="flex flex-wrap items-center gap-2">
                         {/* Court picker — week mode only */}
                         {viewMode === "week" && courts.length > 0 ? (
-                            <div className="flex items-center rounded-lg border border-border bg-background px-3 py-1.5 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <select
-                                    value={selectedCourtId}
-                                    onChange={(e) => onCourtChange(e.target.value)}
-                                    className="bg-transparent text-xs font-medium text-foreground focus:outline-none"
-                                    aria-label="Select court"
-                                >
-                                    <option value="">All courts</option>
-                                    {courts.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectInput
+                                value={selectedCourtId}
+                                onValueChange={(v) => onCourtChange(v)}
+                                options={courts.map((c) => ({ value: c.id, label: c.name }))}
+                                clearLabel="All courts"
+                                aria-label="Select court"
+                            />
                         ) : null}
 
                         {/* View mode toggle */}

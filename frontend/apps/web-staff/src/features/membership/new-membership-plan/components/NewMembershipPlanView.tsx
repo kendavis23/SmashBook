@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast } from "@repo/ui";
+import { Breadcrumb, AlertToast, NumberInput, SelectInput } from "@repo/ui";
 import type { BillingPeriod } from "../../types";
 
 const fieldCls =
@@ -129,33 +129,26 @@ export default function NewMembershipPlanView({
                                         <label htmlFor="plan-billing" className={labelCls}>
                                             Billing Period
                                         </label>
-                                        <select
-                                            id="plan-billing"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.billingPeriod}
-                                            onChange={(e) =>
+                                            onValueChange={(v) =>
                                                 onFormChange({
-                                                    billingPeriod: e.target.value as BillingPeriod,
+                                                    billingPeriod: v as BillingPeriod,
                                                 })
                                             }
-                                        >
-                                            {BILLING_OPTIONS.map((opt) => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            options={BILLING_OPTIONS}
+                                            aria-label="Billing Period"
+                                        />
                                     </div>
 
                                     <div>
                                         <label htmlFor="plan-price" className={labelCls}>
                                             Price (€) <span className="text-destructive">*</span>
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="plan-price"
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
+                                            min={0}
+                                            step={0.01}
                                             className={`${fieldCls} ${priceError ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
                                             placeholder="e.g. 29.99"
                                             value={form.price}
@@ -187,11 +180,10 @@ export default function NewMembershipPlanView({
                                         <label htmlFor="plan-credits" className={labelCls}>
                                             Booking Credits / Period
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="plan-credits"
-                                            type="number"
-                                            min="0"
-                                            step="1"
+                                            min={0}
+                                            step={1}
                                             className={fieldCls}
                                             placeholder="Blank = unlimited"
                                             value={form.bookingCredits}
@@ -204,11 +196,10 @@ export default function NewMembershipPlanView({
                                         <label htmlFor="plan-guests" className={labelCls}>
                                             Guest Passes / Period
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="plan-guests"
-                                            type="number"
-                                            min="0"
-                                            step="1"
+                                            min={0}
+                                            step={1}
                                             className={fieldCls}
                                             placeholder="Blank = none"
                                             value={form.guestPasses}
@@ -221,11 +212,10 @@ export default function NewMembershipPlanView({
                                         <label htmlFor="plan-priority" className={labelCls}>
                                             Priority Booking Days
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="plan-priority"
-                                            type="number"
-                                            min="0"
-                                            step="1"
+                                            min={0}
+                                            step={1}
                                             className={fieldCls}
                                             placeholder="e.g. 7"
                                             value={form.priorityDays}
@@ -238,11 +228,10 @@ export default function NewMembershipPlanView({
                                         <label htmlFor="plan-max-members" className={labelCls}>
                                             Max Active Members
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="plan-max-members"
-                                            type="number"
-                                            min="0"
-                                            step="1"
+                                            min={0}
+                                            step={1}
                                             className={fieldCls}
                                             placeholder="Blank = unlimited"
                                             value={form.maxMembers}
@@ -272,11 +261,10 @@ export default function NewMembershipPlanView({
                                         <label htmlFor="plan-trial" className={labelCls}>
                                             Trial Days
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="plan-trial"
-                                            type="number"
-                                            min="0"
-                                            step="1"
+                                            min={0}
+                                            step={1}
                                             className={fieldCls}
                                             placeholder="0"
                                             value={form.trialDays}
@@ -289,12 +277,11 @@ export default function NewMembershipPlanView({
                                         <label htmlFor="plan-discount" className={labelCls}>
                                             Discount (%)
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="plan-discount"
-                                            type="number"
-                                            min="0"
-                                            max="100"
-                                            step="0.1"
+                                            min={0}
+                                            max={100}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="e.g. 10"
                                             value={form.discountPct}

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-18 11:00 UTC_
+_Last updated: 2026-04-18 14:30 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -325,6 +325,73 @@ export const labelCls = "mb-1 block text-sm font-medium text-foreground";
 | `border-border`         | Default dividers and card borders            |
 
 **Never use:** `bg-[#xxx]`, `text-amber-700`, `bg-sky-50`, `bg-violet-50`, `text-gray-500` or any Tailwind palette color directly.
+
+### Form inputs
+
+**Never use bare `<input>`, `<select>`, or `<input type="date">` elements in feature components.** Native inputs render inconsistently across browsers (Chrome vs Safari) and carry no shared styles. Always use the shared components from `@repo/ui`.
+
+| Use case                | Component                                         | Import     |
+| ----------------------- | ------------------------------------------------- | ---------- |
+| Text / email / password | native `<input>` is fine — no cross-browser issue | —          |
+| Number field            | `NumberInput`                                     | `@repo/ui` |
+| Time field              | `TimeInput`                                       | `@repo/ui` |
+| Date field              | `DatePicker`                                      | `@repo/ui` |
+| Date + time field       | `DateTimePicker`                                  | `@repo/ui` |
+| Dropdown / select       | `SelectInput`                                     | `@repo/ui` |
+
+```tsx
+import { NumberInput, TimeInput, DatePicker, DateTimePicker, SelectInput } from "@repo/ui";
+import type { SelectOption } from "@repo/ui";
+
+const DAY_OPTIONS: SelectOption[] = [
+    { value: "0", label: "Monday" },
+    { value: "1", label: "Tuesday" },
+    // ...
+];
+
+// ✅ Correct — use shared components
+<NumberInput
+    className="input-base"
+    value={form.capacity}
+    min={1}
+    onChange={(e) => onChange({ capacity: Number(e.target.value) })}
+/>
+
+<TimeInput
+    className="input-base"
+    value={form.open_time}
+    onChange={(e) => onChange({ open_time: e.target.value })}
+/>
+
+<DatePicker
+    className="input-base"
+    value={form.valid_from}          // "YYYY-MM-DD"
+    onChange={(v) => onChange({ valid_from: v })}
+/>
+
+<DateTimePicker
+    className="input-base"
+    value={form.expires_at}          // "YYYY-MM-DDTHH:MM"
+    onChange={(v) => onChange({ expires_at: v })}
+/>
+
+<SelectInput
+    name="day_of_week"
+    value={form.day_of_week}
+    options={DAY_OPTIONS}
+    onValueChange={(v) => onChange({ day_of_week: v })}
+    placeholder="Select day"
+/>
+
+// ❌ Wrong — never write these in feature components
+<input type="number" ... />
+<input type="time" ... />
+<input type="date" ... />
+<input type="datetime-local" ... />
+<select>...</select>
+```
+
+**Rule:** if you need a new input variant that `@repo/ui` does not yet export, add the component to `packages/ui/components/` first, export it from `packages/ui/components/index.ts`, then consume it in the feature. Never build a one-off styled input inside a feature.
 
 ### Page layout baseline
 
@@ -809,6 +876,7 @@ Additional rules:
 - [ ] Pages are thin shells (no logic)
 - [ ] `pages/` contains re-export files pointing to sub-feature pages
 - [ ] No hardcoded colors (`bg-[#xxx]`, `text-amber-700`, etc.)
+- [ ] No bare `<input type="number|time|date|datetime-local">` or `<select>` — use `NumberInput`, `TimeInput`, `DatePicker`, `DateTimePicker`, `SelectInput` from `@repo/ui`
 - [ ] No cross-feature imports
 - [ ] No imports from `@repo/api-client` inside features
 - [ ] No `process.env` / `import.meta.env` access (use `@repo/config`)

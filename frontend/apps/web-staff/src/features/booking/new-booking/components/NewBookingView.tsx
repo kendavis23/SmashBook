@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast } from "@repo/ui";
+import { Breadcrumb, AlertToast, DatePicker, NumberInput, SelectInput } from "@repo/ui";
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 
@@ -59,7 +59,6 @@ export default function NewBookingView({
     onDismissError,
 }: Props): JSX.Element {
     const courtSelected = Boolean(form.courtId);
-    const today = new Date().toISOString().slice(0, 10);
 
     return (
         <div className="w-full space-y-5">
@@ -98,28 +97,27 @@ export default function NewBookingView({
                                         <label htmlFor="bk-court" className={labelCls}>
                                             Court <span className="text-destructive">*</span>
                                         </label>
-                                        <select
-                                            id="bk-court"
-                                            className={`${fieldCls} ${courtError ? "border-destructive" : ""}`}
+                                        <SelectInput
                                             value={form.courtId}
-                                            onChange={(e) =>
+                                            onValueChange={(courtId) =>
                                                 onFormChange({
-                                                    courtId: e.target.value,
+                                                    courtId,
                                                     bookingDate: "",
                                                     startTime: "",
                                                 })
                                             }
-                                        >
-                                            {courts.length === 0 ? (
-                                                <option value="">No courts available</option>
-                                            ) : (
-                                                courts.map((c) => (
-                                                    <option key={c.id} value={c.id}>
-                                                        {c.name}
-                                                    </option>
-                                                ))
-                                            )}
-                                        </select>
+                                            options={courts.map((c) => ({
+                                                value: c.id,
+                                                label: c.name,
+                                            }))}
+                                            placeholder={
+                                                courts.length === 0
+                                                    ? "No courts available"
+                                                    : "Select court…"
+                                            }
+                                            disabled={courts.length === 0}
+                                            className={courtError ? "!border-destructive" : ""}
+                                        />
                                         {courtError ? (
                                             <p className="mt-1 text-xs text-destructive">
                                                 {courtError}
@@ -132,22 +130,15 @@ export default function NewBookingView({
                                         <label htmlFor="bk-type" className={labelCls}>
                                             Booking Type
                                         </label>
-                                        <select
-                                            id="bk-type"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.bookingType}
-                                            onChange={(e) =>
+                                            onValueChange={(v) =>
                                                 onFormChange({
-                                                    bookingType: e.target.value as BookingType,
+                                                    bookingType: v as BookingType,
                                                 })
                                             }
-                                        >
-                                            {typeOptions.map((opt) => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            options={typeOptions}
+                                        />
                                     </div>
 
                                     {/* Max players */}
@@ -155,11 +146,10 @@ export default function NewBookingView({
                                         <label htmlFor="bk-max-players" className={labelCls}>
                                             Max Players
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="bk-max-players"
-                                            type="number"
-                                            min="1"
-                                            max="10"
+                                            min={1}
+                                            max={10}
                                             className={fieldCls}
                                             value={form.maxPlayers}
                                             onChange={(e) =>
@@ -176,18 +166,16 @@ export default function NewBookingView({
                                         <label htmlFor="bk-date" className={labelCls}>
                                             Date <span className="text-destructive">*</span>
                                         </label>
-                                        <input
-                                            id="bk-date"
-                                            type="date"
-                                            min={today}
-                                            disabled={!courtSelected}
-                                            className={`${fieldCls} ${!courtSelected ? "cursor-not-allowed opacity-50" : ""} ${startError && !form.bookingDate ? "border-destructive" : ""}`}
+                                        <DatePicker
                                             value={form.bookingDate}
-                                            onChange={(e) =>
-                                                onFormChange({
-                                                    bookingDate: e.target.value,
-                                                    startTime: "",
-                                                })
+                                            onChange={(v) =>
+                                                onFormChange({ bookingDate: v, startTime: "" })
+                                            }
+                                            disabled={!courtSelected}
+                                            className={
+                                                startError && !form.bookingDate
+                                                    ? "!border-destructive"
+                                                    : ""
                                             }
                                         />
                                     </div>
@@ -216,32 +204,29 @@ export default function NewBookingView({
                                                 </span>
                                             </div>
                                         ) : (
-                                            <select
-                                                id="bk-start-time"
-                                                className={`${fieldCls} ${startError && !form.startTime ? "border-destructive" : ""}`}
+                                            <SelectInput
                                                 value={form.startTime}
-                                                onChange={(e) =>
-                                                    onFormChange({ startTime: e.target.value })
+                                                onValueChange={(v) =>
+                                                    onFormChange({ startTime: v })
                                                 }
-                                            >
-                                                <option value="" disabled>
-                                                    Select time
-                                                </option>
-                                                {slots.map((slot) => (
-                                                    <option
-                                                        key={slot.start_time}
-                                                        value={slot.start_time}
-                                                        disabled={!slot.is_available}
-                                                    >
-                                                        {slot.start_time}
-                                                        {!slot.is_available
+                                                placeholder="Select time"
+                                                options={slots.map((slot) => ({
+                                                    value: slot.start_time,
+                                                    label:
+                                                        slot.start_time +
+                                                        (!slot.is_available
                                                             ? " — Booked"
                                                             : slot.price_label
                                                               ? ` — ${slot.price_label}`
-                                                              : ""}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                              : ""),
+                                                    disabled: !slot.is_available,
+                                                }))}
+                                                className={
+                                                    startError && !form.startTime
+                                                        ? "!border-destructive"
+                                                        : ""
+                                                }
+                                            />
                                         )}
                                         {startError ? (
                                             <p className="mt-1 text-xs text-destructive">
@@ -288,11 +273,10 @@ export default function NewBookingView({
                                         <label htmlFor="bk-anchor-skill" className={labelCls}>
                                             Anchor
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="bk-anchor-skill"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="3.5"
                                             value={form.anchorSkill}
@@ -305,11 +289,10 @@ export default function NewBookingView({
                                         <label htmlFor="bk-skill-min" className={labelCls}>
                                             Min
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="bk-skill-min"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="2.5"
                                             value={form.skillMin}
@@ -322,11 +305,10 @@ export default function NewBookingView({
                                         <label htmlFor="bk-skill-max" className={labelCls}>
                                             Max
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="bk-skill-max"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="4.5"
                                             value={form.skillMax}

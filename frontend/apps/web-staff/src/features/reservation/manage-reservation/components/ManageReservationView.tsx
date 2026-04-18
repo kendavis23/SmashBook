@@ -1,5 +1,13 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast, formatUTCDateTime } from "@repo/ui";
+import {
+    Breadcrumb,
+    AlertToast,
+    DatePicker,
+    DateTimePicker,
+    formatUTCDateTime,
+    NumberInput,
+    SelectInput,
+} from "@repo/ui";
 import type { CalendarReservation, CalendarReservationType } from "../../types";
 import {
     RESERVATION_TYPE_LABELS,
@@ -166,23 +174,15 @@ export default function ManageReservationView({
                                         <label htmlFor="mr-type" className={labelCls}>
                                             Reservation Type
                                         </label>
-                                        <select
-                                            id="mr-type"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.reservationType}
-                                            onChange={(e) =>
+                                            onValueChange={(v) =>
                                                 onFormChange({
-                                                    reservationType: e.target
-                                                        .value as CalendarReservationType,
+                                                    reservationType: v as CalendarReservationType,
                                                 })
                                             }
-                                        >
-                                            {typeOptions.map((opt) => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            options={typeOptions}
+                                        />
                                     </div>
 
                                     <div>
@@ -192,21 +192,16 @@ export default function ManageReservationView({
                                                 (optional)
                                             </span>
                                         </label>
-                                        <select
-                                            id="mr-court"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.courtId}
-                                            onChange={(e) =>
-                                                onFormChange({ courtId: e.target.value })
-                                            }
-                                        >
-                                            <option value="">All courts</option>
-                                            {courts.map((court) => (
-                                                <option key={court.id} value={court.id}>
-                                                    {court.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onValueChange={(v) => onFormChange({ courtId: v })}
+                                            options={courts.map((court) => ({
+                                                value: court.id,
+                                                label: court.name,
+                                            }))}
+                                            placeholder="All courts"
+                                            clearLabel="All courts"
+                                        />
                                     </div>
                                 </div>
 
@@ -215,28 +210,18 @@ export default function ManageReservationView({
                                         <label htmlFor="mr-start" className={labelCls}>
                                             Start
                                         </label>
-                                        <input
-                                            id="mr-start"
-                                            type="datetime-local"
-                                            className={fieldCls}
+                                        <DateTimePicker
                                             value={form.startDatetime}
-                                            onChange={(e) =>
-                                                onFormChange({ startDatetime: e.target.value })
-                                            }
+                                            onChange={(v) => onFormChange({ startDatetime: v })}
                                         />
                                     </div>
                                     <div>
                                         <label htmlFor="mr-end" className={labelCls}>
                                             End
                                         </label>
-                                        <input
-                                            id="mr-end"
-                                            type="datetime-local"
-                                            className={fieldCls}
+                                        <DateTimePicker
                                             value={form.endDatetime}
-                                            onChange={(e) =>
-                                                onFormChange({ endDatetime: e.target.value })
-                                            }
+                                            onChange={(v) => onFormChange({ endDatetime: v })}
                                         />
                                     </div>
                                 </div>
@@ -260,11 +245,10 @@ export default function ManageReservationView({
                                         <label htmlFor="mr-anchor-skill" className={labelCls}>
                                             Anchor
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="mr-anchor-skill"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="e.g. 3.5"
                                             value={form.anchorSkillLevel}
@@ -277,11 +261,10 @@ export default function ManageReservationView({
                                         <label htmlFor="mr-skill-above" className={labelCls}>
                                             Range Above
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="mr-skill-above"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="e.g. 1.0"
                                             value={form.skillRangeAbove}
@@ -294,11 +277,10 @@ export default function ManageReservationView({
                                         <label htmlFor="mr-skill-below" className={labelCls}>
                                             Range Below
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="mr-skill-below"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="e.g. 1.0"
                                             value={form.skillRangeBelow}
@@ -406,15 +388,10 @@ export default function ManageReservationView({
                                             <label htmlFor="mr-rrule-end" className={labelCls}>
                                                 Recurrence End Date
                                             </label>
-                                            <input
-                                                id="mr-rrule-end"
-                                                type="date"
-                                                className={fieldCls}
+                                            <DatePicker
                                                 value={form.recurrenceEndDate}
-                                                onChange={(e) =>
-                                                    onFormChange({
-                                                        recurrenceEndDate: e.target.value,
-                                                    })
+                                                onChange={(v) =>
+                                                    onFormChange({ recurrenceEndDate: v })
                                                 }
                                             />
                                         </div>

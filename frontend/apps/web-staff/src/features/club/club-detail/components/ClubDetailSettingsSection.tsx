@@ -1,7 +1,7 @@
 import type { ClubSettingsInput } from "../../types";
 import type { JSX } from "react";
 
-import { FormField, Toggle } from "@repo/ui";
+import { FormField, Toggle, NumberInput } from "@repo/ui";
 import { fieldCls, labelCls, fieldWrapperCls } from "./pricingRulesConstants";
 
 type Props = {
@@ -25,9 +25,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.booking_duration_minutes ?? ""}
@@ -43,9 +42,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.max_advance_booking_days ?? ""}
@@ -61,9 +59,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.min_booking_notice_hours ?? ""}
@@ -79,9 +76,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.max_bookings_per_player_per_week ?? ""}
@@ -100,9 +96,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.min_players_to_confirm ?? ""}
@@ -128,9 +123,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="0.1"
                             min="0"
                             value={form.skill_level_min ?? ""}
@@ -144,9 +138,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="0.1"
                             min="0"
                             value={form.skill_level_max ?? ""}
@@ -160,8 +153,7 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
-                            type="number"
+                        <NumberInput
                             step="0.1"
                             min="0"
                             value={form.skill_range_allowed ?? ""}
@@ -189,9 +181,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.auto_cancel_hours_before ?? ""}
@@ -207,9 +198,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.cancellation_notice_hours ?? ""}
@@ -225,9 +215,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             value={form.cancellation_refund_pct ?? ""}
@@ -243,9 +232,8 @@ export default function ClubSettingsTable({ form, onChange }: Props): JSX.Elemen
                         className={fieldWrapperCls}
                         labelClassName={labelCls}
                     >
-                        <input
+                        <NumberInput
                             required
-                            type="number"
                             step="1"
                             min="0"
                             max="24"

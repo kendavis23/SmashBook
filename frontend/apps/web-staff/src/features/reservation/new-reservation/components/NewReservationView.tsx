@@ -1,5 +1,12 @@
 import type { FormEvent, JSX } from "react";
-import { Breadcrumb, AlertToast } from "@repo/ui";
+import {
+    Breadcrumb,
+    AlertToast,
+    DatePicker,
+    DateTimePicker,
+    NumberInput,
+    SelectInput,
+} from "@repo/ui";
 import type { CalendarReservationType, Court } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
 
@@ -128,23 +135,15 @@ export default function NewReservationView({
                                         <label htmlFor="res-type" className={labelCls}>
                                             Reservation Type
                                         </label>
-                                        <select
-                                            id="res-type"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.reservationType}
-                                            onChange={(e) =>
+                                            onValueChange={(v) =>
                                                 onFormChange({
-                                                    reservationType: e.target
-                                                        .value as CalendarReservationType,
+                                                    reservationType: v as CalendarReservationType,
                                                 })
                                             }
-                                        >
-                                            {typeOptions.map((opt) => (
-                                                <option key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            options={typeOptions}
+                                        />
                                     </div>
 
                                     <div>
@@ -154,21 +153,16 @@ export default function NewReservationView({
                                                 (optional)
                                             </span>
                                         </label>
-                                        <select
-                                            id="res-court"
-                                            className={fieldCls}
+                                        <SelectInput
                                             value={form.courtId}
-                                            onChange={(e) =>
-                                                onFormChange({ courtId: e.target.value })
-                                            }
-                                        >
-                                            <option value="">All courts</option>
-                                            {courts.map((court) => (
-                                                <option key={court.id} value={court.id}>
-                                                    {court.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            onValueChange={(v) => onFormChange({ courtId: v })}
+                                            options={courts.map((court) => ({
+                                                value: court.id,
+                                                label: court.name,
+                                            }))}
+                                            placeholder="All courts"
+                                            clearLabel="All courts"
+                                        />
                                     </div>
                                 </div>
 
@@ -178,28 +172,20 @@ export default function NewReservationView({
                                         <label htmlFor="res-start" className={labelCls}>
                                             Start <span className="text-destructive">*</span>
                                         </label>
-                                        <input
-                                            id="res-start"
-                                            type="datetime-local"
-                                            className={`${fieldCls} ${dateError ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
+                                        <DateTimePicker
                                             value={form.startDatetime}
-                                            onChange={(e) => {
-                                                onFormChange({ startDatetime: e.target.value });
-                                            }}
+                                            onChange={(v) => onFormChange({ startDatetime: v })}
+                                            className={dateError ? "!border-destructive" : ""}
                                         />
                                     </div>
                                     <div>
                                         <label htmlFor="res-end" className={labelCls}>
                                             End <span className="text-destructive">*</span>
                                         </label>
-                                        <input
-                                            id="res-end"
-                                            type="datetime-local"
-                                            className={`${fieldCls} ${dateError ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
+                                        <DateTimePicker
                                             value={form.endDatetime}
-                                            onChange={(e) => {
-                                                onFormChange({ endDatetime: e.target.value });
-                                            }}
+                                            onChange={(v) => onFormChange({ endDatetime: v })}
+                                            className={dateError ? "!border-destructive" : ""}
                                         />
                                     </div>
                                 </div>
@@ -226,11 +212,10 @@ export default function NewReservationView({
                                         <label htmlFor="res-anchor-skill" className={labelCls}>
                                             Anchor
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="res-anchor-skill"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="e.g. 3.5"
                                             value={form.anchorSkillLevel}
@@ -243,11 +228,10 @@ export default function NewReservationView({
                                         <label htmlFor="res-skill-above" className={labelCls}>
                                             Range Above
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="res-skill-above"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="e.g. 1.0"
                                             value={form.skillRangeAbove}
@@ -260,11 +244,10 @@ export default function NewReservationView({
                                         <label htmlFor="res-skill-below" className={labelCls}>
                                             Range Below
                                         </label>
-                                        <input
+                                        <NumberInput
                                             id="res-skill-below"
-                                            type="number"
-                                            min="0"
-                                            step="0.1"
+                                            min={0}
+                                            step={0.1}
                                             className={fieldCls}
                                             placeholder="e.g. 1.0"
                                             value={form.skillRangeBelow}
@@ -373,15 +356,10 @@ export default function NewReservationView({
                                             <label htmlFor="res-rrule-end" className={labelCls}>
                                                 Recurrence End Date
                                             </label>
-                                            <input
-                                                id="res-rrule-end"
-                                                type="date"
-                                                className={fieldCls}
+                                            <DatePicker
                                                 value={form.recurrenceEndDate}
-                                                onChange={(e) =>
-                                                    onFormChange({
-                                                        recurrenceEndDate: e.target.value,
-                                                    })
+                                                onChange={(v) =>
+                                                    onFormChange({ recurrenceEndDate: v })
                                                 }
                                             />
                                         </div>

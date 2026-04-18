@@ -31,6 +31,40 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+        placeholder?: string;
+    }) => (
+        <select
+            value={value}
+            aria-label={placeholder}
+            onChange={(e) => onValueChange(e.target.value)}
+        >
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
+    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+        <input
+            type="date"
+            aria-label="Filter by date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+    TimeInput: ({ className, ...props }: { className?: string; [k: string]: unknown }) => (
+        <input type="time" className={className} {...(props as object)} />
+    ),
 }));
 
 import { useListCourts, useGetCourtAvailability } from "../../hooks";

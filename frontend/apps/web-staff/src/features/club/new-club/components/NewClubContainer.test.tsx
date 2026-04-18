@@ -28,6 +28,31 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    SelectInput: ({
+        name,
+        value,
+        onValueChange,
+        options,
+    }: {
+        name?: string;
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+    }) => (
+        <select
+            name={name}
+            id={name}
+            aria-label="Currency"
+            value={value}
+            onChange={(e) => onValueChange(e.target.value)}
+        >
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
 }));
 
 import { useCreateClub } from "../../hooks";

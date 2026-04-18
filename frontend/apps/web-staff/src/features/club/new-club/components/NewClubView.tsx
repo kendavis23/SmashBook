@@ -1,4 +1,4 @@
-import { AlertToast, Breadcrumb } from "@repo/ui";
+import { AlertToast, Breadcrumb, SelectInput } from "@repo/ui";
 import { Building2, MapPin, Coins, Loader2 } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 
@@ -151,42 +151,16 @@ export default function NewClubView({
                                     <label htmlFor="club-currency" className={labelCls}>
                                         Currency
                                     </label>
-                                    <div className="relative">
-                                        <Coins
-                                            size={15}
-                                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                                        />
-                                        <select
-                                            id="club-currency"
-                                            className={`${fieldCls} cursor-pointer appearance-none pl-9 pr-8`}
-                                            value={form.currency}
-                                            onChange={(e) =>
-                                                onFormChange({ currency: e.target.value })
-                                            }
-                                        >
-                                            {CURRENCIES.map(({ code, label }) => (
-                                                <option key={code} value={code}>
-                                                    {label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <svg
-                                            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                                            width="12"
-                                            height="12"
-                                            viewBox="0 0 12 12"
-                                            fill="none"
-                                            aria-hidden
-                                        >
-                                            <path
-                                                d="M2.5 4.5L6 8L9.5 4.5"
-                                                stroke="currentColor"
-                                                strokeWidth="1.5"
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                            />
-                                        </svg>
-                                    </div>
+                                    <SelectInput
+                                        name="club-currency"
+                                        value={form.currency}
+                                        onValueChange={(v) => onFormChange({ currency: v })}
+                                        startIcon={<Coins size={15} />}
+                                        options={CURRENCIES.map(({ code, label }) => ({
+                                            value: code,
+                                            label,
+                                        }))}
+                                    />
                                     <p className="mt-1.5 text-xs text-muted-foreground">
                                         Used for pricing and billing.
                                     </p>

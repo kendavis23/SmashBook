@@ -4,7 +4,13 @@ import {
     RESERVATION_TYPE_COLORS,
     RESERVATION_TYPE_OPTIONS,
 } from "../../types";
-import { Breadcrumb, formatUTCDateTime, formatUTCDate } from "@repo/ui";
+import {
+    Breadcrumb,
+    DateTimePicker,
+    formatUTCDateTime,
+    formatUTCDate,
+    SelectInput,
+} from "@repo/ui";
 import { CalendarX2, Plus, RefreshCw, Search, Settings2, Repeat } from "lucide-react";
 import type { JSX } from "react";
 
@@ -88,25 +94,18 @@ export default function ReservationsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Type
                             </span>
-                            <div className="flex items-center rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <select
-                                    value={filters.reservationType}
-                                    onChange={(e) =>
-                                        onFiltersChange({
-                                            ...filters,
-                                            reservationType: e.target.value,
-                                        })
-                                    }
-                                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                                    aria-label="Filter by reservation type"
-                                >
-                                    {RESERVATION_TYPE_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectInput
+                                value={filters.reservationType}
+                                onValueChange={(v) =>
+                                    onFiltersChange({
+                                        ...filters,
+                                        reservationType: v,
+                                    })
+                                }
+                                options={RESERVATION_TYPE_OPTIONS.filter((o) => o.value !== "")}
+                                clearLabel="All types"
+                                aria-label="Filter by reservation type"
+                            />
                         </div>
 
                         {/* Court */}
@@ -114,23 +113,16 @@ export default function ReservationsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Court
                             </span>
-                            <div className="flex items-center rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <select
-                                    value={filters.courtId}
-                                    onChange={(e) =>
-                                        onFiltersChange({ ...filters, courtId: e.target.value })
-                                    }
-                                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                                    aria-label="Filter by court"
-                                >
-                                    <option value="">All courts</option>
-                                    {courts.map((court) => (
-                                        <option key={court.id} value={court.id}>
-                                            {court.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectInput
+                                value={filters.courtId}
+                                onValueChange={(v) => onFiltersChange({ ...filters, courtId: v })}
+                                options={courts.map((court) => ({
+                                    value: court.id,
+                                    label: court.name,
+                                }))}
+                                clearLabel="All courts"
+                                aria-label="Filter by court"
+                            />
                         </div>
 
                         {/* From */}
@@ -138,14 +130,9 @@ export default function ReservationsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 From
                             </span>
-                            <input
-                                type="datetime-local"
+                            <DateTimePicker
                                 value={filters.fromDt}
-                                onChange={(e) =>
-                                    onFiltersChange({ ...filters, fromDt: e.target.value })
-                                }
-                                className="input-base rounded-lg px-3 py-2 text-sm"
-                                aria-label="Filter from date"
+                                onChange={(v) => onFiltersChange({ ...filters, fromDt: v })}
                             />
                         </div>
 
@@ -154,14 +141,9 @@ export default function ReservationsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 To
                             </span>
-                            <input
-                                type="datetime-local"
+                            <DateTimePicker
                                 value={filters.toDt}
-                                onChange={(e) =>
-                                    onFiltersChange({ ...filters, toDt: e.target.value })
-                                }
-                                className="input-base rounded-lg px-3 py-2 text-sm"
-                                aria-label="Filter to date"
+                                onChange={(v) => onFiltersChange({ ...filters, toDt: v })}
                             />
                         </div>
 

@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Breadcrumb, formatUTCDateTime } from "@repo/ui";
+import { Breadcrumb, DatePicker, formatUTCDateTime, SelectInput } from "@repo/ui";
 import {
     CalendarDays,
     CheckCircle2,
@@ -130,14 +130,10 @@ export default function BookingsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 From
                             </span>
-                            <input
-                                type="date"
+                            <DatePicker
                                 value={filters.dateFrom}
-                                onChange={(e) =>
-                                    onFiltersChange({ ...filters, dateFrom: e.target.value })
-                                }
-                                className="input-base rounded-lg px-3 py-2 text-sm"
-                                aria-label="Filter from date"
+                                onChange={(v) => onFiltersChange({ ...filters, dateFrom: v })}
+                                placeholder="From date"
                             />
                         </div>
 
@@ -146,14 +142,10 @@ export default function BookingsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 To
                             </span>
-                            <input
-                                type="date"
+                            <DatePicker
                                 value={filters.dateTo}
-                                onChange={(e) =>
-                                    onFiltersChange({ ...filters, dateTo: e.target.value })
-                                }
-                                className="input-base rounded-lg px-3 py-2 text-sm"
-                                aria-label="Filter to date"
+                                onChange={(v) => onFiltersChange({ ...filters, dateTo: v })}
+                                placeholder="To date"
                             />
                         </div>
 
@@ -196,22 +188,15 @@ export default function BookingsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Type
                             </span>
-                            <div className="flex items-center rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <select
-                                    value={filters.bookingType}
-                                    onChange={(e) =>
-                                        onFiltersChange({ ...filters, bookingType: e.target.value })
-                                    }
-                                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                                    aria-label="Filter by booking type"
-                                >
-                                    {BOOKING_TYPE_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectInput
+                                value={filters.bookingType}
+                                onValueChange={(v) =>
+                                    onFiltersChange({ ...filters, bookingType: v })
+                                }
+                                options={BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "")}
+                                placeholder="All types"
+                                clearLabel="All types"
+                            />
                         </div>
 
                         {/* Status — col 2, row 2 */}
@@ -219,25 +204,15 @@ export default function BookingsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Status
                             </span>
-                            <div className="flex items-center rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <select
-                                    value={filters.bookingStatus}
-                                    onChange={(e) =>
-                                        onFiltersChange({
-                                            ...filters,
-                                            bookingStatus: e.target.value,
-                                        })
-                                    }
-                                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                                    aria-label="Filter by status"
-                                >
-                                    {BOOKING_STATUS_OPTIONS.map((opt) => (
-                                        <option key={opt.value} value={opt.value}>
-                                            {opt.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectInput
+                                value={filters.bookingStatus}
+                                onValueChange={(v) =>
+                                    onFiltersChange({ ...filters, bookingStatus: v })
+                                }
+                                options={BOOKING_STATUS_OPTIONS.filter((o) => o.value !== "")}
+                                placeholder="All statuses"
+                                clearLabel="All statuses"
+                            />
                         </div>
 
                         {/* Court — col 3, row 2 */}
@@ -245,23 +220,13 @@ export default function BookingsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Court
                             </span>
-                            <div className="flex items-center rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <select
-                                    value={filters.courtId}
-                                    onChange={(e) =>
-                                        onFiltersChange({ ...filters, courtId: e.target.value })
-                                    }
-                                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                                    aria-label="Filter by court"
-                                >
-                                    <option value="">All courts</option>
-                                    {courts.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                            <SelectInput
+                                value={filters.courtId}
+                                onValueChange={(v) => onFiltersChange({ ...filters, courtId: v })}
+                                options={courts.map((c) => ({ value: c.id, label: c.name }))}
+                                placeholder="All courts"
+                                clearLabel="All courts"
+                            />
                         </div>
 
                         {/* col 4, row 2 — intentionally empty for alignment */}

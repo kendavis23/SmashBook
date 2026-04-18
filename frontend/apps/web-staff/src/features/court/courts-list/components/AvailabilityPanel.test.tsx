@@ -3,6 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import AvailabilityPanel from "./AvailabilityPanel";
 import type { Court, CourtAvailability } from "../../types";
 
+vi.mock("@repo/ui", () => ({
+    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+        <input
+            type="date"
+            aria-label="Select date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 const mockCourt: Court = {
     id: "court-1",
     club_id: "club-1",
