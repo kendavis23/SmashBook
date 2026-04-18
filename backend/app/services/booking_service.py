@@ -537,12 +537,24 @@ class BookingService:
         )
         bookings = bookings_result.scalars().unique().all()
 
+        reservations_result = await self.db.execute(
+            select(CalendarReservation)
+            .where(
+                CalendarReservation.club_id == club_id,
+                CalendarReservation.start_datetime < end_dt,
+                CalendarReservation.end_datetime > start_dt,
+            )
+            .order_by(CalendarReservation.start_datetime)
+        )
+        reservations = reservations_result.scalars().all()
+
         return {
             "view": view,
             "date_from": date_from,
             "date_to": date_to,
             "courts": courts,
             "bookings": bookings,
+            "reservations": reservations,
         }
 
     async def list_open_games(

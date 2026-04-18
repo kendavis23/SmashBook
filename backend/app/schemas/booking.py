@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
+from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -42,6 +42,45 @@ class BookingCreate(BaseModel):
         max_set = self.skill_level_override_max is not None
         if min_set != max_set:
             raise ValueError("skill_level_override_min and skill_level_override_max must both be provided or both omitted")
+        return self
+
+
+class RecurringBookingCreate(BaseModel):
+    club_id: uuid.UUID
+    court_id: uuid.UUID
+    booking_type: BookingType = BookingType.lesson_individual
+    first_start: datetime
+    recurrence_rule: str = Field(
+        ...,
+        description="iCal RRULE string, e.g. FREQ=WEEKLY;BYDAY=MO;COUNT=12",
+        examples=["FREQ=WEEKLY;BYDAY=MO;COUNT=12"],
+    )
+    recurrence_end_date: Optional[date] = Field(
+        default=None,
+        description="Hard stop date (inclusive). Used with open-ended rules like FREQ=WEEKLY.",
+    )
+    max_players: int = Field(default=4, ge=1, le=20)
+    player_user_ids: list[uuid.UUID] = []
+    notes: Optional[str] = None
+    event_name: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    staff_profile_id: Optional[uuid.UUID] = None
+    skip_conflicts: bool = Field(
+        default=False,
+        description="If true, silently skip occurrences that conflict instead of returning 409",
+    )
+
+    @model_validator(mode="after")
+    def validate_end_condition(self) -> "RecurringBookingCreate":
+        rule_upper = self.recurrence_rule.upper()
+        has_count = "COUNT=" in rule_upper
+        has_until = "UNTIL=" in rule_upper
+        if not has_count and not has_until and self.recurrence_end_date is None:
+            raise ValueError(
+                "Provide recurrence_end_date or include COUNT=/UNTIL= in the recurrence_rule"
+            )
         return self
 
 
@@ -100,6 +139,16 @@ class BookingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class RecurringBookingSkipped(BaseModel):
+    occurrence: datetime
+    reason: str
+
+
+class RecurringBookingResponse(BaseModel):
+    created: list[BookingResponse]
+    skipped: list[RecurringBookingSkipped]
+
+
 class OpenGameSummary(BaseModel):
     id: uuid.UUID
     court_id: uuid.UUID
@@ -114,7 +163,8 @@ class OpenGameSummary(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class CalendarBooking(BaseModel):
+class CalendarBookingItem(BaseModel):
+    kind: Literal["booking"] = "booking"
     id: uuid.UUID
     court_id: uuid.UUID
     court_name: str
@@ -131,10 +181,31 @@ class CalendarBooking(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CalendarBlockItem(BaseModel):
+    kind: Literal["block"] = "block"
+    id: uuid.UUID
+    court_id: Optional[uuid.UUID] = None
+    start_datetime: datetime
+    end_datetime: datetime
+    reservation_type: str
+    title: str
+    anchor_skill_level: Optional[Decimal] = None
+    skill_range_above: Optional[Decimal] = None
+    skill_range_below: Optional[Decimal] = None
+
+    model_config = {"from_attributes": True}
+
+
+CalendarSlot = Annotated[
+    Union[CalendarBookingItem, CalendarBlockItem],
+    Field(discriminator="kind"),
+]
+
+
 class CalendarCourtColumn(BaseModel):
     court_id: uuid.UUID
     court_name: str
-    bookings: list[CalendarBooking]
+    slots: list[CalendarSlot]
 
 
 class CalendarDay(BaseModel):

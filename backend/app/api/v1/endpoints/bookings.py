@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
 from app.db.models.booking import Booking, BookingPlayer, InviteStatus
+from app.db.models.court import CalendarReservation
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.db.session import get_db, get_read_db
@@ -18,16 +19,22 @@ from app.schemas.booking import (
     BookingPlayerResponse,
     BookingResponse,
     BookingUpdate,
-    CalendarBooking,
+    CalendarBlockItem,
+    CalendarBookingItem,
     CalendarCourtColumn,
     CalendarDay,
     CalendarResponse,
+    CalendarSlot,
     InvitePlayerRequest,
     InviteRespondRequest,
     OpenGameSummary,
+    RecurringBookingCreate,
+    RecurringBookingResponse,
+    RecurringBookingSkipped,
 )
 from app.schemas.equipment import EquipmentRentalRequest, EquipmentRentalResponse
 from app.services.booking_service import BookingService
+from app.services.court_service import CourtService
 from app.services.equipment_service import EquipmentService
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
@@ -93,9 +100,9 @@ def _build_open_game_summary(booking: Booking) -> OpenGameSummary:
     )
 
 
-def _build_calendar_booking(booking: Booking) -> CalendarBooking:
+def _build_calendar_booking_item(booking: Booking) -> CalendarBookingItem:
     accepted = _accepted_count(booking.players)
-    return CalendarBooking(
+    return CalendarBookingItem(
         id=booking.id,
         court_id=booking.court_id,
         court_name=booking.court.name,
@@ -108,6 +115,20 @@ def _build_calendar_booking(booking: Booking) -> CalendarBooking:
         players=[_build_player_response(p) for p in booking.players],
         slots_available=max(0, (booking.max_players or 0) - accepted),
         total_price=booking.total_price,
+    )
+
+
+def _build_calendar_block_item(reservation: CalendarReservation) -> CalendarBlockItem:
+    return CalendarBlockItem(
+        id=reservation.id,
+        court_id=reservation.court_id,
+        start_datetime=reservation.start_datetime,
+        end_datetime=reservation.end_datetime,
+        reservation_type=reservation.reservation_type.value,
+        title=reservation.title,
+        anchor_skill_level=reservation.anchor_skill_level,
+        skill_range_above=reservation.skill_range_above,
+        skill_range_below=reservation.skill_range_below,
     )
 
 
@@ -151,6 +172,55 @@ async def create_booking(
         on_behalf_of_user_id=body.on_behalf_of_user_id,
     )
     return _build_booking_response(booking)
+
+
+@router.post("/recurring", response_model=RecurringBookingResponse, status_code=status.HTTP_201_CREATED)
+async def create_recurring_booking(
+    body: RecurringBookingCreate,
+    current_user: User = Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Staff only: create a series of bookings from an iCal RRULE.
+
+    Typical use cases: weekly coaching sessions, league slots, corporate blocks.
+
+    - booking_type should be lesson_individual, lesson_group, or another non-regular type.
+    - first_start is the datetime of the first occurrence; the RRULE expands from there.
+    - Each occurrence is created as confirmed (staff-initiated).
+    - The first booking is the series parent; all others carry parent_booking_id pointing to it.
+    - skip_conflicts=true silently skips conflicted slots instead of returning 409.
+    """
+    svc = CourtService(db)
+    result = await svc.create_recurring_booking(
+        tenant_id=tenant.id,
+        club_id=body.club_id,
+        court_id=body.court_id,
+        booking_type=body.booking_type,
+        first_start=body.first_start,
+        recurrence_rule=body.recurrence_rule,
+        recurrence_end_date=body.recurrence_end_date,
+        created_by_user=current_user,
+        staff_profile_id=body.staff_profile_id,
+        player_user_ids=body.player_user_ids,
+        notes=body.notes,
+        event_name=body.event_name,
+        contact_name=body.contact_name,
+        contact_email=body.contact_email,
+        contact_phone=body.contact_phone,
+        max_players=body.max_players,
+        skip_conflicts=body.skip_conflicts,
+    )
+
+    created_responses = [
+        _build_booking_response(b) for b in result["created"]
+    ]
+    skipped_responses = [
+        RecurringBookingSkipped(occurrence=s["occurrence"], reason=s["reason"])
+        for s in result["skipped"]
+    ]
+    return RecurringBookingResponse(created=created_responses, skipped=skipped_responses)
 
 
 @router.get("", response_model=list[BookingResponse])
@@ -232,28 +302,44 @@ async def get_calendar_view(
 
     courts = data["courts"]
     bookings = data["bookings"]
+    reservations = data["reservations"]
     date_from: date = data["date_from"]
     date_to: date = data["date_to"]
 
-    # Group bookings by date then court
+    # Group booking items by date then court
     by_date_court: dict = defaultdict(lambda: defaultdict(list))
     for b in bookings:
         by_date_court[b.start_datetime.date()][b.court_id].append(b)
 
+    # Group block items by date; court_id=None means club-wide (all courts)
+    blocks_by_date_court: dict = defaultdict(lambda: defaultdict(list))
+    for r in reservations:
+        r_date = r.start_datetime.date()
+        blocks_by_date_court[r_date][r.court_id].append(r)
+
     days = []
     current = date_from
     while current <= date_to:
-        court_columns = [
-            CalendarCourtColumn(
-                court_id=court.id,
-                court_name=court.name,
-                bookings=[
-                    _build_calendar_booking(b)
-                    for b in by_date_court[current].get(court.id, [])
-                ],
+        court_columns = []
+        for court in courts:
+            booking_slots: list[CalendarSlot] = [
+                _build_calendar_booking_item(b)
+                for b in by_date_court[current].get(court.id, [])
+            ]
+            block_slots: list[CalendarSlot] = [
+                _build_calendar_block_item(r)
+                for r in (
+                    blocks_by_date_court[current].get(court.id, [])
+                    + blocks_by_date_court[current].get(None, [])
+                )
+            ]
+            slots = sorted(
+                booking_slots + block_slots,
+                key=lambda s: s.start_datetime,
             )
-            for court in courts
-        ]
+            court_columns.append(
+                CalendarCourtColumn(court_id=court.id, court_name=court.name, slots=slots)
+            )
         days.append(CalendarDay(date=current, courts=court_columns))
         current += timedelta(days=1)
 

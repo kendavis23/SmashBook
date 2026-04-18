@@ -10,6 +10,7 @@ GET    /bookings/{id}             — detail, access control
 POST   /bookings/{id}/join        — join open game, skill/capacity enforcement
 POST   /bookings/{id}/invite      — invite player, role enforcement
 DELETE /bookings/{id}             — cancel, role enforcement
+POST   /bookings/recurring        — recurring booking series creation
 Tenant isolation tested on create and cancel.
 """
 
@@ -24,7 +25,7 @@ from sqlalchemy import delete as sql_delete, select
 from app.core.security import create_access_token
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import OperatingHours, PricingRule
-from app.db.models.court import Court
+from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.user import TenantUserRole, User
 
 # ---------------------------------------------------------------------------
@@ -1232,7 +1233,7 @@ class TestCalendarView:
         assert resp.status_code == 200
         day = resp.json()["days"][0]
         court_col = next(c for c in day["courts"] if c["court_id"] == str(court_with_hours.id))
-        booking_ids = [b["id"] for b in court_col["bookings"]]
+        booking_ids = [s["id"] for s in court_col["slots"] if s["kind"] == "booking"]
         assert booking_id in booking_ids
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
@@ -1257,10 +1258,11 @@ class TestCalendarView:
         )
         assert resp.status_code == 200
         all_booking_ids = [
-            b["id"]
+            s["id"]
             for day in resp.json()["days"]
             for court in day["courts"]
-            for b in court["bookings"]
+            for s in court["slots"]
+            if s["kind"] == "booking"
         ]
         assert booking_id not in all_booking_ids
 
@@ -1282,6 +1284,222 @@ class TestCalendarView:
             headers=staff_headers,
         )
         assert resp.status_code == 422
+
+    async def test_court_specific_block_appears_in_slots(
+        self, client, staff_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A CalendarReservation scoped to a specific court appears in that court's slots."""
+        anchor = _future(48).date()
+        start_dt = datetime.combine(anchor, time(8, 0), tzinfo=timezone.utc)
+        end_dt = datetime.combine(anchor, time(10, 0), tzinfo=timezone.utc)
+
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.maintenance,
+                title="Net replacement",
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+            reservation_id = reservation.id
+
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        court_col = next(c for c in day["courts"] if c["court_id"] == str(court_with_hours.id))
+        block_ids = [s["id"] for s in court_col["slots"] if s["kind"] == "block"]
+        assert str(reservation_id) in block_ids
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_club_wide_block_appears_in_all_courts(
+        self, client, staff_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A CalendarReservation with court_id=None appears in every court column."""
+        anchor = _future(48).date()
+        start_dt = datetime.combine(anchor, time(12, 0), tzinfo=timezone.utc)
+        end_dt = datetime.combine(anchor, time(14, 0), tzinfo=timezone.utc)
+
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=None,
+                reservation_type=CalendarReservationType.maintenance,
+                title="Full club closure",
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+            reservation_id = reservation.id
+
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        for court_col in day["courts"]:
+            block_ids = [s["id"] for s in court_col["slots"] if s["kind"] == "block"]
+            assert str(reservation_id) in block_ids
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_block_kind_field_is_block(
+        self, client, staff_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """Each block slot serialises with kind='block' and the correct reservation_type."""
+        anchor = _future(48).date()
+        start_dt = datetime.combine(anchor, time(9, 0), tzinfo=timezone.utc)
+        end_dt = datetime.combine(anchor, time(10, 0), tzinfo=timezone.utc)
+
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.skill_filter,
+                title="Intermediate only",
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+            reservation_id = reservation.id
+
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        court_col = next(c for c in day["courts"] if c["court_id"] == str(court_with_hours.id))
+        block = next(s for s in court_col["slots"] if s["id"] == str(reservation_id))
+        assert block["kind"] == "block"
+        assert block["reservation_type"] == "skill_filter"
+        assert block["title"] == "Intermediate only"
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_slots_sorted_by_start_datetime(
+        self, client, staff_headers, player_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """Bookings and blocks are returned sorted by start_datetime ascending."""
+        anchor = _future(48).date()
+
+        # Block starts at 08:00, booking starts at 10:30 — block should come first
+        block_start = datetime.combine(anchor, time(8, 0), tzinfo=timezone.utc)
+        block_end = datetime.combine(anchor, time(9, 0), tzinfo=timezone.utc)
+        booking_start = _future(48)  # 10:30
+
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.training_block,
+                title="Morning drill",
+                start_datetime=block_start,
+                end_datetime=block_end,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+            reservation_id = reservation.id
+
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, booking_start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        court_col = next(c for c in day["courts"] if c["court_id"] == str(court_with_hours.id))
+        relevant = [s for s in court_col["slots"] if s["id"] in (str(reservation_id), booking_id)]
+        assert len(relevant) == 2
+        assert relevant[0]["kind"] == "block"   # 08:00 comes before 10:30
+        assert relevant[1]["kind"] == "booking"
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_block_outside_date_range_excluded(
+        self, client, staff_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A CalendarReservation wholly outside the query window must not appear."""
+        anchor = _future(48).date()
+        # Block is 10 days in the future — outside a day view of anchor
+        future_date = anchor + timedelta(days=10)
+        start_dt = datetime.combine(future_date, time(9, 0), tzinfo=timezone.utc)
+        end_dt = datetime.combine(future_date, time(10, 0), tzinfo=timezone.utc)
+
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.maintenance,
+                title="Future work",
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+            reservation_id = reservation.id
+
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        all_slot_ids = [
+            s["id"]
+            for day in resp.json()["days"]
+            for court in day["courts"]
+            for s in court["slots"]
+        ]
+        assert str(reservation_id) not in all_slot_ids
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -1829,3 +2047,264 @@ class TestRespondToInvite:
             if obj2:
                 await session.delete(obj2)
             await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/bookings/recurring
+# ---------------------------------------------------------------------------
+
+def _recurring_payload(club_id, court_id, first_start: datetime, **kwargs) -> dict:
+    return {
+        "club_id": str(club_id),
+        "court_id": str(court_id),
+        "booking_type": "lesson_individual",
+        "first_start": first_start.isoformat(),
+        "recurrence_rule": "FREQ=WEEKLY;COUNT=3",
+        "max_players": 2,
+        **kwargs,
+    }
+
+
+class TestCreateRecurringBooking:
+
+    async def test_staff_creates_weekly_series(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """Happy path: 3-week series is created; all bookings confirmed and recurring."""
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(club.id, court_with_hours.id, first),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert len(body["created"]) == 3
+        assert len(body["skipped"]) == 0
+        for b in body["created"]:
+            assert b["status"] == "confirmed"
+            assert b["booking_type"] == "lesson_individual"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_first_booking_is_parent_others_link_to_it(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """First booking has no parent; the remaining two reference its id."""
+        from sqlalchemy import select as sa_select
+        from app.db.models.booking import Booking
+
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(club.id, court_with_hours.id, first),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        created_ids = [b["id"] for b in resp.json()["created"]]
+
+        async with test_session_factory() as session:
+            rows = (
+                await session.execute(
+                    sa_select(Booking.id, Booking.parent_booking_id)
+                    .where(Booking.id.in_(created_ids))
+                    .order_by(Booking.start_datetime)
+                )
+            ).all()
+
+        parent_id = rows[0].id
+        assert rows[0].parent_booking_id is None
+        for row in rows[1:]:
+            assert row.parent_booking_id == parent_id
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_player_role_rejected(
+        self, client, player_headers, club, court_with_hours
+    ):
+        """Non-staff callers must receive 403."""
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(club.id, court_with_hours.id, first),
+            headers=player_headers,
+        )
+        assert resp.status_code == 403
+
+    async def test_tenant_isolation(
+        self, client, club, court_with_hours, plan, test_session_factory
+    ):
+        """A staff token for a different tenant must be rejected."""
+        from app.db.models.tenant import Tenant as TenantModel
+        subdomain = f"alien-rec-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Alien Rec", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.flush()
+            alien = User(
+                tenant_id=t2.id,
+                email=f"alien-rec-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Alien Staff",
+                hashed_password="x",
+                is_active=True,
+                role=TenantUserRole.staff,
+            )
+            session.add(alien)
+            await session.commit()
+            await session.refresh(alien)
+            t2_id, alien_id = t2.id, alien.id
+
+        token = create_access_token({"sub": str(alien_id), "tid": str(t2_id)})
+        alien_headers = {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2_id)}
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(club.id, court_with_hours.id, first),
+            headers=alien_headers,
+        )
+        assert resp.status_code in (401, 404)
+
+        async with test_session_factory() as session:
+            obj = await session.get(User, alien_id)
+            if obj:
+                await session.delete(obj)
+            obj2 = await session.get(TenantModel, t2_id)
+            if obj2:
+                await session.delete(obj2)
+            await session.commit()
+
+    async def test_invalid_rrule_returns_422(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """Garbage RRULE must return 422."""
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(
+                club.id, court_with_hours.id, first,
+                recurrence_rule="NOT_VALID",
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_missing_end_condition_returns_422(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """FREQ=WEEKLY without COUNT, UNTIL, or recurrence_end_date must return 422."""
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(
+                club.id, court_with_hours.id, first,
+                recurrence_rule="FREQ=WEEKLY",
+                # no recurrence_end_date, no COUNT, no UNTIL
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_conflict_returns_409_when_skip_false(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """First occurrence conflicts with an existing booking → 409, nothing created."""
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        pre = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, first),
+            headers=staff_headers,
+        )
+        assert pre.status_code == 201
+
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(
+                club.id, court_with_hours.id, first,
+                skip_conflicts=False,
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 409
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_skip_conflicts_true_skips_conflicted_occurrence(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """With skip_conflicts=True, the conflicting first slot is skipped; remaining 2 are created."""
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        pre = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, first),
+            headers=staff_headers,
+        )
+        assert pre.status_code == 201
+
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(
+                club.id, court_with_hours.id, first,
+                skip_conflicts=True,
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert len(body["created"]) == 2
+        assert len(body["skipped"]) == 1
+        assert body["skipped"][0]["reason"] == "court conflict"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_with_named_player(
+        self, client, staff_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """player_user_ids adds the player as a BookingPlayer on every occurrence."""
+        from sqlalchemy import select as sa_select
+        from app.db.models.booking import BookingPlayer
+
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(
+                club.id, court_with_hours.id, first,
+                player_user_ids=[str(player2.id)],
+                max_players=4,
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        created_ids = [b["id"] for b in resp.json()["created"]]
+        assert len(created_ids) == 3
+
+        async with test_session_factory() as session:
+            for bid in created_ids:
+                result = await session.execute(
+                    sa_select(BookingPlayer).where(
+                        BookingPlayer.booking_id == bid,
+                        BookingPlayer.user_id == player2.id,
+                    )
+                )
+                assert result.scalar_one_or_none() is not None, f"player2 missing from booking {bid}"
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_recurrence_end_date_limits_series(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """recurrence_end_date 13 days after first_start with FREQ=WEEKLY → 2 occurrences."""
+        first = _future(72).replace(hour=7, minute=30, second=0, microsecond=0)
+        end_date = (first + timedelta(days=13)).date().isoformat()
+        resp = await client.post(
+            "/api/v1/bookings/recurring",
+            json=_recurring_payload(
+                club.id, court_with_hours.id, first,
+                recurrence_rule="FREQ=WEEKLY",
+                recurrence_end_date=end_date,
+            ),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        assert len(resp.json()["created"]) == 2
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
