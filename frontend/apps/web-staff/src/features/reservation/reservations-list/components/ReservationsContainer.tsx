@@ -1,6 +1,7 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type { JSX } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { AlertToast } from "@repo/ui";
 import { useListCalendarReservations, useListCourts } from "../../hooks";
 import { useClubAccess, canManageReservation } from "../../store";
 import type { CalendarReservation, Court, ReservationFilters } from "../../types";
@@ -40,8 +41,19 @@ function applyClientFilters(
 
 export default function ReservationsContainer(): JSX.Element {
     const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as { created?: boolean; deleted?: boolean };
+    const [successToast, setSuccessToast] = useState(
+        search.created ? "Reservation created." : search.deleted ? "Reservation deleted." : ""
+    );
     const [filters, setFilters] = useState<ReservationFilters>(createDefaultFilters);
     const [appliedFilters, setAppliedFilters] = useState<ReservationFilters>(createDefaultFilters);
+
+    useEffect(() => {
+        if (search.created || search.deleted) {
+            void navigate({ to: "/reservations", search: {}, replace: true });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const { clubId, role } = useClubAccess();
     const canCreate = canManageReservation(role);
@@ -89,19 +101,28 @@ export default function ReservationsContainer(): JSX.Element {
     }, [refetch]);
 
     return (
-        <ReservationsView
-            reservations={filteredReservations}
-            isLoading={isLoading}
-            error={error as Error | null}
-            canCreate={canCreate}
-            filters={filters}
-            courts={courts as Court[]}
-            courtNameMap={courtNameMap}
-            onFiltersChange={setFilters}
-            onSearch={handleSearch}
-            onCreateClick={handleCreateClick}
-            onManageClick={handleManageClick}
-            onRefresh={handleRefresh}
-        />
+        <>
+            <ReservationsView
+                reservations={filteredReservations}
+                isLoading={isLoading}
+                error={error as Error | null}
+                canCreate={canCreate}
+                filters={filters}
+                courts={courts as Court[]}
+                courtNameMap={courtNameMap}
+                onFiltersChange={setFilters}
+                onSearch={handleSearch}
+                onCreateClick={handleCreateClick}
+                onManageClick={handleManageClick}
+                onRefresh={handleRefresh}
+            />
+            {successToast ? (
+                <AlertToast
+                    title={successToast}
+                    variant="success"
+                    onClose={() => setSuccessToast("")}
+                />
+            ) : null}
+        </>
     );
 }

@@ -126,7 +126,7 @@ export default function ManageReservationContainer(): JSX.Element {
     const handleConfirmDelete = useCallback((): void => {
         deleteMutation.mutate(reservationId, {
             onSuccess: () => {
-                void navigate({ to: "/reservations" });
+                void navigate({ to: "/reservations", search: { deleted: true } });
             },
             onError: (err) => {
                 setShowDeleteConfirm(false);

@@ -16,7 +16,7 @@ function parseOptionalNumber(val: string): number | null {
 function createDefaultForm(): NewReservationFormState {
     return {
         title: "",
-        reservationType: "private_hire",
+        reservationType: "maintenance",
         courtId: "",
         startDatetime: "",
         endDatetime: "",
@@ -103,7 +103,7 @@ export default function NewReservationContainer(): JSX.Element {
 
             createMutation.mutate(payload, {
                 onSuccess: () => {
-                    void navigate({ to: "/reservations" });
+                    void navigate({ to: "/reservations", search: { created: true } });
                 },
             });
         },

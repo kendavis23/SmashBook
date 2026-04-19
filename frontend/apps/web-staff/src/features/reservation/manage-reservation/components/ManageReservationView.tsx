@@ -123,7 +123,7 @@ export default function ManageReservationView({
                                 disabled={isDeleting}
                                 className="btn-destructive"
                             >
-                                {isDeleting ? "Deleting…" : "Delete"}
+                                {isDeleting ? "Deleting…" : "Delete Reservation"}
                             </button>
                         ) : null}
                     </div>
@@ -377,7 +377,7 @@ export default function ManageReservationView({
                                                 id="mr-rrule"
                                                 type="text"
                                                 className={fieldCls}
-                                                placeholder="FREQ=WEEKLY;BYDAY=MO"
+                                                placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
                                                 value={form.recurrenceRule}
                                                 onChange={(e) =>
                                                     onFormChange({ recurrenceRule: e.target.value })

@@ -14,6 +14,7 @@ vi.mock("../../store", () => ({
 
 vi.mock("@tanstack/react-router", () => ({
     useNavigate: () => vi.fn(),
+    useSearch: () => ({}),
 }));
 
 vi.mock("@repo/ui", () => ({

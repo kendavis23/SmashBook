@@ -246,9 +246,9 @@ describe("ManageReservationContainer", () => {
         render(<ManageReservationContainer />);
 
         await waitFor(() => {
-            expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Delete Reservation" })).toBeInTheDocument();
         });
-        fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+        fireEvent.click(screen.getByRole("button", { name: "Delete Reservation" }));
         fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
         expect(mockDeleteMutate).toHaveBeenCalledWith(
@@ -258,6 +258,9 @@ describe("ManageReservationContainer", () => {
                 onError: expect.any(Function),
             })
         );
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reservations" });
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: "/reservations",
+            search: { deleted: true },
+        });
     });
 });

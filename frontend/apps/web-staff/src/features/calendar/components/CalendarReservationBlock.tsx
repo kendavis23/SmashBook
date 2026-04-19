@@ -16,6 +16,52 @@ type Props = {
     onManageClick: (reservationId: string) => void;
 };
 
+// Per-type visual config — solid filled blocks, clearly distinct from bookings
+const RESERVATION_TYPE_STYLE: Record<
+    string,
+    { bg: string; border: string; label: string; text: string; time: string }
+> = {
+    maintenance: {
+        bg: "bg-[hsl(220,13%,91%)]",
+        border: "border-dashed border-[hsl(220,13%,72%)]",
+        label: "Maintenance",
+        text: "text-[hsl(220,13%,38%)]",
+        time: "text-[hsl(220,13%,52%)]",
+    },
+    training_block: {
+        bg: "bg-[hsl(214,80%,96%)]",
+        border: "border-dashed border-[hsl(214,80%,72%)]",
+        label: "Training",
+        text: "text-[hsl(214,80%,38%)]",
+        time: "text-[hsl(214,80%,52%)]",
+    },
+    skill_filter: {
+        bg: "bg-[hsl(38,90%,94%)]",
+        border: "border-dashed border-[hsl(38,90%,65%)]",
+        label: "Skill Filter",
+        text: "text-[hsl(38,90%,32%)]",
+        time: "text-[hsl(38,90%,45%)]",
+    },
+    private_hire: {
+        bg: "bg-[hsl(142,60%,94%)]",
+        border: "border-dashed border-[hsl(142,60%,62%)]",
+        label: "Private Hire",
+        text: "text-[hsl(142,60%,28%)]",
+        time: "text-[hsl(142,60%,40%)]",
+    },
+    tournament_hold: {
+        bg: "bg-[hsl(270,50%,96%)]",
+        border: "border-dashed border-[hsl(270,50%,68%)]",
+        label: "Tournament",
+        text: "text-[hsl(270,50%,36%)]",
+        time: "text-[hsl(270,50%,50%)]",
+    },
+};
+
+const FALLBACK_STYLE = RESERVATION_TYPE_STYLE["training_block"] as NonNullable<
+    (typeof RESERVATION_TYPE_STYLE)[string]
+>;
+
 export default function CalendarReservationBlock({
     block,
     boardHeight,
@@ -25,9 +71,7 @@ export default function CalendarReservationBlock({
 }: Props): JSX.Element | null {
     const totalMinutes = endOfDayMinutes - startOfDayMinutes;
 
-    if (totalMinutes <= 0) {
-        return null;
-    }
+    if (totalMinutes <= 0) return null;
 
     const clampedStart = clampNumber(
         getMinutesFromIso(block.start_datetime),
@@ -40,9 +84,7 @@ export default function CalendarReservationBlock({
         endOfDayMinutes
     );
 
-    if (clampedEnd <= clampedStart) {
-        return null;
-    }
+    if (clampedEnd <= clampedStart) return null;
 
     const rawTop = ((clampedStart - startOfDayMinutes) / totalMinutes) * boardHeight;
     const rawHeight = ((clampedEnd - clampedStart) / totalMinutes) * boardHeight;
@@ -54,7 +96,11 @@ export default function CalendarReservationBlock({
     );
 
     const timeLabel = `${formatTime(block.start_datetime)} – ${formatTime(block.end_datetime)}`;
-    const ariaLabel = `${block.title} • ${timeLabel} • Block`;
+    const ariaLabel = `${block.title} • ${timeLabel} • ${block.reservation_type}`;
+
+    const style = RESERVATION_TYPE_STYLE[block.reservation_type] ?? FALLBACK_STYLE;
+
+    const isMaintenance = block.reservation_type === "maintenance";
 
     return (
         <button
@@ -62,15 +108,31 @@ export default function CalendarReservationBlock({
             aria-label={ariaLabel}
             title={ariaLabel}
             onClick={() => onManageClick(block.id)}
-            className="absolute left-1 right-1 z-10 cursor-pointer overflow-hidden rounded-lg border border-border bg-card text-left shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1"
+            className={`absolute left-1 right-1 z-10 cursor-pointer overflow-hidden rounded-md border text-left transition-all duration-150 hover:z-20 hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${style.bg} ${style.border}`}
             style={{ top: `${top}px`, height: `${height}px` }}
         >
-            <span className="pointer-events-none absolute inset-0 bg-muted" />
-            <div className="relative px-3 py-2">
-                <p className="truncate text-[12px] font-semibold leading-tight text-foreground/75">
+            {/* Diagonal stripe for maintenance — signals "unavailable" */}
+            {isMaintenance ? (
+                <span
+                    className="pointer-events-none absolute inset-0 opacity-[0.07]"
+                    style={{
+                        backgroundImage:
+                            "repeating-linear-gradient(-45deg, currentColor 0, currentColor 1.5px, transparent 0, transparent 50%)",
+                        backgroundSize: "8px 8px",
+                    }}
+                />
+            ) : null}
+
+            <div className="relative flex h-full flex-col items-start justify-center gap-px pl-2 pr-1 py-1">
+                <p
+                    className={`shrink-0 text-[8px] font-bold uppercase tracking-widest leading-none ${style.time}`}
+                >
+                    {style.label}
+                </p>
+                <p className={`truncate text-[10px] font-semibold leading-tight ${style.text}`}>
                     {block.title}
                 </p>
-                <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                <p className={`shrink-0 text-[9px] font-medium leading-none ${style.time}`}>
                     {timeLabel}
                 </p>
             </div>

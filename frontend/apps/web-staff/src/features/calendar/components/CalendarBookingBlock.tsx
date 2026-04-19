@@ -78,16 +78,18 @@ export default function CalendarBookingBlock({
             {/* Opaque background — covers grid lines beneath the block */}
             <span className={`pointer-events-none absolute inset-0 bg-card`} />
             <span className={`pointer-events-none absolute inset-0 ${typeColors.bg}`} />
-            <span className="relative">
+            <span className="relative flex h-full flex-col items-start justify-center gap-px">
                 <p
-                    className={`truncate text-[11px] font-semibold leading-tight ${typeColors.text}`}
+                    className={`truncate text-[10px] font-semibold leading-tight ${typeColors.text}`}
                 >
                     {title}
                 </p>
-                <p className="truncate text-[10px] leading-tight text-foreground/70">{timeLabel}</p>
+                <p className="shrink-0 text-[9px] font-medium leading-none text-foreground/70">
+                    {timeLabel}
+                </p>
                 {showStatus ? (
                     <span
-                        className={`mt-1 inline-block rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight ${statusColors.bg} ${statusColors.text}`}
+                        className={`mt-0.5 inline-block shrink-0 rounded-full px-1.5 py-px text-[8px] font-semibold leading-tight ${statusColors.bg} ${statusColors.text}`}
                     >
                         {statusLabel}
                     </span>

@@ -4,7 +4,16 @@ import { ThemeProvider } from "./ThemeProvider";
 
 export { useTheme } from "./ThemeProvider";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            staleTime: 10_000,
+            refetchOnWindowFocus: false,
+            refetchOnMount: true,
+            refetchOnReconnect: true,
+        },
+    },
+});
 
 // App-level providers: QueryClient, ThemeProvider.
 // Business logic does NOT belong here.
