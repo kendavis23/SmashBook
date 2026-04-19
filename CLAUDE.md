@@ -4,6 +4,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Scope Restrictions
+
+**The following directories are owned by a partner and must not be modified:**
+- `/frontend`
+- `/mobile`
+- `/fe-intra`
+
+All other directories, including the root and `/backend`, are in scope.
+
 ## What This Project Is
 
 SmashBook is a **multi-tenant SaaS platform for padel club management**. Tenants are organisations (club operators) that sign up with SmashBook — a tenant may operate one or more clubs. The long-term vision is AI-driven autonomous club operations. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture document.
