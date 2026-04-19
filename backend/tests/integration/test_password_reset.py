@@ -17,11 +17,9 @@ POST /api/v1/auth/password-reset/confirm
 Pub/Sub is patched so no GCP calls are made.
 """
 from datetime import datetime, timedelta
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch
 
-import pytest
-
-from app.core.security import create_reset_token, create_access_token, get_password_hash
+from app.core.security import create_reset_token, create_access_token
 from app.db.models.user import User
 from tests.integration.conftest import _create_user, _delete_user
 from app.db.models.user import TenantUserRole
