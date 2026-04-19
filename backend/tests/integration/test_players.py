@@ -28,6 +28,7 @@ from app.db.models.booking import (
     PlayerRole,
 )
 from app.db.models.court import Court
+from app.db.models.skill import SkillLevelHistory
 from app.db.models.user import TenantUserRole, User
 
 
@@ -587,3 +588,207 @@ class TestGetMatchHistory:
                 if obj:
                     await session.delete(obj)
                     await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Tests — PATCH /players/{player_id}/skill-level
+# ---------------------------------------------------------------------------
+
+
+class TestUpdateSkillLevel:
+    async def test_success(self, client, player, staff, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "3.5"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["user_id"] == str(player.id)
+        assert float(body["skill_level"]) == 3.5
+        assert body["skill_assigned_by"] == str(staff.id)
+        assert "skill_assigned_at" in body
+        assert "history_entry" in body
+
+    async def test_history_entry_shape(self, client, player, staff, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "4.0", "reason": "Tournament win"},
+        )
+        assert resp.status_code == 200
+        h = resp.json()["history_entry"]
+        assert float(h["new_level"]) == 4.0
+        assert h["previous_level"] is None  # first assignment
+        assert h["assigned_by"] == str(staff.id)
+        assert h["reason"] == "Tournament win"
+        assert "id" in h
+        assert "created_at" in h
+
+    async def test_subsequent_assignment_captures_previous_level(
+        self, client, player, staff, staff_headers
+    ):
+        await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "3.0"},
+        )
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "4.0"},
+        )
+        assert resp.status_code == 200
+        h = resp.json()["history_entry"]
+        assert float(h["previous_level"]) == 3.0
+        assert float(h["new_level"]) == 4.0
+
+    async def test_player_not_found_returns_404(self, client, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{uuid.uuid4()}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "3.5"},
+        )
+        assert resp.status_code == 404
+
+    async def test_player_role_cannot_update_skill_level(self, client, player, player_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=player_headers,
+            json={"new_level": "3.5"},
+        )
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_403(self, client, player):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            json={"new_level": "3.5"},
+        )
+        assert resp.status_code == 403
+
+    async def test_skill_level_below_minimum_returns_422(self, client, player, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "0.5"},
+        )
+        assert resp.status_code == 422
+
+    async def test_skill_level_above_maximum_returns_422(self, client, player, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "7.5"},
+        )
+        assert resp.status_code == 422
+
+    async def test_missing_new_level_returns_422(self, client, player, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"reason": "no level provided"},
+        )
+        assert resp.status_code == 422
+
+    async def test_wrong_tenant_returns_401(self, client, player, staff, tenant, plan, test_session_factory):
+        from app.db.models.tenant import Tenant as TenantModel
+
+        subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Other Club", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.commit()
+            await session.refresh(t2)
+
+        try:
+            token = create_access_token({"sub": str(staff.id), "tid": str(tenant.id)})
+            resp = await client.patch(
+                f"/api/v1/players/{player.id}/skill-level",
+                headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2.id)},
+                json={"new_level": "3.5"},
+            )
+            assert resp.status_code == 401
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(TenantModel, t2.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Tests — GET /players/{player_id}/skill-history
+# ---------------------------------------------------------------------------
+
+
+class TestGetSkillHistory:
+    async def test_empty_history(self, client, player, staff_headers):
+        resp = await client.get(
+            f"/api/v1/players/{player.id}/skill-history",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_returns_history_after_assignment(self, client, player, staff, staff_headers):
+        await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "3.5", "reason": "First assessment"},
+        )
+        resp = await client.get(
+            f"/api/v1/players/{player.id}/skill-history",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        items = resp.json()
+        assert len(items) == 1
+        item = items[0]
+        assert float(item["new_level"]) == 3.5
+        assert item["previous_level"] is None
+        assert item["assigned_by"] == str(staff.id)
+        assert item["reason"] == "First assessment"
+
+    async def test_multiple_assignments_all_in_history(self, client, player, staff, staff_headers):
+        await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "3.0"},
+        )
+        await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "4.0"},
+        )
+        resp = await client.get(
+            f"/api/v1/players/{player.id}/skill-history",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) == 2
+
+    async def test_history_contains_required_fields(self, client, player, staff_headers):
+        await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "3.5"},
+        )
+        resp = await client.get(
+            f"/api/v1/players/{player.id}/skill-history",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        item = resp.json()[0]
+        for field in ("id", "new_level", "previous_level", "assigned_by", "reason", "created_at"):
+            assert field in item
+
+    async def test_player_role_cannot_view_skill_history(self, client, player, player_headers):
+        resp = await client.get(
+            f"/api/v1/players/{player.id}/skill-history",
+            headers=player_headers,
+        )
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_403(self, client, player):
+        resp = await client.get(f"/api/v1/players/{player.id}/skill-history")
+        assert resp.status_code == 403

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-19 00:00 UTC_
+_Last updated: 2026-04-19 17:15 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -63,6 +63,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `PATCH` | `/api/v1/players/me` | Update current player's profile details |
 | `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time |
 | `GET` | `/api/v1/players/me/match-history` | Get current player's completed matches, most recent first |
+| `PATCH` | `/api/v1/players/{player_id}/skill-level` | Staff only: assign or update a player's skill level (1.0–7.0); writes an immutable `skill_level_history` audit entry |
+| `GET` | `/api/v1/players/{player_id}/skill-history` | Staff only: list all skill level changes for a player, most recent first |
 
 ---
 
@@ -143,6 +145,6 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
 | `payments.py` | Stripe webhook, payment methods (save/list/delete/set-default), wallet (get/top-up/adjust), invoices (list/download), refunds, discounts, in-person payment |
 | `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
-| `players.py` | `GET /{id}`, `GET /{id}/skill-history`, `PATCH /{id}/skill-level` |
+| `players.py` | `GET /{id}` |
 | `reports.py` | Dashboard, revenue, utilisation, retention, corporate events, transaction log, Stripe payouts, export |
 | `support.py` | Create/list/get ticket, respond to ticket |

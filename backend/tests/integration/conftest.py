@@ -39,6 +39,7 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import select
 from sqlalchemy import delete as sql_delete
+from sqlalchemy import update as sql_update
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -52,6 +53,7 @@ from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.membership import MembershipPlan
 from app.db.models.court import CalendarReservation, Court
+from app.db.models.skill import SkillLevelHistory
 from app.db.models.staff import StaffProfile, TrainerAvailability
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import TenantUserRole, User
@@ -217,9 +219,11 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
         # --- Users: delete FK children before the user row ---
         if user_ids:
             await session.execute(
+                sql_delete(SkillLevelHistory).where(SkillLevelHistory.user_id.in_(user_ids))
+            )
+            await session.execute(
                 sql_delete(Wallet).where(Wallet.user_id.in_(user_ids))
             )
-        if user_ids:
             await session.execute(
                 sql_delete(User).where(User.tenant_id == tenant_id)
             )
@@ -309,7 +313,18 @@ async def _create_user(
 
 async def _delete_user(user_id: uuid.UUID, session_factory) -> None:
     async with session_factory() as session:
-        # Delete booking_player rows before the user (FK constraint)
+        # Null out skill_assigned_by on any user that references this one (self-ref FK)
+        await session.execute(
+            sql_update(User)
+            .where(User.skill_assigned_by == user_id)
+            .values(skill_assigned_by=None, skill_assigned_at=None)
+        )
+        await session.execute(
+            sql_delete(SkillLevelHistory).where(SkillLevelHistory.user_id == user_id)
+        )
+        await session.execute(
+            sql_delete(SkillLevelHistory).where(SkillLevelHistory.assigned_by == user_id)
+        )
         await session.execute(
             sql_delete(BookingPlayer).where(BookingPlayer.user_id == user_id)
         )
