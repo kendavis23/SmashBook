@@ -51,6 +51,51 @@ export const BOOKING_STATUS_COLORS: Record<string, { bg: string; text: string }>
     completed: { bg: "bg-info/15", text: "text-info" },
 };
 
+export const RESERVATION_TYPE_STYLE: Record<
+    string,
+    { bg: string; border: string; label: string; text: string; time: string }
+> = {
+    maintenance: {
+        bg: "bg-[hsl(220,20%,96%)]",
+        border: "border border-dashed border-[hsl(220,15%,65%)]",
+        label: "Maintenance",
+        text: "text-[hsl(220,25%,25%)] font-semibold",
+        time: "text-[hsl(220,15%,40%)]",
+    },
+    training_block: {
+        bg: "bg-[hsl(214,80%,96%)]",
+        border: "border-dashed border-[hsl(214,80%,72%)]",
+        label: "Training",
+        text: "text-[hsl(214,80%,38%)]",
+        time: "text-[hsl(214,80%,52%)]",
+    },
+    skill_filter: {
+        bg: "bg-[hsl(38,90%,94%)]",
+        border: "border-dashed border-[hsl(38,90%,65%)]",
+        label: "Skill Filter",
+        text: "text-[hsl(38,90%,32%)]",
+        time: "text-[hsl(38,90%,45%)]",
+    },
+    private_hire: {
+        bg: "bg-[hsl(142,60%,94%)]",
+        border: "border-dashed border-[hsl(142,60%,62%)]",
+        label: "Private Hire",
+        text: "text-[hsl(142,60%,28%)]",
+        time: "text-[hsl(142,60%,40%)]",
+    },
+    tournament_hold: {
+        bg: "bg-[hsl(270,50%,96%)]",
+        border: "border-dashed border-[hsl(270,50%,68%)]",
+        label: "Tournament",
+        text: "text-[hsl(270,50%,36%)]",
+        time: "text-[hsl(270,50%,50%)]",
+    },
+};
+
+export const RESERVATION_TYPE_STYLE_FALLBACK = RESERVATION_TYPE_STYLE[
+    "training_block"
+] as NonNullable<(typeof RESERVATION_TYPE_STYLE)[string]>;
+
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
     pending: "Pending",
     confirmed: "Confirmed",

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
 import { useNavigate } from "@tanstack/react-router";
@@ -39,6 +39,13 @@ export default function NewReservationContainer(): JSX.Element {
     const [form, setForm] = useState<NewReservationFormState>(createDefaultForm);
     const [titleError, setTitleError] = useState("");
     const [dateError, setDateError] = useState("");
+
+    useEffect(() => {
+        const firstCourt = courts[0];
+        if (firstCourt && !form.courtId) {
+            setForm((prev) => ({ ...prev, courtId: firstCourt.id }));
+        }
+    }, [courts]);
 
     const createMutation = useCreateCalendarReservation(clubId ?? "");
     const apiError = (createMutation.error as Error | null)?.message ?? "";

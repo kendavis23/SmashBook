@@ -99,6 +99,8 @@ export function useGetCourtAvailability(courtId: string, date: string) {
         queryKey: courtKeys.availability(courtId, date),
         queryFn: (): Promise<CourtAvailability> => getCourtAvailabilityEndpoint(courtId, date),
         enabled: Boolean(courtId) && Boolean(date),
+        gcTime: 0,
+        staleTime: 0,
     });
 }
 

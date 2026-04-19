@@ -80,7 +80,7 @@ export default function CalendarView({
                                     onValueChange={(v) => onCourtChange(v)}
                                     options={courts.map((c) => ({ value: c.id, label: c.name }))}
                                     aria-label="Select court"
-                                    className="w-96"
+                                    className="w-[300px]"
                                 />
                                 <span className="h-5 w-px bg-border" />
                             </>

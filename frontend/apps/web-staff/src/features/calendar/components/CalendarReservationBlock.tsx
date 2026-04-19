@@ -3,6 +3,8 @@ import type { CalendarBlockItem } from "../types";
 import {
     BLOCK_VERTICAL_GAP,
     MIN_BLOCK_HEIGHT,
+    RESERVATION_TYPE_STYLE,
+    RESERVATION_TYPE_STYLE_FALLBACK,
     clampNumber,
     formatTime,
     getMinutesFromIso,
@@ -15,52 +17,6 @@ type Props = {
     endOfDayMinutes: number;
     onManageClick: (reservationId: string) => void;
 };
-
-// Per-type visual config — solid filled blocks, clearly distinct from bookings
-const RESERVATION_TYPE_STYLE: Record<
-    string,
-    { bg: string; border: string; label: string; text: string; time: string }
-> = {
-    maintenance: {
-        bg: "bg-[hsl(220,13%,91%)]",
-        border: "border-dashed border-[hsl(220,13%,72%)]",
-        label: "Maintenance",
-        text: "text-[hsl(220,13%,38%)]",
-        time: "text-[hsl(220,13%,52%)]",
-    },
-    training_block: {
-        bg: "bg-[hsl(214,80%,96%)]",
-        border: "border-dashed border-[hsl(214,80%,72%)]",
-        label: "Training",
-        text: "text-[hsl(214,80%,38%)]",
-        time: "text-[hsl(214,80%,52%)]",
-    },
-    skill_filter: {
-        bg: "bg-[hsl(38,90%,94%)]",
-        border: "border-dashed border-[hsl(38,90%,65%)]",
-        label: "Skill Filter",
-        text: "text-[hsl(38,90%,32%)]",
-        time: "text-[hsl(38,90%,45%)]",
-    },
-    private_hire: {
-        bg: "bg-[hsl(142,60%,94%)]",
-        border: "border-dashed border-[hsl(142,60%,62%)]",
-        label: "Private Hire",
-        text: "text-[hsl(142,60%,28%)]",
-        time: "text-[hsl(142,60%,40%)]",
-    },
-    tournament_hold: {
-        bg: "bg-[hsl(270,50%,96%)]",
-        border: "border-dashed border-[hsl(270,50%,68%)]",
-        label: "Tournament",
-        text: "text-[hsl(270,50%,36%)]",
-        time: "text-[hsl(270,50%,50%)]",
-    },
-};
-
-const FALLBACK_STYLE = RESERVATION_TYPE_STYLE["training_block"] as NonNullable<
-    (typeof RESERVATION_TYPE_STYLE)[string]
->;
 
 export default function CalendarReservationBlock({
     block,
@@ -98,7 +54,7 @@ export default function CalendarReservationBlock({
     const timeLabel = `${formatTime(block.start_datetime)} – ${formatTime(block.end_datetime)}`;
     const ariaLabel = `${block.title} • ${timeLabel} • ${block.reservation_type}`;
 
-    const style = RESERVATION_TYPE_STYLE[block.reservation_type] ?? FALLBACK_STYLE;
+    const style = RESERVATION_TYPE_STYLE[block.reservation_type] ?? RESERVATION_TYPE_STYLE_FALLBACK;
 
     const isMaintenance = block.reservation_type === "maintenance";
 
@@ -125,14 +81,14 @@ export default function CalendarReservationBlock({
 
             <div className="relative flex h-full flex-col items-start justify-center gap-px pl-2 pr-1 py-1">
                 <p
-                    className={`shrink-0 text-[8px] font-bold uppercase tracking-widest leading-none ${style.time}`}
+                    className={`shrink-0 text-[10px] font-bold uppercase tracking-widest leading-none ${style.time}`}
                 >
                     {style.label}
                 </p>
-                <p className={`truncate text-[10px] font-semibold leading-tight ${style.text}`}>
+                <p className={`truncate text-[9px] font-semibold leading-tight ${style.text}`}>
                     {block.title}
                 </p>
-                <p className={`shrink-0 text-[9px] font-medium leading-none ${style.time}`}>
+                <p className={`shrink-0 text-[10px] font-medium leading-none ${style.time}`}>
                     {timeLabel}
                 </p>
             </div>

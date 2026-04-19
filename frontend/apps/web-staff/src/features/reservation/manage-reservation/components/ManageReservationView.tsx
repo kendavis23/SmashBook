@@ -172,7 +172,8 @@ export default function ManageReservationView({
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
                                         <label htmlFor="mr-type" className={labelCls}>
-                                            Reservation Type
+                                            Reservation Type{" "}
+                                            <span className="text-destructive">*</span>
                                         </label>
                                         <SelectInput
                                             value={form.reservationType}
@@ -187,10 +188,7 @@ export default function ManageReservationView({
 
                                     <div>
                                         <label htmlFor="mr-court" className={labelCls}>
-                                            Court
-                                            <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                                (optional)
-                                            </span>
+                                            Court <span className="text-destructive">*</span>
                                         </label>
                                         <SelectInput
                                             value={form.courtId}
@@ -199,8 +197,6 @@ export default function ManageReservationView({
                                                 value: court.id,
                                                 label: court.name,
                                             }))}
-                                            placeholder="All courts"
-                                            clearLabel="All courts"
                                         />
                                     </div>
                                 </div>
