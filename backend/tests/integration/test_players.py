@@ -28,7 +28,6 @@ from app.db.models.booking import (
     PlayerRole,
 )
 from app.db.models.court import Court
-from app.db.models.skill import SkillLevelHistory
 from app.db.models.user import TenantUserRole, User
 
 
