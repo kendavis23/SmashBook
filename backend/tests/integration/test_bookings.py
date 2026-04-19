@@ -333,6 +333,108 @@ class TestCreateBooking:
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 
+    async def test_booking_blocked_by_training_block_reservation(
+        self, client, player_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A regular booking must be rejected (409) when the court has a training_block."""
+        start = _future()
+        end = start + timedelta(minutes=DURATION)
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.training_block,
+                title="Coach session",
+                start_datetime=start,
+                end_datetime=end,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "training block" in resp.json()["detail"]
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_booking_blocked_by_private_hire_reservation(
+        self, client, player_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A regular booking must be rejected (409) when the court has a private_hire reservation."""
+        start = _future()
+        end = start + timedelta(minutes=DURATION)
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.private_hire,
+                title="Private event",
+                start_datetime=start,
+                end_datetime=end,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "private hire" in resp.json()["detail"]
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_booking_blocked_by_maintenance_reservation(
+        self, client, player_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A regular booking must be rejected (409) when the court is under maintenance."""
+        start = _future()
+        end = start + timedelta(minutes=DURATION)
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.maintenance,
+                title="Net repair",
+                start_datetime=start,
+                end_datetime=end,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "maintenance" in resp.json()["detail"]
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
     async def test_notice_window_violation_for_player(self, client, player_headers, club, court_with_hours):
         # 1 hour ahead — less than default min_booking_notice_hours=2
         start = datetime.now(tz=timezone.utc) + timedelta(hours=1)

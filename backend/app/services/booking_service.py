@@ -170,15 +170,29 @@ class BookingService:
 
     async def _check_no_blackout(self, court_id: uuid.UUID, start: datetime, end: datetime) -> None:
         result = await self.db.execute(
-            select(CalendarReservation.id).where(
+            select(CalendarReservation.id, CalendarReservation.reservation_type).where(
                 CalendarReservation.court_id == court_id,
-                CalendarReservation.reservation_type == CalendarReservationType.maintenance,
+                CalendarReservation.reservation_type.in_([
+                    CalendarReservationType.maintenance,
+                    CalendarReservationType.training_block,
+                    CalendarReservationType.private_hire,
+                ]),
                 CalendarReservation.start_datetime < end,
                 CalendarReservation.end_datetime > start,
             )
         )
-        if result.scalar_one_or_none():
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Court is under maintenance during this time slot")
+        row = result.first()
+        if row:
+            reservation_type = row[1]
+            messages = {
+                CalendarReservationType.maintenance: "Court is under maintenance during this time slot",
+                CalendarReservationType.training_block: "Court is reserved for a training block during this time slot",
+                CalendarReservationType.private_hire: "Court is reserved for a private hire during this time slot",
+            }
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=messages.get(reservation_type, "Court is reserved during this time slot"),
+            )
 
     async def _load_booking(self, booking_id: uuid.UUID) -> Booking:
         """Re-fetch booking with all relationships eagerly loaded."""

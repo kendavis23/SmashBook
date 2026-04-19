@@ -32,6 +32,28 @@ async def _get_club(db: AsyncSession, club_id: uuid.UUID, tenant: Tenant) -> Clu
     return club
 
 
+async def _check_no_reservation_conflict(
+    db: AsyncSession,
+    court_id: uuid.UUID,
+    start: datetime,
+    end: datetime,
+    exclude_id: Optional[uuid.UUID] = None,
+) -> None:
+    stmt = select(CalendarReservation.id).where(
+        CalendarReservation.court_id == court_id,
+        CalendarReservation.start_datetime < end,
+        CalendarReservation.end_datetime > start,
+    )
+    if exclude_id is not None:
+        stmt = stmt.where(CalendarReservation.id != exclude_id)
+    result = await db.execute(stmt)
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Court already has a reservation overlapping this time slot",
+        )
+
+
 async def _get_reservation(
     db: AsyncSession, reservation_id: uuid.UUID, tenant: Tenant
 ) -> CalendarReservation:
@@ -62,6 +84,7 @@ async def create_reservation(
         )
         if not court_result.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Court not found in this club")
+        await _check_no_reservation_conflict(db, body.court_id, body.start_datetime, body.end_datetime)
 
     reservation = CalendarReservation(
         club_id=body.club_id,
@@ -152,6 +175,10 @@ async def update_reservation(
             detail="end_datetime must be after start_datetime",
         )
 
+    new_court_id = updates.get("court_id", reservation.court_id)
+    if new_court_id is not None:
+        await _check_no_reservation_conflict(db, new_court_id, new_start, new_end, exclude_id=reservation_id)
+
     new_type = updates.get("reservation_type", reservation.reservation_type)
     new_anchor = updates.get("anchor_skill_level", reservation.anchor_skill_level)
     if new_type == CalendarReservationType.skill_filter and new_anchor is None:
@@ -172,6 +199,7 @@ async def update_reservation(
         setattr(reservation, field, value)
 
     await db.flush()
+    await db.refresh(reservation)
     return reservation
 
 
