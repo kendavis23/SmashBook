@@ -23,8 +23,9 @@ import pytest_asyncio
 from sqlalchemy import delete as sql_delete, select
 
 from app.core.security import create_access_token
-from app.db.models.booking import Booking, BookingPlayer
+from app.db.models.booking import Booking, BookingPlayer, BookingStatus, BookingType
 from app.db.models.club import OperatingHours, PricingRule
+from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.user import TenantUserRole, User
 
@@ -2307,4 +2308,159 @@ class TestCreateRecurringBooking:
         assert resp.status_code == 201, resp.text
         assert len(resp.json()["created"]) == 2
 
-        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+# ---------------------------------------------------------------------------
+# Fixtures for lesson booking validation tests
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def trainer_user_for_lesson(tenant, test_session_factory):
+    from tests.integration.conftest import _create_user, _delete_user
+
+    user = await _create_user(
+        tenant.id, "lesson-trainer", "Lesson Trainer", TenantUserRole.trainer, test_session_factory
+    )
+    yield user
+    await _delete_user(user.id, test_session_factory)
+
+
+@pytest_asyncio.fixture
+async def trainer_profile_for_lesson(trainer_user_for_lesson, club, test_session_factory):
+    async with test_session_factory() as session:
+        profile = StaffProfile(
+            user_id=trainer_user_for_lesson.id,
+            club_id=club.id,
+            role=StaffRole.trainer,
+            is_active=True,
+        )
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+
+    yield profile
+
+    async with test_session_factory() as session:
+        await session.execute(
+            sql_delete(TrainerAvailability).where(
+                TrainerAvailability.staff_profile_id == profile.id
+            )
+        )
+        obj = await session.get(StaffProfile, profile.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def non_trainer_profile(staff, club, test_session_factory):
+    """A StaffProfile with role=ops_lead — not a trainer."""
+    async with test_session_factory() as session:
+        profile = StaffProfile(
+            user_id=staff.id,
+            club_id=club.id,
+            role=StaffRole.ops_lead,
+            is_active=True,
+        )
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+
+    yield profile
+
+    async with test_session_factory() as session:
+        obj = await session.get(StaffProfile, profile.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+def _lesson_payload(club_id, court_id, start: datetime, **kwargs) -> dict:
+    return {
+        "club_id": str(club_id),
+        "court_id": str(court_id),
+        "start_datetime": start.isoformat(),
+        "booking_type": "lesson_individual",
+        "is_open_game": False,
+        "max_players": 1,
+        **kwargs,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/bookings — lesson booking validation
+# ---------------------------------------------------------------------------
+
+
+class TestLessonBookingValidation:
+    async def test_lesson_requires_staff_profile_id(
+        self, client, player_headers, club, court_with_hours
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_lesson_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+        assert "staff_profile_id" in resp.json()["detail"].lower()
+
+    async def test_lesson_rejects_non_trainer_profile(
+        self, client, player_headers, club, court_with_hours, non_trainer_profile
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_lesson_payload(
+                club.id, court_with_hours.id, start,
+                staff_profile_id=str(non_trainer_profile.id),
+            ),
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+        assert "trainer" in resp.json()["detail"].lower()
+
+    async def test_lesson_happy_path_with_valid_trainer(
+        self, client, player_headers, club, court_with_hours, trainer_profile_for_lesson
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_lesson_payload(
+                club.id, court_with_hours.id, start,
+                staff_profile_id=str(trainer_profile_for_lesson.id),
+            ),
+            headers=player_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["booking_type"] == "lesson_individual"
+        assert body["status"] in ("pending", "confirmed")
+
+    async def test_trainer_double_booking_rejected(
+        self, client, player_headers, staff_headers, club, court_with_hours, trainer_profile_for_lesson
+    ):
+        start = _future()
+        payload = _lesson_payload(
+            club.id, court_with_hours.id, start,
+            staff_profile_id=str(trainer_profile_for_lesson.id),
+        )
+
+        first = await client.post("/api/v1/bookings", json=payload, headers=player_headers)
+        assert first.status_code == 201, first.text
+
+        second = await client.post("/api/v1/bookings", json=payload, headers=player_headers)
+        # Court conflict fires before trainer conflict — both result in 409
+        assert second.status_code == 409
+
+    async def test_lesson_group_also_requires_trainer(
+        self, client, player_headers, club, court_with_hours
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json={**_lesson_payload(club.id, court_with_hours.id, start), "booking_type": "lesson_group"},
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+        assert "staff_profile_id" in resp.json()["detail"].lower()

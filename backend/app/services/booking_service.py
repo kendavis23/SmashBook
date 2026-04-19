@@ -41,6 +41,7 @@ from app.db.models.booking import (
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
+from app.db.models.staff import StaffProfile, StaffRole
 from app.db.models.user import TenantUserRole, User
 
 _STAFF_ROLES = {
@@ -156,6 +157,17 @@ class BookingService:
         if result.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Court is already booked for this time slot")
 
+    async def _check_no_trainer_conflict(self, staff_profile_id: uuid.UUID, start: datetime, end: datetime) -> None:
+        stmt = select(Booking.id).where(
+            Booking.staff_profile_id == staff_profile_id,
+            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+            Booking.start_datetime < end,
+            Booking.end_datetime > start,
+        )
+        result = await self.db.execute(stmt)
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Trainer is already booked for this time slot")
+
     async def _check_no_blackout(self, court_id: uuid.UUID, start: datetime, end: datetime) -> None:
         result = await self.db.execute(
             select(CalendarReservation.id).where(
@@ -270,7 +282,29 @@ class BookingService:
         # 1. Fetch club + court
         club, court = await self._get_club_and_court(club_id, court_id, tenant_id)
 
-        # 1a. Resolve organiser: staff may book on behalf of a player
+        # 1a. For lesson bookings, validate that staff_profile_id is an active trainer at this club
+        _LESSON_TYPES = {BookingType.lesson_individual, BookingType.lesson_group}
+        if booking_type in _LESSON_TYPES:
+            if staff_profile_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="staff_profile_id is required for lesson bookings",
+                )
+            trainer_result = await self.db.execute(
+                select(StaffProfile).where(
+                    StaffProfile.id == staff_profile_id,
+                    StaffProfile.club_id == club_id,
+                    StaffProfile.role == StaffRole.trainer,
+                    StaffProfile.is_active.is_(True),
+                )
+            )
+            if not trainer_result.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="staff_profile_id must reference an active trainer at this club",
+                )
+
+        # 1b. Resolve organiser: staff may book on behalf of a player
         if on_behalf_of_user_id is not None:
             if not is_staff:
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="on_behalf_of_user_id is staff-only")
@@ -319,6 +353,10 @@ class BookingService:
 
         # 9. Blackout
         await self._check_no_blackout(court_id, start_datetime, end_datetime)
+
+        # 9a. Trainer double-booking
+        if booking_type in _LESSON_TYPES and staff_profile_id is not None:
+            await self._check_no_trainer_conflict(staff_profile_id, start_datetime, end_datetime)
 
         # 10. Truly empty open game (no organiser slot taken) is staff-only.
         # A player creating an open game is always added as organiser; only staff

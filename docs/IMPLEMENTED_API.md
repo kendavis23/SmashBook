@@ -1,4 +1,4 @@
-_Last updated: 2026-04-19 17:15 UTC_
+_Last updated: 2026-04-19 18:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -129,7 +129,8 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/v1/trainers` | List all active trainers for a club with their availability embedded. Query param: `club_id` (required), `include_inactive` (default false). Requires staff+ |
+| `GET` | `/api/v1/trainers` | List trainers for a club with their availability embedded. Query params: `club_id` (required), `include_inactive` (default false, staff-only). Players always see active trainers only |
+| `GET` | `/api/v1/trainers/{trainer_id}/open-slots` | Return available lesson time slots for a trainer on a given date. Query params: `club_id` (required), `date` (required, YYYY-MM-DD). Derived from trainer availability windows minus existing bookings. Open to all authenticated users |
 | `GET` | `/api/v1/trainers/{trainer_id}/availability` | Get all availability windows for a trainer. Requires staff+ |
 | `POST` | `/api/v1/trainers/{trainer_id}/availability` | Create an availability window. Trainer sets their own; ops_lead+ sets any. Validates `start_time < end_time` and `club_id` matches trainer's club |
 | `PUT` | `/api/v1/trainers/{trainer_id}/availability/{availability_id}` | Update an availability window (partial). Trainer edits their own; ops_lead+ edits any. Re-validates time window |

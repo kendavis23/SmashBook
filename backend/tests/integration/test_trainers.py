@@ -12,7 +12,7 @@ GET  /trainers/{id}/bookings                         — access control
 """
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 import pytest
 import pytest_asyncio
@@ -27,6 +27,7 @@ from app.db.models.booking import (
     PaymentStatus,
     PlayerRole,
 )
+from app.db.models.club import OperatingHours
 from app.db.models.court import Court
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.user import TenantUserRole
@@ -223,11 +224,34 @@ class TestListTrainers:
         )
         assert resp.status_code == 200
 
-    async def test_player_cannot_list_trainers(self, client, player_headers, club):
+    async def test_player_can_list_trainers(self, client, player_headers, trainer_profile, club):
         resp = await client.get(
             BASE, params={"club_id": str(club.id)}, headers=player_headers
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 200
+        ids = [t["id"] for t in resp.json()]
+        assert str(trainer_profile.id) in ids
+
+    async def test_inactive_trainer_not_visible_to_player(
+        self, client, player_headers, trainer_profile, club, test_session_factory
+    ):
+        async with test_session_factory() as session:
+            p = await session.get(StaffProfile, trainer_profile.id)
+            p.is_active = False
+            await session.commit()
+
+        try:
+            resp = await client.get(
+                BASE, params={"club_id": str(club.id)}, headers=player_headers
+            )
+            assert resp.status_code == 200
+            ids = [t["id"] for t in resp.json()]
+            assert str(trainer_profile.id) not in ids
+        finally:
+            async with test_session_factory() as session:
+                p = await session.get(StaffProfile, trainer_profile.id)
+                p.is_active = True
+                await session.commit()
 
     async def test_unknown_club_returns_404(self, client, staff_headers):
         resp = await client.get(
@@ -534,3 +558,159 @@ class TestGetTrainerBookings:
         assert resp.status_code == 200
         for b in resp.json():
             assert "participants" in b
+
+
+# ---------------------------------------------------------------------------
+# Fixtures for GET /trainers/{id}/open-slots
+# ---------------------------------------------------------------------------
+
+# Target date: Monday 2026-04-06 (after availability_window effective_from=2026-04-01)
+_SLOT_DATE = date(2026, 4, 6)
+# availability_window covers day_of_week=0, 10:00–12:00
+# Club default: 90-min slots. Grid from 09:00: …, 09:00–10:30, 10:30–12:00, 12:00–13:30, …
+# Only 10:30–12:00 falls fully inside the 10:00–12:00 window.
+_EXPECTED_START = datetime(2026, 4, 6, 10, 30, tzinfo=timezone.utc)
+_EXPECTED_END = datetime(2026, 4, 6, 12, 0, tzinfo=timezone.utc)
+
+
+@pytest_asyncio.fixture
+async def monday_operating_hours(club, test_session_factory):
+    """Mon 09:00–18:00 operating hours for the shared club fixture."""
+    async with test_session_factory() as session:
+        oh = OperatingHours(
+            club_id=club.id,
+            day_of_week=0,
+            open_time=time(9, 0),
+            close_time=time(18, 0),
+        )
+        session.add(oh)
+        await session.commit()
+        await session.refresh(oh)
+
+    yield oh
+
+    async with test_session_factory() as session:
+        obj = await session.get(OperatingHours, oh.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def trainer_slot_booking(trainer_profile, court, club, trainer_user, test_session_factory):
+    """A confirmed lesson booking for the trainer covering the expected open slot."""
+    async with test_session_factory() as session:
+        booking = Booking(
+            club_id=club.id,
+            court_id=court.id,
+            booking_type=BookingType.lesson_individual,
+            status=BookingStatus.confirmed,
+            start_datetime=_EXPECTED_START,
+            end_datetime=_EXPECTED_END,
+            created_by_user_id=trainer_user.id,
+            staff_profile_id=trainer_profile.id,
+            max_players=1,
+        )
+        session.add(booking)
+        await session.commit()
+        await session.refresh(booking)
+
+    yield booking
+
+    async with test_session_factory() as session:
+        await session.execute(
+            sql_delete(BookingPlayer).where(BookingPlayer.booking_id == booking.id)
+        )
+        obj = await session.get(Booking, booking.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# GET /trainers/{id}/open-slots
+# ---------------------------------------------------------------------------
+
+
+class TestGetTrainerOpenSlots:
+    async def test_returns_open_slots_within_availability(
+        self, client, player_headers, trainer_profile, availability_window, monday_operating_hours, club
+    ):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/open-slots",
+            params={"club_id": str(club.id), "date": str(_SLOT_DATE)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        slots = resp.json()
+        assert len(slots) == 1
+        assert slots[0]["start_datetime"].startswith("2026-04-06T10:30")
+        assert slots[0]["end_datetime"].startswith("2026-04-06T12:00")
+
+    async def test_booked_slot_is_excluded(
+        self,
+        client,
+        player_headers,
+        trainer_profile,
+        availability_window,
+        monday_operating_hours,
+        trainer_slot_booking,
+        club,
+    ):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/open-slots",
+            params={"club_id": str(club.id), "date": str(_SLOT_DATE)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_no_availability_window_returns_empty(
+        self, client, player_headers, trainer_profile, monday_operating_hours, club
+    ):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/open-slots",
+            params={"club_id": str(club.id), "date": str(_SLOT_DATE)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_no_operating_hours_returns_empty(
+        self, client, player_headers, trainer_profile, availability_window, club
+    ):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/open-slots",
+            params={"club_id": str(club.id), "date": str(_SLOT_DATE)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_unknown_trainer_returns_404(
+        self, client, player_headers, club, monday_operating_hours
+    ):
+        resp = await client.get(
+            f"{BASE}/{uuid.uuid4()}/open-slots",
+            params={"club_id": str(club.id), "date": str(_SLOT_DATE)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_unknown_club_returns_404(
+        self, client, player_headers, trainer_profile
+    ):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/open-slots",
+            params={"club_id": str(uuid.uuid4()), "date": str(_SLOT_DATE)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_403(self, client, trainer_profile, club, tenant):
+        resp = await client.get(
+            f"{BASE}/{trainer_profile.id}/open-slots",
+            params={"club_id": str(club.id), "date": str(_SLOT_DATE)},
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 403
