@@ -98,13 +98,11 @@ function renderView(overrides: Partial<Parameters<typeof BookingsView>[0]> = {})
         filters: defaultFilters,
         courts: [],
         courtNameMap: {},
-        successMessage: "",
         onFiltersChange: vi.fn(),
         onSearch: vi.fn(),
         onRefresh: vi.fn(),
         onCreateClick: vi.fn(),
         onManageClick: vi.fn(),
-        onDismissSuccess: vi.fn(),
         ...overrides,
     };
     return render(<BookingsView {...props} />);
@@ -174,28 +172,6 @@ describe("BookingsView — manage flow", () => {
         renderView({ bookings: [mockBooking], onManageClick: handleManage });
         fireEvent.click(screen.getByRole("button", { name: /Manage booking on Court A/i }));
         expect(handleManage).toHaveBeenCalledWith("b-1");
-    });
-});
-
-describe("BookingsView — success banner", () => {
-    it("renders success message when successMessage is set", () => {
-        renderView({ successMessage: "Booking created successfully." });
-        expect(screen.getByText("Booking created successfully.")).toBeInTheDocument();
-    });
-
-    it("calls onDismissSuccess when dismiss button is clicked", () => {
-        const handleDismiss = vi.fn();
-        renderView({
-            successMessage: "Booking created successfully.",
-            onDismissSuccess: handleDismiss,
-        });
-        fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-        expect(handleDismiss).toHaveBeenCalledTimes(1);
-    });
-
-    it("does not render success banner when successMessage is empty", () => {
-        renderView({ successMessage: "" });
-        expect(screen.queryByRole("button", { name: "Dismiss" })).toBeNull();
     });
 });
 

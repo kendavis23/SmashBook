@@ -2,7 +2,7 @@ import { useListCourts, useGetCourtAvailability } from "../../hooks";
 import { useClubAccess, canManageCourts } from "../../store";
 import type { Court, TimeSlot, AvailabilityFilters } from "../../types";
 import type { JSX } from "react";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { AlertToast } from "@repo/ui";
 import CourtsView from "./CourtsView";
@@ -74,17 +74,27 @@ export default function CourtsContainer(): JSX.Element {
     const { clubId, role } = useClubAccess();
     const canManage = canManageCourts(role);
 
+    const stableFilters = useMemo(
+        () => ({
+            surfaceType: appliedFilters.surfaceType,
+            date: appliedFilters.date,
+            timeFrom: appliedFilters.timeFrom,
+            timeTo: appliedFilters.timeTo,
+        }),
+        [
+            appliedFilters.surfaceType,
+            appliedFilters.date,
+            appliedFilters.timeFrom,
+            appliedFilters.timeTo,
+        ]
+    );
+
     const {
         data: courts = [],
         isLoading,
         error,
         refetch,
-    } = useListCourts(clubId ?? "", {
-        surfaceType: appliedFilters.surfaceType,
-        date: appliedFilters.date,
-        timeFrom: appliedFilters.timeFrom,
-        timeTo: appliedFilters.timeTo,
-    });
+    } = useListCourts(clubId ?? "", stableFilters);
 
     const {
         data: availability,

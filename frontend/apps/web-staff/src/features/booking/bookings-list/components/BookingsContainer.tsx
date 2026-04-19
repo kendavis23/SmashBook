@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { JSX } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
+import { AlertToast } from "@repo/ui";
 import { useListBookings, useListCourts } from "../../hooks";
 import { useClubAccess, canManageBooking } from "../../store";
 import type { Booking, BookingsListFilters } from "../../types";
@@ -23,15 +24,19 @@ function createDefaultFilters(): BookingsListFilters {
 
 export default function BookingsContainer(): JSX.Element {
     const navigate = useNavigate();
-    const search = useSearch({ strict: false }) as { created?: boolean };
+    const search = useSearch({ strict: false }) as { created?: boolean; cancelled?: boolean };
     const [successMessage, setSuccessMessage] = useState<string>(
-        search.created === true ? "Booking created successfully." : ""
+        search.created === true
+            ? "Booking created successfully."
+            : search.cancelled === true
+              ? "Booking cancelled successfully."
+              : ""
     );
     const [filters, setFilters] = useState<BookingsListFilters>(createDefaultFilters);
     const [appliedFilters, setAppliedFilters] = useState<BookingsListFilters>(createDefaultFilters);
 
     useEffect(() => {
-        if (search.created === true) {
+        if (search.created === true || search.cancelled === true) {
             void navigate({ to: "/bookings", search: {}, replace: true });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -87,21 +92,28 @@ export default function BookingsContainer(): JSX.Element {
     );
 
     return (
-        <BookingsView
-            bookings={bookings as Booking[]}
-            isLoading={isLoading}
-            error={error as Error | null}
-            canManage={canManage}
-            filters={filters}
-            courts={courts as { id: string; name: string }[]}
-            courtNameMap={courtNameMap}
-            successMessage={successMessage}
-            onFiltersChange={setFilters}
-            onSearch={handleSearch}
-            onRefresh={handleRefresh}
-            onCreateClick={handleCreateClick}
-            onManageClick={handleManageClick}
-            onDismissSuccess={() => setSuccessMessage("")}
-        />
+        <>
+            <BookingsView
+                bookings={bookings as Booking[]}
+                isLoading={isLoading}
+                error={error as Error | null}
+                canManage={canManage}
+                filters={filters}
+                courts={courts as { id: string; name: string }[]}
+                courtNameMap={courtNameMap}
+                onFiltersChange={setFilters}
+                onSearch={handleSearch}
+                onRefresh={handleRefresh}
+                onCreateClick={handleCreateClick}
+                onManageClick={handleManageClick}
+            />
+            {successMessage ? (
+                <AlertToast
+                    title={successMessage}
+                    variant="success"
+                    onClose={() => setSuccessMessage("")}
+                />
+            ) : null}
+        </>
     );
 }

@@ -118,7 +118,7 @@ export default function ManageBookingContainer(): JSX.Element {
         cancelMutation.mutate(bookingId, {
             onSuccess: () => {
                 setShowCancelConfirm(false);
-                void navigate({ to: "/bookings" });
+                void navigate({ to: "/bookings", search: { cancelled: true } });
             },
             onError: (err) => {
                 setShowCancelConfirm(false);

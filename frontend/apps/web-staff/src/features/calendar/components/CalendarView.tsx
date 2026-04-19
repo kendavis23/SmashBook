@@ -80,7 +80,7 @@ export default function CalendarView({
                                     onValueChange={(v) => onCourtChange(v)}
                                     options={courts.map((c) => ({ value: c.id, label: c.name }))}
                                     aria-label="Select court"
-                                    className="w-52"
+                                    className="w-96"
                                 />
                                 <span className="h-5 w-px bg-border" />
                             </>
@@ -104,7 +104,7 @@ export default function CalendarView({
                             ))}
                         </div>
 
-                        {/* Navigation */}
+                        {/* Navigation + Refresh */}
                         <div className="flex items-center">
                             <button
                                 onClick={onPrev}
@@ -122,19 +122,19 @@ export default function CalendarView({
                             <button
                                 onClick={onNext}
                                 aria-label="Next"
-                                className="flex h-9 w-9 items-center justify-center rounded-r-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-9 w-9 items-center justify-center border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <ChevronRight size={14} />
                             </button>
+                            <span className="-mx-px h-9 w-px bg-border" />
+                            <button
+                                onClick={onRefresh}
+                                aria-label="Refresh calendar"
+                                className="flex h-9 w-9 items-center justify-center rounded-r-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            >
+                                <RefreshCw size={14} />
+                            </button>
                         </div>
-
-                        <button
-                            onClick={onRefresh}
-                            aria-label="Refresh calendar"
-                            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        >
-                            <RefreshCw size={14} />
-                        </button>
                     </div>
                 </header>
 

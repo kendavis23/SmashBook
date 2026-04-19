@@ -83,18 +83,26 @@ export default function WeekTimelineBoard({
         );
     }
 
-    function getBookingsForDay(day: CalendarDay): CalendarBookingItem[] {
-        const slots = selectedCourtId
-            ? (day.courts.find((c) => c.court_id === selectedCourtId)?.slots ?? [])
-            : day.courts.flatMap((c) => c.slots);
-        return slots.filter((s): s is CalendarBookingItem => s.kind === "booking");
+    function getBookingsForDay(day: CalendarDay): (CalendarBookingItem & { _courtId: string })[] {
+        const courts = selectedCourtId
+            ? day.courts.filter((c) => c.court_id === selectedCourtId)
+            : day.courts;
+        return courts.flatMap((c) =>
+            c.slots
+                .filter((s): s is CalendarBookingItem => s.kind === "booking")
+                .map((s) => ({ ...s, _courtId: c.court_id }))
+        );
     }
 
-    function getBlocksForDay(day: CalendarDay): CalendarBlockItem[] {
-        const slots = selectedCourtId
-            ? (day.courts.find((c) => c.court_id === selectedCourtId)?.slots ?? [])
-            : day.courts.flatMap((c) => c.slots);
-        return slots.filter((s): s is CalendarBlockItem => s.kind === "block");
+    function getBlocksForDay(day: CalendarDay): (CalendarBlockItem & { _courtId: string })[] {
+        const courts = selectedCourtId
+            ? day.courts.filter((c) => c.court_id === selectedCourtId)
+            : day.courts;
+        return courts.flatMap((c) =>
+            c.slots
+                .filter((s): s is CalendarBlockItem => s.kind === "block")
+                .map((s) => ({ ...s, _courtId: c.court_id }))
+        );
     }
 
     return (
@@ -216,7 +224,7 @@ export default function WeekTimelineBoard({
 
                                     {bookings.map((booking) => (
                                         <CalendarBookingBlock
-                                            key={booking.id}
+                                            key={`${booking._courtId}-${booking.id}`}
                                             booking={booking}
                                             boardHeight={boardHeight}
                                             startOfDayMinutes={startOfDayMinutes}
@@ -227,7 +235,7 @@ export default function WeekTimelineBoard({
 
                                     {blocks.map((block) => (
                                         <CalendarReservationBlock
-                                            key={block.id}
+                                            key={`${block._courtId}-${block.id}`}
                                             block={block}
                                             boardHeight={boardHeight}
                                             startOfDayMinutes={startOfDayMinutes}

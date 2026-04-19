@@ -175,7 +175,10 @@ describe("NewReservationContainer", () => {
             }),
             expect.objectContaining({ onSuccess: expect.any(Function) })
         );
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reservations" });
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: "/reservations",
+            search: { created: true },
+        });
     });
 
     it("navigates back on cancel", () => {

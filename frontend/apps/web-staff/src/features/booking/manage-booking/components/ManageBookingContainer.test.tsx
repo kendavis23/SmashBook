@@ -241,6 +241,6 @@ describe("ManageBookingContainer", () => {
                 onError: expect.any(Function),
             })
         );
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/bookings" });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/bookings", search: { cancelled: true } });
     });
 });

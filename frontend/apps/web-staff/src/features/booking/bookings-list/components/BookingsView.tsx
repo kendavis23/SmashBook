@@ -1,15 +1,6 @@
 import type { JSX } from "react";
 import { Breadcrumb, DatePicker, formatUTCDateTime, SelectInput } from "@repo/ui";
-import {
-    CalendarDays,
-    CheckCircle2,
-    Plus,
-    RefreshCw,
-    Search,
-    Settings2,
-    User,
-    X,
-} from "lucide-react";
+import { CalendarDays, Plus, RefreshCw, Search, Settings2, User } from "lucide-react";
 import type { Booking, BookingsListFilters } from "../../types";
 import {
     BOOKING_STATUS_COLORS,
@@ -27,13 +18,11 @@ type Props = {
     filters: BookingsListFilters;
     courts: { id: string; name: string }[];
     courtNameMap: Record<string, string>;
-    successMessage: string;
     onFiltersChange: (filters: BookingsListFilters) => void;
     onSearch: () => void;
     onRefresh: () => void;
     onCreateClick: () => void;
     onManageClick: (bookingId: string) => void;
-    onDismissSuccess: () => void;
 };
 
 const thCls =
@@ -57,33 +46,15 @@ export default function BookingsView({
     filters,
     courts,
     courtNameMap,
-    successMessage,
     onFiltersChange,
     onSearch,
     onRefresh,
     onCreateClick,
     onManageClick,
-    onDismissSuccess,
 }: Props): JSX.Element {
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Bookings" }]} />
-
-            {successMessage ? (
-                <div className="flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3 text-sm text-success">
-                    <span className="flex items-center gap-2">
-                        <CheckCircle2 size={16} className="shrink-0" />
-                        {successMessage}
-                    </span>
-                    <button
-                        onClick={onDismissSuccess}
-                        aria-label="Dismiss"
-                        className="shrink-0 text-success/70 transition hover:text-success"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-            ) : null}
 
             <section className="card-surface overflow-hidden">
                 {/* Header */}

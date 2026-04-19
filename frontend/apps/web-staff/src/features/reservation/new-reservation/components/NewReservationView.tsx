@@ -350,7 +350,7 @@ export default function NewReservationView({
                                                 id="res-rrule"
                                                 type="text"
                                                 className={fieldCls}
-                                                placeholder="FREQ=WEEKLY;BYDAY=MO"
+                                                placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
                                                 value={form.recurrenceRule}
                                                 onChange={(e) =>
                                                     onFormChange({ recurrenceRule: e.target.value })

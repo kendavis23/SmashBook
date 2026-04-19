@@ -143,7 +143,7 @@ describe("ManageReservationView", () => {
         render(<ManageReservationView {...defaultProps} />);
 
         expect(screen.getByRole("heading", { name: "Morning Block" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Delete Reservation" })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Save Changes" })).toBeInTheDocument();
     });
 
@@ -164,7 +164,7 @@ describe("ManageReservationView", () => {
         );
 
         fireEvent.change(screen.getByLabelText(/title/i), { target: { value: "Evening Block" } });
-        fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+        fireEvent.click(screen.getByRole("button", { name: "Delete Reservation" }));
         fireEvent.click(screen.getByRole("button", { name: "Back" }));
         fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
 
@@ -198,7 +198,9 @@ describe("ManageReservationView", () => {
     it("renders read-only back action when user cannot edit", () => {
         render(<ManageReservationView {...defaultProps} canEdit={false} />);
 
-        expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: "Delete Reservation" })
+        ).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
     });
