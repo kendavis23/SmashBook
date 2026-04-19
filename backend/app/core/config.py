@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     APP_NAME: str = "Padel Booking API"
     API_V1_PREFIX: str = "/api/v1"
     DEBUG: bool = False
+    APP_BASE_URL: str = "https://app.smashbook.app"
     SECRET_KEY: str = "placeholder-not-used-in-migrations"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60

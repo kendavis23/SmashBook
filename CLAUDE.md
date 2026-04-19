@@ -294,7 +294,7 @@ Migration groups in `DATA_MODEL_TARGET_STATE.md` map to sprints. Implement the g
 
 ## Environment Variables
 
-Defined in `backend/app/core/config.py` via pydantic-settings. For local dev, create `backend/.env` (gitignored). Required: `SECRET_KEY`, `DATABASE_URL`, `DATABASE_READ_REPLICA_URL`, `PUBSUB_PROJECT_ID`, `GCS_BUCKET_VIDEOS`, `GCS_BUCKET_INVOICES`, `GCS_PROJECT_ID`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `PLATFORM_API_KEY`, `SENDGRID_API_KEY`, `FIREBASE_PROJECT_ID`.
+Defined in `backend/app/core/config.py` via pydantic-settings. For local dev, create `backend/.env` (gitignored). Required: `SECRET_KEY`, `DATABASE_URL`, `DATABASE_READ_REPLICA_URL`, `PUBSUB_PROJECT_ID`, `GCS_BUCKET_VIDEOS`, `GCS_BUCKET_INVOICES`, `GCS_PROJECT_ID`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `PLATFORM_API_KEY`, `SENDGRID_API_KEY`, `FIREBASE_PROJECT_ID`, `APP_BASE_URL` (e.g. `https://app.smashbook.app`; used to construct password-reset links; defaults to that value if unset).
 
 ---
 

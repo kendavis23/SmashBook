@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.session import get_db
+from app.core.config import get_settings
+from app.core.pubsub import publish_notification_event
 from app.core.security import (
     verify_password,
     create_access_token,
@@ -172,9 +174,14 @@ async def request_password_reset(body: PasswordResetRequest, db: AsyncSession = 
     user = result.scalar_one_or_none()
 
     if user and user.is_active:
-        _reset_token = create_reset_token({"sub": str(user.id)})
-        # TODO: publish {"type": "password_reset", "user_id": str(user.id), "token": _reset_token}
-        #       to PUBSUB_TOPIC_NOTIFICATION_EVENTS
+        reset_token = create_reset_token({"sub": str(user.id)})
+        settings = get_settings()
+        reset_url = f"{settings.APP_BASE_URL}/reset-password?token={reset_token}"
+        publish_notification_event("password_reset", {
+            "user_id": str(user.id),
+            "email": user.email,
+            "reset_url": reset_url,
+        })
 
 
 @router.post("/password-reset/confirm", status_code=status.HTTP_200_OK)

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-18 00:00 UTC_
+_Last updated: 2026-04-19 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -14,8 +14,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `POST` | `/api/v1/auth/login` | Login with email + password; returns access + refresh tokens |
 | `POST` | `/api/v1/auth/refresh` | Exchange a refresh token for a new token pair |
 | `POST` | `/api/v1/auth/logout` | Stateless logout (client discards tokens) |
-| `POST` | `/api/v1/auth/password-reset/request` | Request a password-reset token (always 202 to prevent enumeration) |
-| `POST` | `/api/v1/auth/password-reset/confirm` | Set a new password using a valid reset token |
+| `POST` | `/api/v1/auth/password-reset/request` | Request a password-reset email; always 202 to prevent enumeration. Publishes `password_reset` event to `notification-events` → notification worker → SendGrid email with a signed 15-min reset link |
+| `POST` | `/api/v1/auth/password-reset/confirm` | Set a new password using a valid reset token (JWT type=reset); returns 400 for invalid, wrong-type, or expired tokens |
 
 ---
 
