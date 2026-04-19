@@ -16,29 +16,6 @@ function createDefaultFilters(): ReservationFilters {
     };
 }
 
-function applyClientFilters(
-    reservations: CalendarReservation[],
-    filters: ReservationFilters
-): CalendarReservation[] {
-    return reservations.filter((res) => {
-        if (filters.reservationType && res.reservation_type !== filters.reservationType) {
-            return false;
-        }
-        if (filters.courtId) {
-            if (res.court_id !== filters.courtId) {
-                return false;
-            }
-        }
-        if (filters.fromDt && res.start_datetime < filters.fromDt) {
-            return false;
-        }
-        if (filters.toDt && res.end_datetime > filters.toDt) {
-            return false;
-        }
-        return true;
-    });
-}
-
 export default function ReservationsContainer(): JSX.Element {
     const navigate = useNavigate();
     const search = useSearch({ strict: false }) as { created?: boolean; deleted?: boolean };
@@ -59,11 +36,16 @@ export default function ReservationsContainer(): JSX.Element {
     const canCreate = canManageReservation(role);
 
     const {
-        data: allReservations = [],
+        data: reservations = [],
         isLoading,
         error,
         refetch,
-    } = useListCalendarReservations(clubId ?? "");
+    } = useListCalendarReservations(clubId ?? "", {
+        reservationType: appliedFilters.reservationType || undefined,
+        courtId: appliedFilters.courtId || undefined,
+        fromDt: appliedFilters.fromDt || undefined,
+        toDt: appliedFilters.toDt || undefined,
+    });
 
     const { data: courts = [] } = useListCourts(clubId ?? "");
 
@@ -74,11 +56,6 @@ export default function ReservationsContainer(): JSX.Element {
         });
         return map;
     }, [courts]);
-
-    const filteredReservations = applyClientFilters(
-        allReservations as CalendarReservation[],
-        appliedFilters
-    );
 
     const handleSearch = useCallback((): void => {
         setAppliedFilters({ ...filters });
@@ -103,7 +80,7 @@ export default function ReservationsContainer(): JSX.Element {
     return (
         <>
             <ReservationsView
-                reservations={filteredReservations}
+                reservations={reservations as CalendarReservation[]}
                 isLoading={isLoading}
                 error={error as Error | null}
                 canCreate={canCreate}

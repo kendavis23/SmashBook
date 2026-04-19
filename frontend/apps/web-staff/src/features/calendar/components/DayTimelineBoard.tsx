@@ -199,7 +199,7 @@ export default function DayTimelineBoard({
                         ) : null}
 
                         {/* Time rail */}
-                        <div className="sticky left-0 z-10 overflow-hidden border-r border-border bg-card">
+                        <div className="sticky left-0 z-20 overflow-hidden border-r border-border bg-card">
                             {CALENDAR_TIME_SLOTS.map((slot) => (
                                 <div
                                     key={`${slot.start_time}-${slot.end_time}`}

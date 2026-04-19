@@ -72,13 +72,13 @@ export default function CalendarBookingBlock({
             aria-label={ariaLabel}
             title={ariaLabel}
             onClick={() => onManageClick(booking.id)}
-            className={`absolute left-1 right-1 z-10 cursor-pointer overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${typeColors.border} text-left`}
+            className={`absolute left-1.5 right-1.5 z-10 cursor-pointer overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${typeColors.border} text-left`}
             style={{ top: `${top}px`, height: `${height}px` }}
         >
             {/* Opaque background — covers grid lines beneath the block */}
             <span className={`pointer-events-none absolute inset-0 bg-card`} />
             <span className={`pointer-events-none absolute inset-0 ${typeColors.bg}`} />
-            <span className="relative flex h-full flex-col items-start justify-center gap-px">
+            <span className="relative flex h-full flex-col items-start justify-center gap-1">
                 <p
                     className={`truncate text-[11px] font-semibold leading-tight ${typeColors.text}`}
                 >
@@ -89,7 +89,7 @@ export default function CalendarBookingBlock({
                 </p>
                 {showStatus ? (
                     <span
-                        className={`mt-0.5 inline-block shrink-0 rounded-full py-px text-[9px] font-semibold leading-tight ${statusColors.bg} ${statusColors.text}`}
+                        className={`mt-1.5 inline-block shrink-0 rounded-full py-px text-[9px] font-medium leading-tight ${statusColors.bg} ${statusColors.text}`}
                     >
                         {statusLabel}
                     </span>
