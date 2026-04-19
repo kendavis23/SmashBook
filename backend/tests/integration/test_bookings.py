@@ -23,7 +23,7 @@ import pytest_asyncio
 from sqlalchemy import delete as sql_delete, select
 
 from app.core.security import create_access_token
-from app.db.models.booking import Booking, BookingPlayer, BookingStatus, BookingType
+from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import OperatingHours, PricingRule
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
