@@ -89,13 +89,6 @@ export const RESERVATION_TYPE_STYLE: Record<
         text: "text-[hsl(220,25%,25%)] font-semibold",
         time: "text-[hsl(220,15%,40%)]",
     },
-    skill_filter: {
-        bg: "bg-[hsl(220,20%,96%)]",
-        border: "border border-[hsl(220,15%,65%)]",
-        label: "Skill Filter",
-        text: "text-[hsl(220,25%,25%)] font-semibold",
-        time: "text-[hsl(220,15%,40%)]",
-    },
     private_hire: {
         bg: "bg-[hsl(220,20%,96%)]",
         border: "border border-[hsl(220,15%,65%)]",

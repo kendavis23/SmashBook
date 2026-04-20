@@ -234,9 +234,6 @@ export default function ReservationsView({
                                     <th className={thCls}>Type</th>
                                     <th className={thCls}>Start</th>
                                     <th className={thCls}>End</th>
-                                    <th className={thCls}>
-                                        <span title="anchor_skill_level / ±range">Skill Level</span>
-                                    </th>
                                     <th className={thCls}>Booking Types</th>
                                     <th className={thCls}>Recurring</th>
                                     <th className={`${thCls} text-right`}>Actions</th>
@@ -252,7 +249,6 @@ export default function ReservationsView({
                                         ? (courtNameMap[res.court_id] ?? res.court_id)
                                         : "All courts";
 
-                                    const hasSkill = res.anchor_skill_level !== null;
                                     const bookingTypes = res.allowed_booking_types?.length
                                         ? res.allowed_booking_types.join(", ")
                                         : "—";
@@ -296,23 +292,6 @@ export default function ReservationsView({
                                                 <span className="whitespace-nowrap text-muted-foreground">
                                                     {formatUTCDateTime(res.end_datetime)}
                                                 </span>
-                                            </td>
-
-                                            {/* Skill group: anchor / above / below */}
-                                            <td className={tdCls}>
-                                                {hasSkill ? (
-                                                    <div className="flex flex-col gap-0.5 text-xs">
-                                                        <span className="font-medium text-foreground">
-                                                            {res.anchor_skill_level}
-                                                        </span>
-                                                        <span className="text-muted-foreground">
-                                                            +{res.skill_range_above ?? 0} / −
-                                                            {res.skill_range_below ?? 0}
-                                                        </span>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-muted-foreground">—</span>
-                                                )}
                                             </td>
 
                                             {/* Allowed booking types */}

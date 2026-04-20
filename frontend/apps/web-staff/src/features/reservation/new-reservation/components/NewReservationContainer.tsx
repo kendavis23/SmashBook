@@ -8,11 +8,6 @@ import type { CalendarReservationInput, CalendarReservationType, Court } from ".
 import NewReservationView from "./NewReservationView";
 import type { NewReservationFormState } from "./NewReservationView";
 
-function parseOptionalNumber(val: string): number | null {
-    const n = parseFloat(val);
-    return isNaN(n) ? null : n;
-}
-
 function createDefaultForm(): NewReservationFormState {
     return {
         title: "",
@@ -21,9 +16,6 @@ function createDefaultForm(): NewReservationFormState {
         date: "",
         startTime: "",
         endTime: "",
-        anchorSkillLevel: "",
-        skillRangeAbove: "",
-        skillRangeBelow: "",
         allowedBookingTypes: [],
         isRecurring: false,
         recurrenceRule: "",
@@ -99,9 +91,6 @@ export default function NewReservationContainer(): JSX.Element {
                 title: form.title.trim(),
                 start_datetime: datetimeLocalToUTC(startDatetimeLocal),
                 end_datetime: datetimeLocalToUTC(endDatetimeLocal),
-                anchor_skill_level: parseOptionalNumber(form.anchorSkillLevel),
-                skill_range_above: parseOptionalNumber(form.skillRangeAbove),
-                skill_range_below: parseOptionalNumber(form.skillRangeBelow),
                 allowed_booking_types:
                     form.allowedBookingTypes.length > 0 ? form.allowedBookingTypes : null,
                 is_recurring: form.isRecurring,

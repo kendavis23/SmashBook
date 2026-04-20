@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo } from "react";
-import { Breadcrumb, AlertToast, DatePicker, TimeInput, NumberInput, SelectInput } from "@repo/ui";
+import { Breadcrumb, AlertToast, DatePicker, TimeInput, SelectInput } from "@repo/ui";
 import type { CalendarReservationType, Court } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
 
@@ -24,9 +24,6 @@ export type NewReservationFormState = {
     date: string;
     startTime: string;
     endTime: string;
-    anchorSkillLevel: string;
-    skillRangeAbove: string;
-    skillRangeBelow: string;
     allowedBookingTypes: string[];
     isRecurring: boolean;
     recurrenceRule: string;
@@ -209,71 +206,6 @@ export default function NewReservationView({
                                 {timeError ? (
                                     <p className="mt-1 text-xs text-destructive">{timeError}</p>
                                 ) : null}
-                            </section>
-
-                            {/* Skill level */}
-                            <section className="form-section">
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Skill Level Filter{" "}
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Restrict this reservation to players within a skill range.
-                                    </p>
-                                </div>
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                    <div>
-                                        <label htmlFor="res-anchor-skill" className={labelCls}>
-                                            Anchor
-                                        </label>
-                                        <NumberInput
-                                            id="res-anchor-skill"
-                                            min={0}
-                                            step={0.1}
-                                            className={fieldCls}
-                                            placeholder="e.g. 3.5"
-                                            value={form.anchorSkillLevel}
-                                            onChange={(e) =>
-                                                onFormChange({ anchorSkillLevel: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="res-skill-above" className={labelCls}>
-                                            Range Above
-                                        </label>
-                                        <NumberInput
-                                            id="res-skill-above"
-                                            min={0}
-                                            step={0.1}
-                                            className={fieldCls}
-                                            placeholder="e.g. 1.0"
-                                            value={form.skillRangeAbove}
-                                            onChange={(e) =>
-                                                onFormChange({ skillRangeAbove: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="res-skill-below" className={labelCls}>
-                                            Range Below
-                                        </label>
-                                        <NumberInput
-                                            id="res-skill-below"
-                                            min={0}
-                                            step={0.1}
-                                            className={fieldCls}
-                                            placeholder="e.g. 1.0"
-                                            value={form.skillRangeBelow}
-                                            onChange={(e) =>
-                                                onFormChange({ skillRangeBelow: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                </div>
                             </section>
 
                             {/* Allowed booking types */}

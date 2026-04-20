@@ -7,7 +7,6 @@ export type UUID = string;
 export type SurfaceType = "indoor" | "outdoor" | "crystal" | "artificial_grass";
 
 export type CalendarReservationType =
-    | "skill_filter"
     | "training_block"
     | "private_hire"
     | "maintenance"
@@ -61,9 +60,6 @@ export interface CalendarReservationInput {
     title: string;
     start_datetime: string; // ISO 8601
     end_datetime: string; // ISO 8601
-    anchor_skill_level?: number | null;
-    skill_range_above?: number | null;
-    skill_range_below?: number | null;
     allowed_booking_types?: string[] | null;
     is_recurring?: boolean;
     recurrence_rule?: string | null;
@@ -76,9 +72,6 @@ export interface CalendarReservationUpdateInput {
     title?: string;
     start_datetime?: string;
     end_datetime?: string;
-    anchor_skill_level?: number | null;
-    skill_range_above?: number | null;
-    skill_range_below?: number | null;
     allowed_booking_types?: string[] | null;
     is_recurring?: boolean;
     recurrence_rule?: string | null;
@@ -93,9 +86,6 @@ export interface CalendarReservation {
     title: string;
     start_datetime: string; // ISO 8601
     end_datetime: string; // ISO 8601
-    anchor_skill_level: number | null;
-    skill_range_above: number | null;
-    skill_range_below: number | null;
     allowed_booking_types: string[] | null;
     is_recurring: boolean;
     recurrence_rule: string | null;
