@@ -5,6 +5,8 @@ import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
 
 vi.mock("@repo/ui", () => ({
+    formatCurrency: (amount: number | null | undefined) =>
+        amount == null ? "—" : `£${amount.toFixed(2)}`,
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
             {items.map((item) => (
@@ -24,12 +26,14 @@ vi.mock("@repo/ui", () => ({
         placeholder,
         disabled,
         className,
+        minDate,
     }: {
         value: string;
         onChange: (v: string) => void;
         placeholder?: string;
         disabled?: boolean;
         className?: string;
+        minDate?: string;
     }) => (
         <input
             type="date"
@@ -38,6 +42,7 @@ vi.mock("@repo/ui", () => ({
             aria-label={placeholder ?? "Pick a date"}
             disabled={disabled}
             className={className}
+            min={minDate}
         />
     ),
     NumberInput: ({
@@ -120,6 +125,7 @@ const defaultProps = {
     onCancel: vi.fn(),
     onDismissError: vi.fn(),
     onRefreshSlots: vi.fn(),
+    selectedPrice: 20,
 };
 
 describe("NewBookingView", () => {
@@ -173,5 +179,41 @@ describe("NewBookingView", () => {
         render(<NewBookingView {...defaultProps} isPending={true} />);
 
         expect(screen.getByRole("button", { name: /creating/i })).toBeDisabled();
+    });
+
+    it("shows price field when start time is selected", () => {
+        render(<NewBookingView {...defaultProps} selectedPrice={18} />);
+
+        expect(screen.getByText("Price")).toBeInTheDocument();
+        expect(screen.getByText("£18.00")).toBeInTheDocument();
+    });
+
+    it("hides price field when no start time is selected", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...defaultForm, startTime: "" }}
+                selectedPrice={null}
+            />
+        );
+
+        expect(screen.queryByText("Price")).not.toBeInTheDocument();
+    });
+
+    it("shows dash when selected price is null", () => {
+        render(<NewBookingView {...defaultProps} selectedPrice={null} />);
+
+        expect(screen.getByText("Price")).toBeInTheDocument();
+        expect(screen.getByText("—")).toBeInTheDocument();
+    });
+
+    it("date picker has min set to today to prevent past date selection", () => {
+        render(<NewBookingView {...defaultProps} />);
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const datePicker = screen.getByLabelText(/pick a date/i);
+
+        expect(datePicker).toHaveAttribute("min", todayStr);
     });
 });

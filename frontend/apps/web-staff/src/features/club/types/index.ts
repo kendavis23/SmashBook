@@ -7,6 +7,10 @@ export type {
 
 export type Tab = "view" | "settings" | "hours" | "pricing";
 
+export type CurrencyOption = { code: string; label: string };
+
+export const CURRENCIES: CurrencyOption[] = [{ code: "GBP", label: "GBP — British Pound" }];
+
 export const TABS: { id: Tab; label: string }[] = [
     { id: "view", label: "View" },
     { id: "settings", label: "Settings" },

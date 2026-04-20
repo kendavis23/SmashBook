@@ -195,18 +195,6 @@ export function formatShortDate(dateStr: string): string {
     return `${WEEKDAYS_SHORT[dow]}, ${MONTHS_SHORT[m - 1]} ${d}`;
 }
 
-/** Formats currency from a numeric value or null */
-export function formatCurrency(amount: number | null | string): string {
-    if (amount == null) return "—";
-    const num = typeof amount === "string" ? parseFloat(amount) : amount;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: 2,
-    }).format(num);
-}
-
 function toDateStr(y: number, m: number, d: number): string {
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 }

@@ -57,6 +57,8 @@ vi.mock("@repo/ui", () => ({
     formatUTCDate: (iso: string) => iso,
     formatUTCTime: (iso: string) => iso,
     datetimeLocalToUTC: (v: string) => v,
+    formatCurrency: (amount: number | null | undefined) =>
+        amount == null ? "—" : `£${amount.toFixed(2)}`,
 }));
 
 const defaultFilters: BookingsListFilters = {

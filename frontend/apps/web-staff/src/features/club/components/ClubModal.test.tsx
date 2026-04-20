@@ -29,6 +29,30 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onClose}>Dismiss</button>
         </div>
     ),
+    SelectInput: ({
+        name,
+        value,
+        onValueChange,
+        options,
+    }: {
+        name?: string;
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+    }) => (
+        <select
+            name={name}
+            aria-label="Currency"
+            value={value}
+            onChange={(e) => onValueChange(e.target.value)}
+        >
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
 }));
 
 describe("ClubModal", () => {
@@ -64,16 +88,13 @@ describe("ClubModal", () => {
         fireEvent.change(screen.getByLabelText(/address/i), {
             target: { value: "  Main Street  " },
         });
-        fireEvent.change(screen.getByLabelText(/currency/i), {
-            target: { value: "eur" },
-        });
         fireEvent.click(screen.getByRole("button", { name: "Create Club" }));
 
         expect(mockCreateMutate).toHaveBeenCalledWith(
             {
                 name: "Padel Madrid",
                 address: "Main Street",
-                currency: "EUR",
+                currency: "GBP",
             },
             expect.objectContaining({ onSuccess: expect.any(Function) })
         );

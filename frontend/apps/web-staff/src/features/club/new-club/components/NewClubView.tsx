@@ -1,6 +1,7 @@
 import { AlertToast, Breadcrumb, SelectInput } from "@repo/ui";
 import { Building2, Coins, Loader2 } from "lucide-react";
 import type { FormEvent, JSX } from "react";
+import { CURRENCIES } from "../../types";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
@@ -9,17 +10,6 @@ const fieldCls =
 const fieldErrorCls = "border-destructive focus:border-destructive focus:ring-destructive/20";
 
 const labelCls = "mb-1.5 block text-sm font-medium text-foreground";
-
-const CURRENCIES = [
-    { code: "GBP", label: "GBP — British Pound" },
-    { code: "EUR", label: "EUR — Euro" },
-    { code: "USD", label: "USD — US Dollar" },
-    { code: "AED", label: "AED — UAE Dirham" },
-    { code: "AUD", label: "AUD — Australian Dollar" },
-    { code: "CAD", label: "CAD — Canadian Dollar" },
-    { code: "CHF", label: "CHF — Swiss Franc" },
-    { code: "SEK", label: "SEK — Swedish Krona" },
-];
 
 export type NewClubFormState = {
     name: string;

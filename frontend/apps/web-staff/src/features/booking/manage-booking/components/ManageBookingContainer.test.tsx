@@ -86,6 +86,7 @@ vi.mock("@repo/ui", () => ({
     ),
     formatUTCDateTime: (value: string) => value,
     datetimeLocalToUTC: (value: string) => value,
+    formatCurrency: (amount: number | null) => (amount == null ? "—" : `£${amount.toFixed(2)}`),
 }));
 
 import {

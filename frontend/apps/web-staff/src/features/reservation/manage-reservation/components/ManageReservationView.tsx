@@ -1,4 +1,5 @@
 import type { FormEvent, JSX } from "react";
+import { useMemo } from "react";
 import {
     Breadcrumb,
     AlertToast,
@@ -82,6 +83,11 @@ export default function ManageReservationView({
     const colors =
         RESERVATION_TYPE_COLORS[reservation.reservation_type] ??
         RESERVATION_TYPE_COLORS["private_hire"]!;
+
+    const todayStr = useMemo(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }, []);
 
     const toggleBookingType = (val: string): void => {
         const next = form.allowedBookingTypes.includes(val)
@@ -210,6 +216,7 @@ export default function ManageReservationView({
                                         <DatePicker
                                             value={form.date}
                                             onChange={(v) => onFormChange({ date: v })}
+                                            minDate={todayStr}
                                         />
                                     </div>
                                     <div>

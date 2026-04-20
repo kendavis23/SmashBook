@@ -1,4 +1,5 @@
 import type { FormEvent, JSX } from "react";
+import { useMemo } from "react";
 import { Breadcrumb, AlertToast, DatePicker, TimeInput, NumberInput, SelectInput } from "@repo/ui";
 import type { CalendarReservationType, Court } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
@@ -59,6 +60,11 @@ export default function NewReservationView({
     onCancel,
     onDismissError,
 }: Props): JSX.Element {
+    const todayStr = useMemo(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }, []);
+
     const toggleBookingType = (val: string): void => {
         const next = form.allowedBookingTypes.includes(val)
             ? form.allowedBookingTypes.filter((t) => t !== val)
@@ -170,6 +176,7 @@ export default function NewReservationView({
                                         <DatePicker
                                             value={form.date}
                                             onChange={(v) => onFormChange({ date: v })}
+                                            minDate={todayStr}
                                         />
                                     </div>
                                     <div>

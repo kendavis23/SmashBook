@@ -23,11 +23,13 @@ vi.mock("@repo/ui", () => ({
         onChange,
         placeholder,
         className,
+        minDate,
     }: {
         value: string;
         onChange: (v: string) => void;
         placeholder?: string;
         className?: string;
+        minDate?: string;
     }) => (
         <input
             type="date"
@@ -35,6 +37,7 @@ vi.mock("@repo/ui", () => ({
             onChange={(e) => onChange(e.target.value)}
             aria-label={placeholder ?? "Pick a date"}
             className={className}
+            min={minDate}
         />
     ),
     TimeInput: ({
@@ -193,5 +196,15 @@ describe("ManageReservationView", () => {
         ).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    });
+
+    it("date picker has min set to today to prevent past date selection", () => {
+        render(<ManageReservationView {...defaultProps} />);
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const datePicker = screen.getByLabelText("Pick a date");
+
+        expect(datePicker).toHaveAttribute("min", todayStr);
     });
 });
