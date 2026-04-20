@@ -125,8 +125,7 @@ class TestCreateCalendarReservation:
             "/api/v1/calendar-reservations",
             json=_reservation_payload(
                 club.id, court.id, overlap_start, overlap_end,
-                reservation_type="skill_filter",
-                anchor_skill_level="3.5",
+                reservation_type="maintenance",
             ),
             headers=staff_headers,
         )

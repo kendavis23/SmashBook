@@ -1,4 +1,4 @@
-_Last updated: 2026-03-30 19:30 UTC_
+_Last updated: 2026-04-20 15:00 UTC_
 
 # SmashBook Data Model
 
@@ -219,20 +219,17 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 ---
 
 #### `calendar_reservations`
-Staff-created blocks that filter or restrict booking types on the calendar. The `maintenance` type fully blocks a court (replacing the former `court_blackouts` table). Supports skill-level filters, training blocks, private hire, maintenance windows, and recurring reservations.
+Staff-created blocks that restrict booking on the calendar. The `maintenance` type fully blocks a court (replacing the former `court_blackouts` table). Supports training blocks, private hire, maintenance windows, tournament holds, and recurring reservations. All reservation types are blocking.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID | PK |
 | `club_id` | UUID | FK → `clubs` |
 | `court_id` | UUID | FK → `courts`, nullable — null = applies to all courts |
-| `reservation_type` | ENUM | `skill_filter`, `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
+| `reservation_type` | ENUM | `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
 | `title` | VARCHAR(255) | |
 | `start_datetime` | TIMESTAMPTZ | |
 | `end_datetime` | TIMESTAMPTZ | |
-| `anchor_skill_level` | NUMERIC(3,1) | Nullable — target skill level for the session |
-| `skill_range_above` | NUMERIC(3,1) | Nullable — points above anchor permitted; null = no upper bound |
-| `skill_range_below` | NUMERIC(3,1) | Nullable — points below anchor permitted; null = no lower bound |
 | `allowed_booking_types` | TEXT[] | Nullable — null = all types permitted |
 | `is_recurring` | BOOLEAN | Default `false` |
 | `recurrence_rule` | TEXT | iCal RRULE, nullable |
@@ -605,7 +602,7 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 | `DisputeStatus` | `open`, `under_review`, `won`, `lost` |
 | `PlatformFeeType` | `booking_fee`, `revenue_share`, `third_party_share` |
 | `DiscountSource` | `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
-| `CalendarReservationType` | `skill_filter`, `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
+| `CalendarReservationType` | `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
 
 ---
 

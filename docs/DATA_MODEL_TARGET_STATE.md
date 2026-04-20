@@ -1,4 +1,4 @@
-_Last updated: 2026-03-30 19:30 UTC_
+_Last updated: 2026-04-20 15:00 UTC_
 
 # SmashBook — Data Model Target State
 
@@ -953,20 +953,17 @@ Direct message threads between a player and the club (staff or AI chatbot).
 ## 15. Calendar Reservations
 
 ### `calendar_reservations` *(NEW TABLE — Migration group G5)*
-Staff-created blocks that filter or restrict booking types on the calendar. The `maintenance` type fully blocks a court (replacing the former `court_blackouts` table). Supports skill-level filters, training blocks, private hire, maintenance windows, and recurring reservations.
+Staff-created blocks that restrict booking on the calendar. The `maintenance` type fully blocks a court (replacing the former `court_blackouts` table). Supports training blocks, private hire, maintenance windows, tournament holds, and recurring reservations. All reservation types are blocking.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID | PK |
 | `club_id` | UUID | FK → `clubs` |
 | `court_id` | UUID | FK → `courts`, nullable — null = applies to all courts |
-| `reservation_type` | ENUM | `skill_filter`, `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
+| `reservation_type` | ENUM | `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
 | `title` | VARCHAR(255) | |
 | `start_datetime` | TIMESTAMPTZ | |
 | `end_datetime` | TIMESTAMPTZ | |
-| `anchor_skill_level` | NUMERIC(3,1) | Nullable — target skill level for the session |
-| `skill_range_above` | NUMERIC(3,1) | Nullable — how many points above anchor are permitted; null = no upper bound |
-| `skill_range_below` | NUMERIC(3,1) | Nullable — how many points below anchor are permitted; null = no lower bound |
 | `allowed_booking_types` | TEXT[] | Nullable — null = all types permitted |
 | `is_recurring` | BOOLEAN | Default `false` |
 | `recurrence_rule` | TEXT | iCal RRULE, nullable |
@@ -1397,7 +1394,7 @@ All new enums must be created in Alembic migrations **before** the columns that 
 | `PlatformFeeType` | `booking_fee`, `revenue_share`, `third_party_share` | G4 |
 | `PromoDiscountType` | `percentage`, `fixed_amount` | G6 |
 | `PromoAppliesTo` | `all`, `off_peak`, `open_game`, `lesson`, `tournament` | G6 |
-| `CalendarReservationType` | `skill_filter`, `training_block`, `private_hire`, `maintenance`, `tournament_hold` | G5 |
+| `CalendarReservationType` | `training_block`, `private_hire`, `maintenance`, `tournament_hold` | G5 |
 | `SupportTicketStatus` | `open`, `in_progress`, `resolved`, `closed` | G6 |
 | `SupportTicketPriority` | `low`, `medium`, `high` | G6 |
 | `SupportHandledBy` | `staff`, `ai`, `hybrid` | G6 |
