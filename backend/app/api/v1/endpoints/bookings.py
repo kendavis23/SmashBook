@@ -1,6 +1,6 @@
 import uuid
 from collections import defaultdict
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -25,6 +25,7 @@ from app.schemas.booking import (
     CalendarDay,
     CalendarResponse,
     CalendarSlot,
+    CalendarTimeSlot,
     InvitePlayerRequest,
     InviteRespondRequest,
     OpenGameSummary,
@@ -297,11 +298,15 @@ async def get_calendar_view(
         anchor_date=anchor_date,
     )
 
+    club = data["club"]
     courts = data["courts"]
     bookings = data["bookings"]
     reservations = data["reservations"]
     date_from: date = data["date_from"]
     date_to: date = data["date_to"]
+
+    oh_by_dow = {oh.day_of_week: oh for oh in club.operating_hours}
+    slot_duration = timedelta(minutes=club.booking_duration_minutes)
 
     # Group booking items by date then court
     by_date_court: dict = defaultdict(lambda: defaultdict(list))
@@ -313,6 +318,61 @@ async def get_calendar_view(
     for r in reservations:
         r_date = r.start_datetime.date()
         blocks_by_date_court[r_date][r.court_id].append(r)
+
+    # Index all bookings and reservations per court for time_slots overlap checks
+    bookings_by_court: dict = defaultdict(list)
+    for b in bookings:
+        bookings_by_court[b.court_id].append(b)
+
+    reservations_by_court: dict = defaultdict(list)
+    for r in reservations:
+        reservations_by_court[r.court_id].append(r)
+
+    def _build_time_slots(court_id: uuid.UUID, day: date) -> list[CalendarTimeSlot]:
+        oh = oh_by_dow.get(day.weekday())
+        if not oh:
+            return []
+        court_bookings = bookings_by_court.get(court_id, [])
+        court_reservations = (
+            reservations_by_court.get(court_id, [])
+            + reservations_by_court.get(None, [])
+        )
+        result = []
+        slot_start = datetime.combine(day, oh.open_time, tzinfo=timezone.utc)
+        day_end = datetime.combine(day, oh.close_time, tzinfo=timezone.utc)
+        while slot_start + slot_duration <= day_end:
+            slot_end = slot_start + slot_duration
+            booking_match = next(
+                (b for b in court_bookings if b.start_datetime < slot_end and b.end_datetime > slot_start),
+                None,
+            )
+            if booking_match:
+                result.append(CalendarTimeSlot(
+                    start_datetime=slot_start,
+                    end_datetime=slot_end,
+                    status="booked",
+                    booking_id=booking_match.id,
+                ))
+            else:
+                res_match = next(
+                    (r for r in court_reservations if r.start_datetime < slot_end and r.end_datetime > slot_start),
+                    None,
+                )
+                if res_match:
+                    result.append(CalendarTimeSlot(
+                        start_datetime=slot_start,
+                        end_datetime=slot_end,
+                        status="blocked",
+                        reservation_id=res_match.id,
+                    ))
+                else:
+                    result.append(CalendarTimeSlot(
+                        start_datetime=slot_start,
+                        end_datetime=slot_end,
+                        status="available",
+                    ))
+            slot_start = slot_end
+        return result
 
     days = []
     current = date_from
@@ -335,7 +395,12 @@ async def get_calendar_view(
                 key=lambda s: s.start_datetime,
             )
             court_columns.append(
-                CalendarCourtColumn(court_id=court.id, court_name=court.name, slots=slots)
+                CalendarCourtColumn(
+                    court_id=court.id,
+                    court_name=court.name,
+                    slots=slots,
+                    time_slots=_build_time_slots(court.id, current),
+                )
             )
         days.append(CalendarDay(date=current, courts=court_columns))
         current += timedelta(days=1)

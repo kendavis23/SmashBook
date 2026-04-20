@@ -554,9 +554,12 @@ class BookingService:
         anchor_date: date,
     ) -> dict:
         club_result = await self.db.execute(
-            select(Club.id).where(Club.id == club_id, Club.tenant_id == tenant_id)
+            select(Club)
+            .options(selectinload(Club.operating_hours))
+            .where(Club.id == club_id, Club.tenant_id == tenant_id)
         )
-        if not club_result.scalar_one_or_none():
+        club = club_result.scalar_one_or_none()
+        if not club:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
 
         if view == "day":
@@ -606,6 +609,7 @@ class BookingService:
             "view": view,
             "date_from": date_from,
             "date_to": date_to,
+            "club": club,
             "courts": courts,
             "bookings": bookings,
             "reservations": reservations,
