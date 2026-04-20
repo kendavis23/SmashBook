@@ -1478,8 +1478,8 @@ class TestCalendarView:
             reservation = CalendarReservation(
                 club_id=club.id,
                 court_id=court_with_hours.id,
-                reservation_type=CalendarReservationType.skill_filter,
-                title="Intermediate only",
+                reservation_type=CalendarReservationType.maintenance,
+                title="Maintenance block",
                 start_datetime=start_dt,
                 end_datetime=end_dt,
                 created_by=staff.id,
@@ -1498,8 +1498,8 @@ class TestCalendarView:
         court_col = next(c for c in day["courts"] if c["court_id"] == str(court_with_hours.id))
         block = next(s for s in court_col["slots"] if s["id"] == str(reservation_id))
         assert block["kind"] == "block"
-        assert block["reservation_type"] == "skill_filter"
-        assert block["title"] == "Intermediate only"
+        assert block["reservation_type"] == "maintenance"
+        assert block["title"] == "Maintenance block"
 
         async with test_session_factory() as session:
             obj = await session.get(CalendarReservation, reservation_id)

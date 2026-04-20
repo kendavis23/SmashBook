@@ -93,9 +93,6 @@ async def create_reservation(
         title=body.title,
         start_datetime=body.start_datetime,
         end_datetime=body.end_datetime,
-        anchor_skill_level=body.anchor_skill_level,
-        skill_range_above=body.skill_range_above,
-        skill_range_below=body.skill_range_below,
         allowed_booking_types=body.allowed_booking_types,
         is_recurring=body.is_recurring,
         recurrence_rule=body.recurrence_rule,
@@ -178,14 +175,6 @@ async def update_reservation(
     new_court_id = updates.get("court_id", reservation.court_id)
     if new_court_id is not None:
         await _check_no_reservation_conflict(db, new_court_id, new_start, new_end, exclude_id=reservation_id)
-
-    new_type = updates.get("reservation_type", reservation.reservation_type)
-    new_anchor = updates.get("anchor_skill_level", reservation.anchor_skill_level)
-    if new_type == CalendarReservationType.skill_filter and new_anchor is None:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="anchor_skill_level is required for skill_filter reservations",
-        )
 
     new_recurring = updates.get("is_recurring", reservation.is_recurring)
     new_rule = updates.get("recurrence_rule", reservation.recurrence_rule)

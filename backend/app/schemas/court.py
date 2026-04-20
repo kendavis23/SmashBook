@@ -58,9 +58,6 @@ class CalendarReservationCreate(BaseModel):
     title: str
     start_datetime: datetime
     end_datetime: datetime
-    anchor_skill_level: Optional[Decimal] = None
-    skill_range_above: Optional[Decimal] = None
-    skill_range_below: Optional[Decimal] = None
     allowed_booking_types: Optional[list[str]] = None
     is_recurring: bool = False
     recurrence_rule: Optional[str] = None
@@ -70,8 +67,6 @@ class CalendarReservationCreate(BaseModel):
     def validate_fields(self) -> "CalendarReservationCreate":
         if self.end_datetime <= self.start_datetime:
             raise ValueError("end_datetime must be after start_datetime")
-        if self.reservation_type == CalendarReservationType.skill_filter and self.anchor_skill_level is None:
-            raise ValueError("anchor_skill_level is required for skill_filter reservations")
         if self.is_recurring and not self.recurrence_rule:
             raise ValueError("recurrence_rule is required when is_recurring is true")
         return self
@@ -83,9 +78,6 @@ class CalendarReservationUpdate(BaseModel):
     title: Optional[str] = None
     start_datetime: Optional[datetime] = None
     end_datetime: Optional[datetime] = None
-    anchor_skill_level: Optional[Decimal] = None
-    skill_range_above: Optional[Decimal] = None
-    skill_range_below: Optional[Decimal] = None
     allowed_booking_types: Optional[list[str]] = None
     is_recurring: Optional[bool] = None
     recurrence_rule: Optional[str] = None
@@ -100,9 +92,6 @@ class CalendarReservationResponse(BaseModel):
     title: str
     start_datetime: datetime
     end_datetime: datetime
-    anchor_skill_level: Optional[Decimal] = None
-    skill_range_above: Optional[Decimal] = None
-    skill_range_below: Optional[Decimal] = None
     allowed_booking_types: Optional[list[str]] = None
     is_recurring: bool
     recurrence_rule: Optional[str] = None

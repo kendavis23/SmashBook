@@ -6,7 +6,6 @@ from .base import Base, UUIDMixin, TimestampMixin
 
 
 class CalendarReservationType(str, enum.Enum):
-    skill_filter = "skill_filter"
     training_block = "training_block"
     private_hire = "private_hire"
     maintenance = "maintenance"
@@ -44,9 +43,6 @@ class CalendarReservation(Base, UUIDMixin, TimestampMixin):
     title = Column(String(255), nullable=False)
     start_datetime = Column(DateTime(timezone=True), nullable=False)
     end_datetime = Column(DateTime(timezone=True), nullable=False)
-    anchor_skill_level = Column(Numeric(3, 1), nullable=True)
-    skill_range_above = Column(Numeric(3, 1), nullable=True)
-    skill_range_below = Column(Numeric(3, 1), nullable=True)
     allowed_booking_types = Column(ARRAY(String), nullable=True)
     is_recurring = Column(Boolean, nullable=False, default=False)
     recurrence_rule = Column(Text, nullable=True)
