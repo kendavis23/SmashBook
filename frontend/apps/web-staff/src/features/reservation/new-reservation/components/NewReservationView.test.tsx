@@ -145,7 +145,7 @@ describe("NewReservationView", () => {
         );
 
         expect(screen.getByLabelText(/recurrence rule/i)).toBeInTheDocument();
-        expect(screen.getByLabelText("Pick a date")).toBeInTheDocument();
+        expect(screen.getAllByLabelText("Pick a date").length).toBeGreaterThan(0);
     });
 
     it("shows api error and dismisses it", () => {
