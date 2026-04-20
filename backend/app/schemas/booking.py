@@ -199,10 +199,19 @@ CalendarSlot = Annotated[
 ]
 
 
+class CalendarTimeSlot(BaseModel):
+    start_datetime: datetime
+    end_datetime: datetime
+    status: Literal["available", "booked", "blocked"]
+    booking_id: Optional[uuid.UUID] = None
+    reservation_id: Optional[uuid.UUID] = None
+
+
 class CalendarCourtColumn(BaseModel):
     court_id: uuid.UUID
     court_name: str
     slots: list[CalendarSlot]
+    time_slots: list[CalendarTimeSlot]
 
 
 class CalendarDay(BaseModel):

@@ -176,12 +176,13 @@ class TestCalendarCourtColumn:
             court_id=_COURT_ID,
             court_name="Court 1",
             slots=[booking, block],
+            time_slots=[],
         )
         kinds = {s.kind for s in col.slots}
         assert kinds == {"booking", "block"}
 
     def test_empty_slots_allowed(self):
-        col = CalendarCourtColumn(court_id=_COURT_ID, court_name="Court 1", slots=[])
+        col = CalendarCourtColumn(court_id=_COURT_ID, court_name="Court 1", slots=[], time_slots=[])
         assert col.slots == []
 
 
