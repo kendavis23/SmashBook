@@ -20,6 +20,7 @@ import type {
     CalendarReservationInput,
     CalendarReservationUpdateInput,
     CalendarReservation,
+    CalendarReservationType,
 } from "../models";
 // ---------------------------------------------------------------------------
 // Query keys
@@ -30,7 +31,8 @@ const courtKeys = {
     detail: (courtId: string) => ["courts", courtId] as const,
     availability: (courtId: string, date: string) =>
         ["courts", courtId, "availability", date] as const,
-    calendarReservations: (clubId: string) => ["calendar-reservations", clubId] as const,
+    calendarReservations: (clubId: string, filters?: Record<string, string>) =>
+        ["calendar-reservations", clubId, filters] as const,
     calendarReservationDetail: (reservationId: string) =>
         ["calendar-reservations", reservationId] as const,
 };
@@ -99,6 +101,8 @@ export function useGetCourtAvailability(courtId: string, date: string) {
         queryKey: courtKeys.availability(courtId, date),
         queryFn: (): Promise<CourtAvailability> => getCourtAvailabilityEndpoint(courtId, date),
         enabled: Boolean(courtId) && Boolean(date),
+        gcTime: 0,
+        staleTime: 0,
     });
 }
 
@@ -106,11 +110,26 @@ export function useGetCourtAvailability(courtId: string, date: string) {
 // useListCalendarReservations — GET /api/v1/calendar-reservations?club_id=...
 // ---------------------------------------------------------------------------
 
-export function useListCalendarReservations(clubId: string) {
+export interface CalendarReservationFilters {
+    reservationType?: string;
+    courtId?: string;
+    fromDt?: string;
+    toDt?: string;
+}
+
+export function useListCalendarReservations(clubId: string, filters?: CalendarReservationFilters) {
     return useQuery({
-        queryKey: courtKeys.calendarReservations(clubId),
+        queryKey: courtKeys.calendarReservations(clubId, filters as Record<string, string>),
         queryFn: (): Promise<CalendarReservation[]> =>
-            listCalendarReservationsEndpoint({ club_id: clubId }),
+            listCalendarReservationsEndpoint({
+                club_id: clubId,
+                reservation_type: (filters?.reservationType || undefined) as
+                    | CalendarReservationType
+                    | undefined,
+                court_id: filters?.courtId || undefined,
+                from_dt: filters?.fromDt || undefined,
+                to_dt: filters?.toDt || undefined,
+            }),
         enabled: Boolean(clubId),
     });
 }

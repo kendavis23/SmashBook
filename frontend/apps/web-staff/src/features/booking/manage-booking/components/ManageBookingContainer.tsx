@@ -41,10 +41,11 @@ export default function ManageBookingContainer(): JSX.Element {
 
     const [form, setForm] = useState<ManageBookingFormState | null>(null);
 
-    const { data: availabilityData, isLoading: slotsLoading } = useGetCourtAvailability(
-        form?.courtId ?? "",
-        form?.bookingDate ?? ""
-    );
+    const {
+        data: availabilityData,
+        isLoading: slotsLoading,
+        refetch: refetchSlots,
+    } = useGetCourtAvailability(form?.courtId ?? "", form?.bookingDate ?? "");
     const slots = availabilityData?.slots ?? [];
     const [apiError, setApiError] = useState("");
     const [updateSuccess, setUpdateSuccess] = useState(false);
@@ -168,6 +169,7 @@ export default function ManageBookingContainer(): JSX.Element {
             onDismissCancelConfirm={() => setShowCancelConfirm(false)}
             onDismissError={() => setApiError("")}
             onBack={handleBack}
+            onRefreshSlots={() => void refetchSlots()}
         />
     );
 }

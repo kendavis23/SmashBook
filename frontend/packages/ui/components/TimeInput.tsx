@@ -24,6 +24,10 @@ const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function TimeInpu
                     opacity: 0;
                     cursor: pointer;
                 }
+                #${scopeId}::-webkit-inner-spin-button,
+                #${scopeId}::-webkit-clear-button {
+                    display: none;
+                }
             `}</style>
 
             <input
@@ -34,6 +38,7 @@ const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function TimeInpu
                 className={[
                     "relative w-full pr-8",
                     "[&::-webkit-date-and-time-value]:text-left",
+                    "[&::-webkit-calendar-picker-indicator]:hidden",
                     className,
                 ]
                     .filter(Boolean)

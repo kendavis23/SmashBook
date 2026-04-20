@@ -100,7 +100,12 @@ export default function CourtsContainer(): JSX.Element {
         data: availability,
         isLoading: availabilityLoading,
         error: availabilityError,
+        refetch: refetchAvailability,
     } = useGetCourtAvailability(availabilityCourt?.id ?? "", availabilityDate);
+
+    const handleRefreshAvailability = useCallback((): void => {
+        void refetchAvailability();
+    }, [refetchAvailability]);
 
     const handleSearch = useCallback((): void => {
         const nextServerFilters = toServerFilters(filters);
@@ -187,6 +192,7 @@ export default function CourtsContainer(): JSX.Element {
                 onCheckAvailability={handleCheckAvailability}
                 onCloseAvailability={handleCloseAvailability}
                 onAvailabilityDateChange={setAvailabilityDate}
+                onRefreshAvailability={handleRefreshAvailability}
                 onSelectSlot={setSelectedSlot}
                 onBookSlot={handleBookSlot}
             />

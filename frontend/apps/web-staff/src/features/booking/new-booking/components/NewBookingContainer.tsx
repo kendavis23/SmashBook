@@ -62,20 +62,20 @@ export default function NewBookingContainer(): JSX.Element {
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
 
-    const { data: availabilityData, isLoading: slotsLoading } = useGetCourtAvailability(
-        form.courtId,
-        form.bookingDate
-    );
+    const {
+        data: availabilityData,
+        isLoading: slotsLoading,
+        refetch: refetchSlots,
+    } = useGetCourtAvailability(form.courtId, form.bookingDate);
     const slots = availabilityData?.slots ?? [];
 
-    // Auto-select the first available slot when slots load
+    // Auto-select the first available slot whenever availability data arrives (fresh)
     useEffect(() => {
-        if (slots.length > 0 && !form.startTime) {
-            const first = slots.find((s) => s.is_available);
-            if (first) setForm((prev) => ({ ...prev, startTime: first.start_time }));
-        }
+        if (slotsLoading || slots.length === 0) return;
+        const first = slots.find((s) => s.is_available);
+        setForm((prev) => ({ ...prev, startTime: first?.start_time ?? "" }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [slots]);
+    }, [availabilityData]);
 
     const createMutation = useCreateBooking(clubId ?? "");
     const apiError = (createMutation.error as Error | null)?.message ?? "";
@@ -167,6 +167,7 @@ export default function NewBookingContainer(): JSX.Element {
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             onDismissError={handleDismissError}
+            onRefreshSlots={() => void refetchSlots()}
         />
     );
 }

@@ -70,6 +70,12 @@ vi.mock("@repo/ui", () => ({
             className={className}
         />
     ),
+    TimeInput: ({
+        className,
+        ...props
+    }: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+        <input type="time" className={className} {...props} />
+    ),
     NumberInput: ({
         className,
         ...props
@@ -139,7 +145,9 @@ describe("NewReservationContainer", () => {
         fireEvent.click(screen.getByRole("button", { name: "Create Reservation" }));
 
         expect(screen.getByText("Title is required.")).toBeInTheDocument();
-        expect(screen.getByText("Start and end date/time are required.")).toBeInTheDocument();
+        expect(
+            screen.getByText("Date, start time, and end time are required.")
+        ).toBeInTheDocument();
         expect(mockMutate).not.toHaveBeenCalled();
     });
 
@@ -151,15 +159,14 @@ describe("NewReservationContainer", () => {
         render(<NewReservationContainer />);
 
         fireEvent.change(screen.getByLabelText(/title/i), { target: { value: " Morning Block " } });
-        const dateTimeFields = screen.getAllByLabelText("Pick date and time");
-        const startDateTimeField = dateTimeFields[0] as HTMLInputElement;
-        const endDateTimeField = dateTimeFields[1] as HTMLInputElement;
-
-        fireEvent.change(startDateTimeField, {
-            target: { value: "2026-04-20T09:00" },
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
         });
-        fireEvent.change(endDateTimeField, {
-            target: { value: "2026-04-20T10:00" },
+        fireEvent.change(screen.getByLabelText(/start time/i), {
+            target: { value: "09:00" },
+        });
+        fireEvent.change(screen.getByLabelText(/end time/i), {
+            target: { value: "10:00" },
         });
         fireEvent.click(screen.getByText("Regular"));
         fireEvent.click(screen.getByRole("button", { name: "Create Reservation" }));
@@ -167,7 +174,7 @@ describe("NewReservationContainer", () => {
         expect(mockMutate).toHaveBeenCalledWith(
             expect.objectContaining({
                 club_id: "club-1",
-                court_id: null,
+                court_id: "court-1",
                 title: "Morning Block",
                 start_datetime: "2026-04-20T09:00",
                 end_datetime: "2026-04-20T10:00",

@@ -89,6 +89,12 @@ vi.mock("@repo/ui", () => ({
             className={className}
         />
     ),
+    TimeInput: ({
+        className,
+        ...props
+    }: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+        <input type="time" className={className} {...props} />
+    ),
     NumberInput: ({
         className,
         ...props

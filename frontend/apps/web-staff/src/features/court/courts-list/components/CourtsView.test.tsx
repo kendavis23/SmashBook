@@ -114,6 +114,7 @@ const defaultProps = {
     onCheckAvailability: vi.fn(),
     onCloseAvailability: vi.fn(),
     onAvailabilityDateChange: vi.fn(),
+    onRefreshAvailability: vi.fn(),
     onSelectSlot: vi.fn(),
     onBookSlot: vi.fn(),
 };

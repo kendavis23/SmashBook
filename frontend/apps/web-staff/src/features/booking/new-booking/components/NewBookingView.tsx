@@ -1,4 +1,5 @@
 import type { FormEvent, JSX } from "react";
+import { RefreshCw } from "lucide-react";
 import { Breadcrumb, AlertToast, DatePicker, NumberInput, SelectInput } from "@repo/ui";
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
@@ -41,6 +42,7 @@ type Props = {
     onSubmit: (e: FormEvent) => void;
     onCancel: () => void;
     onDismissError: () => void;
+    onRefreshSlots: () => void;
 };
 
 const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
@@ -58,6 +60,7 @@ export default function NewBookingView({
     onSubmit,
     onCancel,
     onDismissError,
+    onRefreshSlots,
 }: Props): JSX.Element {
     const courtSelected = Boolean(form.courtId);
 
@@ -188,9 +191,28 @@ export default function NewBookingView({
 
                                     {/* Start time */}
                                     <div className="w-44 shrink-0">
-                                        <label className={labelCls}>
-                                            Start Time <span className="text-destructive">*</span>
-                                        </label>
+                                        <div className="mb-1 flex items-center justify-between">
+                                            <label className="text-sm font-medium text-foreground">
+                                                Start Time{" "}
+                                                <span className="text-destructive">*</span>
+                                            </label>
+                                            {courtSelected && form.bookingDate ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={onRefreshSlots}
+                                                    disabled={slotsLoading}
+                                                    title="Refresh available slots"
+                                                    className="text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                >
+                                                    <RefreshCw
+                                                        size={13}
+                                                        className={
+                                                            slotsLoading ? "animate-spin" : ""
+                                                        }
+                                                    />
+                                                </button>
+                                            ) : null}
+                                        </div>
                                         {!courtSelected || !form.bookingDate ? (
                                             <div
                                                 className={`${fieldCls} cursor-not-allowed opacity-50`}

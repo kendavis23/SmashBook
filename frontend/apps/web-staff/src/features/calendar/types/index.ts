@@ -29,11 +29,31 @@ export const CALENDAR_VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
 ];
 
 export const BOOKING_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-    regular: { bg: "bg-cta/15", text: "text-cta", border: "border-cta/40" },
-    lesson_individual: { bg: "bg-success/15", text: "text-success", border: "border-success/40" },
-    lesson_group: { bg: "bg-success/15", text: "text-success", border: "border-success/40" },
-    corporate_event: { bg: "bg-warning/15", text: "text-warning", border: "border-warning/40" },
-    tournament: { bg: "bg-info/15", text: "text-info", border: "border-info/40" },
+    regular: {
+        bg: "bg-[hsl(214,80%,98%)]", // lighter background
+        text: "text-[hsl(214,70%,60%)]", // softer text
+        border: "border-[hsl(214,70%,80%)]", // lighter border
+    },
+    lesson_individual: {
+        bg: "bg-[hsl(214,80%,98%)]", // lighter background
+        text: "text-[hsl(214,70%,60%)]", // softer text
+        border: "border-[hsl(214,70%,80%)]", // lighter border
+    },
+    lesson_group: {
+        bg: "bg-[hsl(214,80%,98%)]", // lighter background
+        text: "text-[hsl(214,70%,60%)]", // softer text
+        border: "border-[hsl(214,70%,80%)]", // lighter border
+    },
+    corporate_event: {
+        bg: "bg-[hsl(214,80%,98%)]", // lighter background
+        text: "text-[hsl(214,70%,60%)]", // softer text
+        border: "border-[hsl(214,70%,80%)]", // lighter border
+    },
+    tournament: {
+        bg: "bg-[hsl(214,80%,98%)]", // lighter background
+        text: "text-[hsl(214,70%,60%)]", // softer text
+        border: "border-[hsl(214,70%,80%)]", // lighter border
+    },
 };
 
 export const BOOKING_TYPE_LABELS: Record<string, string> = {
@@ -50,6 +70,51 @@ export const BOOKING_STATUS_COLORS: Record<string, { bg: string; text: string }>
     cancelled: { bg: "bg-destructive/15", text: "text-destructive" },
     completed: { bg: "bg-info/15", text: "text-info" },
 };
+
+export const RESERVATION_TYPE_STYLE: Record<
+    string,
+    { bg: string; border: string; label: string; text: string; time: string }
+> = {
+    maintenance: {
+        bg: "bg-[hsl(220,20%,96%)]",
+        border: "border border-dashed border-[hsl(220,15%,65%)]",
+        label: "Maintenance",
+        text: "text-[hsl(220,25%,25%)] font-semibold",
+        time: "text-[hsl(220,15%,40%)]",
+    },
+    training_block: {
+        bg: "bg-[hsl(220,20%,96%)]",
+        border: "border border-[hsl(220,15%,65%)]",
+        label: "Training",
+        text: "text-[hsl(220,25%,25%)] font-semibold",
+        time: "text-[hsl(220,15%,40%)]",
+    },
+    skill_filter: {
+        bg: "bg-[hsl(220,20%,96%)]",
+        border: "border border-[hsl(220,15%,65%)]",
+        label: "Skill Filter",
+        text: "text-[hsl(220,25%,25%)] font-semibold",
+        time: "text-[hsl(220,15%,40%)]",
+    },
+    private_hire: {
+        bg: "bg-[hsl(220,20%,96%)]",
+        border: "border border-[hsl(220,15%,65%)]",
+        label: "Private Hire",
+        text: "text-[hsl(220,25%,25%)] font-semibold",
+        time: "text-[hsl(220,15%,40%)]",
+    },
+    tournament_hold: {
+        bg: "bg-[hsl(220,20%,96%)]",
+        border: "border border-[hsl(220,15%,65%)]",
+        label: "Tournament",
+        text: "text-[hsl(220,25%,25%)] font-semibold",
+        time: "text-[hsl(220,15%,40%)]",
+    },
+};
+
+export const RESERVATION_TYPE_STYLE_FALLBACK = RESERVATION_TYPE_STYLE[
+    "training_block"
+] as NonNullable<(typeof RESERVATION_TYPE_STYLE)[string]>;
 
 export const BOOKING_STATUS_LABELS: Record<string, string> = {
     pending: "Pending",

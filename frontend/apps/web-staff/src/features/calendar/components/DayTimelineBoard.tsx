@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX } from "react";
+import { memo, useEffect, useRef, useState, type JSX } from "react";
 import type {
     CalendarBlockItem,
     CalendarBookingItem,
@@ -66,11 +66,7 @@ function useCurrentTimeMinutes(): number {
     return minutes;
 }
 
-export default function DayTimelineBoard({
-    day,
-    onManageClick,
-    onManageReservationClick,
-}: Props): JSX.Element {
+function DayTimelineBoard({ day, onManageClick, onManageReservationClick }: Props): JSX.Element {
     const isToday = day.date === todayIso();
     const currentTimeMinutes = useCurrentTimeMinutes();
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -199,7 +195,7 @@ export default function DayTimelineBoard({
                         ) : null}
 
                         {/* Time rail */}
-                        <div className="sticky left-0 z-10 overflow-hidden border-r border-border bg-card">
+                        <div className="sticky left-0 z-20 overflow-hidden border-r border-border bg-card">
                             {CALENDAR_TIME_SLOTS.map((slot) => (
                                 <div
                                     key={`${slot.start_time}-${slot.end_time}`}
@@ -260,3 +256,5 @@ export default function DayTimelineBoard({
         </section>
     );
 }
+
+export default memo(DayTimelineBoard);

@@ -53,6 +53,30 @@ function DashboardPage() {
     return <div className="p-8 text-gray-700">Dashboard — coming soon</div>;
 }
 
+function StaffPage() {
+    return <div className="p-8 text-gray-700">Staff — coming soon</div>;
+}
+
+function PlayerPage() {
+    return <div className="p-8 text-gray-700">Player — coming soon</div>;
+}
+
+function FinancePage() {
+    return <div className="p-8 text-gray-700">Finance — coming soon</div>;
+}
+
+function ReportPage() {
+    return <div className="p-8 text-gray-700">Report — coming soon</div>;
+}
+
+function SupportPage() {
+    return <div className="p-8 text-gray-700">Support — coming soon</div>;
+}
+
+function EquipmentPage() {
+    return <div className="p-8 text-gray-700">Equipment — coming soon</div>;
+}
+
 const rootRoute = createRootRoute({
     component: () => (
         <Suspense fallback={<PageLoader />}>
@@ -236,6 +260,42 @@ const editMembershipPlanRoute = createRoute({
     component: EditMembershipPlanPage,
 });
 
+const staffRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/staff",
+    component: StaffPage,
+});
+
+const playersRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/players",
+    component: PlayerPage,
+});
+
+const financeRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/finance",
+    component: FinancePage,
+});
+
+const reportsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/reports",
+    component: ReportPage,
+});
+
+const supportRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/support",
+    component: SupportPage,
+});
+
+const equipmentRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/equipment",
+    component: EquipmentPage,
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     loginRoute,
@@ -261,6 +321,12 @@ const routeTree = rootRoute.addChildren([
         membershipPlansRoute,
         newMembershipPlanRoute,
         editMembershipPlanRoute,
+        staffRoute,
+        playersRoute,
+        financeRoute,
+        reportsRoute,
+        supportRoute,
+        equipmentRoute,
     ]),
 ]);
 

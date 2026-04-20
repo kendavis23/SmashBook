@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ReservationsContainer from "./ReservationsContainer";
@@ -44,6 +45,12 @@ vi.mock("@repo/ui", () => ({
             onChange={(e) => onChange(e.target.value)}
             className={className}
         />
+    ),
+    TimeInput: ({
+        className,
+        ...props
+    }: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+        <input type="time" className={className} {...props} />
     ),
     SelectInput: ({
         value,
@@ -104,15 +111,21 @@ const mockReservations = [
     },
 ];
 
-function setupMocks(listOverride = {}) {
+function setupMocks(
+    listOverride: { data?: typeof mockReservations; isLoading?: boolean; error?: Error | null } = {}
+) {
     mockUseListCourts.mockReturnValue({ data: [] });
-    mockUseList.mockReturnValue({
-        data: mockReservations,
-        isLoading: false,
-        error: null,
-        refetch: vi.fn(),
-        ...listOverride,
-    });
+    const allData = listOverride.data ?? mockReservations;
+    mockUseList.mockImplementation(
+        (_clubId: string, filters: { reservationType?: string } = {}) => ({
+            data: filters.reservationType
+                ? allData.filter((r) => r.reservation_type === filters.reservationType)
+                : allData,
+            isLoading: listOverride.isLoading ?? false,
+            error: listOverride.error ?? null,
+            refetch: vi.fn(),
+        })
+    );
     mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
 }
 
@@ -157,7 +170,7 @@ describe("ReservationsContainer — reservation list", () => {
                     id: "res-2",
                     reservation_type: "maintenance",
                     title: "Maintenance Block",
-                },
+                } as (typeof mockReservations)[0],
             ],
         });
         render(<ReservationsContainer />);

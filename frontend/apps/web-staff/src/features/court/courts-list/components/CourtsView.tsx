@@ -28,6 +28,7 @@ type Props = {
     onCheckAvailability: (court: Court) => void;
     onCloseAvailability: () => void;
     onAvailabilityDateChange: (date: string) => void;
+    onRefreshAvailability: () => void;
     onSelectSlot: (slot: TimeSlot | null) => void;
     onBookSlot: (slot: TimeSlot) => void;
 };
@@ -69,6 +70,7 @@ export default function CourtsView({
     onCheckAvailability,
     onCloseAvailability,
     onAvailabilityDateChange,
+    onRefreshAvailability,
     onSelectSlot,
     onBookSlot,
 }: Props): JSX.Element {
@@ -359,6 +361,7 @@ export default function CourtsView({
                                 isLoading={availabilityLoading}
                                 error={availabilityError}
                                 onDateChange={onAvailabilityDateChange}
+                                onRefresh={onRefreshAvailability}
                                 onClose={onCloseAvailability}
                                 onBookSlot={onBookSlot}
                                 selectedSlot={selectedSlot}

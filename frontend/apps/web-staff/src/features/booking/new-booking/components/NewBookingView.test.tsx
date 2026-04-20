@@ -119,6 +119,7 @@ const defaultProps = {
     onSubmit: vi.fn((event: React.FormEvent) => event.preventDefault()),
     onCancel: vi.fn(),
     onDismissError: vi.fn(),
+    onRefreshSlots: vi.fn(),
 };
 
 describe("NewBookingView", () => {

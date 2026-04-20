@@ -3,7 +3,7 @@ import {
     Breadcrumb,
     AlertToast,
     DatePicker,
-    DateTimePicker,
+    TimeInput,
     formatUTCDateTime,
     NumberInput,
     SelectInput,
@@ -34,8 +34,9 @@ export type ManageReservationFormState = {
     title: string;
     reservationType: CalendarReservationType;
     courtId: string;
-    startDatetime: string;
-    endDatetime: string;
+    date: string;
+    startTime: string;
+    endTime: string;
     anchorSkillLevel: string;
     skillRangeAbove: string;
     skillRangeBelow: string;
@@ -172,7 +173,8 @@ export default function ManageReservationView({
                                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <div>
                                         <label htmlFor="mr-type" className={labelCls}>
-                                            Reservation Type
+                                            Reservation Type{" "}
+                                            <span className="text-destructive">*</span>
                                         </label>
                                         <SelectInput
                                             value={form.reservationType}
@@ -187,10 +189,7 @@ export default function ManageReservationView({
 
                                     <div>
                                         <label htmlFor="mr-court" className={labelCls}>
-                                            Court
-                                            <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                                (optional)
-                                            </span>
+                                            Court <span className="text-destructive">*</span>
                                         </label>
                                         <SelectInput
                                             value={form.courtId}
@@ -199,29 +198,44 @@ export default function ManageReservationView({
                                                 value: court.id,
                                                 label: court.name,
                                             }))}
-                                            placeholder="All courts"
-                                            clearLabel="All courts"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label htmlFor="mr-start" className={labelCls}>
-                                            Start
+                                        <label htmlFor="mr-date" className={labelCls}>
+                                            Date
                                         </label>
-                                        <DateTimePicker
-                                            value={form.startDatetime}
-                                            onChange={(v) => onFormChange({ startDatetime: v })}
+                                        <DatePicker
+                                            value={form.date}
+                                            onChange={(v) => onFormChange({ date: v })}
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="mr-end" className={labelCls}>
-                                            End
+                                        <label htmlFor="mr-start-time" className={labelCls}>
+                                            Start Time
                                         </label>
-                                        <DateTimePicker
-                                            value={form.endDatetime}
-                                            onChange={(v) => onFormChange({ endDatetime: v })}
+                                        <TimeInput
+                                            id="mr-start-time"
+                                            className={fieldCls}
+                                            value={form.startTime}
+                                            onChange={(e) =>
+                                                onFormChange({ startTime: e.target.value })
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="mr-end-time" className={labelCls}>
+                                            End Time
+                                        </label>
+                                        <TimeInput
+                                            id="mr-end-time"
+                                            className={fieldCls}
+                                            value={form.endTime}
+                                            onChange={(e) =>
+                                                onFormChange({ endTime: e.target.value })
+                                            }
                                         />
                                     </div>
                                 </div>
