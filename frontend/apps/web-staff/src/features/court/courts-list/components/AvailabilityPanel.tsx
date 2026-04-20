@@ -1,5 +1,5 @@
 import type { Court, CourtAvailability, TimeSlot } from "../../types";
-import { X, Clock, CalendarDays } from "lucide-react";
+import { X, Clock, CalendarDays, RefreshCw } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import type { JSX } from "react";
 import { DatePicker } from "@repo/ui";
@@ -11,6 +11,7 @@ type Props = {
     isLoading: boolean;
     error: Error | null;
     onDateChange: (date: string) => void;
+    onRefresh: () => void;
     onClose: () => void;
     onBookSlot: (slot: TimeSlot) => void;
     selectedSlot: TimeSlot | null;
@@ -41,6 +42,7 @@ export default function AvailabilityPanel({
     isLoading,
     error,
     onDateChange,
+    onRefresh,
     onClose,
 }: Props): JSX.Element {
     const navigate = useNavigate();
@@ -51,57 +53,56 @@ export default function AvailabilityPanel({
 
     return (
         <div className="flex h-full flex-col">
-            <div className="border-b border-border px-4 py-4 sm:px-5">
-                <div className="flex items-center justify-between gap-3">
-                    <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="border-b border-border px-4 py-3 sm:px-5">
+                <div className="flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2">
+                        <p className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                             Schedule
                         </p>
-                        <h2 className="mt-0.5 text-base font-semibold text-foreground">
+                        <span className="text-muted-foreground/40">·</span>
+                        <h2 className="truncate text-sm font-semibold text-foreground">
                             {court.name}
                         </h2>
+                        <span className="hidden shrink-0 rounded-md bg-secondary px-2 py-0.5 text-xs font-medium text-foreground sm:inline">
+                            {surfaceLabel.replace(
+                                /(^|\s)([a-z])/g,
+                                (_match, prefix, char) => `${prefix}${String(char).toUpperCase()}`
+                            )}
+                        </span>
+                        {court.has_lighting ? (
+                            <span className="hidden shrink-0 rounded-md bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning sm:inline">
+                                Lighting
+                            </span>
+                        ) : null}
                     </div>
                     <button
                         onClick={onClose}
-                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                         aria-label="Close availability panel"
                     >
                         <X size={14} />
                     </button>
                 </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="rounded-md bg-secondary px-2 py-1 text-xs font-medium text-foreground">
-                        {surfaceLabel.replace(
-                            /(^|\s)([a-z])/g,
-                            (_match, prefix, char) => `${prefix}${String(char).toUpperCase()}`
-                        )}
-                    </span>
-                    <span
-                        className={`rounded-md px-2 py-1 text-xs font-medium ${
-                            court.has_lighting
-                                ? "bg-warning/15 text-warning"
-                                : "bg-muted text-muted-foreground"
-                        }`}
-                    >
-                        {court.has_lighting ? "Lighting ready" : "No lighting"}
-                    </span>
-                </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/20 px-4 py-3 sm:px-5">
-                <div>
-                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-muted/20 px-4 py-2.5 sm:px-5">
+                <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-1 text-xs text-muted-foreground">
                         <CalendarDays size={12} className="flex-shrink-0" />
                         <span className="font-semibold uppercase tracking-wide">Date</span>
                     </label>
-                    <div className="mt-1">
-                        <DatePicker
-                            value={date}
-                            onChange={onDateChange}
-                            className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30"
-                        />
-                    </div>
+                    <DatePicker
+                        value={date}
+                        onChange={onDateChange}
+                        className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30"
+                    />
+                    <button
+                        onClick={onRefresh}
+                        className="rounded-lg p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Refresh availability"
+                    >
+                        <RefreshCw size={13} />
+                    </button>
                 </div>
 
                 {!isLoading && !error && slots.length > 0 && (

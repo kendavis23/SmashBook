@@ -1,4 +1,5 @@
 import type { FormEvent, JSX } from "react";
+import { RefreshCw } from "lucide-react";
 import {
     Breadcrumb,
     AlertToast,
@@ -56,6 +57,7 @@ type Props = {
     onDismissCancelConfirm: () => void;
     onDismissError: () => void;
     onBack: () => void;
+    onRefreshSlots: () => void;
 };
 
 export default function ManageBookingView({
@@ -77,6 +79,7 @@ export default function ManageBookingView({
     onDismissCancelConfirm,
     onDismissError,
     onBack,
+    onRefreshSlots,
 }: Props): JSX.Element {
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
     const isCancellable = booking.status !== "cancelled" && booking.status !== "completed";
@@ -304,7 +307,27 @@ export default function ManageBookingView({
                                         />
                                     </div>
                                     <div>
-                                        <label className={labelCls}>Start Time</label>
+                                        <div className="mb-1 flex items-center justify-between">
+                                            <label className="text-sm font-medium text-foreground">
+                                                Start Time
+                                            </label>
+                                            {form.bookingDate ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={onRefreshSlots}
+                                                    disabled={slotsLoading}
+                                                    title="Refresh available slots"
+                                                    className="text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+                                                >
+                                                    <RefreshCw
+                                                        size={13}
+                                                        className={
+                                                            slotsLoading ? "animate-spin" : ""
+                                                        }
+                                                    />
+                                                </button>
+                                            ) : null}
+                                        </div>
                                         {!form.bookingDate ? (
                                             <div
                                                 className={`${fieldCls} cursor-not-allowed opacity-50`}

@@ -62,10 +62,11 @@ export default function NewBookingContainer(): JSX.Element {
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
 
-    const { data: availabilityData, isLoading: slotsLoading } = useGetCourtAvailability(
-        form.courtId,
-        form.bookingDate
-    );
+    const {
+        data: availabilityData,
+        isLoading: slotsLoading,
+        refetch: refetchSlots,
+    } = useGetCourtAvailability(form.courtId, form.bookingDate);
     const slots = availabilityData?.slots ?? [];
 
     // Auto-select the first available slot whenever availability data arrives (fresh)
@@ -166,6 +167,7 @@ export default function NewBookingContainer(): JSX.Element {
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             onDismissError={handleDismissError}
+            onRefreshSlots={() => void refetchSlots()}
         />
     );
 }

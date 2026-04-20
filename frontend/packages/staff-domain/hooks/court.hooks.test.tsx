@@ -261,7 +261,7 @@ describe("useCreateCalendarReservation", () => {
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(staffApi.createCalendarReservationEndpoint).toHaveBeenCalledWith(data);
         expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID] })
+            expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID, undefined] })
         );
     });
 });
@@ -307,7 +307,7 @@ describe("useUpdateCalendarReservation", () => {
             title: "Updated",
         });
         expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID] })
+            expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID, undefined] })
         );
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["calendar-reservations", RESERVATION_ID] })
@@ -331,7 +331,7 @@ describe("useDeleteCalendarReservation", () => {
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(staffApi.deleteCalendarReservationEndpoint).toHaveBeenCalledWith(RESERVATION_ID);
         expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID] })
+            expect.objectContaining({ queryKey: ["calendar-reservations", CLUB_ID, undefined] })
         );
     });
 });

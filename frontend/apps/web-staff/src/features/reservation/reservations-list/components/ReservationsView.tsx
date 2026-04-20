@@ -11,7 +11,17 @@ import {
     formatUTCDate,
     SelectInput,
 } from "@repo/ui";
-import { CalendarX2, Plus, RefreshCw, Search, Settings2, Repeat } from "lucide-react";
+import {
+    CalendarX2,
+    ChevronLeft,
+    ChevronRight,
+    Plus,
+    RefreshCw,
+    Search,
+    Settings2,
+    Repeat,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { JSX } from "react";
 
 type Props = {
@@ -28,6 +38,8 @@ type Props = {
     onManageClick: (reservationId: string) => void;
     onRefresh: () => void;
 };
+
+const PAGE_SIZE = 10;
 
 const thCls =
     "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
@@ -47,6 +59,20 @@ export default function ReservationsView({
     onManageClick,
     onRefresh,
 }: Props): JSX.Element {
+    const [page, setPage] = useState(0);
+
+    const totalPages = Math.ceil(reservations.length / PAGE_SIZE);
+
+    const pageReservations = useMemo(
+        () => reservations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [reservations, page]
+    );
+
+    // Reset to first page when reservation list changes (new search)
+    useEffect(() => {
+        setPage(0);
+    }, [reservations]);
+
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Reservations" }]} />
@@ -199,7 +225,7 @@ export default function ReservationsView({
                         ) : null}
                     </div>
                 ) : (
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto" key={page}>
                         <table className="w-full min-w-[900px] border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-muted/30">
@@ -217,7 +243,7 @@ export default function ReservationsView({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-border">
-                                {reservations.map((res) => {
+                                {pageReservations.map((res) => {
                                     const colors =
                                         RESERVATION_TYPE_COLORS[res.reservation_type] ??
                                         RESERVATION_TYPE_COLORS["private_hire"]!;
@@ -336,6 +362,50 @@ export default function ReservationsView({
                         </table>
                     </div>
                 )}
+
+                {/* Pagination */}
+                {!isLoading && !error && totalPages > 1 ? (
+                    <div className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
+                        <span className="text-xs text-muted-foreground">
+                            {page * PAGE_SIZE + 1}–
+                            {Math.min((page + 1) * PAGE_SIZE, reservations.length)} of{" "}
+                            {reservations.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setPage((p) => p - 1)}
+                                disabled={page === 0}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                aria-label="Previous page"
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => setPage(i)}
+                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
+                                        i === page
+                                            ? "border-cta bg-cta text-cta-foreground"
+                                            : "border-border bg-card text-foreground hover:bg-muted"
+                                    }`}
+                                    aria-label={`Page ${i + 1}`}
+                                    aria-current={i === page ? "page" : undefined}
+                                >
+                                    {i + 1}
+                                </button>
+                            ))}
+                            <button
+                                onClick={() => setPage((p) => p + 1)}
+                                disabled={page === totalPages - 1}
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                aria-label="Next page"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+                ) : null}
             </section>
         </div>
     );

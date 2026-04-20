@@ -135,6 +135,7 @@ const defaultProps = {
     onDismissCancelConfirm: vi.fn(),
     onDismissError: vi.fn(),
     onBack: vi.fn(),
+    onRefreshSlots: vi.fn(),
 };
 
 describe("ManageBookingView", () => {

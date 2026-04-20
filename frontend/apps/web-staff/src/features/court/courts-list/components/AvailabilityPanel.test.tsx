@@ -59,6 +59,7 @@ const defaultProps = {
     isLoading: false,
     error: null,
     onDateChange: vi.fn(),
+    onRefresh: vi.fn(),
     onClose: vi.fn(),
     onBookSlot: vi.fn(),
     selectedSlot: null,

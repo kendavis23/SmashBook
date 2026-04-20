@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type JSX } from "react";
 import type { CalendarBlockItem, CalendarBookingItem, CalendarDay } from "../types";
 import {
     CALENDAR_SLOT_ROW_HEIGHT,
@@ -36,7 +36,7 @@ function useCurrentTimeMinutes(): number {
     return minutes;
 }
 
-export default function WeekTimelineBoard({
+function WeekTimelineBoard({
     days,
     selectedCourtId,
     onManageClick,
@@ -75,33 +75,32 @@ export default function WeekTimelineBoard({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    const daySlots = useMemo(
+        () =>
+            days.map((day) => {
+                const courts = selectedCourtId
+                    ? day.courts.filter((c) => c.court_id === selectedCourtId)
+                    : day.courts;
+                const bookings = courts.flatMap((c) =>
+                    c.slots
+                        .filter((s): s is CalendarBookingItem => s.kind === "booking")
+                        .map((s) => ({ ...s, _courtId: c.court_id }))
+                );
+                const blocks = courts.flatMap((c) =>
+                    c.slots
+                        .filter((s): s is CalendarBlockItem => s.kind === "block")
+                        .map((s) => ({ ...s, _courtId: c.court_id }))
+                );
+                return { date: day.date, bookings, blocks };
+            }),
+        [days, selectedCourtId]
+    );
+
     if (!firstSlot || !lastSlot) {
         return (
             <div className="card-surface p-4 text-sm text-muted-foreground">
                 No time slots configured.
             </div>
-        );
-    }
-
-    function getBookingsForDay(day: CalendarDay): (CalendarBookingItem & { _courtId: string })[] {
-        const courts = selectedCourtId
-            ? day.courts.filter((c) => c.court_id === selectedCourtId)
-            : day.courts;
-        return courts.flatMap((c) =>
-            c.slots
-                .filter((s): s is CalendarBookingItem => s.kind === "booking")
-                .map((s) => ({ ...s, _courtId: c.court_id }))
-        );
-    }
-
-    function getBlocksForDay(day: CalendarDay): (CalendarBlockItem & { _courtId: string })[] {
-        const courts = selectedCourtId
-            ? day.courts.filter((c) => c.court_id === selectedCourtId)
-            : day.courts;
-        return courts.flatMap((c) =>
-            c.slots
-                .filter((s): s is CalendarBlockItem => s.kind === "block")
-                .map((s) => ({ ...s, _courtId: c.court_id }))
         );
     }
 
@@ -121,17 +120,16 @@ export default function WeekTimelineBoard({
                             </span>
                         </div>
 
-                        {days.map((day) => {
-                            const isToday = day.date === todayIso();
-                            const bookings = getBookingsForDay(day);
-                            const [, , dayNum] = day.date.split("-");
-                            const weekday = formatShortDate(day.date).split(",")[0] ?? "";
+                        {daySlots.map(({ date, bookings }) => {
+                            const isToday = date === todayIso();
+                            const [, , dayNum] = date.split("-");
+                            const weekday = formatShortDate(date).split(",")[0] ?? "";
                             const dateNum = parseInt(dayNum ?? "0", 10);
-                            const monthLabel = formatShortDate(day.date).split(" ")[1] ?? "";
+                            const monthLabel = formatShortDate(date).split(" ")[1] ?? "";
 
                             return (
                                 <div
-                                    key={day.date}
+                                    key={date}
                                     className={`border-r border-border/70 px-3 py-3 text-center last:border-r-0 ${
                                         isToday ? "bg-cta/5" : "bg-card"
                                     }`}
@@ -204,51 +202,48 @@ export default function WeekTimelineBoard({
                         </div>
 
                         {/* Day columns */}
-                        {days.map((day) => {
-                            const bookings = getBookingsForDay(day);
-                            const blocks = getBlocksForDay(day);
+                        {daySlots.map(({ date, bookings, blocks }) => (
+                            <div
+                                key={date}
+                                className="relative border-r border-border/70 last:border-r-0"
+                                style={{ height: `${boardHeight}px` }}
+                            >
+                                {CALENDAR_TIME_SLOTS.map((slot) => (
+                                    <div
+                                        key={`${date}-${slot.start_time}`}
+                                        className="border-b border-border/40 bg-background/60 last:border-b-0"
+                                        style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
+                                    />
+                                ))}
 
-                            return (
-                                <div
-                                    key={day.date}
-                                    className="relative border-r border-border/70 last:border-r-0"
-                                    style={{ height: `${boardHeight}px` }}
-                                >
-                                    {CALENDAR_TIME_SLOTS.map((slot) => (
-                                        <div
-                                            key={`${day.date}-${slot.start_time}`}
-                                            className="border-b border-border/40 bg-background/60 last:border-b-0"
-                                            style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
-                                        />
-                                    ))}
+                                {bookings.map((booking) => (
+                                    <CalendarBookingBlock
+                                        key={`${booking._courtId}-${booking.id}`}
+                                        booking={booking}
+                                        boardHeight={boardHeight}
+                                        startOfDayMinutes={startOfDayMinutes}
+                                        endOfDayMinutes={endOfDayMinutes}
+                                        onManageClick={onManageClick}
+                                    />
+                                ))}
 
-                                    {bookings.map((booking) => (
-                                        <CalendarBookingBlock
-                                            key={`${booking._courtId}-${booking.id}`}
-                                            booking={booking}
-                                            boardHeight={boardHeight}
-                                            startOfDayMinutes={startOfDayMinutes}
-                                            endOfDayMinutes={endOfDayMinutes}
-                                            onManageClick={onManageClick}
-                                        />
-                                    ))}
-
-                                    {blocks.map((block) => (
-                                        <CalendarReservationBlock
-                                            key={`${block._courtId}-${block.id}`}
-                                            block={block}
-                                            boardHeight={boardHeight}
-                                            startOfDayMinutes={startOfDayMinutes}
-                                            endOfDayMinutes={endOfDayMinutes}
-                                            onManageClick={onManageReservationClick}
-                                        />
-                                    ))}
-                                </div>
-                            );
-                        })}
+                                {blocks.map((block) => (
+                                    <CalendarReservationBlock
+                                        key={`${block._courtId}-${block.id}`}
+                                        block={block}
+                                        boardHeight={boardHeight}
+                                        startOfDayMinutes={startOfDayMinutes}
+                                        endOfDayMinutes={endOfDayMinutes}
+                                        onManageClick={onManageReservationClick}
+                                    />
+                                ))}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
         </section>
     );
 }
+
+export default memo(WeekTimelineBoard);

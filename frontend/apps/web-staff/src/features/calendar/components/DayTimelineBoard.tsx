@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type JSX } from "react";
+import { memo, useEffect, useRef, useState, type JSX } from "react";
 import type {
     CalendarBlockItem,
     CalendarBookingItem,
@@ -66,11 +66,7 @@ function useCurrentTimeMinutes(): number {
     return minutes;
 }
 
-export default function DayTimelineBoard({
-    day,
-    onManageClick,
-    onManageReservationClick,
-}: Props): JSX.Element {
+function DayTimelineBoard({ day, onManageClick, onManageReservationClick }: Props): JSX.Element {
     const isToday = day.date === todayIso();
     const currentTimeMinutes = useCurrentTimeMinutes();
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -260,3 +256,5 @@ export default function DayTimelineBoard({
         </section>
     );
 }
+
+export default memo(DayTimelineBoard);

@@ -38,22 +38,11 @@ vi.mock("@repo/ui", () => ({
             className={className}
         />
     ),
-    DateTimePicker: ({
-        value,
-        onChange,
+    TimeInput: ({
         className,
-    }: {
-        value: string;
-        onChange: (v: string) => void;
-        className?: string;
-    }) => (
-        <input
-            type="datetime-local"
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            aria-label="Pick date and time"
-            className={className}
-        />
+        ...props
+    }: React.InputHTMLAttributes<HTMLInputElement> & { className?: string }) => (
+        <input type="time" className={className} {...props} />
     ),
     NumberInput: ({
         className,
@@ -93,8 +82,9 @@ const defaultForm: NewReservationFormState = {
     title: "Morning Block",
     reservationType: "private_hire",
     courtId: "court-1",
-    startDatetime: "2026-04-20T09:00",
-    endDatetime: "2026-04-20T10:00",
+    date: "2026-04-20",
+    startTime: "09:00",
+    endTime: "10:00",
     anchorSkillLevel: "",
     skillRangeAbove: "",
     skillRangeBelow: "",
@@ -120,7 +110,7 @@ const defaultProps = {
     courts,
     form: defaultForm,
     titleError: "",
-    dateError: "",
+    timeError: "",
     apiError: "",
     isPending: false,
     onFormChange: vi.fn(),

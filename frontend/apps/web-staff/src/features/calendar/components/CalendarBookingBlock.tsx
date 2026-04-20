@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { memo, type JSX } from "react";
 import type { CalendarBookingItem } from "../types";
 import {
     BLOCK_VERTICAL_GAP,
@@ -20,7 +20,7 @@ type Props = {
     onManageClick: (bookingId: string) => void;
 };
 
-export default function CalendarBookingBlock({
+function CalendarBookingBlock({
     booking,
     boardHeight,
     startOfDayMinutes,
@@ -98,3 +98,5 @@ export default function CalendarBookingBlock({
         </button>
     );
 }
+
+export default memo(CalendarBookingBlock);

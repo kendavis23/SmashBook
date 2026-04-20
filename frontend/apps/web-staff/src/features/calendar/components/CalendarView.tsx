@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { memo, type JSX } from "react";
 import { Breadcrumb, SelectInput } from "@repo/ui";
 import { ChevronLeft, ChevronRight, CalendarDays, RefreshCw } from "lucide-react";
 import type { CalendarView as CalendarViewData, CalendarViewMode } from "../types";
@@ -26,7 +26,7 @@ type Props = {
     onManageReservationClick: (reservationId: string) => void;
 };
 
-export default function CalendarView({
+function CalendarView({
     calendarData,
     isLoading,
     error,
@@ -75,13 +75,17 @@ export default function CalendarView({
                         {/* Court picker — week view only */}
                         {viewMode === "week" && courts.length > 0 ? (
                             <>
-                                <SelectInput
-                                    value={selectedCourtId}
-                                    onValueChange={(v) => onCourtChange(v)}
-                                    options={courts.map((c) => ({ value: c.id, label: c.name }))}
-                                    aria-label="Select court"
-                                    className="w-[300px]"
-                                />
+                                <div className="w-[250px]">
+                                    <SelectInput
+                                        value={selectedCourtId}
+                                        onValueChange={(v) => onCourtChange(v)}
+                                        options={courts.map((c) => ({
+                                            value: c.id,
+                                            label: c.name,
+                                        }))}
+                                        aria-label="Select court"
+                                    />
+                                </div>
                                 <span className="h-5 w-px bg-border" />
                             </>
                         ) : null}
@@ -183,3 +187,5 @@ export default function CalendarView({
         </div>
     );
 }
+
+export default memo(CalendarView);

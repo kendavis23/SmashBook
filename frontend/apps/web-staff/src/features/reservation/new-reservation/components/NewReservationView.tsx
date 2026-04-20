@@ -1,12 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import {
-    Breadcrumb,
-    AlertToast,
-    DatePicker,
-    DateTimePicker,
-    NumberInput,
-    SelectInput,
-} from "@repo/ui";
+import { Breadcrumb, AlertToast, DatePicker, TimeInput, NumberInput, SelectInput } from "@repo/ui";
 import type { CalendarReservationType, Court } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
 
@@ -27,8 +20,9 @@ export type NewReservationFormState = {
     title: string;
     reservationType: CalendarReservationType;
     courtId: string;
-    startDatetime: string;
-    endDatetime: string;
+    date: string;
+    startTime: string;
+    endTime: string;
     anchorSkillLevel: string;
     skillRangeAbove: string;
     skillRangeBelow: string;
@@ -42,7 +36,7 @@ type Props = {
     courts: Court[];
     form: NewReservationFormState;
     titleError: string;
-    dateError: string;
+    timeError: string;
     apiError: string;
     isPending: boolean;
     onFormChange: (patch: Partial<NewReservationFormState>) => void;
@@ -57,7 +51,7 @@ export default function NewReservationView({
     courts,
     form,
     titleError,
-    dateError,
+    timeError,
     apiError,
     isPending,
     onFormChange,
@@ -167,31 +161,46 @@ export default function NewReservationView({
                                     </div>
                                 </div>
 
-                                {/* Start / End */}
-                                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                {/* Date / Start / End time */}
+                                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
                                     <div>
-                                        <label htmlFor="res-start" className={labelCls}>
-                                            Start <span className="text-destructive">*</span>
+                                        <label htmlFor="res-date" className={labelCls}>
+                                            Date <span className="text-destructive">*</span>
                                         </label>
-                                        <DateTimePicker
-                                            value={form.startDatetime}
-                                            onChange={(v) => onFormChange({ startDatetime: v })}
-                                            className={dateError ? "!border-destructive" : ""}
+                                        <DatePicker
+                                            value={form.date}
+                                            onChange={(v) => onFormChange({ date: v })}
                                         />
                                     </div>
                                     <div>
-                                        <label htmlFor="res-end" className={labelCls}>
-                                            End <span className="text-destructive">*</span>
+                                        <label htmlFor="res-start-time" className={labelCls}>
+                                            Start Time <span className="text-destructive">*</span>
                                         </label>
-                                        <DateTimePicker
-                                            value={form.endDatetime}
-                                            onChange={(v) => onFormChange({ endDatetime: v })}
-                                            className={dateError ? "!border-destructive" : ""}
+                                        <TimeInput
+                                            id="res-start-time"
+                                            className={`${fieldCls} ${timeError ? "!border-destructive" : ""}`}
+                                            value={form.startTime}
+                                            onChange={(e) =>
+                                                onFormChange({ startTime: e.target.value })
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="res-end-time" className={labelCls}>
+                                            End Time <span className="text-destructive">*</span>
+                                        </label>
+                                        <TimeInput
+                                            id="res-end-time"
+                                            className={`${fieldCls} ${timeError ? "!border-destructive" : ""}`}
+                                            value={form.endTime}
+                                            onChange={(e) =>
+                                                onFormChange({ endTime: e.target.value })
+                                            }
                                         />
                                     </div>
                                 </div>
-                                {dateError ? (
-                                    <p className="mt-1 text-xs text-destructive">{dateError}</p>
+                                {timeError ? (
+                                    <p className="mt-1 text-xs text-destructive">{timeError}</p>
                                 ) : null}
                             </section>
 

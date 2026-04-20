@@ -18,8 +18,9 @@ function createDefaultForm(): NewReservationFormState {
         title: "",
         reservationType: "maintenance",
         courtId: "",
-        startDatetime: "",
-        endDatetime: "",
+        date: "",
+        startTime: "",
+        endTime: "",
         anchorSkillLevel: "",
         skillRangeAbove: "",
         skillRangeBelow: "",
@@ -38,7 +39,7 @@ export default function NewReservationContainer(): JSX.Element {
 
     const [form, setForm] = useState<NewReservationFormState>(createDefaultForm);
     const [titleError, setTitleError] = useState("");
-    const [dateError, setDateError] = useState("");
+    const [timeError, setTimeError] = useState("");
 
     useEffect(() => {
         const firstCourt = courts[0];
@@ -54,13 +55,10 @@ export default function NewReservationContainer(): JSX.Element {
         setForm((prev) => {
             const next = { ...prev, ...patch };
             if (patch.title !== undefined && patch.title.trim()) setTitleError("");
-            if (
-                (patch.startDatetime !== undefined || patch.endDatetime !== undefined) &&
-                next.startDatetime &&
-                next.endDatetime &&
-                next.startDatetime < next.endDatetime
-            ) {
-                setDateError("");
+            if (patch.startTime !== undefined || patch.endTime !== undefined) {
+                if (next.startTime && next.endTime && next.startTime < next.endTime) {
+                    setTimeError("");
+                }
             }
             return next;
         });
@@ -74,14 +72,14 @@ export default function NewReservationContainer(): JSX.Element {
         } else {
             setTitleError("");
         }
-        if (!form.startDatetime || !form.endDatetime) {
-            setDateError("Start and end date/time are required.");
+        if (!form.date || !form.startTime || !form.endTime) {
+            setTimeError("Date, start time, and end time are required.");
             valid = false;
-        } else if (form.startDatetime >= form.endDatetime) {
-            setDateError("End date/time must be after start.");
+        } else if (form.startTime >= form.endTime) {
+            setTimeError("End time must be after start time.");
             valid = false;
         } else {
-            setDateError("");
+            setTimeError("");
         }
         return valid;
     };
@@ -91,13 +89,16 @@ export default function NewReservationContainer(): JSX.Element {
             e.preventDefault();
             if (!validate()) return;
 
+            const startDatetimeLocal = `${form.date}T${form.startTime}`;
+            const endDatetimeLocal = `${form.date}T${form.endTime}`;
+
             const payload: CalendarReservationInput = {
                 club_id: clubId ?? "",
                 court_id: form.courtId || null,
                 reservation_type: form.reservationType as CalendarReservationType,
                 title: form.title.trim(),
-                start_datetime: datetimeLocalToUTC(form.startDatetime),
-                end_datetime: datetimeLocalToUTC(form.endDatetime),
+                start_datetime: datetimeLocalToUTC(startDatetimeLocal),
+                end_datetime: datetimeLocalToUTC(endDatetimeLocal),
                 anchor_skill_level: parseOptionalNumber(form.anchorSkillLevel),
                 skill_range_above: parseOptionalNumber(form.skillRangeAbove),
                 skill_range_below: parseOptionalNumber(form.skillRangeBelow),
@@ -131,7 +132,7 @@ export default function NewReservationContainer(): JSX.Element {
             courts={courts as Court[]}
             form={form}
             titleError={titleError}
-            dateError={dateError}
+            timeError={timeError}
             apiError={apiError}
             isPending={createMutation.isPending}
             onFormChange={handleFormChange}

@@ -19,12 +19,14 @@ function toDatetimeLocal(iso: string): string {
 }
 
 function buildInitialForm(res: CalendarReservation): ManageReservationFormState {
+    const startLocal = toDatetimeLocal(res.start_datetime);
     return {
         title: res.title,
         reservationType: res.reservation_type,
         courtId: res.court_id ?? "",
-        startDatetime: toDatetimeLocal(res.start_datetime),
-        endDatetime: toDatetimeLocal(res.end_datetime),
+        date: startLocal.slice(0, 10),
+        startTime: startLocal.slice(11, 16),
+        endTime: toDatetimeLocal(res.end_datetime).slice(11, 16),
         anchorSkillLevel: res.anchor_skill_level != null ? String(res.anchor_skill_level) : "",
         skillRangeAbove: res.skill_range_above != null ? String(res.skill_range_above) : "",
         skillRangeBelow: res.skill_range_below != null ? String(res.skill_range_below) : "",
@@ -80,14 +82,19 @@ export default function ManageReservationContainer(): JSX.Element {
             e.preventDefault();
             if (!form) return;
 
+            const startDatetimeLocal =
+                form.date && form.startTime ? `${form.date}T${form.startTime}` : "";
+            const endDatetimeLocal =
+                form.date && form.endTime ? `${form.date}T${form.endTime}` : "";
+
             const payload = {
                 title: form.title.trim() || undefined,
                 reservation_type: form.reservationType as CalendarReservationType,
                 court_id: form.courtId || null,
-                start_datetime: form.startDatetime
-                    ? datetimeLocalToUTC(form.startDatetime)
+                start_datetime: startDatetimeLocal
+                    ? datetimeLocalToUTC(startDatetimeLocal)
                     : undefined,
-                end_datetime: form.endDatetime ? datetimeLocalToUTC(form.endDatetime) : undefined,
+                end_datetime: endDatetimeLocal ? datetimeLocalToUTC(endDatetimeLocal) : undefined,
                 anchor_skill_level: form.anchorSkillLevel ? Number(form.anchorSkillLevel) : null,
                 skill_range_above: form.skillRangeAbove ? Number(form.skillRangeAbove) : null,
                 skill_range_below: form.skillRangeBelow ? Number(form.skillRangeBelow) : null,
