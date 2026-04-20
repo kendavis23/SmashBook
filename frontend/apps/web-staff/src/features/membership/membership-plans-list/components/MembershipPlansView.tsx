@@ -148,7 +148,7 @@ export default function MembershipPlansView({
                                         {/* Price */}
                                         <div className="flex items-end gap-1">
                                             <span className="text-2xl font-bold tracking-tight text-foreground">
-                                                €{Number(plan.price).toFixed(2)}
+                                                £{Number(plan.price).toFixed(2)}
                                             </span>
                                             <span className="mb-0.5 text-xs text-muted-foreground">
                                                 /{" "}

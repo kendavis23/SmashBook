@@ -144,7 +144,7 @@ export default function EditMembershipPlanView({
 
                                     <div>
                                         <label htmlFor="plan-price" className={labelCls}>
-                                            Price (€) <span className="text-destructive">*</span>
+                                            Price (£) <span className="text-destructive">*</span>
                                         </label>
                                         <NumberInput
                                             id="plan-price"
