@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -8,8 +8,8 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
-from app.db.models.booking import Booking, BookingPlayer, BookingType
-from app.db.models.club import Club
+from app.db.models.booking import Booking, BookingPlayer, BookingStatus, BookingType
+from app.db.models.club import Club, OperatingHours
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.tenant import Tenant
 from app.db.models.user import TenantUserRole, User
@@ -20,6 +20,7 @@ from app.schemas.trainer import (
     TrainerAvailabilityRead,
     TrainerAvailabilityUpdate,
     TrainerBookingItem,
+    TrainerOpenSlot,
     TrainerRead,
 )
 
@@ -60,17 +61,21 @@ def _check_write_access(profile: StaffProfile, current_user: User) -> None:
 async def list_trainers(
     club_id: uuid.UUID = Query(...),
     include_inactive: bool = Query(False),
-    current_user: User = Depends(require_staff),
+    current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_read_db),
 ):
-    """List all trainers for a club with their availability windows."""
+    """List all trainers for a club with their availability windows. Players always see active only."""
     # Verify club belongs to tenant
     club_result = await db.execute(
         select(Club).where(Club.id == club_id, Club.tenant_id == tenant.id)
     )
     if not club_result.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+    from app.db.models.user import TenantUserRole as _Role
+    _STAFF_ROLES = {_Role.owner, _Role.admin, _Role.staff, _Role.trainer, _Role.ops_lead}
+    show_inactive = include_inactive and current_user.role in _STAFF_ROLES
 
     stmt = (
         select(StaffProfile)
@@ -81,11 +86,135 @@ async def list_trainers(
         .options(selectinload(StaffProfile.availability))
         .order_by(StaffProfile.created_at)
     )
-    if not include_inactive:
+    if not show_inactive:
         stmt = stmt.where(StaffProfile.is_active.is_(True))
 
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+@router.get("/{trainer_id}/open-slots", response_model=list[TrainerOpenSlot])
+async def get_trainer_open_slots(
+    trainer_id: uuid.UUID,
+    club_id: uuid.UUID = Query(...),
+    slot_date: date = Query(..., alias="date"),
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """
+    Return available lesson time slots for a trainer on a given date.
+    Derived from trainer availability windows minus existing confirmed/pending bookings.
+    """
+    # Verify club belongs to tenant
+    club_result = await db.execute(
+        select(Club).where(Club.id == club_id, Club.tenant_id == tenant.id)
+    )
+    club = club_result.scalar_one_or_none()
+    if not club:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+    # Fetch trainer profile (must be active trainer at this club)
+    profile_result = await db.execute(
+        select(StaffProfile)
+        .options(selectinload(StaffProfile.availability))
+        .where(
+            StaffProfile.id == trainer_id,
+            StaffProfile.club_id == club_id,
+            StaffProfile.role == StaffRole.trainer,
+            StaffProfile.is_active.is_(True),
+        )
+    )
+    profile = profile_result.scalar_one_or_none()
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Trainer not found")
+
+    # Operating hours for the requested date
+    day_of_week = slot_date.weekday()
+    oh_result = await db.execute(
+        select(OperatingHours).where(
+            OperatingHours.club_id == club_id,
+            OperatingHours.day_of_week == day_of_week,
+        )
+    )
+    oh_records = oh_result.scalars().all()
+    if not oh_records:
+        return []
+
+    # Pick the most specific operating hours record for this date (seasonal > catch-all)
+    oh = None
+    for h in oh_records:
+        if h.valid_from is None:
+            continue
+        if h.valid_from > slot_date:
+            continue
+        if h.valid_to is not None and h.valid_to < slot_date:
+            continue
+        oh = h
+        break
+    if oh is None:
+        oh = next((h for h in oh_records if h.valid_from is None), None)
+    if oh is None:
+        return []
+
+    # Build slot grid for the day
+    duration = club.booking_duration_minutes
+    open_dt = datetime.combine(slot_date, oh.open_time, tzinfo=timezone.utc)
+    close_dt = datetime.combine(slot_date, oh.close_time, tzinfo=timezone.utc)
+    slots: list[tuple[datetime, datetime]] = []
+    slot_start = open_dt
+    while slot_start + timedelta(minutes=duration) <= close_dt:
+        slots.append((slot_start, slot_start + timedelta(minutes=duration)))
+        slot_start += timedelta(minutes=duration)
+
+    if not slots:
+        return []
+
+    # Trainer availability windows effective on this date and day of week
+    effective_windows = [
+        w for w in profile.availability
+        if w.day_of_week == day_of_week
+        and w.effective_from <= slot_date
+        and (w.effective_until is None or w.effective_until >= slot_date)
+    ]
+    if not effective_windows:
+        return []
+
+    # Existing pending/confirmed bookings for this trainer on this date
+    day_start = datetime.combine(slot_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+    day_end = day_start + timedelta(days=1)
+    booked_result = await db.execute(
+        select(Booking.start_datetime, Booking.end_datetime).where(
+            Booking.staff_profile_id == trainer_id,
+            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+            Booking.start_datetime >= day_start,
+            Booking.start_datetime < day_end,
+        )
+    )
+    booked_windows = booked_result.all()
+
+    open_slots: list[TrainerOpenSlot] = []
+    for s_start, s_end in slots:
+        # Must fall within at least one trainer availability window
+        in_availability = any(
+            datetime.combine(slot_date, w.start_time, tzinfo=timezone.utc) <= s_start
+            and datetime.combine(slot_date, w.end_time, tzinfo=timezone.utc) >= s_end
+            for w in effective_windows
+        )
+        if not in_availability:
+            continue
+
+        # Must not overlap any existing booking
+        already_booked = any(
+            b_start < s_end and b_end > s_start
+            for b_start, b_end in booked_windows
+        )
+        if already_booked:
+            continue
+
+        open_slots.append(TrainerOpenSlot(start_datetime=s_start, end_datetime=s_end))
+
+    return open_slots
 
 
 @router.get("/{trainer_id}/availability", response_model=list[TrainerAvailabilityRead])

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-18 00:00 UTC_
+_Last updated: 2026-04-19 18:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -14,8 +14,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `POST` | `/api/v1/auth/login` | Login with email + password; returns access + refresh tokens |
 | `POST` | `/api/v1/auth/refresh` | Exchange a refresh token for a new token pair |
 | `POST` | `/api/v1/auth/logout` | Stateless logout (client discards tokens) |
-| `POST` | `/api/v1/auth/password-reset/request` | Request a password-reset token (always 202 to prevent enumeration) |
-| `POST` | `/api/v1/auth/password-reset/confirm` | Set a new password using a valid reset token |
+| `POST` | `/api/v1/auth/password-reset/request` | Request a password-reset email; always 202 to prevent enumeration. Publishes `password_reset` event to `notification-events` → notification worker → SendGrid email with a signed 15-min reset link |
+| `POST` | `/api/v1/auth/password-reset/confirm` | Set a new password using a valid reset token (JWT type=reset); returns 400 for invalid, wrong-type, or expired tokens |
 
 ---
 
@@ -63,6 +63,8 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `PATCH` | `/api/v1/players/me` | Update current player's profile details |
 | `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time |
 | `GET` | `/api/v1/players/me/match-history` | Get current player's completed matches, most recent first |
+| `PATCH` | `/api/v1/players/{player_id}/skill-level` | Staff only: assign or update a player's skill level (1.0–7.0); writes an immutable `skill_level_history` audit entry |
+| `GET` | `/api/v1/players/{player_id}/skill-history` | Staff only: list all skill level changes for a player, most recent first |
 
 ---
 
@@ -127,7 +129,8 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/api/v1/trainers` | List all active trainers for a club with their availability embedded. Query param: `club_id` (required), `include_inactive` (default false). Requires staff+ |
+| `GET` | `/api/v1/trainers` | List trainers for a club with their availability embedded. Query params: `club_id` (required), `include_inactive` (default false, staff-only). Players always see active trainers only |
+| `GET` | `/api/v1/trainers/{trainer_id}/open-slots` | Return available lesson time slots for a trainer on a given date. Query params: `club_id` (required), `date` (required, YYYY-MM-DD). Derived from trainer availability windows minus existing bookings. Open to all authenticated users |
 | `GET` | `/api/v1/trainers/{trainer_id}/availability` | Get all availability windows for a trainer. Requires staff+ |
 | `POST` | `/api/v1/trainers/{trainer_id}/availability` | Create an availability window. Trainer sets their own; ops_lead+ sets any. Validates `start_time < end_time` and `club_id` matches trainer's club |
 | `PUT` | `/api/v1/trainers/{trainer_id}/availability/{availability_id}` | Update an availability window (partial). Trainer edits their own; ops_lead+ edits any. Re-validates time window |
@@ -143,6 +146,6 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
 | `payments.py` | Stripe webhook, payment methods (save/list/delete/set-default), wallet (get/top-up/adjust), invoices (list/download), refunds, discounts, in-person payment |
 | `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
-| `players.py` | `GET /{id}`, `GET /{id}/skill-history`, `PATCH /{id}/skill-level` |
+| `players.py` | `GET /{id}` |
 | `reports.py` | Dashboard, revenue, utilisation, retention, corporate events, transaction log, Stripe payouts, export |
 | `support.py` | Create/list/get ticket, respond to ticket |

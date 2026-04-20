@@ -4,6 +4,15 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Scope Restrictions
+
+**The following directories are owned by a partner and must not be modified:**
+- `/frontend`
+- `/mobile`
+- `/fe-intra`
+
+All other directories, including the root and `/backend`, are in scope.
+
 ## What This Project Is
 
 SmashBook is a **multi-tenant SaaS platform for padel club management**. Tenants are organisations (club operators) that sign up with SmashBook — a tenant may operate one or more clubs. The long-term vision is AI-driven autonomous club operations. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture document.
@@ -285,7 +294,7 @@ Migration groups in `DATA_MODEL_TARGET_STATE.md` map to sprints. Implement the g
 
 ## Environment Variables
 
-Defined in `backend/app/core/config.py` via pydantic-settings. For local dev, create `backend/.env` (gitignored). Required: `SECRET_KEY`, `DATABASE_URL`, `DATABASE_READ_REPLICA_URL`, `PUBSUB_PROJECT_ID`, `GCS_BUCKET_VIDEOS`, `GCS_BUCKET_INVOICES`, `GCS_PROJECT_ID`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `PLATFORM_API_KEY`, `SENDGRID_API_KEY`, `FIREBASE_PROJECT_ID`.
+Defined in `backend/app/core/config.py` via pydantic-settings. For local dev, create `backend/.env` (gitignored). Required: `SECRET_KEY`, `DATABASE_URL`, `DATABASE_READ_REPLICA_URL`, `PUBSUB_PROJECT_ID`, `GCS_BUCKET_VIDEOS`, `GCS_BUCKET_INVOICES`, `GCS_PROJECT_ID`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `PLATFORM_API_KEY`, `SENDGRID_API_KEY`, `FIREBASE_PROJECT_ID`, `APP_BASE_URL` (e.g. `https://app.smashbook.app`; used to construct password-reset links; defaults to that value if unset).
 
 ---
 

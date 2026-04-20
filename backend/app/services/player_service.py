@@ -1,15 +1,17 @@
 """
 PlayerService — player profile and skill level management.
 """
-from datetime import datetime, timezone
 import uuid
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus
-from app.schemas.user import PlayerBookingItem
+from app.db.models.skill import SkillLevelHistory
+from app.db.models.user import User
+from app.schemas.user import PlayerBookingItem, SkillLevelHistoryItem, SkillLevelUpdateResponse
 
 
 class PlayerService:
@@ -17,20 +19,51 @@ class PlayerService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def update_skill_level(self, user_id: str, new_level: float,
-                                  assigned_by_staff_id: str, reason: str = None) -> dict:
-        """
-        Staff-only: update a player's skill level.
-          1. Fetch current user.skill_level (previous_level)
-          2. Create SkillLevelHistory record (immutable audit log)
-          3. Update user.skill_level, skill_assigned_by, skill_assigned_at
-          4. Return updated user with history entry
-        """
-        pass
+    async def update_skill_level(
+        self,
+        user_id: uuid.UUID,
+        new_level: float,
+        assigned_by_staff_id: uuid.UUID,
+        reason: str = None,
+    ) -> SkillLevelUpdateResponse:
+        result = await self.db.execute(select(User).where(User.id == user_id))
+        player = result.scalar_one_or_none()
+        if player is None:
+            return None
 
-    async def get_skill_history(self, user_id: str) -> list:
+        now = datetime.now(tz=timezone.utc)
+        entry = SkillLevelHistory(
+            user_id=player.id,
+            previous_level=player.skill_level,
+            new_level=new_level,
+            assigned_by=assigned_by_staff_id,
+            reason=reason,
+        )
+        self.db.add(entry)
+
+        player.skill_level = new_level
+        player.skill_assigned_by = assigned_by_staff_id
+        player.skill_assigned_at = now
+
+        await self.db.flush()
+        await self.db.refresh(entry)
+
+        return SkillLevelUpdateResponse(
+            user_id=player.id,
+            skill_level=player.skill_level,
+            skill_assigned_by=player.skill_assigned_by,
+            skill_assigned_at=player.skill_assigned_at,
+            history_entry=SkillLevelHistoryItem.model_validate(entry),
+        )
+
+    async def get_skill_history(self, user_id: uuid.UUID) -> list[SkillLevelHistoryItem]:
         """Returns all SkillLevelHistory records for a player, ordered by created_at desc."""
-        pass
+        result = await self.db.execute(
+            select(SkillLevelHistory)
+            .where(SkillLevelHistory.user_id == user_id)
+            .order_by(SkillLevelHistory.created_at.desc())
+        )
+        return [SkillLevelHistoryItem.model_validate(r) for r in result.scalars().all()]
 
     async def suspend_player(self, user_id: str, suspended_by_staff_id: str,
                               reason: str = None) -> dict:

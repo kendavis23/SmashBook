@@ -102,3 +102,34 @@ class PlayerBookingItem(BaseModel):
 class PlayerBookingsResponse(BaseModel):
     upcoming: list[PlayerBookingItem]
     past: list[PlayerBookingItem]
+
+
+class SkillLevelUpdate(BaseModel):
+    new_level: Decimal
+    reason: Optional[str] = None
+
+    @field_validator("new_level")
+    @classmethod
+    def valid_range(cls, v: Decimal) -> Decimal:
+        if not (Decimal("1.0") <= v <= Decimal("7.0")):
+            raise ValueError("skill_level must be between 1.0 and 7.0")
+        return v
+
+
+class SkillLevelHistoryItem(BaseModel):
+    id: uuid.UUID
+    previous_level: Optional[Decimal]
+    new_level: Decimal
+    assigned_by: uuid.UUID
+    reason: Optional[str]
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SkillLevelUpdateResponse(BaseModel):
+    user_id: uuid.UUID
+    skill_level: Decimal
+    skill_assigned_by: uuid.UUID
+    skill_assigned_at: datetime
+    history_entry: SkillLevelHistoryItem

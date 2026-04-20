@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Depends
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db, get_read_db
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.db.models.user import User
-from app.schemas.user import UserResponse, UserProfileUpdate, PlayerBookingItem, PlayerBookingsResponse
+from app.schemas.user import (
+    UserResponse, UserProfileUpdate, PlayerBookingItem, PlayerBookingsResponse,
+    SkillLevelUpdate, SkillLevelUpdateResponse, SkillLevelHistoryItem,
+)
 from app.services.player_service import PlayerService
 
 router = APIRouter(prefix="/players", tags=["players"])
@@ -82,13 +87,32 @@ async def get_player(player_id: str, db=Depends(get_read_db)):
     pass
 
 
-@router.get("/{player_id}/skill-history")
-async def get_skill_history(player_id: str, db=Depends(get_read_db)):
-    """View skill level change log for a player."""
-    pass
+@router.get("/{player_id}/skill-history", response_model=list[SkillLevelHistoryItem])
+async def get_skill_history(
+    player_id: uuid.UUID,
+    current_user: User = Depends(require_staff),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """Staff only: view skill level change log for a player."""
+    svc = PlayerService(db)
+    return await svc.get_skill_history(player_id)
 
 
-@router.patch("/{player_id}/skill-level")
-async def update_skill_level(player_id: str, current_user=Depends(require_staff), db=Depends(get_db)):
+@router.patch("/{player_id}/skill-level", response_model=SkillLevelUpdateResponse)
+async def update_skill_level(
+    player_id: uuid.UUID,
+    body: SkillLevelUpdate,
+    current_user: User = Depends(require_staff),
+    db: AsyncSession = Depends(get_db),
+):
     """Staff only: assign or update a player's skill level."""
-    pass
+    svc = PlayerService(db)
+    result = await svc.update_skill_level(
+        user_id=player_id,
+        new_level=body.new_level,
+        assigned_by_staff_id=current_user.id,
+        reason=body.reason,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return result

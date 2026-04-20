@@ -25,6 +25,7 @@ from sqlalchemy import delete as sql_delete, select
 from app.core.security import create_access_token
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import OperatingHours, PricingRule
+from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.user import TenantUserRole, User
 
@@ -331,6 +332,108 @@ class TestCreateBooking:
         assert r2.status_code == 409
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_booking_blocked_by_training_block_reservation(
+        self, client, player_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A regular booking must be rejected (409) when the court has a training_block."""
+        start = _future()
+        end = start + timedelta(minutes=DURATION)
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.training_block,
+                title="Coach session",
+                start_datetime=start,
+                end_datetime=end,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "training block" in resp.json()["detail"]
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_booking_blocked_by_private_hire_reservation(
+        self, client, player_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A regular booking must be rejected (409) when the court has a private_hire reservation."""
+        start = _future()
+        end = start + timedelta(minutes=DURATION)
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.private_hire,
+                title="Private event",
+                start_datetime=start,
+                end_datetime=end,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "private hire" in resp.json()["detail"]
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_booking_blocked_by_maintenance_reservation(
+        self, client, player_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A regular booking must be rejected (409) when the court is under maintenance."""
+        start = _future()
+        end = start + timedelta(minutes=DURATION)
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                reservation_type=CalendarReservationType.maintenance,
+                title="Net repair",
+                start_datetime=start,
+                end_datetime=end,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "maintenance" in resp.json()["detail"]
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation.id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
 
     async def test_notice_window_violation_for_player(self, client, player_headers, club, court_with_hours):
         # 1 hour ahead — less than default min_booking_notice_hours=2
@@ -2307,4 +2410,159 @@ class TestCreateRecurringBooking:
         assert resp.status_code == 201, resp.text
         assert len(resp.json()["created"]) == 2
 
-        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+# ---------------------------------------------------------------------------
+# Fixtures for lesson booking validation tests
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def trainer_user_for_lesson(tenant, test_session_factory):
+    from tests.integration.conftest import _create_user, _delete_user
+
+    user = await _create_user(
+        tenant.id, "lesson-trainer", "Lesson Trainer", TenantUserRole.trainer, test_session_factory
+    )
+    yield user
+    await _delete_user(user.id, test_session_factory)
+
+
+@pytest_asyncio.fixture
+async def trainer_profile_for_lesson(trainer_user_for_lesson, club, test_session_factory):
+    async with test_session_factory() as session:
+        profile = StaffProfile(
+            user_id=trainer_user_for_lesson.id,
+            club_id=club.id,
+            role=StaffRole.trainer,
+            is_active=True,
+        )
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+
+    yield profile
+
+    async with test_session_factory() as session:
+        await session.execute(
+            sql_delete(TrainerAvailability).where(
+                TrainerAvailability.staff_profile_id == profile.id
+            )
+        )
+        obj = await session.get(StaffProfile, profile.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def non_trainer_profile(staff, club, test_session_factory):
+    """A StaffProfile with role=ops_lead — not a trainer."""
+    async with test_session_factory() as session:
+        profile = StaffProfile(
+            user_id=staff.id,
+            club_id=club.id,
+            role=StaffRole.ops_lead,
+            is_active=True,
+        )
+        session.add(profile)
+        await session.commit()
+        await session.refresh(profile)
+
+    yield profile
+
+    async with test_session_factory() as session:
+        obj = await session.get(StaffProfile, profile.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+def _lesson_payload(club_id, court_id, start: datetime, **kwargs) -> dict:
+    return {
+        "club_id": str(club_id),
+        "court_id": str(court_id),
+        "start_datetime": start.isoformat(),
+        "booking_type": "lesson_individual",
+        "is_open_game": False,
+        "max_players": 1,
+        **kwargs,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/bookings — lesson booking validation
+# ---------------------------------------------------------------------------
+
+
+class TestLessonBookingValidation:
+    async def test_lesson_requires_staff_profile_id(
+        self, client, player_headers, club, court_with_hours
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_lesson_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+        assert "staff_profile_id" in resp.json()["detail"].lower()
+
+    async def test_lesson_rejects_non_trainer_profile(
+        self, client, player_headers, club, court_with_hours, non_trainer_profile
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_lesson_payload(
+                club.id, court_with_hours.id, start,
+                staff_profile_id=str(non_trainer_profile.id),
+            ),
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+        assert "trainer" in resp.json()["detail"].lower()
+
+    async def test_lesson_happy_path_with_valid_trainer(
+        self, client, player_headers, club, court_with_hours, trainer_profile_for_lesson
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_lesson_payload(
+                club.id, court_with_hours.id, start,
+                staff_profile_id=str(trainer_profile_for_lesson.id),
+            ),
+            headers=player_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+        assert body["booking_type"] == "lesson_individual"
+        assert body["status"] in ("pending", "confirmed")
+
+    async def test_trainer_double_booking_rejected(
+        self, client, player_headers, staff_headers, club, court_with_hours, trainer_profile_for_lesson
+    ):
+        start = _future()
+        payload = _lesson_payload(
+            club.id, court_with_hours.id, start,
+            staff_profile_id=str(trainer_profile_for_lesson.id),
+        )
+
+        first = await client.post("/api/v1/bookings", json=payload, headers=player_headers)
+        assert first.status_code == 201, first.text
+
+        second = await client.post("/api/v1/bookings", json=payload, headers=player_headers)
+        # Court conflict fires before trainer conflict — both result in 409
+        assert second.status_code == 409
+
+    async def test_lesson_group_also_requires_trainer(
+        self, client, player_headers, club, court_with_hours
+    ):
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json={**_lesson_payload(club.id, court_with_hours.id, start), "booking_type": "lesson_group"},
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+        assert "staff_profile_id" in resp.json()["detail"].lower()

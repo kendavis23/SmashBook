@@ -80,3 +80,8 @@ class TrainerBookingItem(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
     participants: list[BookingParticipant]
+
+
+class TrainerOpenSlot(BaseModel):
+    start_datetime: datetime
+    end_datetime: datetime
