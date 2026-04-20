@@ -1,4 +1,5 @@
 import type { FormEvent, JSX } from "react";
+import { useMemo } from "react";
 import { RefreshCw } from "lucide-react";
 import {
     Breadcrumb,
@@ -6,6 +7,7 @@ import {
     ConfirmDeleteModal,
     DatePicker,
     formatUTCDateTime,
+    formatCurrency,
     SelectInput,
 } from "@repo/ui";
 import type { Booking, TimeSlot } from "../../types";
@@ -17,15 +19,6 @@ const fieldCls =
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
 const labelCls = "mb-1 block text-sm font-medium text-foreground";
-
-function formatCurrency(amount: number | null): string {
-    if (amount == null) return "—";
-    return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: 2,
-    }).format(amount);
-}
 
 export type ManageBookingFormState = {
     courtId: string;
@@ -84,6 +77,10 @@ export default function ManageBookingView({
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
     const isCancellable = booking.status !== "cancelled" && booking.status !== "completed";
     const isEditable = booking.status !== "cancelled" && booking.status !== "completed";
+    const todayStr = useMemo(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }, []);
 
     return (
         <div className="w-full space-y-5">
@@ -304,6 +301,7 @@ export default function ManageBookingView({
                                             onChange={(v) =>
                                                 onFormChange({ bookingDate: v, startTime: "" })
                                             }
+                                            minDate={todayStr}
                                         />
                                     </div>
                                     <div>

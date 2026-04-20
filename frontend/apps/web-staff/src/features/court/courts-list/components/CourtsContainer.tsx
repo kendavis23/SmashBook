@@ -116,6 +116,8 @@ export default function CourtsContainer(): JSX.Element {
             return;
         }
 
+        setAvailabilityCourt(null);
+        setSelectedSlot(null);
         setAppliedFilters((currentFilters) => ({
             ...currentFilters,
             ...nextServerFilters,

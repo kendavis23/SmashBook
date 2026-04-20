@@ -27,9 +27,6 @@ function buildInitialForm(res: CalendarReservation): ManageReservationFormState 
         date: startLocal.slice(0, 10),
         startTime: startLocal.slice(11, 16),
         endTime: toDatetimeLocal(res.end_datetime).slice(11, 16),
-        anchorSkillLevel: res.anchor_skill_level != null ? String(res.anchor_skill_level) : "",
-        skillRangeAbove: res.skill_range_above != null ? String(res.skill_range_above) : "",
-        skillRangeBelow: res.skill_range_below != null ? String(res.skill_range_below) : "",
         allowedBookingTypes: res.allowed_booking_types ?? [],
         isRecurring: res.is_recurring ?? false,
         recurrenceRule: res.recurrence_rule ?? "",
@@ -95,9 +92,6 @@ export default function ManageReservationContainer(): JSX.Element {
                     ? datetimeLocalToUTC(startDatetimeLocal)
                     : undefined,
                 end_datetime: endDatetimeLocal ? datetimeLocalToUTC(endDatetimeLocal) : undefined,
-                anchor_skill_level: form.anchorSkillLevel ? Number(form.anchorSkillLevel) : null,
-                skill_range_above: form.skillRangeAbove ? Number(form.skillRangeAbove) : null,
-                skill_range_below: form.skillRangeBelow ? Number(form.skillRangeBelow) : null,
                 allowed_booking_types: form.allowedBookingTypes.length
                     ? form.allowedBookingTypes
                     : null,

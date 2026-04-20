@@ -24,11 +24,13 @@ vi.mock("@repo/ui", () => ({
         onChange,
         placeholder,
         className,
+        minDate,
     }: {
         value: string;
         onChange: (v: string) => void;
         placeholder?: string;
         className?: string;
+        minDate?: string;
     }) => (
         <input
             type="date"
@@ -36,6 +38,7 @@ vi.mock("@repo/ui", () => ({
             onChange={(e) => onChange(e.target.value)}
             aria-label={placeholder ?? "Pick a date"}
             className={className}
+            min={minDate}
         />
     ),
     TimeInput: ({
@@ -85,9 +88,6 @@ const defaultForm: NewReservationFormState = {
     date: "2026-04-20",
     startTime: "09:00",
     endTime: "10:00",
-    anchorSkillLevel: "",
-    skillRangeAbove: "",
-    skillRangeBelow: "",
     allowedBookingTypes: [],
     isRecurring: false,
     recurrenceRule: "",
@@ -179,5 +179,15 @@ describe("NewReservationView", () => {
         render(<NewReservationView {...defaultProps} isPending={true} />);
 
         expect(screen.getByRole("button", { name: /creating/i })).toBeDisabled();
+    });
+
+    it("date picker has min set to today to prevent past date selection", () => {
+        render(<NewReservationView {...defaultProps} />);
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const [datePicker] = screen.getAllByLabelText("Pick a date");
+
+        expect(datePicker).toHaveAttribute("min", todayStr);
     });
 });

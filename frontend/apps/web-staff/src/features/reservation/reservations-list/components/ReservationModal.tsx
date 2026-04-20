@@ -6,14 +6,7 @@ import type {
     Court,
 } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
-import {
-    AlertToast,
-    DatePicker,
-    DateTimePicker,
-    datetimeLocalToUTC,
-    NumberInput,
-    SelectInput,
-} from "@repo/ui";
+import { AlertToast, DatePicker, DateTimePicker, datetimeLocalToUTC, SelectInput } from "@repo/ui";
 import { X } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
@@ -44,11 +37,6 @@ function toLocalDateTimeValue(iso: string): string {
     return iso.slice(0, 16);
 }
 
-function parseOptionalNumber(val: string): number | null {
-    const n = parseFloat(val);
-    return isNaN(n) ? null : n;
-}
-
 export default function ReservationModal({
     clubId,
     courts,
@@ -68,21 +56,6 @@ export default function ReservationModal({
     );
     const [endDatetime, setEndDatetime] = useState(
         initialData ? toLocalDateTimeValue(initialData.end_datetime) : ""
-    );
-    const [anchorSkillLevel, setAnchorSkillLevel] = useState(
-        initialData?.anchor_skill_level !== null && initialData?.anchor_skill_level !== undefined
-            ? String(initialData.anchor_skill_level)
-            : ""
-    );
-    const [skillRangeAbove, setSkillRangeAbove] = useState(
-        initialData?.skill_range_above !== null && initialData?.skill_range_above !== undefined
-            ? String(initialData.skill_range_above)
-            : ""
-    );
-    const [skillRangeBelow, setSkillRangeBelow] = useState(
-        initialData?.skill_range_below !== null && initialData?.skill_range_below !== undefined
-            ? String(initialData.skill_range_below)
-            : ""
     );
     const [allowedBookingTypes, setAllowedBookingTypes] = useState<string[]>(
         initialData?.allowed_booking_types ?? []
@@ -133,13 +106,6 @@ export default function ReservationModal({
         e.preventDefault();
         if (!validate()) return;
 
-        const skillFields = {
-            anchor_skill_level: parseOptionalNumber(anchorSkillLevel),
-            skill_range_above: parseOptionalNumber(skillRangeAbove),
-            skill_range_below: parseOptionalNumber(skillRangeBelow),
-            allowed_booking_types: allowedBookingTypes.length > 0 ? allowedBookingTypes : null,
-        };
-
         if (isEdit) {
             updateMutation.mutate(
                 {
@@ -148,7 +114,7 @@ export default function ReservationModal({
                     title: title.trim(),
                     start_datetime: datetimeLocalToUTC(startDatetime),
                     end_datetime: datetimeLocalToUTC(endDatetime),
-                    ...skillFields,
+                    allowed_booking_types: allowedBookingTypes?.length ? allowedBookingTypes : null,
                     is_recurring: isRecurring,
                     recurrence_rule: recurrenceRule || null,
                     recurrence_end_date: recurrenceEndDate || null,
@@ -168,7 +134,7 @@ export default function ReservationModal({
                 title: title.trim(),
                 start_datetime: datetimeLocalToUTC(startDatetime),
                 end_datetime: datetimeLocalToUTC(endDatetime),
-                ...skillFields,
+                allowed_booking_types: allowedBookingTypes?.length ? allowedBookingTypes : null,
                 is_recurring: isRecurring,
                 recurrence_rule: recurrenceRule || null,
                 recurrence_end_date: recurrenceEndDate || null,
@@ -305,60 +271,6 @@ export default function ReservationModal({
                             </div>
                         </div>
                         {dateError ? <p className="text-xs text-destructive">{dateError}</p> : null}
-
-                        {/* Skill Level group */}
-                        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
-                            <p className="mb-3 text-sm font-semibold text-foreground">
-                                Skill Level Filter
-                            </p>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div>
-                                    <label htmlFor="res-anchor-skill" className={labelCls}>
-                                        Anchor
-                                    </label>
-                                    <NumberInput
-                                        id="res-anchor-skill"
-                                        min={0}
-                                        step={0.1}
-                                        className={fieldCls}
-                                        placeholder="e.g. 3.5"
-                                        value={anchorSkillLevel}
-                                        onChange={(e) => setAnchorSkillLevel(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="res-skill-above" className={labelCls}>
-                                        Range Above
-                                    </label>
-                                    <NumberInput
-                                        id="res-skill-above"
-                                        min={0}
-                                        step={0.1}
-                                        className={fieldCls}
-                                        placeholder="e.g. 1.0"
-                                        value={skillRangeAbove}
-                                        onChange={(e) => setSkillRangeAbove(e.target.value)}
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="res-skill-below" className={labelCls}>
-                                        Range Below
-                                    </label>
-                                    <NumberInput
-                                        id="res-skill-below"
-                                        min={0}
-                                        step={0.1}
-                                        className={fieldCls}
-                                        placeholder="e.g. 1.0"
-                                        value={skillRangeBelow}
-                                        onChange={(e) => setSkillRangeBelow(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <p className="mt-1.5 text-xs text-muted-foreground">
-                                Leave blank if no skill filter applies.
-                            </p>
-                        </div>
 
                         {/* Allowed booking types */}
                         <div>

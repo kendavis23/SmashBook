@@ -2,7 +2,7 @@ import type { Court, CourtAvailability, TimeSlot } from "../../types";
 import { X, Clock, CalendarDays, RefreshCw } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import type { JSX } from "react";
-import { DatePicker } from "@repo/ui";
+import { DatePicker, formatCurrency } from "@repo/ui";
 
 type Props = {
     court: Court;
@@ -26,13 +26,6 @@ function formatTime(hhmm: string): string {
     const displayH = h % 12 === 0 ? 12 : h % 12;
     const displayM = m === 0 ? "00" : String(m).padStart(2, "0");
     return `${displayH}:${displayM} ${period}`;
-}
-
-function formatPrice(price: number | null): string | null {
-    if (price === null) return null;
-    const num = typeof price === "string" ? parseFloat(price) : price;
-    if (isNaN(num) || num === 0) return null;
-    return `$${num.toFixed(2)}`;
 }
 
 export default function AvailabilityPanel({
@@ -155,8 +148,6 @@ export default function AvailabilityPanel({
                             </thead>
                             <tbody className="divide-y divide-border">
                                 {slots.map((slot) => {
-                                    const priceAmount = formatPrice(slot.price);
-
                                     return (
                                         <tr
                                             key={slot.start_time}
@@ -180,7 +171,7 @@ export default function AvailabilityPanel({
                                                 {slot.price_label ?? "—"}
                                             </td>
                                             <td className="px-3 py-3 text-xs font-medium text-foreground sm:text-sm">
-                                                {priceAmount ?? "—"}
+                                                {formatCurrency(slot.price)}
                                             </td>
                                             <td className="px-4 py-3 text-right sm:px-5">
                                                 {slot.is_available ? (
@@ -197,11 +188,11 @@ export default function AvailabilityPanel({
                                                         }
                                                         className="inline-flex rounded-md bg-cta px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cta-foreground transition hover:opacity-90"
                                                     >
-                                                        Book
+                                                        Available
                                                     </button>
                                                 ) : (
                                                     <span className="inline-flex rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                        Booked
+                                                        Not Available
                                                     </span>
                                                 )}
                                             </td>

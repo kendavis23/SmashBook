@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Breadcrumb, DatePicker, formatUTCDateTime, SelectInput } from "@repo/ui";
+import { Breadcrumb, DatePicker, formatCurrency, formatUTCDateTime, SelectInput } from "@repo/ui";
 import {
     CalendarDays,
     ChevronLeft,
@@ -40,15 +40,6 @@ const PAGE_SIZE = 10;
 const thCls =
     "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
 const tdCls = "px-3 py-3 text-sm text-foreground align-top";
-
-function formatCurrency(amount: number | null): string {
-    if (amount == null) return "—";
-    return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: 2,
-    }).format(amount);
-}
 
 export default function BookingsView({
     bookings,

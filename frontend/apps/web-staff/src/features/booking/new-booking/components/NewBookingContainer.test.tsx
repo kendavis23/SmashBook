@@ -23,6 +23,8 @@ vi.mock("../../store", () => ({
 }));
 
 vi.mock("@repo/ui", () => ({
+    formatCurrency: (amount: number | null | undefined) =>
+        amount == null ? "—" : `£${amount.toFixed(2)}`,
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
             {items.map((item) => (
@@ -114,7 +116,7 @@ function setupMocks(overrides?: { courts?: unknown[]; error?: Error | null; isPe
     });
     mockUseGetCourtAvailability.mockReturnValue({
         data: {
-            slots: [{ start_time: "10:00", is_available: true, price_label: "EUR 20" }],
+            slots: [{ start_time: "10:00", is_available: true, price: 20, price_label: "EUR 20" }],
         },
         isLoading: false,
     });

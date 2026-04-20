@@ -1,6 +1,7 @@
 import { useCreateClub, useUpdateClub } from "../hooks";
 import type { Club } from "../types";
-import { AlertToast } from "@repo/ui";
+import { CURRENCIES } from "../types";
+import { AlertToast, SelectInput } from "@repo/ui";
 import { X } from "lucide-react";
 import type { JSX, FormEvent } from "react";
 import { useState } from "react";
@@ -41,7 +42,7 @@ export default function ClubModal({ onClose, onSuccess, initialData }: Props): J
         const payload = {
             name: name.trim(),
             address: address.trim() || undefined,
-            currency: currency.trim().toUpperCase() || "GBP",
+            currency: currency || "GBP",
         };
 
         if (isEdit) {
@@ -141,18 +142,15 @@ export default function ClubModal({ onClose, onSuccess, initialData }: Props): J
                             >
                                 Currency
                             </label>
-                            <input
-                                id="club-currency"
-                                type="text"
-                                maxLength={3}
-                                className={fieldCls}
-                                placeholder="GBP"
+                            <SelectInput
+                                name="club-currency"
                                 value={currency}
-                                onChange={(e) => setCurrency(e.target.value.toUpperCase())}
+                                onValueChange={(v) => setCurrency(v)}
+                                options={CURRENCIES.map(({ code, label }) => ({
+                                    value: code,
+                                    label,
+                                }))}
                             />
-                            <p className="mt-1 text-xs text-muted-foreground/70">
-                                3-letter ISO code — GBP, EUR, USD…
-                            </p>
                         </div>
                     </div>
 

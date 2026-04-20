@@ -1,11 +1,11 @@
 import type { FormEvent, JSX } from "react";
+import { useMemo } from "react";
 import {
     Breadcrumb,
     AlertToast,
     DatePicker,
     TimeInput,
     formatUTCDateTime,
-    NumberInput,
     SelectInput,
 } from "@repo/ui";
 import type { CalendarReservation, CalendarReservationType } from "../../types";
@@ -37,9 +37,6 @@ export type ManageReservationFormState = {
     date: string;
     startTime: string;
     endTime: string;
-    anchorSkillLevel: string;
-    skillRangeAbove: string;
-    skillRangeBelow: string;
     allowedBookingTypes: string[];
     isRecurring: boolean;
     recurrenceRule: string;
@@ -82,6 +79,11 @@ export default function ManageReservationView({
     const colors =
         RESERVATION_TYPE_COLORS[reservation.reservation_type] ??
         RESERVATION_TYPE_COLORS["private_hire"]!;
+
+    const todayStr = useMemo(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }, []);
 
     const toggleBookingType = (val: string): void => {
         const next = form.allowedBookingTypes.includes(val)
@@ -210,6 +212,7 @@ export default function ManageReservationView({
                                         <DatePicker
                                             value={form.date}
                                             onChange={(v) => onFormChange({ date: v })}
+                                            minDate={todayStr}
                                         />
                                     </div>
                                     <div>
@@ -235,71 +238,6 @@ export default function ManageReservationView({
                                             value={form.endTime}
                                             onChange={(e) =>
                                                 onFormChange({ endTime: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                </div>
-                            </section>
-
-                            {/* Skill level */}
-                            <section className="form-section">
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Skill Level Filter{" "}
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Restrict this reservation to players within a skill range.
-                                    </p>
-                                </div>
-                                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                                    <div>
-                                        <label htmlFor="mr-anchor-skill" className={labelCls}>
-                                            Anchor
-                                        </label>
-                                        <NumberInput
-                                            id="mr-anchor-skill"
-                                            min={0}
-                                            step={0.1}
-                                            className={fieldCls}
-                                            placeholder="e.g. 3.5"
-                                            value={form.anchorSkillLevel}
-                                            onChange={(e) =>
-                                                onFormChange({ anchorSkillLevel: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="mr-skill-above" className={labelCls}>
-                                            Range Above
-                                        </label>
-                                        <NumberInput
-                                            id="mr-skill-above"
-                                            min={0}
-                                            step={0.1}
-                                            className={fieldCls}
-                                            placeholder="e.g. 1.0"
-                                            value={form.skillRangeAbove}
-                                            onChange={(e) =>
-                                                onFormChange({ skillRangeAbove: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="mr-skill-below" className={labelCls}>
-                                            Range Below
-                                        </label>
-                                        <NumberInput
-                                            id="mr-skill-below"
-                                            min={0}
-                                            step={0.1}
-                                            className={fieldCls}
-                                            placeholder="e.g. 1.0"
-                                            value={form.skillRangeBelow}
-                                            onChange={(e) =>
-                                                onFormChange({ skillRangeBelow: e.target.value })
                                             }
                                         />
                                     </div>

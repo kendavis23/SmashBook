@@ -284,6 +284,27 @@ import { formatUTCDateTime, formatUTCDate, formatUTCTime } from "@repo/ui";
 
 ---
 
+## Step 6b — Currency formatting
+
+Always use `formatCurrency` from `@repo/ui` to display monetary amounts. Never use inline `Intl.NumberFormat` or `.toFixed()` calls in feature components.
+
+| Helper           | Output example | When to use                          |
+| ---------------- | -------------- | ------------------------------------ |
+| `formatCurrency` | `£50.00`       | Any GBP monetary amount from the API |
+
+Returns `"—"` for `null` or `undefined` values.
+
+```tsx
+import { formatCurrency } from "@repo/ui";
+
+// In a View component
+<span>{formatCurrency(booking.total_price)}</span>;
+```
+
+**Rule:** every numeric monetary value that comes from the API must be formatted through `formatCurrency` before display. Never write inline currency formatting in a feature component. Import from `@repo/ui`.
+
+---
+
 ## Step 7 — Styling rules
 
 All styling uses Tailwind utility classes with design tokens from `@repo/design-system`.

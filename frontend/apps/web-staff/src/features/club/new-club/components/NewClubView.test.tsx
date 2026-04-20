@@ -33,6 +33,7 @@ vi.mock("@repo/ui", () => ({
             aria-label="Currency"
             value={value}
             onChange={(e) => onValueChange(e.target.value)}
+            data-testid="currency-select"
         >
             {options.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -119,9 +120,9 @@ describe("NewClubView — interactions", () => {
         const onFormChange = vi.fn();
         render(<NewClubView {...defaultProps} onFormChange={onFormChange} />);
         fireEvent.change(screen.getByLabelText("Currency"), {
-            target: { value: "EUR" },
+            target: { value: "GBP" },
         });
-        expect(onFormChange).toHaveBeenCalledWith({ currency: "EUR" });
+        expect(onFormChange).toHaveBeenCalledWith({ currency: "GBP" });
     });
 
     it("calls onCancel when Cancel is clicked", () => {

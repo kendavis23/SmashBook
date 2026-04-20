@@ -33,12 +33,21 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onCancel}>Keep</button>
         </div>
     ),
-    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    DatePicker: ({
+        value,
+        onChange,
+        minDate,
+    }: {
+        value: string;
+        onChange: (v: string) => void;
+        minDate?: string;
+    }) => (
         <input
             type="date"
             value={value}
             onChange={(e) => onChange(e.target.value)}
             aria-label="Pick a date"
+            min={minDate}
         />
     ),
     SelectInput: ({
@@ -65,6 +74,7 @@ vi.mock("@repo/ui", () => ({
         </select>
     ),
     formatUTCDateTime: (value: string) => value,
+    formatCurrency: (amount: number | null) => (amount == null ? "—" : `£${amount.toFixed(2)}`),
 }));
 
 const booking = {
@@ -225,5 +235,15 @@ describe("ManageBookingView", () => {
         expect(screen.queryByRole("button", { name: "Cancel Booking" })).not.toBeInTheDocument();
         expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Back" })).toBeInTheDocument();
+    });
+
+    it("date picker has min set to today to prevent past date selection", () => {
+        render(<ManageBookingView {...defaultProps} />);
+
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+        const datePicker = screen.getByLabelText("Pick a date");
+
+        expect(datePicker).toHaveAttribute("min", todayStr);
     });
 });

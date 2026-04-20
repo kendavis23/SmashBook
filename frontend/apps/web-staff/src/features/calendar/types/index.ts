@@ -89,13 +89,6 @@ export const RESERVATION_TYPE_STYLE: Record<
         text: "text-[hsl(220,25%,25%)] font-semibold",
         time: "text-[hsl(220,15%,40%)]",
     },
-    skill_filter: {
-        bg: "bg-[hsl(220,20%,96%)]",
-        border: "border border-[hsl(220,15%,65%)]",
-        label: "Skill Filter",
-        text: "text-[hsl(220,25%,25%)] font-semibold",
-        time: "text-[hsl(220,15%,40%)]",
-    },
     private_hire: {
         bg: "bg-[hsl(220,20%,96%)]",
         border: "border border-[hsl(220,15%,65%)]",
@@ -193,18 +186,6 @@ function parseDateStr(dateStr: string): { y: number; m: number; d: number; dow: 
 export function formatShortDate(dateStr: string): string {
     const { m, d, dow } = parseDateStr(dateStr);
     return `${WEEKDAYS_SHORT[dow]}, ${MONTHS_SHORT[m - 1]} ${d}`;
-}
-
-/** Formats currency from a numeric value or null */
-export function formatCurrency(amount: number | null | string): string {
-    if (amount == null) return "—";
-    const num = typeof amount === "string" ? parseFloat(amount) : amount;
-    if (isNaN(num)) return "—";
-    return new Intl.NumberFormat(undefined, {
-        style: "currency",
-        currency: "EUR",
-        minimumFractionDigits: 2,
-    }).format(num);
 }
 
 function toDateStr(y: number, m: number, d: number): string {

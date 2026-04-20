@@ -68,6 +68,7 @@ export default function NewBookingContainer(): JSX.Element {
         refetch: refetchSlots,
     } = useGetCourtAvailability(form.courtId, form.bookingDate);
     const slots = availabilityData?.slots ?? [];
+    const selectedPrice = slots.find((s) => s.start_time === form.startTime)?.price ?? null;
 
     // Auto-select the first available slot whenever availability data arrives (fresh)
     useEffect(() => {
@@ -168,6 +169,7 @@ export default function NewBookingContainer(): JSX.Element {
             onCancel={handleCancel}
             onDismissError={handleDismissError}
             onRefreshSlots={() => void refetchSlots()}
+            selectedPrice={selectedPrice}
         />
     );
 }

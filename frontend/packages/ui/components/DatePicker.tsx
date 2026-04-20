@@ -99,6 +99,8 @@ interface CalendarGridProps {
     onPrevMonth: () => void;
     onNextMonth: () => void;
     onSelectDay: (day: number) => void;
+    /** "YYYY-MM-DD" — days before this date are disabled */
+    minDateStr?: string;
 }
 
 function CalendarGrid({
@@ -108,6 +110,7 @@ function CalendarGrid({
     onPrevMonth,
     onNextMonth,
     onSelectDay,
+    minDateStr,
 }: CalendarGridProps): JSX.Element {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
@@ -152,17 +155,22 @@ function CalendarGrid({
                     const dayStr = `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}`;
                     const isSelected = selectedDateStr === dayStr;
                     const isToday = todayStr === dayStr;
+                    const isPast = minDateStr !== undefined && dayStr < minDateStr;
                     return (
                         <button
                             key={day}
                             type="button"
-                            onClick={() => onSelectDay(day)}
+                            onClick={() => !isPast && onSelectDay(day)}
+                            disabled={isPast}
+                            aria-disabled={isPast}
                             className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm transition ${
-                                isSelected
-                                    ? "bg-cta font-semibold text-cta-foreground"
-                                    : isToday
-                                      ? "border border-cta font-medium text-cta hover:bg-muted"
-                                      : "text-foreground hover:bg-muted"
+                                isPast
+                                    ? "cursor-not-allowed text-muted-foreground opacity-40"
+                                    : isSelected
+                                      ? "bg-cta font-semibold text-cta-foreground"
+                                      : isToday
+                                        ? "border border-cta font-medium text-cta hover:bg-muted"
+                                        : "text-foreground hover:bg-muted"
                             }`}
                         >
                             {day}
@@ -183,6 +191,8 @@ export interface DatePickerProps {
     placeholder?: string;
     disabled?: boolean;
     className?: string;
+    /** "YYYY-MM-DD" — days before this date are disabled */
+    minDate?: string;
 }
 
 export function DatePicker({
@@ -191,6 +201,7 @@ export function DatePicker({
     placeholder = "Pick a date",
     disabled,
     className = "",
+    minDate,
 }: DatePickerProps): JSX.Element {
     const today = new Date();
     const parsed = parseDate(value);
@@ -245,6 +256,7 @@ export function DatePicker({
                         onPrevMonth={prevMonth}
                         onNextMonth={nextMonth}
                         onSelectDay={handleSelectDay}
+                        minDateStr={minDate}
                     />
                     {value && (
                         <div className="mt-3 flex justify-end border-t border-border pt-3">

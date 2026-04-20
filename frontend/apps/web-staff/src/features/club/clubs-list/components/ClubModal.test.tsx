@@ -22,6 +22,30 @@ vi.mock("../../hooks", () => ({
 
 vi.mock("@repo/ui", () => ({
     AlertToast: ({ title }: { title: string }) => <div role="alert">{title}</div>,
+    SelectInput: ({
+        name,
+        value,
+        onValueChange,
+        options,
+    }: {
+        name?: string;
+        value: string;
+        onValueChange: (v: string) => void;
+        options: Array<{ value: string; label: string }>;
+    }) => (
+        <select
+            name={name}
+            aria-label="Currency"
+            value={value}
+            onChange={(e) => onValueChange(e.target.value)}
+        >
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
 }));
 
 describe("ClubModal — create mode", () => {
@@ -62,7 +86,7 @@ describe("ClubModal — create mode", () => {
 });
 
 describe("ClubModal — edit mode", () => {
-    const initialClub = { id: "1", name: "Old Club", address: "1 St", currency: "EUR" };
+    const initialClub = { id: "1", name: "Old Club", address: "1 St", currency: "GBP" };
 
     beforeEach(() => {
         mockUpdateMutate.mockReset();
@@ -77,7 +101,7 @@ describe("ClubModal — edit mode", () => {
         render(<ClubModal onClose={vi.fn()} initialData={initialClub as never} />);
         expect(screen.getByDisplayValue("Old Club")).toBeInTheDocument();
         expect(screen.getByDisplayValue("1 St")).toBeInTheDocument();
-        expect(screen.getByDisplayValue("EUR")).toBeInTheDocument();
+        expect(screen.getByRole("combobox", { name: "Currency" })).toHaveValue("GBP");
     });
 
     it("calls updateClub with updated payload", () => {

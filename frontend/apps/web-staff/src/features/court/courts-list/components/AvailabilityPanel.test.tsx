@@ -12,6 +12,8 @@ vi.mock("@repo/ui", () => ({
             onChange={(e) => onChange(e.target.value)}
         />
     ),
+    formatCurrency: (amount: number | null | undefined) =>
+        amount == null ? "—" : `£${amount.toFixed(2)}`,
 }));
 
 const mockCourt: Court = {
@@ -143,15 +145,15 @@ describe("AvailabilityPanel — table rendering", () => {
         expect(screen.getAllByRole("row")).toHaveLength(mockAvailability.slots.length + 1);
     });
 
-    it("shows Book button for available slots", () => {
+    it("shows Available button for available slots", () => {
         render(<AvailabilityPanel {...defaultProps} availability={mockAvailability} />);
-        const buttons = screen.getAllByText("Book");
+        const buttons = screen.getAllByText("Available");
         expect(buttons).toHaveLength(2);
     });
 
-    it("shows Booked badge for unavailable slots", () => {
+    it("shows Not Available badge for unavailable slots", () => {
         render(<AvailabilityPanel {...defaultProps} availability={mockAvailability} />);
-        expect(screen.getByText("Booked")).toBeInTheDocument();
+        expect(screen.getByText("Not Available")).toBeInTheDocument();
     });
 
     it("renders price_label when present", () => {

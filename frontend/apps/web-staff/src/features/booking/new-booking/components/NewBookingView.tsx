@@ -1,6 +1,14 @@
 import type { FormEvent, JSX } from "react";
+import { useMemo } from "react";
 import { RefreshCw } from "lucide-react";
-import { Breadcrumb, AlertToast, DatePicker, NumberInput, SelectInput } from "@repo/ui";
+import {
+    Breadcrumb,
+    AlertToast,
+    DatePicker,
+    NumberInput,
+    SelectInput,
+    formatCurrency,
+} from "@repo/ui";
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -43,6 +51,7 @@ type Props = {
     onCancel: () => void;
     onDismissError: () => void;
     onRefreshSlots: () => void;
+    selectedPrice: number | null;
 };
 
 const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
@@ -61,8 +70,13 @@ export default function NewBookingView({
     onCancel,
     onDismissError,
     onRefreshSlots,
+    selectedPrice,
 }: Props): JSX.Element {
     const courtSelected = Boolean(form.courtId);
+    const todayStr = useMemo(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }, []);
 
     return (
         <div className="w-full space-y-5">
@@ -181,6 +195,7 @@ export default function NewBookingView({
                                                 onFormChange({ bookingDate: v, startTime: "" })
                                             }
                                             disabled={!courtSelected}
+                                            minDate={todayStr}
                                             className={
                                                 startError && !form.bookingDate
                                                     ? "!border-destructive"
@@ -258,6 +273,18 @@ export default function NewBookingView({
                                             </p>
                                         ) : null}
                                     </div>
+
+                                    {/* Price */}
+                                    {form.startTime ? (
+                                        <div className="w-36 shrink-0">
+                                            <label className={labelCls}>Price</label>
+                                            <div
+                                                className={`${fieldCls} cursor-default select-none opacity-80`}
+                                            >
+                                                {formatCurrency(selectedPrice)}
+                                            </div>
+                                        </div>
+                                    ) : null}
 
                                     {/* Open game */}
                                     <div className="pb-2">

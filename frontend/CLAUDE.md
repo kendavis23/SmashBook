@@ -24,7 +24,7 @@ pnpm --filter web-staff build
 pnpm test
 pnpm --filter web-staff test
 pnpm --filter @repo/api-client test
-pnpm --filter web-staff test --run   # sequential, no watch
+pnpm --filter web-staff test -- --run # sequential, no watch
 
 # Type checking & linting
 pnpm type-check
