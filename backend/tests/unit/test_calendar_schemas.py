@@ -53,9 +53,6 @@ def _block_item(**kwargs) -> CalendarBlockItem:
         end_datetime=_LATER,
         reservation_type="maintenance",
         title="Net repair",
-        anchor_skill_level=None,
-        skill_range_above=None,
-        skill_range_below=None,
     )
     defaults.update(kwargs)
     return CalendarBlockItem(**defaults)
@@ -107,11 +104,6 @@ class TestCalendarBlockItem:
     def test_club_wide_block_has_null_court_id(self):
         item = _block_item(court_id=None)
         assert item.court_id is None
-
-    def test_skill_fields_optional(self):
-        item = _block_item(anchor_skill_level=Decimal("3.5"), skill_range_above=Decimal("1.0"))
-        assert item.anchor_skill_level == Decimal("3.5")
-        assert item.skill_range_below is None
 
     def test_serialises_kind_in_json(self):
         item = _block_item()

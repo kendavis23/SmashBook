@@ -189,9 +189,6 @@ class CalendarBlockItem(BaseModel):
     end_datetime: datetime
     reservation_type: str
     title: str
-    anchor_skill_level: Optional[Decimal] = None
-    skill_range_above: Optional[Decimal] = None
-    skill_range_below: Optional[Decimal] = None
 
     model_config = {"from_attributes": True}
 

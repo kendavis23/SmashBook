@@ -126,9 +126,6 @@ def _build_calendar_block_item(reservation: CalendarReservation) -> CalendarBloc
         end_datetime=reservation.end_datetime,
         reservation_type=reservation.reservation_type.value,
         title=reservation.title,
-        anchor_skill_level=reservation.anchor_skill_level,
-        skill_range_above=reservation.skill_range_above,
-        skill_range_below=reservation.skill_range_below,
     )
 
 
