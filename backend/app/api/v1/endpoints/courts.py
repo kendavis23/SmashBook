@@ -157,15 +157,20 @@ async def get_court_availability(
     )
     bookings = bookings_result.scalars().all()
 
-    maintenance_result = await db.execute(
+    reservation_result = await db.execute(
         select(CalendarReservation).where(
             CalendarReservation.court_id == court.id,
-            CalendarReservation.reservation_type == CalendarReservationType.maintenance,
+            CalendarReservation.reservation_type.in_([
+                CalendarReservationType.maintenance,
+                CalendarReservationType.training_block,
+                CalendarReservationType.private_hire,
+                CalendarReservationType.tournament_hold,
+            ]),
             CalendarReservation.start_datetime < day_end,
             CalendarReservation.end_datetime > day_start,
         )
     )
-    maintenance_blocks = maintenance_result.scalars().all()
+    reservation_blocks = reservation_result.scalars().all()
 
     pricing_result = await db.execute(
         select(PricingRule).where(
@@ -190,7 +195,7 @@ async def get_court_availability(
             is_available = not any(
                 b.start_datetime < slot_end and b.end_datetime > slot_start for b in bookings
             ) and not any(
-                bl.start_datetime < slot_end and bl.end_datetime > slot_start for bl in maintenance_blocks
+                bl.start_datetime < slot_end and bl.end_datetime > slot_start for bl in reservation_blocks
             )
 
         slot_time = slot_start.time()

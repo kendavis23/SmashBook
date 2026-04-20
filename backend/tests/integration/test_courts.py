@@ -557,6 +557,50 @@ class TestCourtAvailability:
             await _cleanup_maintenance_blocks([block.id], test_session_factory)
             await _cleanup_operating_hours([oh.id], test_session_factory)
 
+    async def test_tournament_hold_marks_overlapping_slots_unavailable(
+        self, client, staff_headers, staff, club, tenant, test_session_factory
+    ):
+        """A multi-slot reservation (e.g. tournament_hold) must block every overlapping slot."""
+        from app.db.models.court import CalendarReservation, CalendarReservationType
+
+        court_id = await _make_court(client, staff_headers, club)
+        await _set_club_booking_window(club.id, test_session_factory)
+        oh = await _seed_operating_hours(club.id, test_session_factory, day_of_week=0,
+                                          open_time="07:00", close_time="12:00")
+        # Reservation covers 07:00–10:00, spanning three 90-min slots: 07:00, 08:30, and 10:00
+        bl_start = datetime(2030, 1, 7, 7, 0, tzinfo=timezone.utc)
+        bl_end = datetime(2030, 1, 7, 10, 0, tzinfo=timezone.utc)
+        async with test_session_factory() as session:
+            block = CalendarReservation(
+                club_id=club.id,
+                court_id=court_id,
+                reservation_type=CalendarReservationType.tournament_hold,
+                title="Tournament",
+                start_datetime=bl_start,
+                end_datetime=bl_end,
+                is_recurring=False,
+                created_by=staff.id,
+            )
+            session.add(block)
+            await session.commit()
+            await session.refresh(block)
+        try:
+            resp = await client.get(
+                f"/api/v1/courts/{court_id}/availability",
+                params={"date": "2030-01-07"},
+                headers={"X-Tenant-ID": str(tenant.id)},
+            )
+            assert resp.status_code == 200
+            slots = resp.json()["slots"]
+            by_time = {s["start_time"]: s for s in slots}
+            assert by_time["07:00"]["is_available"] is False
+            assert by_time["08:30"]["is_available"] is False
+            # 10:00 slot starts exactly at reservation end — should be available
+            assert by_time["10:00"]["is_available"] is True
+        finally:
+            await _cleanup_maintenance_blocks([block.id], test_session_factory)
+            await _cleanup_operating_hours([oh.id], test_session_factory)
+
     async def test_includes_pricing_from_rule(
         self, client, staff_headers, club, tenant, test_session_factory
     ):
