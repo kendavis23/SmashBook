@@ -18,6 +18,7 @@ import pytest_asyncio
 from sqlalchemy import delete as sql_delete
 
 from app.core.security import create_access_token
+from app.db.models.booking import Booking, BookingStatus, BookingType
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 
 
@@ -61,6 +62,33 @@ async def court(club, test_session_factory):
             sql_delete(CalendarReservation).where(CalendarReservation.court_id == c.id)
         )
         obj = await session.get(Court, c.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+@pytest_asyncio.fixture
+async def existing_booking(club, court, test_session_factory, staff):
+    start = _dt(72)
+    end = start + timedelta(hours=1, minutes=30)
+    async with test_session_factory() as session:
+        b = Booking(
+            club_id=club.id,
+            court_id=court.id,
+            booking_type=BookingType.regular,
+            status=BookingStatus.confirmed,
+            start_datetime=start,
+            end_datetime=end,
+            created_by_user_id=staff.id,
+        )
+        session.add(b)
+        await session.commit()
+        await session.refresh(b)
+
+    yield b
+
+    async with test_session_factory() as session:
+        obj = await session.get(Booking, b.id)
         if obj:
             await session.delete(obj)
         await session.commit()
@@ -150,6 +178,20 @@ class TestCreateCalendarReservation:
             if obj:
                 await session.delete(obj)
             await session.commit()
+
+    async def test_overlap_with_existing_booking_returns_409(
+        self, client, staff_headers, club, court, existing_booking
+    ):
+        """Creating a reservation that overlaps a confirmed booking returns 409."""
+        overlap_start = existing_booking.start_datetime + timedelta(minutes=30)
+        overlap_end = overlap_start + timedelta(hours=1)
+        resp = await client.post(
+            "/api/v1/calendar-reservations",
+            json=_reservation_payload(club.id, court.id, overlap_start, overlap_end),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "existing booking" in resp.json()["detail"]
 
     async def test_player_cannot_create_reservation(
         self, client, player_headers, club, court
@@ -249,6 +291,24 @@ class TestUpdateCalendarReservation:
             if obj:
                 await session.delete(obj)
             await session.commit()
+
+    async def test_shift_to_overlap_booking_returns_409(
+        self, client, staff_headers, club, court, existing_reservation, existing_booking, test_session_factory
+    ):
+        """Shifting a reservation so it overlaps a confirmed booking returns 409."""
+        # existing_booking is at _dt(72) for 1h30; shift existing_reservation into it
+        overlap_start = existing_booking.start_datetime + timedelta(minutes=30)
+        overlap_end = overlap_start + timedelta(hours=1)
+        resp = await client.patch(
+            f"/api/v1/calendar-reservations/{existing_reservation.id}",
+            json={
+                "start_datetime": overlap_start.isoformat(),
+                "end_datetime": overlap_end.isoformat(),
+            },
+            headers=staff_headers,
+        )
+        assert resp.status_code == 409, resp.text
+        assert "existing booking" in resp.json()["detail"]
 
     async def test_updating_other_fields_does_not_conflict_with_self(
         self, client, staff_headers, existing_reservation

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies.auth import require_staff
 from app.api.v1.dependencies.tenant import get_tenant
+from app.db.models.booking import Booking, BookingStatus
 from app.db.models.club import Club
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.tenant import Tenant
@@ -54,6 +55,26 @@ async def _check_no_reservation_conflict(
         )
 
 
+async def _check_no_booking_conflict(
+    db: AsyncSession,
+    court_id: uuid.UUID,
+    start: datetime,
+    end: datetime,
+) -> None:
+    stmt = select(Booking.id).where(
+        Booking.court_id == court_id,
+        Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+        Booking.start_datetime < end,
+        Booking.end_datetime > start,
+    )
+    result = await db.execute(stmt)
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Court has an existing booking overlapping this time slot",
+        )
+
+
 async def _get_reservation(
     db: AsyncSession, reservation_id: uuid.UUID, tenant: Tenant
 ) -> CalendarReservation:
@@ -85,6 +106,7 @@ async def create_reservation(
         if not court_result.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Court not found in this club")
         await _check_no_reservation_conflict(db, body.court_id, body.start_datetime, body.end_datetime)
+        await _check_no_booking_conflict(db, body.court_id, body.start_datetime, body.end_datetime)
 
     reservation = CalendarReservation(
         club_id=body.club_id,
@@ -175,6 +197,7 @@ async def update_reservation(
     new_court_id = updates.get("court_id", reservation.court_id)
     if new_court_id is not None:
         await _check_no_reservation_conflict(db, new_court_id, new_start, new_end, exclude_id=reservation_id)
+        await _check_no_booking_conflict(db, new_court_id, new_start, new_end)
 
     new_recurring = updates.get("is_recurring", reservation.is_recurring)
     new_rule = updates.get("recurrence_rule", reservation.recurrence_rule)
