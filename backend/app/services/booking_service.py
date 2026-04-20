@@ -176,6 +176,7 @@ class BookingService:
                     CalendarReservationType.maintenance,
                     CalendarReservationType.training_block,
                     CalendarReservationType.private_hire,
+                    CalendarReservationType.tournament_hold,
                 ]),
                 CalendarReservation.start_datetime < end,
                 CalendarReservation.end_datetime > start,
@@ -188,6 +189,7 @@ class BookingService:
                 CalendarReservationType.maintenance: "Court is under maintenance during this time slot",
                 CalendarReservationType.training_block: "Court is reserved for a training block during this time slot",
                 CalendarReservationType.private_hire: "Court is reserved for a private hire during this time slot",
+                CalendarReservationType.tournament_hold: "Court is reserved for a tournament during this time slot",
             }
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,

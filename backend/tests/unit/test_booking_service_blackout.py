@@ -3,7 +3,7 @@ Unit tests for BookingService._check_no_blackout.
 
 Coverage
 --------
-- Raises 409 with the correct message for maintenance, training_block, and private_hire.
+- Raises 409 with the correct message for maintenance, training_block, private_hire, and tournament_hold.
 - Does NOT raise for skill_filter (skill_filter only filters who can book, not whether
   the slot is blocked).
 - Passes cleanly when no overlapping reservation exists.
@@ -78,6 +78,18 @@ class TestCheckNoBlackout:
 
         assert exc_info.value.status_code == 409
         assert "private hire" in exc_info.value.detail
+
+    async def test_raises_409_for_tournament_hold(self):
+        db = _make_db_with_row(CalendarReservationType.tournament_hold)
+        svc = BookingService(db)
+        start = _now() + timedelta(hours=1)
+        end = start + timedelta(minutes=90)
+
+        with pytest.raises(HTTPException) as exc_info:
+            await svc._check_no_blackout(COURT_ID, start, end)
+
+        assert exc_info.value.status_code == 409
+        assert "tournament" in exc_info.value.detail
 
     async def test_no_exception_when_court_is_free(self):
         db = _make_db_with_row(None)
