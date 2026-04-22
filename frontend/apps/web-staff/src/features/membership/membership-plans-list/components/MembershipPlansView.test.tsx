@@ -160,8 +160,8 @@ describe("MembershipPlansView — plans list", () => {
 
     it("renders price prominently", () => {
         render(<MembershipPlansView {...defaultProps} plans={mockPlans} />);
-        expect(screen.getByText("€49.99")).toBeInTheDocument();
-        expect(screen.getByText("€399.00")).toBeInTheDocument();
+        expect(screen.getByText("£49.99")).toBeInTheDocument();
+        expect(screen.getByText("£399.00")).toBeInTheDocument();
     });
 
     it("renders trial badge when plan has trial days", () => {

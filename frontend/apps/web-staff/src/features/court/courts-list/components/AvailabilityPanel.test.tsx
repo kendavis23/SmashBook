@@ -35,7 +35,7 @@ const mockAvailability: CourtAvailability = {
             end_time: "09:17",
             is_available: true,
             price: 10,
-            price_label: "€10",
+            price_label: "£10",
         },
         {
             start_time: "09:17",
@@ -49,7 +49,7 @@ const mockAvailability: CourtAvailability = {
             end_time: "11:51",
             is_available: true,
             price: 12,
-            price_label: "€12",
+            price_label: "£12",
         },
     ],
 };
@@ -158,8 +158,8 @@ describe("AvailabilityPanel — table rendering", () => {
 
     it("renders price_label when present", () => {
         render(<AvailabilityPanel {...defaultProps} availability={mockAvailability} />);
-        expect(screen.getByText("€10")).toBeInTheDocument();
-        expect(screen.getByText("€12")).toBeInTheDocument();
+        expect(screen.getByText("£10")).toBeInTheDocument();
+        expect(screen.getByText("£12")).toBeInTheDocument();
     });
 
     it("renders — when price_label is null", () => {

@@ -181,14 +181,14 @@ describe("NewBookingView", () => {
         expect(screen.getByRole("button", { name: /creating/i })).toBeDisabled();
     });
 
-    it("shows price field when start time is selected", () => {
+    it("shows price field with amount when start time is selected", () => {
         render(<NewBookingView {...defaultProps} selectedPrice={18} />);
 
         expect(screen.getByText("Price")).toBeInTheDocument();
         expect(screen.getByText("£18.00")).toBeInTheDocument();
     });
 
-    it("hides price field when no start time is selected", () => {
+    it("shows price field with dash when no start time is selected", () => {
         render(
             <NewBookingView
                 {...defaultProps}
@@ -197,7 +197,8 @@ describe("NewBookingView", () => {
             />
         );
 
-        expect(screen.queryByText("Price")).not.toBeInTheDocument();
+        expect(screen.getByText("Price")).toBeInTheDocument();
+        expect(screen.getByText("—")).toBeInTheDocument();
     });
 
     it("shows dash when selected price is null", () => {
@@ -215,5 +216,89 @@ describe("NewBookingView", () => {
         const datePicker = screen.getByLabelText(/pick a date/i);
 
         expect(datePicker).toHaveAttribute("min", todayStr);
+    });
+});
+
+describe("NewBookingView — modal mode", () => {
+    it("renders compact heading without court name subtitle", () => {
+        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+
+        expect(screen.getByRole("heading", { name: "New Booking" })).toBeInTheDocument();
+        // court shown as read-only field, not as a subtitle paragraph
+        expect(screen.getAllByText("Court 1").length).toBeGreaterThan(0);
+    });
+
+    it("does not render breadcrumb in modal mode", () => {
+        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+
+        expect(screen.queryByText("Bookings")).not.toBeInTheDocument();
+    });
+
+    it("renders X close button and calls onClose when clicked", () => {
+        const onClose = vi.fn();
+        render(
+            <NewBookingView {...defaultProps} mode="modal" courtName="Court 1" onClose={onClose} />
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Close modal" }));
+        expect(onClose).toHaveBeenCalled();
+    });
+
+    it("renders collapsible Skill Level and Event & Contact sections collapsed by default", () => {
+        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+
+        expect(screen.getByRole("button", { name: /Skill Level/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
+        // Anchor input not visible until expanded
+        expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
+    });
+
+    it("expands Skill Level section when toggled", () => {
+        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+
+        fireEvent.click(screen.getByRole("button", { name: /Skill Level/i }));
+        expect(screen.getByLabelText("Anchor")).toBeInTheDocument();
+    });
+
+    it("expands Event & Contact section when toggled", () => {
+        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+
+        fireEvent.click(screen.getByRole("button", { name: /Event.*Contact/i }));
+        expect(screen.getByLabelText("Event name")).toBeInTheDocument();
+    });
+
+    it("submit and cancel buttons work in modal mode", () => {
+        const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+        const onCancel = vi.fn();
+        render(
+            <NewBookingView
+                {...defaultProps}
+                mode="modal"
+                courtName="Court 1"
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+            />
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(onCancel).toHaveBeenCalled();
+        expect(onSubmit).toHaveBeenCalled();
+    });
+
+    it("shows api error in modal mode", () => {
+        const onDismissError = vi.fn();
+        render(
+            <NewBookingView
+                {...defaultProps}
+                mode="modal"
+                courtName="Court 1"
+                apiError="Slot unavailable"
+                onDismissError={onDismissError}
+            />
+        );
+
+        expect(screen.getByRole("alert")).toHaveTextContent("Slot unavailable");
     });
 });

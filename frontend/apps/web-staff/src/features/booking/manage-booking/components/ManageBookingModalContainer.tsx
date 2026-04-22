@@ -1,7 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
-import { useParams, useNavigate } from "@tanstack/react-router";
 import {
     useGetBooking,
     useUpdateBooking,
@@ -27,13 +26,20 @@ function buildInitialForm(booking: Booking): ManageBookingFormState {
     };
 }
 
-export default function ManageBookingContainer(): JSX.Element {
-    const { bookingId } = useParams({ strict: false }) as { bookingId: string };
-    const navigate = useNavigate();
+type Props = {
+    bookingId: string;
+    onClose: () => void;
+    onSuccess?: () => void;
+};
+
+export default function ManageBookingModalContainer({
+    bookingId,
+    onClose,
+    onSuccess,
+}: Props): JSX.Element {
     const { clubId } = useClubAccess();
 
     const { data: booking, isLoading, error } = useGetBooking(bookingId, clubId ?? "");
-
     const { data: courts = [] } = useListCourts(clubId ?? "");
 
     const updateMutation = useUpdateBooking(clubId ?? "", bookingId);
@@ -48,21 +54,31 @@ export default function ManageBookingContainer(): JSX.Element {
     } = useGetCourtAvailability(form?.courtId ?? "", form?.bookingDate ?? "");
     const slots = availabilityData?.slots ?? [];
     const selectedPrice = slots.find((s) => s.start_time === form?.startTime)?.price ?? null;
+
     const [apiError, setApiError] = useState("");
     const [updateSuccess, setUpdateSuccess] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+    const [dateChanged, setDateChanged] = useState(false);
 
-    // Initialise form once booking loads — never re-run on re-renders
     useEffect(() => {
         if (booking && form === null) {
             setForm(buildInitialForm(booking as Booking));
         }
     }, [booking, form]);
 
+    useEffect(() => {
+        if (!dateChanged || slotsLoading) return;
+        const firstAvailable = slots.find((s) => s.is_available);
+        if (firstAvailable) {
+            setForm((prev) => (prev ? { ...prev, startTime: firstAvailable.start_time } : prev));
+        }
+        setDateChanged(false);
+    }, [dateChanged, slotsLoading, slots]);
+
     const initialForm = useMemo(
         () => (booking ? buildInitialForm(booking as Booking) : null),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [booking?.id] // only recompute when a different booking loads
+        [booking?.id]
     );
 
     const isDirty = useMemo(() => {
@@ -73,6 +89,7 @@ export default function ManageBookingContainer(): JSX.Element {
     }, [form, initialForm]);
 
     const handleFormChange = useCallback((patch: Partial<ManageBookingFormState>): void => {
+        if ("bookingDate" in patch) setDateChanged(true);
         setForm((prev) => (prev ? { ...prev, ...patch } : prev));
     }, []);
 
@@ -80,6 +97,11 @@ export default function ManageBookingContainer(): JSX.Element {
         (e: FormEvent): void => {
             e.preventDefault();
             if (!form) return;
+
+            if (!form.courtId || !form.bookingDate || !form.startTime) {
+                setApiError("Court, Date, and Start Time are required.");
+                return;
+            }
 
             const startDatetimeLocal =
                 form.bookingDate && form.startTime ? `${form.bookingDate}T${form.startTime}` : null;
@@ -100,7 +122,11 @@ export default function ManageBookingContainer(): JSX.Element {
                 onSuccess: () => {
                     setUpdateSuccess(true);
                     setApiError("");
-                    setTimeout(() => setUpdateSuccess(false), 3000);
+                    setTimeout(() => {
+                        setUpdateSuccess(false);
+                        onSuccess?.();
+                        onClose();
+                    }, 1500);
                 },
                 onError: (err) => {
                     setApiError(
@@ -109,29 +135,22 @@ export default function ManageBookingContainer(): JSX.Element {
                 },
             });
         },
-        [form, updateMutation]
+        [form, updateMutation, onClose, onSuccess]
     );
-
-    const handleCancelBooking = useCallback((): void => {
-        setShowCancelConfirm(true);
-    }, []);
 
     const handleConfirmCancel = useCallback((): void => {
         cancelMutation.mutate(bookingId, {
             onSuccess: () => {
                 setShowCancelConfirm(false);
-                void navigate({ to: "/bookings", search: { cancelled: true } });
+                onSuccess?.();
+                onClose();
             },
             onError: (err) => {
                 setShowCancelConfirm(false);
                 setApiError(err instanceof Error ? err.message : "Failed to cancel booking.");
             },
         });
-    }, [bookingId, cancelMutation, navigate]);
-
-    const handleBack = useCallback((): void => {
-        void navigate({ to: "/bookings" });
-    }, [navigate]);
+    }, [bookingId, cancelMutation, onClose, onSuccess]);
 
     if (isLoading) {
         return (
@@ -144,7 +163,7 @@ export default function ManageBookingContainer(): JSX.Element {
 
     if (error || !booking || !form) {
         return (
-            <div className="m-5 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {error instanceof Error ? error.message : "Booking not found."}
             </div>
         );
@@ -165,13 +184,18 @@ export default function ManageBookingContainer(): JSX.Element {
             showCancelConfirm={showCancelConfirm}
             onFormChange={handleFormChange}
             onSubmit={handleSubmit}
-            onCancelBooking={handleCancelBooking}
+            onCancelBooking={() => setShowCancelConfirm(true)}
             onConfirmCancel={handleConfirmCancel}
             onDismissCancelConfirm={() => setShowCancelConfirm(false)}
-            onDismissError={() => setApiError("")}
-            onBack={handleBack}
+            onDismissError={() => {
+                setApiError("");
+                updateMutation.reset();
+            }}
+            onBack={onClose}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
+            mode="modal"
+            onClose={onClose}
         />
     );
 }

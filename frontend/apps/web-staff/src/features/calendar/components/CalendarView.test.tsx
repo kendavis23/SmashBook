@@ -66,6 +66,7 @@ const baseProps = {
     onCourtChange: vi.fn(),
     onManageClick: vi.fn(),
     onManageReservationClick: vi.fn(),
+    onNewSlotClick: vi.fn(),
 };
 
 const mockCalendarData: CalendarViewData = {
