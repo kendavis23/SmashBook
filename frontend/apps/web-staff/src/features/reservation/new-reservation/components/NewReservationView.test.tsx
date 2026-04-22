@@ -124,8 +124,7 @@ describe("NewReservationView", () => {
         render(<NewReservationView {...defaultProps} />);
 
         expect(screen.getByRole("heading", { name: "New Reservation" })).toBeInTheDocument();
-        expect(screen.getByText("Core Details")).toBeInTheDocument();
-        expect(screen.getByText("Allowed Booking Types")).toBeInTheDocument();
+        expect(screen.getByText(/Allowed Booking Types/)).toBeInTheDocument();
     });
 
     it("calls onFormChange for title and booking type toggles", () => {

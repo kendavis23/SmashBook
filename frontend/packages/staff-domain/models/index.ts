@@ -64,6 +64,8 @@ export type {
     CalendarBookingItem,
     CalendarBlockItem,
     CalendarSlot,
+    CalendarTimeSlotStatus,
+    CalendarTimeSlot,
     CalendarCourtColumn,
     CalendarDay,
     CalendarView,

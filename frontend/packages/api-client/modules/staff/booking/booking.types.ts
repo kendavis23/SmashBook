@@ -145,17 +145,25 @@ export interface CalendarBlockItem {
     end_datetime: string;
     reservation_type: string;
     title: string;
-    anchor_skill_level: number | null;
-    skill_range_above: number | null;
-    skill_range_below: number | null;
 }
 
 export type CalendarSlot = CalendarBookingItem | CalendarBlockItem;
+
+export type CalendarTimeSlotStatus = "available" | "booked" | "blocked";
+
+export interface CalendarTimeSlot {
+    start_datetime: string;
+    end_datetime: string;
+    status: CalendarTimeSlotStatus;
+    booking_id: UUID | null;
+    reservation_id: UUID | null;
+}
 
 export interface CalendarCourtColumn {
     court_id: UUID;
     court_name: string;
     slots: CalendarSlot[];
+    time_slots: CalendarTimeSlot[];
 }
 
 export interface CalendarDay {

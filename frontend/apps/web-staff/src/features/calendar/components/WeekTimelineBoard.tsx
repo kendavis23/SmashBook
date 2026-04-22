@@ -1,11 +1,17 @@
 import { memo, useEffect, useMemo, useRef, useState, type JSX } from "react";
-import type { CalendarBlockItem, CalendarBookingItem, CalendarDay } from "../types";
+import type {
+    CalendarBlockItem,
+    CalendarBookingItem,
+    CalendarDay,
+    CalendarTimeSlot,
+} from "../types";
 import {
     CALENDAR_SLOT_ROW_HEIGHT,
     CALENDAR_TIME_RAIL_WIDTH,
     CALENDAR_TIME_SLOTS,
     formatShortDate,
     formatSlotTime,
+    getMinutesFromIso,
     getMinutesFromTime,
     todayIso,
 } from "../types";
@@ -17,6 +23,13 @@ type Props = {
     selectedCourtId: string;
     onManageClick: (bookingId: string) => void;
     onManageReservationClick: (reservationId: string) => void;
+    onNewSlotClick: (
+        courtId: string,
+        courtName: string,
+        date: string,
+        startTime: string,
+        endTime: string
+    ) => void;
 };
 
 const DAY_COLUMN_MIN_WIDTH = 140;
@@ -41,6 +54,7 @@ function WeekTimelineBoard({
     selectedCourtId,
     onManageClick,
     onManageReservationClick,
+    onNewSlotClick,
 }: Props): JSX.Element {
     const scrollRef = useRef<HTMLDivElement>(null);
     const currentTimeMinutes = useCurrentTimeMinutes();
@@ -91,7 +105,16 @@ function WeekTimelineBoard({
                         .filter((s): s is CalendarBlockItem => s.kind === "block")
                         .map((s) => ({ ...s, _courtId: c.court_id }))
                 );
-                return { date: day.date, bookings, blocks };
+                const availableSlots = courts.flatMap((c) =>
+                    (c.time_slots ?? [])
+                        .filter((ts: CalendarTimeSlot) => ts.status === "available")
+                        .map((ts: CalendarTimeSlot) => ({
+                            ...ts,
+                            _courtId: c.court_id,
+                            _courtName: c.court_name,
+                        }))
+                );
+                return { date: day.date, bookings, blocks, availableSlots };
             }),
         [days, selectedCourtId]
     );
@@ -202,7 +225,7 @@ function WeekTimelineBoard({
                         </div>
 
                         {/* Day columns */}
-                        {daySlots.map(({ date, bookings, blocks }) => (
+                        {daySlots.map(({ date, bookings, blocks, availableSlots }) => (
                             <div
                                 key={date}
                                 className="relative border-r border-border/70 last:border-r-0"
@@ -215,6 +238,47 @@ function WeekTimelineBoard({
                                         style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
                                     />
                                 ))}
+
+                                {/* Available slot buttons from time_slots */}
+                                {availableSlots.map((ts) => {
+                                    const startMin = getMinutesFromIso(ts.start_datetime);
+                                    const endMin = getMinutesFromIso(ts.end_datetime);
+                                    const topPct =
+                                        ((startMin - startOfDayMinutes) /
+                                            (endOfDayMinutes - startOfDayMinutes)) *
+                                        100;
+                                    const heightPct =
+                                        ((endMin - startMin) /
+                                            (endOfDayMinutes - startOfDayMinutes)) *
+                                        100;
+                                    const startTime = ts.start_datetime.includes("T")
+                                        ? (ts.start_datetime.split("T")[1] ?? "").slice(0, 5)
+                                        : ts.start_datetime.slice(0, 5);
+                                    const endTime = ts.end_datetime.includes("T")
+                                        ? (ts.end_datetime.split("T")[1] ?? "").slice(0, 5)
+                                        : ts.end_datetime.slice(0, 5);
+                                    return (
+                                        <button
+                                            key={`${ts._courtId}-${ts.start_datetime}`}
+                                            type="button"
+                                            aria-label={`New booking at ${startTime}`}
+                                            className="absolute inset-x-1 z-10 cursor-pointer rounded border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/50 hover:bg-cta/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta"
+                                            style={{
+                                                top: `${topPct}%`,
+                                                height: `${heightPct}%`,
+                                            }}
+                                            onClick={() =>
+                                                onNewSlotClick(
+                                                    ts._courtId,
+                                                    ts._courtName,
+                                                    date,
+                                                    startTime,
+                                                    endTime
+                                                )
+                                            }
+                                        />
+                                    );
+                                })}
 
                                 {bookings.map((booking) => (
                                     <CalendarBookingBlock

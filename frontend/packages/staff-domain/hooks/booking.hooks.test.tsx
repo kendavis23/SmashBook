@@ -138,7 +138,8 @@ const mockCalendarView = {
                 {
                     court_id: "court-1",
                     court_name: "Court 1",
-                    bookings: [],
+                    slots: [],
+                    time_slots: [],
                 },
             ],
         },

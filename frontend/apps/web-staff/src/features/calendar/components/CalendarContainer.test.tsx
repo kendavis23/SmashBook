@@ -5,7 +5,6 @@ import type { CalendarView } from "../types";
 
 const mockRefetch = vi.fn();
 const mockUseGetCalendarView = vi.fn();
-const mockNavigate = vi.fn();
 
 vi.mock("../hooks", () => ({
     useGetCalendarView: (...args: unknown[]) => mockUseGetCalendarView(...args),
@@ -16,8 +15,30 @@ vi.mock("../store", () => ({
     useClubAccess: () => ({ clubId: "club-1", role: "admin" }),
 }));
 
-vi.mock("@tanstack/react-router", () => ({
-    useNavigate: () => mockNavigate,
+vi.mock("@repo/ui", () => ({
+    AlertToast: ({ title }: { title: string }) => <div role="alert">{title}</div>,
+}));
+
+vi.mock("../../booking/manage-booking/components/ManageBookingModal", () => ({
+    ManageBookingModal: ({ bookingId }: { bookingId: string }) => (
+        <div data-testid="manage-booking-modal">{bookingId}</div>
+    ),
+}));
+
+vi.mock("../../reservation/manage-reservation/components/ManageReservationModal", () => ({
+    ManageReservationModal: ({ reservationId }: { reservationId: string }) => (
+        <div data-testid="manage-reservation-modal">{reservationId}</div>
+    ),
+}));
+
+vi.mock("./NewCalendarSlotModal", () => ({
+    NewCalendarSlotModal: ({
+        context,
+    }: {
+        context: { courtId: string; date: string; startTime: string };
+    }) => (
+        <div data-testid="new-calendar-slot-modal">{`${context.courtId}|${context.date}|${context.startTime}`}</div>
+    ),
 }));
 
 vi.mock("./CalendarView", () => ({
@@ -31,6 +52,8 @@ vi.mock("./CalendarView", () => ({
         onViewModeChange,
         onRefresh,
         onManageClick,
+        onManageReservationClick,
+        onNewSlotClick,
     }: {
         isLoading: boolean;
         error: Error | null;
@@ -41,6 +64,13 @@ vi.mock("./CalendarView", () => ({
         onViewModeChange: (mode: string) => void;
         onRefresh: () => void;
         onManageClick: (id: string) => void;
+        onManageReservationClick: (id: string) => void;
+        onNewSlotClick: (
+            courtId: string,
+            courtName: string,
+            date: string,
+            startTime: string
+        ) => void;
     }) => (
         <div>
             {isLoading && <span>loading</span>}
@@ -53,6 +83,12 @@ vi.mock("./CalendarView", () => ({
             <button onClick={() => onViewModeChange("week")}>week-mode</button>
             <button onClick={onRefresh}>refresh</button>
             <button onClick={() => onManageClick("booking-1")}>manage</button>
+            <button onClick={() => onManageReservationClick("reservation-1")}>
+                manage-reservation
+            </button>
+            <button onClick={() => onNewSlotClick("court-1", "Court 1", "2026-04-20", "10:00")}>
+                new-slot
+            </button>
         </div>
     ),
 }));
@@ -140,12 +176,23 @@ describe("CalendarContainer — success state", () => {
         expect(mockUseGetCalendarView).toHaveBeenCalled();
     });
 
-    it("navigates to manage booking when manage is clicked", () => {
+    it("opens ManageBookingModal when manage is clicked", () => {
         render(<CalendarContainer />);
         fireEvent.click(screen.getByText("manage"));
-        expect(mockNavigate).toHaveBeenCalledWith({
-            to: "/bookings/$bookingId",
-            params: { bookingId: "booking-1" },
-        });
+        expect(screen.getByTestId("manage-booking-modal")).toHaveTextContent("booking-1");
+    });
+
+    it("opens ManageReservationModal when manage-reservation is clicked", () => {
+        render(<CalendarContainer />);
+        fireEvent.click(screen.getByText("manage-reservation"));
+        expect(screen.getByTestId("manage-reservation-modal")).toHaveTextContent("reservation-1");
+    });
+
+    it("opens NewCalendarSlotModal when new-slot is clicked", () => {
+        render(<CalendarContainer />);
+        fireEvent.click(screen.getByText("new-slot"));
+        expect(screen.getByTestId("new-calendar-slot-modal")).toHaveTextContent(
+            "court-1|2026-04-20|10:00"
+        );
     });
 });

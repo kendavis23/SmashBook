@@ -6,6 +6,8 @@ export type {
     CalendarBookingItem,
     CalendarBlockItem,
     CalendarSlot,
+    CalendarTimeSlot,
+    CalendarTimeSlotStatus,
     BookingType,
     BookingStatus,
     BookingPlayer,
@@ -22,6 +24,17 @@ export const MIN_BLOCK_HEIGHT = 36;
 // ─── Feature-specific types ────────────────────────────────────────────────
 
 export type CalendarViewMode = "day" | "week";
+
+/** Payload passed when staff clicks an available time slot to open the New Booking/Reservation modal. */
+export interface NewSlotContext {
+    courtId: string;
+    courtName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+}
+
+export type NewCalendarModalTab = "booking" | "reservation";
 
 export const CALENDAR_VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
     { id: "day", label: "Day" },
@@ -242,13 +255,13 @@ export const CALENDAR_TIME_RAIL_WIDTH = 88;
 export const CALENDAR_COURT_LANE_MIN_WIDTH = 180;
 export const CALENDAR_SLOT_ROW_HEIGHT = 56;
 
-export interface CalendarTimeSlot {
+export interface CalendarTimeRailSlot {
     start_time: string;
     end_time: string;
 }
 
 /** 1-hour slots from 06:00 to 01:00 next day (19 slots). end_time uses 25:00 for post-midnight. */
-export const CALENDAR_TIME_SLOTS: CalendarTimeSlot[] = Array.from({ length: 19 }, (_, i) => {
+export const CALENDAR_TIME_SLOTS: CalendarTimeRailSlot[] = Array.from({ length: 19 }, (_, i) => {
     const totalMinutes = 6 * 60 + i * 60;
     const startH = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
     const endTotal = totalMinutes + 60;

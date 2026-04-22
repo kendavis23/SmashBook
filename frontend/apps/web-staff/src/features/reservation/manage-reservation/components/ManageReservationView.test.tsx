@@ -81,6 +81,10 @@ vi.mock("@repo/ui", () => ({
     formatUTCDateTime: (value: string) => value,
 }));
 
+vi.mock("lucide-react", () => ({
+    X: () => <span data-testid="x-icon">X</span>,
+}));
+
 const reservation = {
     id: "reservation-1",
     club_id: "club-1",
@@ -125,7 +129,7 @@ const defaultProps = {
     onBack: vi.fn(),
 };
 
-describe("ManageReservationView", () => {
+describe("ManageReservationView — page mode", () => {
     it("renders heading and delete action for editable reservations", () => {
         render(<ManageReservationView {...defaultProps} />);
 
@@ -200,5 +204,76 @@ describe("ManageReservationView", () => {
         const datePicker = screen.getByLabelText("Pick a date");
 
         expect(datePicker).toHaveAttribute("min", todayStr);
+    });
+
+    it("renders breadcrumb in page mode", () => {
+        render(<ManageReservationView {...defaultProps} />);
+
+        expect(screen.getByText("Reservations")).toBeInTheDocument();
+        expect(screen.getByText("Manage Reservation")).toBeInTheDocument();
+    });
+});
+
+describe("ManageReservationView — modal mode", () => {
+    const modalProps = { ...defaultProps, mode: "modal" as const, onClose: vi.fn() };
+
+    it("renders h2 title with inline status badge instead of h1", () => {
+        render(<ManageReservationView {...modalProps} />);
+
+        expect(
+            screen.getByRole("heading", { level: 2, name: /morning block/i })
+        ).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { level: 1 })).not.toBeInTheDocument();
+    });
+
+    it("does not render breadcrumb in modal mode", () => {
+        render(<ManageReservationView {...modalProps} />);
+
+        expect(screen.queryByText("Reservations")).not.toBeInTheDocument();
+        expect(screen.queryByText("Manage Reservation")).not.toBeInTheDocument();
+    });
+
+    it("renders X close button and calls onClose when clicked", () => {
+        const onClose = vi.fn();
+        render(<ManageReservationView {...modalProps} onClose={onClose} />);
+
+        const closeBtn = screen.getByRole("button", { name: "Close modal" });
+        expect(closeBtn).toBeInTheDocument();
+        fireEvent.click(closeBtn);
+        expect(onClose).toHaveBeenCalled();
+    });
+
+    it("shows Close label instead of Back on the cancel button", () => {
+        render(<ManageReservationView {...modalProps} />);
+
+        expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Back" })).not.toBeInTheDocument();
+    });
+
+    it("renders Save Changes button and calls onSubmit", () => {
+        const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
+        render(<ManageReservationView {...modalProps} onSubmit={onSubmit} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+        expect(onSubmit).toHaveBeenCalled();
+    });
+
+    it("disables Save Changes when not dirty in modal mode", () => {
+        render(<ManageReservationView {...modalProps} isDirty={false} />);
+
+        expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+    });
+
+    it("shows api error in modal mode", () => {
+        render(<ManageReservationView {...modalProps} apiError="Server error" />);
+
+        expect(screen.getByRole("alert")).toHaveTextContent("Server error");
+    });
+
+    it("renders read-only close button when canEdit is false in modal mode", () => {
+        render(<ManageReservationView {...modalProps} canEdit={false} />);
+
+        expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     });
 });

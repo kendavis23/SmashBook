@@ -146,6 +146,7 @@ const defaultProps = {
     onDismissError: vi.fn(),
     onBack: vi.fn(),
     onRefreshSlots: vi.fn(),
+    selectedPrice: null,
 };
 
 describe("ManageBookingView", () => {

@@ -61,6 +61,15 @@ const day = {
                     skill_range_below: null,
                 },
             ],
+            time_slots: [
+                {
+                    start_datetime: "2026-04-20T12:00:00Z",
+                    end_datetime: "2026-04-20T13:30:00Z",
+                    status: "available",
+                    booking_id: null,
+                    reservation_id: null,
+                },
+            ],
         },
     ],
 };
@@ -81,6 +90,7 @@ describe("DayTimelineBoard", () => {
                 day={day as never}
                 onManageClick={vi.fn()}
                 onManageReservationClick={vi.fn()}
+                onNewSlotClick={vi.fn()}
             />
         );
 
@@ -98,6 +108,7 @@ describe("DayTimelineBoard", () => {
                 day={{ date: "2026-04-20", courts: [] } as never}
                 onManageClick={vi.fn()}
                 onManageReservationClick={vi.fn()}
+                onNewSlotClick={vi.fn()}
             />
         );
 
@@ -111,6 +122,7 @@ describe("DayTimelineBoard", () => {
                 day={day as never}
                 onManageClick={onManageClick}
                 onManageReservationClick={vi.fn()}
+                onNewSlotClick={vi.fn()}
             />
         );
 
@@ -125,10 +137,73 @@ describe("DayTimelineBoard", () => {
                 day={day as never}
                 onManageClick={vi.fn()}
                 onManageReservationClick={onManageReservationClick}
+                onNewSlotClick={vi.fn()}
             />
         );
 
         fireEvent.click(screen.getByText("Morning Training block"));
         expect(onManageReservationClick).toHaveBeenCalledWith("block-1");
+    });
+
+    it("calls onNewSlotClick when an available time slot button is clicked", () => {
+        const onNewSlotClick = vi.fn();
+        render(
+            <DayTimelineBoard
+                day={day as never}
+                onManageClick={vi.fn()}
+                onManageReservationClick={vi.fn()}
+                onNewSlotClick={onNewSlotClick}
+            />
+        );
+
+        const slotBtn = screen.getByRole("button", { name: /new booking at 12:00/i });
+        fireEvent.click(slotBtn);
+        expect(onNewSlotClick).toHaveBeenCalledWith(
+            "court-1",
+            "Court 1",
+            "2026-04-20",
+            "12:00",
+            "13:30"
+        );
+    });
+
+    it("does not render a slot button for non-available time slots", () => {
+        const dayWithNonAvailable = {
+            ...day,
+            courts: [
+                {
+                    ...day.courts[0],
+                    time_slots: [
+                        {
+                            start_datetime: "2026-04-20T09:00:00Z",
+                            end_datetime: "2026-04-20T10:00:00Z",
+                            status: "booked",
+                            booking_id: "booking-1",
+                            reservation_id: null,
+                        },
+                        {
+                            start_datetime: "2026-04-20T12:00:00Z",
+                            end_datetime: "2026-04-20T13:30:00Z",
+                            status: "available",
+                            booking_id: null,
+                            reservation_id: null,
+                        },
+                    ],
+                },
+            ],
+        };
+        render(
+            <DayTimelineBoard
+                day={dayWithNonAvailable as never}
+                onManageClick={vi.fn()}
+                onManageReservationClick={vi.fn()}
+                onNewSlotClick={vi.fn()}
+            />
+        );
+
+        expect(screen.getByRole("button", { name: /new booking at 12:00/i })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: /new booking at 09:00/i })
+        ).not.toBeInTheDocument();
     });
 });

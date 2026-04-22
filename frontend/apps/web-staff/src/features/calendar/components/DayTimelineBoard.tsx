@@ -4,6 +4,7 @@ import type {
     CalendarBookingItem,
     CalendarCourtColumn,
     CalendarDay,
+    CalendarTimeSlot,
 } from "../types";
 import {
     CALENDAR_COURT_LANE_MIN_WIDTH,
@@ -12,6 +13,7 @@ import {
     CALENDAR_TIME_SLOTS,
     formatShortDate,
     formatSlotTime,
+    getMinutesFromIso,
     getMinutesFromTime,
     todayIso,
 } from "../types";
@@ -49,6 +51,13 @@ type Props = {
     day: CalendarDay;
     onManageClick: (bookingId: string) => void;
     onManageReservationClick: (reservationId: string) => void;
+    onNewSlotClick: (
+        courtId: string,
+        courtName: string,
+        date: string,
+        startTime: string,
+        endTime: string
+    ) => void;
 };
 
 function useCurrentTimeMinutes(): number {
@@ -66,7 +75,12 @@ function useCurrentTimeMinutes(): number {
     return minutes;
 }
 
-function DayTimelineBoard({ day, onManageClick, onManageReservationClick }: Props): JSX.Element {
+function DayTimelineBoard({
+    day,
+    onManageClick,
+    onManageReservationClick,
+    onNewSlotClick,
+}: Props): JSX.Element {
     const isToday = day.date === todayIso();
     const currentTimeMinutes = useCurrentTimeMinutes();
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -223,6 +237,49 @@ function DayTimelineBoard({ day, onManageClick, onManageReservationClick }: Prop
                                         style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
                                     />
                                 ))}
+
+                                {/* Available slot buttons from time_slots */}
+                                {(court.time_slots ?? [])
+                                    .filter((ts: CalendarTimeSlot) => ts.status === "available")
+                                    .map((ts: CalendarTimeSlot) => {
+                                        const startMin = getMinutesFromIso(ts.start_datetime);
+                                        const endMin = getMinutesFromIso(ts.end_datetime);
+                                        const topPct =
+                                            ((startMin - startOfDayMinutes) /
+                                                (endOfDayMinutes - startOfDayMinutes)) *
+                                            100;
+                                        const heightPct =
+                                            ((endMin - startMin) /
+                                                (endOfDayMinutes - startOfDayMinutes)) *
+                                            100;
+                                        const startTime = ts.start_datetime.includes("T")
+                                            ? (ts.start_datetime.split("T")[1] ?? "").slice(0, 5)
+                                            : ts.start_datetime.slice(0, 5);
+                                        const endTime = ts.end_datetime.includes("T")
+                                            ? (ts.end_datetime.split("T")[1] ?? "").slice(0, 5)
+                                            : ts.end_datetime.slice(0, 5);
+                                        return (
+                                            <button
+                                                key={ts.start_datetime}
+                                                type="button"
+                                                aria-label={`New booking at ${startTime}`}
+                                                className="absolute inset-x-1 z-10 cursor-pointer rounded border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/50 hover:bg-cta/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta"
+                                                style={{
+                                                    top: `${topPct}%`,
+                                                    height: `${heightPct}%`,
+                                                }}
+                                                onClick={() =>
+                                                    onNewSlotClick(
+                                                        court.court_id,
+                                                        court.court_name,
+                                                        day.date,
+                                                        startTime,
+                                                        endTime
+                                                    )
+                                                }
+                                            />
+                                        );
+                                    })}
 
                                 {court.slots
                                     .filter((s): s is CalendarBookingItem => s.kind === "booking")

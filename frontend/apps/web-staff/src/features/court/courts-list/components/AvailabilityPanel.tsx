@@ -1,8 +1,9 @@
 import type { Court, CourtAvailability, TimeSlot } from "../../types";
 import { X, Clock, CalendarDays, RefreshCw } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import type { JSX } from "react";
-import { DatePicker, formatCurrency } from "@repo/ui";
+import { AlertToast, DatePicker, formatCurrency } from "@repo/ui";
+import { NewBookingModal } from "../../../booking/new-booking/components/NewBookingModal";
 
 type Props = {
     court: Court;
@@ -28,6 +29,8 @@ function formatTime(hhmm: string): string {
     return `${displayH}:${displayM} ${period}`;
 }
 
+type BookingTarget = { startTime: string } | null;
+
 export default function AvailabilityPanel({
     court,
     date,
@@ -38,7 +41,8 @@ export default function AvailabilityPanel({
     onRefresh,
     onClose,
 }: Props): JSX.Element {
-    const navigate = useNavigate();
+    const [bookingTarget, setBookingTarget] = useState<BookingTarget>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const slots = availability?.slots ?? [];
     const availableCount = slots.filter((s) => s.is_available).length;
     const bookedCount = slots.length - availableCount;
@@ -46,6 +50,13 @@ export default function AvailabilityPanel({
 
     return (
         <div className="flex h-full flex-col">
+            {successMsg ? (
+                <AlertToast
+                    title={successMsg}
+                    variant="success"
+                    onClose={() => setSuccessMsg(null)}
+                />
+            ) : null}
             <div className="border-b border-border px-4 py-3 sm:px-5">
                 <div className="flex items-center justify-between gap-2">
                     <div className="flex min-w-0 items-center gap-2">
@@ -177,13 +188,8 @@ export default function AvailabilityPanel({
                                                 {slot.is_available ? (
                                                     <button
                                                         onClick={() =>
-                                                            void navigate({
-                                                                to: "/bookings/new",
-                                                                search: {
-                                                                    courtId: court.id,
-                                                                    date,
-                                                                    startTime: slot.start_time,
-                                                                },
+                                                            setBookingTarget({
+                                                                startTime: slot.start_time,
                                                             })
                                                         }
                                                         className="inline-flex rounded-md bg-cta px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cta-foreground transition hover:opacity-90"
@@ -204,6 +210,21 @@ export default function AvailabilityPanel({
                     </div>
                 )}
             </div>
+
+            {bookingTarget ? (
+                <NewBookingModal
+                    courtId={court.id}
+                    courtName={court.name}
+                    date={date}
+                    startTime={bookingTarget.startTime}
+                    onClose={() => setBookingTarget(null)}
+                    onSuccess={(name) => {
+                        setBookingTarget(null);
+                        setSuccessMsg(`Booking created for ${name}.`);
+                        onRefresh();
+                    }}
+                />
+            ) : null}
         </div>
     );
 }

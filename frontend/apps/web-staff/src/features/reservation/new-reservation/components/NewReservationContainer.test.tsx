@@ -162,10 +162,10 @@ describe("NewReservationContainer", () => {
         fireEvent.change(screen.getByLabelText("Pick a date"), {
             target: { value: "2026-04-20" },
         });
-        fireEvent.change(screen.getByLabelText(/start time/i), {
+        fireEvent.change(screen.getByLabelText(/^start/i), {
             target: { value: "09:00" },
         });
-        fireEvent.change(screen.getByLabelText(/end time/i), {
+        fireEvent.change(screen.getByLabelText(/^end/i), {
             target: { value: "10:00" },
         });
         fireEvent.click(screen.getByText("Regular"));
