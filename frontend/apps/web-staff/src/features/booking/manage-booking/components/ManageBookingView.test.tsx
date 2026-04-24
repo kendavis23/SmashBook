@@ -4,6 +4,24 @@ import { describe, expect, it, vi } from "vitest";
 import ManageBookingView from "./ManageBookingView";
 import type { ManageBookingFormState } from "./ManageBookingView";
 
+vi.mock("./ManageBookingModalView", () => ({
+    ManageBookingModalView: ({
+        booking,
+        onClose,
+        onBack,
+    }: {
+        booking: { court_name: string };
+        onClose: () => void;
+        onBack: () => void;
+    }) => (
+        <div data-testid="modal-view">
+            <span>{booking.court_name}</span>
+            <button onClick={onClose}>Close modal</button>
+            <button onClick={onBack}>Close</button>
+        </div>
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
@@ -246,5 +264,36 @@ describe("ManageBookingView", () => {
         const datePicker = screen.getByLabelText("Pick a date");
 
         expect(datePicker).toHaveAttribute("min", todayStr);
+    });
+});
+
+describe("ManageBookingView — modal mode", () => {
+    const modalProps = { ...defaultProps, mode: "modal" as const, onClose: vi.fn() };
+
+    it("renders modal view instead of page layout", () => {
+        render(<ManageBookingView {...modalProps} />);
+
+        expect(screen.getByTestId("modal-view")).toBeInTheDocument();
+        expect(screen.queryByText("Bookings")).not.toBeInTheDocument();
+    });
+
+    it("does not render breadcrumb in modal mode", () => {
+        render(<ManageBookingView {...modalProps} />);
+
+        expect(screen.queryByText("Manage Booking")).not.toBeInTheDocument();
+    });
+
+    it("passes booking to modal view", () => {
+        render(<ManageBookingView {...modalProps} />);
+
+        expect(screen.getByText("Court 1")).toBeInTheDocument();
+    });
+
+    it("calls onClose when close button in modal is clicked", () => {
+        const onClose = vi.fn();
+        render(<ManageBookingView {...modalProps} onClose={onClose} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Close modal" }));
+        expect(onClose).toHaveBeenCalled();
     });
 });

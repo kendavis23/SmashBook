@@ -5,6 +5,24 @@ import NewReservationView from "./NewReservationView";
 import type { NewReservationFormState } from "./NewReservationView";
 import type { Court } from "../../types";
 
+vi.mock("./NewReservationModalView", () => ({
+    NewReservationModalView: ({
+        lockedCourtName,
+        onClose,
+        onCancel,
+    }: {
+        lockedCourtName?: string;
+        onClose: () => void;
+        onCancel: () => void;
+    }) => (
+        <div data-testid="modal-view">
+            {lockedCourtName ? <span>{lockedCourtName}</span> : null}
+            <button onClick={onClose}>Close modal</button>
+            <button onClick={onCancel}>Cancel</button>
+        </div>
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
@@ -78,6 +96,15 @@ vi.mock("@repo/ui", () => ({
                 </option>
             ))}
         </select>
+    ),
+    RecurrencePicker: ({ onChange }: { value?: string; onChange: (v: string) => void }) => (
+        <div data-testid="recurrence-picker">
+            <input
+                aria-label="Recurrence Rule"
+                type="text"
+                onChange={(e) => onChange(e.target.value)}
+            />
+        </div>
     ),
 }));
 
@@ -188,5 +215,51 @@ describe("NewReservationView", () => {
         const [datePicker] = screen.getAllByLabelText("Pick a date");
 
         expect(datePicker).toHaveAttribute("min", todayStr);
+    });
+});
+
+describe("NewReservationView — modal mode", () => {
+    const modalProps = {
+        ...defaultProps,
+        mode: "modal" as const,
+        lockedCourtName: "Court 1",
+        lockedDate: "2026-04-20",
+        lockedStartTime: "09:00",
+        onClose: vi.fn(),
+    };
+
+    it("renders modal view instead of page layout", () => {
+        render(<NewReservationView {...modalProps} />);
+
+        expect(screen.getByTestId("modal-view")).toBeInTheDocument();
+        expect(screen.queryByText("Reservations")).not.toBeInTheDocument();
+    });
+
+    it("does not render breadcrumb in modal mode", () => {
+        render(<NewReservationView {...modalProps} />);
+
+        expect(screen.queryByText("New Reservation")).not.toBeInTheDocument();
+    });
+
+    it("passes lockedCourtName to modal view", () => {
+        render(<NewReservationView {...modalProps} />);
+
+        expect(screen.getByText("Court 1")).toBeInTheDocument();
+    });
+
+    it("calls onClose when close button in modal is clicked", () => {
+        const onClose = vi.fn();
+        render(<NewReservationView {...modalProps} onClose={onClose} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Close modal" }));
+        expect(onClose).toHaveBeenCalled();
+    });
+
+    it("calls onCancel when cancel button in modal is clicked", () => {
+        const onCancel = vi.fn();
+        render(<NewReservationView {...modalProps} onCancel={onCancel} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+        expect(onCancel).toHaveBeenCalled();
     });
 });

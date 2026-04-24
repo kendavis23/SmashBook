@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
-import { useMemo, useState } from "react";
-import { RefreshCw, X, ChevronDown, ChevronRight } from "lucide-react";
+import { useMemo } from "react";
+import { RefreshCw } from "lucide-react";
 import {
     Breadcrumb,
     AlertToast,
@@ -12,6 +12,7 @@ import {
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
+import { NewBookingModalView } from "./NewBookingModalView";
 
 export type NewBookingMode = "page" | "modal";
 
@@ -85,9 +86,6 @@ export default function NewBookingView({
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     }, []);
-    const [skillOpen, setSkillOpen] = useState(false);
-    const [eventOpen, setEventOpen] = useState(false);
-
     const coreFields = (
         <>
             {apiError ? (
@@ -103,29 +101,19 @@ export default function NewBookingView({
                     <label htmlFor="bk-court" className={labelCls}>
                         Court <span className="text-destructive">*</span>
                     </label>
-                    {mode === "modal" && courtName ? (
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {courtName}
-                        </div>
-                    ) : (
-                        <>
-                            <SelectInput
-                                value={form.courtId}
-                                onValueChange={(courtId) =>
-                                    onFormChange({ courtId, bookingDate: "", startTime: "" })
-                                }
-                                options={courts.map((c) => ({ value: c.id, label: c.name }))}
-                                placeholder={
-                                    courts.length === 0 ? "No courts available" : "Select court…"
-                                }
-                                disabled={courts.length === 0}
-                                className={courtError ? "!border-destructive" : ""}
-                            />
-                            {courtError ? (
-                                <p className="mt-1 text-xs text-destructive">{courtError}</p>
-                            ) : null}
-                        </>
-                    )}
+                    <SelectInput
+                        value={form.courtId}
+                        onValueChange={(courtId) =>
+                            onFormChange({ courtId, bookingDate: "", startTime: "" })
+                        }
+                        options={courts.map((c) => ({ value: c.id, label: c.name }))}
+                        placeholder={courts.length === 0 ? "No courts available" : "Select court…"}
+                        disabled={courts.length === 0}
+                        className={courtError ? "!border-destructive" : ""}
+                    />
+                    {courtError ? (
+                        <p className="mt-1 text-xs text-destructive">{courtError}</p>
+                    ) : null}
                 </div>
 
                 {/* Booking type */}
@@ -258,7 +246,7 @@ export default function NewBookingView({
                 </label>
                 <textarea
                     id="bk-notes"
-                    rows={mode === "modal" ? 2 : 4}
+                    rows={4}
                     className={fieldCls}
                     placeholder="Internal notes visible to staff only…"
                     value={form.notes}
@@ -387,195 +375,19 @@ export default function NewBookingView({
     );
 
     if (mode === "modal") {
-        const formattedDate = form.bookingDate
-            ? new Date(form.bookingDate + "T00:00:00").toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-              })
-            : "—";
-
         return (
-            <form onSubmit={onSubmit} noValidate>
-                {/* Modal header with X close button */}
-                <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-base font-semibold text-foreground">New Booking</h2>
-                    {onClose ? (
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Close modal"
-                            className="rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        >
-                            <X size={16} />
-                        </button>
-                    ) : null}
-                </div>
-
-                {apiError ? (
-                    <div className="mb-4">
-                        <AlertToast title={apiError} variant="error" onClose={onDismissError} />
-                    </div>
-                ) : null}
-
-                {/* Read-only: Court, Date, Start Time */}
-                <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label className={labelCls}>
-                            Court <span className="text-destructive">*</span>
-                        </label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {courtName ?? form.courtId}
-                        </div>
-                    </div>
-                    <div>
-                        <label className={labelCls}>Booking Type</label>
-                        <SelectInput
-                            value={form.bookingType}
-                            onValueChange={(v) => onFormChange({ bookingType: v as BookingType })}
-                            options={typeOptions}
-                        />
-                    </div>
-                </div>
-
-                <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label className={labelCls}>
-                            Date <span className="text-destructive">*</span>
-                        </label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {formattedDate}
-                        </div>
-                    </div>
-                    <div>
-                        <label className={labelCls}>
-                            Start Time <span className="text-destructive">*</span>
-                        </label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {form.startTime ? formatSlotTime(form.startTime) : "—"}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Editable: Max Players, Price, Open game */}
-                <div className="mb-4 flex flex-wrap items-end gap-4">
-                    <div className="w-32 shrink-0">
-                        <label htmlFor="bk-max-players" className={labelCls}>
-                            Max Players
-                        </label>
-                        <NumberInput
-                            id="bk-max-players"
-                            min={1}
-                            max={10}
-                            className={fieldCls}
-                            value={form.maxPlayers}
-                            onChange={(e) => onFormChange({ maxPlayers: e.target.value })}
-                        />
-                    </div>
-                    <div className="w-32 shrink-0">
-                        <label className={labelCls}>Price</label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {form.startTime ? formatCurrency(selectedPrice) : "—"}
-                        </div>
-                    </div>
-                    <div className="pb-2">
-                        <label className="flex cursor-pointer items-center gap-2">
-                            <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-border accent-cta"
-                                checked={form.isOpenGame}
-                                onChange={(e) => onFormChange({ isOpenGame: e.target.checked })}
-                                aria-label="Mark as open game"
-                            />
-                            <span className="text-sm font-medium text-foreground">Open game</span>
-                        </label>
-                    </div>
-                </div>
-
-                {/* Notes */}
-                <div className="mb-4">
-                    <label htmlFor="bk-notes" className={labelCls}>
-                        Notes
-                    </label>
-                    <textarea
-                        id="bk-notes"
-                        rows={2}
-                        className={fieldCls}
-                        placeholder="Internal notes visible to staff only…"
-                        value={form.notes}
-                        onChange={(e) => onFormChange({ notes: e.target.value })}
-                    />
-                </div>
-
-                {/* Collapsible: Skill Level */}
-                <div className="mt-4 rounded-lg border border-border">
-                    <button
-                        type="button"
-                        onClick={() => setSkillOpen((o) => !o)}
-                        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
-                        aria-expanded={skillOpen}
-                    >
-                        <span className="text-sm font-medium text-foreground">
-                            Skill Level{" "}
-                            <span className="text-xs font-normal text-muted-foreground">
-                                (optional)
-                            </span>
-                        </span>
-                        {skillOpen ? (
-                            <ChevronDown size={14} className="text-muted-foreground" />
-                        ) : (
-                            <ChevronRight size={14} className="text-muted-foreground" />
-                        )}
-                    </button>
-                    {skillOpen ? (
-                        <div className="border-t border-border px-3 pb-3 pt-3">
-                            <p className="mb-3 text-xs text-muted-foreground">
-                                Set skill range requirements for matchmaking.
-                            </p>
-                            {optionalSkillFields}
-                        </div>
-                    ) : null}
-                </div>
-
-                {/* Collapsible: Event & Contact */}
-                <div className="mt-2 rounded-lg border border-border">
-                    <button
-                        type="button"
-                        onClick={() => setEventOpen((o) => !o)}
-                        className="flex w-full items-center justify-between px-3 py-2.5 text-left"
-                        aria-expanded={eventOpen}
-                    >
-                        <span className="text-sm font-medium text-foreground">
-                            Event &amp; Contact{" "}
-                            <span className="text-xs font-normal text-muted-foreground">
-                                (optional)
-                            </span>
-                        </span>
-                        {eventOpen ? (
-                            <ChevronDown size={14} className="text-muted-foreground" />
-                        ) : (
-                            <ChevronRight size={14} className="text-muted-foreground" />
-                        )}
-                    </button>
-                    {eventOpen ? (
-                        <div className="border-t border-border px-3 pb-3 pt-3">
-                            <p className="mb-3 text-xs text-muted-foreground">
-                                For corporate or tournament bookings.
-                            </p>
-                            {optionalEventFields}
-                        </div>
-                    ) : null}
-                </div>
-
-                <div className="mt-5 flex items-center justify-end gap-3 border-t border-border pt-4">
-                    <button type="button" onClick={onCancel} className="btn-outline">
-                        Cancel
-                    </button>
-                    <button type="submit" disabled={isPending} className="btn-cta">
-                        {isPending ? "Creating…" : "Create Booking"}
-                    </button>
-                </div>
-            </form>
+            <NewBookingModalView
+                courtName={courtName ?? form.courtId}
+                form={form}
+                apiError={apiError}
+                isPending={isPending}
+                selectedPrice={selectedPrice}
+                onFormChange={onFormChange}
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+                onDismissError={onDismissError}
+                onClose={onClose ?? onCancel}
+            />
         );
     }
 

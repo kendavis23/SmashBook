@@ -77,6 +77,8 @@ function WeekTimelineBoard({
               100
             : null;
 
+    const currentTimePx = currentTimePct !== null ? (currentTimePct / 100) * boardHeight : null;
+
     const hasToday = days.some((d) => d.date === todayIso());
 
     // Scroll to current time on mount
@@ -193,22 +195,10 @@ function WeekTimelineBoard({
                     </div>
 
                     {/* Time rail + day columns */}
-                    <div className="relative grid" style={{ gridTemplateColumns }}>
-                        {/* Current time indicator */}
-                        {hasToday && currentTimePct !== null ? (
-                            <div
-                                className="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
-                                style={{ top: `${currentTimePct}%` }}
-                            >
-                                <div
-                                    className="flex-shrink-0"
-                                    style={{ width: `${CALENDAR_TIME_RAIL_WIDTH}px` }}
-                                />
-                                <div className="h-2 w-2 flex-shrink-0 rounded-full bg-destructive" />
-                                <div className="h-px flex-1 bg-destructive" />
-                            </div>
-                        ) : null}
-
+                    <div
+                        className="relative grid"
+                        style={{ gridTemplateColumns, height: `${boardHeight}px` }}
+                    >
                         {/* Time rail */}
                         <div className="sticky left-0 z-20 overflow-hidden border-r border-border bg-card">
                             {CALENDAR_TIME_SLOTS.map((slot) => (
@@ -225,84 +215,97 @@ function WeekTimelineBoard({
                         </div>
 
                         {/* Day columns */}
-                        {daySlots.map(({ date, bookings, blocks, availableSlots }) => (
-                            <div
-                                key={date}
-                                className="relative border-r border-border/70 last:border-r-0"
-                                style={{ height: `${boardHeight}px` }}
-                            >
-                                {CALENDAR_TIME_SLOTS.map((slot) => (
-                                    <div
-                                        key={`${date}-${slot.start_time}`}
-                                        className="border-b border-border/40 bg-background/60 last:border-b-0"
-                                        style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
-                                    />
-                                ))}
-
-                                {/* Available slot buttons from time_slots */}
-                                {availableSlots.map((ts) => {
-                                    const startMin = getMinutesFromIso(ts.start_datetime);
-                                    const endMin = getMinutesFromIso(ts.end_datetime);
-                                    const topPct =
-                                        ((startMin - startOfDayMinutes) /
-                                            (endOfDayMinutes - startOfDayMinutes)) *
-                                        100;
-                                    const heightPct =
-                                        ((endMin - startMin) /
-                                            (endOfDayMinutes - startOfDayMinutes)) *
-                                        100;
-                                    const startTime = ts.start_datetime.includes("T")
-                                        ? (ts.start_datetime.split("T")[1] ?? "").slice(0, 5)
-                                        : ts.start_datetime.slice(0, 5);
-                                    const endTime = ts.end_datetime.includes("T")
-                                        ? (ts.end_datetime.split("T")[1] ?? "").slice(0, 5)
-                                        : ts.end_datetime.slice(0, 5);
-                                    return (
-                                        <button
-                                            key={`${ts._courtId}-${ts.start_datetime}`}
-                                            type="button"
-                                            aria-label={`New booking at ${startTime}`}
-                                            className="absolute inset-x-1 z-10 cursor-pointer rounded border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/50 hover:bg-cta/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta"
-                                            style={{
-                                                top: `${topPct}%`,
-                                                height: `${heightPct}%`,
-                                            }}
-                                            onClick={() =>
-                                                onNewSlotClick(
-                                                    ts._courtId,
-                                                    ts._courtName,
-                                                    date,
-                                                    startTime,
-                                                    endTime
-                                                )
-                                            }
+                        {daySlots.map(({ date, bookings, blocks, availableSlots }) => {
+                            const isToday = date === todayIso();
+                            return (
+                                <div
+                                    key={date}
+                                    className="relative border-r border-border/70 last:border-r-0"
+                                    style={{ height: `${boardHeight}px` }}
+                                >
+                                    {/* Current time indicator — only inside today's column */}
+                                    {isToday && currentTimePx !== null ? (
+                                        <div
+                                            className="pointer-events-none absolute left-0 right-0 z-20 flex items-center"
+                                            style={{ top: `${currentTimePx}px` }}
+                                        >
+                                            <div className="h-2 w-2 flex-shrink-0 rounded-full bg-destructive" />
+                                            <div className="h-px flex-1 bg-destructive" />
+                                        </div>
+                                    ) : null}
+                                    {CALENDAR_TIME_SLOTS.map((slot) => (
+                                        <div
+                                            key={`${date}-${slot.start_time}`}
+                                            className="border-b border-border/40 bg-background/60 last:border-b-0"
+                                            style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
                                         />
-                                    );
-                                })}
+                                    ))}
 
-                                {bookings.map((booking) => (
-                                    <CalendarBookingBlock
-                                        key={`${booking._courtId}-${booking.id}`}
-                                        booking={booking}
-                                        boardHeight={boardHeight}
-                                        startOfDayMinutes={startOfDayMinutes}
-                                        endOfDayMinutes={endOfDayMinutes}
-                                        onManageClick={onManageClick}
-                                    />
-                                ))}
+                                    {/* Available slot buttons from time_slots */}
+                                    {availableSlots.map((ts) => {
+                                        const startMin = getMinutesFromIso(ts.start_datetime);
+                                        const endMin = getMinutesFromIso(ts.end_datetime);
+                                        const topPct =
+                                            ((startMin - startOfDayMinutes) /
+                                                (endOfDayMinutes - startOfDayMinutes)) *
+                                            100;
+                                        const heightPct =
+                                            ((endMin - startMin) /
+                                                (endOfDayMinutes - startOfDayMinutes)) *
+                                            100;
+                                        const startTime = ts.start_datetime.includes("T")
+                                            ? (ts.start_datetime.split("T")[1] ?? "").slice(0, 5)
+                                            : ts.start_datetime.slice(0, 5);
+                                        const endTime = ts.end_datetime.includes("T")
+                                            ? (ts.end_datetime.split("T")[1] ?? "").slice(0, 5)
+                                            : ts.end_datetime.slice(0, 5);
+                                        return (
+                                            <button
+                                                key={`${ts._courtId}-${ts.start_datetime}`}
+                                                type="button"
+                                                aria-label={`New booking at ${startTime}`}
+                                                className="absolute inset-x-1 z-10 cursor-pointer rounded border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/50 hover:bg-cta/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta"
+                                                style={{
+                                                    top: `${topPct}%`,
+                                                    height: `${heightPct}%`,
+                                                }}
+                                                onClick={() =>
+                                                    onNewSlotClick(
+                                                        ts._courtId,
+                                                        ts._courtName,
+                                                        date,
+                                                        startTime,
+                                                        endTime
+                                                    )
+                                                }
+                                            />
+                                        );
+                                    })}
 
-                                {blocks.map((block) => (
-                                    <CalendarReservationBlock
-                                        key={`${block._courtId}-${block.id}`}
-                                        block={block}
-                                        boardHeight={boardHeight}
-                                        startOfDayMinutes={startOfDayMinutes}
-                                        endOfDayMinutes={endOfDayMinutes}
-                                        onManageClick={onManageReservationClick}
-                                    />
-                                ))}
-                            </div>
-                        ))}
+                                    {bookings.map((booking) => (
+                                        <CalendarBookingBlock
+                                            key={`${booking._courtId}-${booking.id}`}
+                                            booking={booking}
+                                            boardHeight={boardHeight}
+                                            startOfDayMinutes={startOfDayMinutes}
+                                            endOfDayMinutes={endOfDayMinutes}
+                                            onManageClick={onManageClick}
+                                        />
+                                    ))}
+
+                                    {blocks.map((block) => (
+                                        <CalendarReservationBlock
+                                            key={`${block._courtId}-${block.id}`}
+                                            block={block}
+                                            boardHeight={boardHeight}
+                                            startOfDayMinutes={startOfDayMinutes}
+                                            endOfDayMinutes={endOfDayMinutes}
+                                            onManageClick={onManageReservationClick}
+                                        />
+                                    ))}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

@@ -18,3 +18,7 @@ export { SelectInput } from "./SelectInput";
 export type { SelectInputProps, SelectOption } from "./SelectInput";
 export { DatePicker, DateTimePicker } from "./DatePicker";
 export type { DatePickerProps, DateTimePickerProps } from "./DatePicker";
+export { StatPill } from "./StatPill";
+export type { StatPillProps } from "./StatPill";
+export { RecurrencePicker } from "./RecurrencePicker";
+export type { RecurrencePickerProps } from "./RecurrencePicker";

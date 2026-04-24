@@ -83,6 +83,12 @@ vi.mock("@repo/ui", () => ({
         </select>
     ),
     datetimeLocalToUTC: (value: string) => value,
+    StatPill: ({ label, value }: { label: string; value: string }) => (
+        <div>
+            <span>{label}</span>
+            <span>{value}</span>
+        </div>
+    ),
 }));
 
 import { useCreateBooking, useGetCourtAvailability, useListCourts } from "../../hooks";

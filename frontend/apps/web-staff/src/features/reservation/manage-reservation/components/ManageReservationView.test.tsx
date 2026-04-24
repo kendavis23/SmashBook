@@ -4,6 +4,55 @@ import { describe, expect, it, vi } from "vitest";
 import ManageReservationView from "./ManageReservationView";
 import type { ManageReservationFormState } from "./ManageReservationView";
 
+vi.mock("./ManageReservationModalView", () => ({
+    ManageReservationModalView: ({
+        reservation,
+        isDirty,
+        canEdit,
+        apiError,
+        onClose,
+        onBack,
+        onSubmit,
+        onDelete,
+        onDismissError,
+    }: {
+        reservation: { title: string };
+        isDirty: boolean;
+        canEdit: boolean;
+        apiError: string;
+        onClose: () => void;
+        onBack: () => void;
+        onSubmit: (e: React.FormEvent) => void;
+        onDelete: () => void;
+        onDismissError: () => void;
+    }) => (
+        <div data-testid="modal-view">
+            <h2>{reservation.title}</h2>
+            {apiError ? (
+                <div role="alert">
+                    <span>{apiError}</span>
+                    <button onClick={onDismissError}>Dismiss</button>
+                </div>
+            ) : null}
+            {canEdit ? (
+                <>
+                    <button onClick={onDelete}>Delete Reservation</button>
+                    <button
+                        onClick={(e) => onSubmit(e as unknown as React.FormEvent)}
+                        disabled={!isDirty}
+                    >
+                        Save Changes
+                    </button>
+                </>
+            ) : null}
+            <button onClick={onBack}>Close</button>
+            <button onClick={onClose} aria-label="Close modal">
+                X
+            </button>
+        </div>
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
@@ -83,6 +132,11 @@ vi.mock("@repo/ui", () => ({
 
 vi.mock("lucide-react", () => ({
     X: () => <span data-testid="x-icon">X</span>,
+    Calendar: () => <span />,
+    Clock: () => <span />,
+    Repeat: () => <span />,
+    ShieldCheck: () => <span />,
+    Trash2: () => <span />,
 }));
 
 const reservation = {
@@ -210,7 +264,7 @@ describe("ManageReservationView — page mode", () => {
         render(<ManageReservationView {...defaultProps} />);
 
         expect(screen.getByText("Reservations")).toBeInTheDocument();
-        expect(screen.getByText("Manage Reservation")).toBeInTheDocument();
+        expect(screen.getAllByText("Morning Block").length).toBeGreaterThan(0);
     });
 });
 

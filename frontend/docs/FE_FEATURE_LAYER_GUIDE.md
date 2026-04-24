@@ -414,6 +414,166 @@ const DAY_OPTIONS: SelectOption[] = [
 
 **Rule:** if you need a new input variant that `@repo/ui` does not yet export, add the component to `packages/ui/components/` first, export it from `packages/ui/components/index.ts`, then consume it in the feature. Never build a one-off styled input inside a feature.
 
+---
+
+### Modal pattern
+
+Every feature that has both a page route and a contextual modal uses the **5-file structure**. See [`docs/FE_MODAL_VS_PAGE_PATTERN.md`](../docs/FE_MODAL_VS_PAGE_PATTERN.md) for the full pattern. Summary below.
+
+**The 5 files — always created upfront, never inlined:**
+
+| File                          | Purpose                                                                             |
+| ----------------------------- | ----------------------------------------------------------------------------------- |
+| `NewEntityView.tsx`           | Page layout only — delegates `mode="modal"` to `NewEntityModalView` at the very top |
+| `NewEntityModalView.tsx`      | Modal layout only — sticky header + scrollable body + sticky footer                 |
+| `NewEntityContainer.tsx`      | Page entry — reads params, navigates on done                                        |
+| `NewEntityModalContainer.tsx` | Modal entry — accepts pre-filled props, calls `onClose`/`onSuccess` on done         |
+| `NewEntityModal.tsx`          | Modal shell — `createPortal`, `flex flex-col`, backdrop click                       |
+
+**Three-zone layout (in `NewEntityModalView.tsx`):**
+
+```tsx
+<form onSubmit={onSubmit} noValidate className="flex h-full flex-col">
+    {/* ── Sticky header: icon badge + title + subtitle + X button ── */}
+    <div className="shrink-0 border-b border-border px-6 pb-5 pt-6">
+        <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
+                    <SomeIcon size={18} />
+                </div>
+                <div>
+                    <h2 className="text-lg font-semibold text-foreground">Modal Title</h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                        One-line description of what this modal does.
+                    </p>
+                </div>
+            </div>
+            <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close modal"
+                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+                <X size={16} />
+            </button>
+        </div>
+    </div>
+
+    {/* ── Scrollable body ── */}
+    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+        {/* Error alert — always first, before everything else */}
+        {apiError ? (
+            <div className="mb-4">
+                <AlertToast title={apiError} variant="error" onClose={onDismissError} />
+            </div>
+        ) : null}
+
+        <div className="space-y-5">
+            {/* StatPill grid — first child of space-y-5 (NOT in the header) */}
+            <div className="grid grid-cols-4 gap-2">
+                <StatPill label="Court" value={courtName} />
+                <StatPill label="Date" value={formattedDate} />
+                <StatPill label="Start Time" value={formattedTime} />
+                <StatPill label="Price" value={formattedPrice} />
+            </div>
+
+            {/* Editable form fields */}
+        </div>
+    </div>
+
+    {/* ── Sticky footer ── */}
+    <div className="shrink-0 flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+        <button type="button" onClick={onCancel} className="btn-outline">
+            Cancel
+        </button>
+        <button type="submit" disabled={isPending} className="btn-cta flex items-center gap-2">
+            <SomeIcon size={14} />
+            {isPending ? "Creating…" : "Create Entity"}
+        </button>
+    </div>
+</form>
+```
+
+**Token / class reference for modals:**
+
+| Zone            | Classes                                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Form root       | `flex h-full flex-col`                                                                                                |
+| Sticky header   | `shrink-0 border-b border-border px-6 pb-5 pt-6`                                                                      |
+| Icon badge      | `flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground`               |
+| Title           | `text-lg font-semibold text-foreground`                                                                               |
+| Subtitle        | `mt-0.5 text-xs text-muted-foreground`                                                                                |
+| Close button    | `shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground` + `<X size={16} />` |
+| Scrollable body | `min-h-0 flex-1 overflow-y-auto px-6 py-5`                                                                            |
+| Body sections   | `space-y-5`                                                                                                           |
+| StatPill grid   | `grid grid-cols-4 gap-2` — first child of `space-y-5`                                                                 |
+| Sticky footer   | `shrink-0 flex items-center justify-end gap-3 border-t border-border px-6 py-4`                                       |
+
+**Modal shell (`NewEntityModal.tsx`) — inner div must have no overflow and no padding:**
+
+```tsx
+// Inner div: flex flex-col + fixed height. NO overflow-y-auto, NO padding.
+<div
+    className="flex w-full max-w-2xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
+    style={{ height: "90vh" }}
+>
+    <NewEntityModalContainer ... />
+</div>
+```
+
+**Collapsible section inside the scrollable body:**
+
+```tsx
+<div className="overflow-hidden rounded-lg border border-border">
+    <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
+        aria-expanded={open}
+    >
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            Section Title{" "}
+            <span className="text-[10px] font-normal normal-case text-muted-foreground">
+                (optional)
+            </span>
+        </span>
+        {open ? (
+            <ChevronDown size={13} className="text-muted-foreground" />
+        ) : (
+            <ChevronRight size={13} className="text-muted-foreground" />
+        )}
+    </button>
+    {open ? (
+        <div className="space-y-3 border-t border-border p-4">{/* optional fields */}</div>
+    ) : null}
+</div>
+```
+
+---
+
+### StatPill
+
+`StatPill` from `@repo/ui` displays a read-only label + value pair. Use it in the **scrollable body** to show immutable context (court, date, time, price) before editable fields.
+
+```tsx
+import { StatPill } from "@repo/ui";
+
+<div className="grid grid-cols-4 gap-2">
+    <StatPill label="Court" value={courtName} />
+    <StatPill label="Date" value={formattedDate} />
+    <StatPill label="Start Time" value={formattedTime} />
+    <StatPill label="Price" value={formattedPrice} />
+</div>;
+```
+
+**Rules:**
+
+- Goes in the scrollable body, not the sticky header
+- Is always the first child of `space-y-5`, placed after the `AlertToast` error block
+- Never define a local `StatPill` in a feature file — always import from `@repo/ui`
+
+---
+
 ### Page layout baseline
 
 Every page-level container follows this structure:

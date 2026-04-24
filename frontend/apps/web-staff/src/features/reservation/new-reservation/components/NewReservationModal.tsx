@@ -16,7 +16,10 @@ export function NewReservationModal({ onClose, onSuccess, date }: Props): JSX.El
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            <div
+                className="flex w-full max-w-2xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
+                style={{ height: "90vh" }}
+            >
                 <NewReservationModalContainer onClose={onClose} onSuccess={onSuccess} date={date} />
             </div>
         </div>,

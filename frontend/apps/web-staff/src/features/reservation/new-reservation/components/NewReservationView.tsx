@@ -1,9 +1,16 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo } from "react";
-import { X } from "lucide-react";
-import { Breadcrumb, AlertToast, DatePicker, TimeInput, SelectInput } from "@repo/ui";
+import {
+    Breadcrumb,
+    AlertToast,
+    DatePicker,
+    TimeInput,
+    SelectInput,
+    RecurrencePicker,
+} from "@repo/ui";
 import type { CalendarReservationType, Court } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
+import { NewReservationModalView } from "./NewReservationModalView";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
@@ -15,7 +22,6 @@ const BOOKING_TYPE_OPTIONS = [
     { value: "regular", label: "Regular" },
     { value: "training", label: "Training" },
     { value: "tournament", label: "Tournament" },
-    { value: "guest", label: "Guest" },
 ];
 
 export type NewReservationFormState = {
@@ -38,7 +44,7 @@ type Props = {
     timeError: string;
     apiError: string;
     isPending: boolean;
-    variant?: "page" | "modal";
+    mode?: "page" | "modal";
     lockedCourtName?: string;
     lockedDate?: string;
     lockedStartTime?: string;
@@ -59,11 +65,11 @@ export default function NewReservationView({
     timeError,
     apiError,
     isPending,
-    variant = "page",
+    mode = "page",
     lockedCourtName,
     lockedDate,
     lockedStartTime,
-    lockedEndTime,
+    lockedEndTime: _lockedEndTime,
     onFormChange,
     onSubmit,
     onCancel,
@@ -82,7 +88,7 @@ export default function NewReservationView({
         onFormChange({ allowedBookingTypes: next });
     };
 
-    const editableFields = (
+    const coreDetailsSection = (
         <div className="space-y-4">
             {/* Title */}
             <div>
@@ -103,7 +109,7 @@ export default function NewReservationView({
             </div>
 
             {/* Type + Court */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                     <label htmlFor="res-type" className={labelCls}>
                         Type <span className="text-destructive">*</span>
@@ -135,7 +141,7 @@ export default function NewReservationView({
             </div>
 
             {/* Date / Start / End time */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                     <label htmlFor="res-date" className={labelCls}>
                         Date <span className="text-destructive">*</span>
@@ -170,323 +176,78 @@ export default function NewReservationView({
                 </div>
             </div>
             {timeError ? <p className="-mt-2 text-xs text-destructive">{timeError}</p> : null}
-
-            {/* Allowed booking types */}
-            <div>
-                <p className="mb-1.5 text-sm font-medium text-foreground">
-                    Allowed Booking Types{" "}
-                    <span className="text-xs font-normal text-muted-foreground">(optional)</span>
-                </p>
-                <div className="flex flex-wrap gap-2">
-                    {BOOKING_TYPE_OPTIONS.map((opt) => {
-                        const checked = form.allowedBookingTypes.includes(opt.value);
-                        return (
-                            <label
-                                key={opt.value}
-                                className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
-                                    checked
-                                        ? "border-cta bg-cta/10 text-cta"
-                                        : "border-border bg-background text-foreground hover:bg-muted/30"
-                                }`}
-                            >
-                                <input
-                                    type="checkbox"
-                                    className="sr-only"
-                                    checked={checked}
-                                    onChange={() => toggleBookingType(opt.value)}
-                                />
-                                {opt.label}
-                            </label>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Recurring */}
-            <div>
-                <div className="flex items-center gap-3">
-                    <input
-                        id="res-recurring"
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-border accent-cta"
-                        checked={form.isRecurring}
-                        onChange={(e) => onFormChange({ isRecurring: e.target.checked })}
-                    />
-                    <label htmlFor="res-recurring" className="text-sm font-medium text-foreground">
-                        Recurring{" "}
-                        <span className="text-xs font-normal text-muted-foreground">
-                            (optional)
-                        </span>
-                    </label>
-                </div>
-
-                {form.isRecurring ? (
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                        <div>
-                            <label htmlFor="res-rrule" className={labelCls}>
-                                Recurrence Rule
-                                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                    (RRULE)
-                                </span>
-                            </label>
-                            <input
-                                id="res-rrule"
-                                type="text"
-                                className={fieldCls}
-                                placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
-                                value={form.recurrenceRule}
-                                onChange={(e) => onFormChange({ recurrenceRule: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="res-rrule-end" className={labelCls}>
-                                End Date
-                            </label>
-                            <DatePicker
-                                value={form.recurrenceEndDate}
-                                onChange={(v) => onFormChange({ recurrenceEndDate: v })}
-                            />
-                        </div>
-                    </div>
-                ) : null}
-            </div>
         </div>
     );
 
-    if (variant === "modal") {
-        const formattedDate = lockedDate
-            ? new Date(lockedDate + "T00:00:00").toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  year: "numeric",
-              })
-            : "—";
-
-        const formatTime = (t?: string): string => {
-            if (!t) return "—";
-            const [hRaw, min] = t.split(":").map(Number);
-            const h = (hRaw ?? 0) % 24;
-            const ampm = h >= 12 ? "PM" : "AM";
-            const h12 = h % 12 || 12;
-            return `${h12}:${String(min ?? 0).padStart(2, "0")} ${ampm}`;
-        };
-
-        return (
-            <form onSubmit={onSubmit} noValidate>
-                {/* Header */}
-                <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-base font-semibold text-foreground">New Reservation</h2>
-                    {onClose ? (
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Close modal"
-                            className="rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        >
-                            <X size={16} />
-                        </button>
-                    ) : null}
-                </div>
-
-                {apiError ? (
-                    <div className="mb-4">
-                        <AlertToast title={apiError} variant="error" onClose={onDismissError} />
-                    </div>
-                ) : null}
-
-                {/* Read-only: Court, Date, Start, End */}
-                <div className="mb-4 grid grid-cols-2 gap-3">
-                    <div>
-                        <label className={labelCls}>
-                            Court <span className="text-destructive">*</span>
-                        </label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {lockedCourtName ?? form.courtId}
-                        </div>
-                    </div>
-                    <div>
-                        <label className={labelCls}>
-                            Date <span className="text-destructive">*</span>
-                        </label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {formattedDate}
-                        </div>
-                    </div>
-                </div>
-                <div className="mb-4 grid grid-cols-2 gap-3">
-                    <div>
-                        <label className={labelCls}>
-                            Start <span className="text-destructive">*</span>
-                        </label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {formatTime(lockedStartTime)}
-                        </div>
-                    </div>
-                    <div>
-                        <label className={labelCls}>
-                            End <span className="text-destructive">*</span>
-                        </label>
-                        <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                            {formatTime(lockedEndTime)}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Editable fields: Title, Type, Allowed Booking Types, Recurring */}
-                <div className="space-y-4">
-                    {/* Title */}
-                    <div>
-                        <label htmlFor="res-title" className={labelCls}>
-                            Title <span className="text-destructive">*</span>
-                        </label>
+    const allowedTypesSection = (
+        <div className="flex flex-wrap gap-2">
+            {BOOKING_TYPE_OPTIONS.map((opt) => {
+                const checked = form.allowedBookingTypes.includes(opt.value);
+                return (
+                    <label
+                        key={opt.value}
+                        className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
+                            checked
+                                ? "border-cta bg-cta/10 text-cta"
+                                : "border-border bg-background text-foreground hover:bg-muted/30"
+                        }`}
+                    >
                         <input
-                            id="res-title"
-                            type="text"
-                            className={`${fieldCls} ${titleError ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
-                            placeholder="e.g. Morning Training Block"
-                            value={form.title}
-                            onChange={(e) => onFormChange({ title: e.target.value })}
+                            type="checkbox"
+                            className="sr-only"
+                            checked={checked}
+                            onChange={() => toggleBookingType(opt.value)}
                         />
-                        {titleError ? (
-                            <p className="mt-1 text-xs text-destructive">{titleError}</p>
-                        ) : null}
-                    </div>
+                        {opt.label}
+                    </label>
+                );
+            })}
+        </div>
+    );
 
-                    {/* Type */}
-                    <div>
-                        <label htmlFor="res-type" className={labelCls}>
-                            Type <span className="text-destructive">*</span>
-                        </label>
-                        <SelectInput
-                            value={form.reservationType}
-                            onValueChange={(v) =>
-                                onFormChange({ reservationType: v as CalendarReservationType })
-                            }
-                            options={typeOptions}
-                        />
-                    </div>
+    const recurrenceSection = (
+        <div className="space-y-3">
+            <div className="flex items-center gap-3">
+                <input
+                    id="res-recurring"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-border accent-cta"
+                    checked={form.isRecurring}
+                    onChange={(e) => onFormChange({ isRecurring: e.target.checked })}
+                />
+                <label htmlFor="res-recurring" className="text-sm font-medium text-foreground">
+                    Enable recurring schedule
+                </label>
+            </div>
 
-                    {/* Allowed booking types */}
-                    <div>
-                        <p className="mb-1.5 text-sm font-medium text-foreground">
-                            Allowed Booking Types{" "}
-                            <span className="text-xs font-normal text-muted-foreground">
-                                (optional)
-                            </span>
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {BOOKING_TYPE_OPTIONS.map((opt) => {
-                                const checked = form.allowedBookingTypes.includes(opt.value);
-                                return (
-                                    <label
-                                        key={opt.value}
-                                        className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
-                                            checked
-                                                ? "border-cta bg-cta/10 text-cta"
-                                                : "border-border bg-background text-foreground hover:bg-muted/30"
-                                        }`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only"
-                                            checked={checked}
-                                            onChange={() => toggleBookingType(opt.value)}
-                                        />
-                                        {opt.label}
-                                    </label>
-                                );
-                            })}
-                        </div>
-                    </div>
+            {form.isRecurring ? (
+                <RecurrencePicker
+                    value={form.recurrenceRule || undefined}
+                    onChange={(rrule) => onFormChange({ recurrenceRule: rrule })}
+                />
+            ) : null}
+        </div>
+    );
 
-                    {/* Recurring */}
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <input
-                                id="res-recurring"
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-border accent-cta"
-                                checked={form.isRecurring}
-                                onChange={(e) => onFormChange({ isRecurring: e.target.checked })}
-                            />
-                            <label
-                                htmlFor="res-recurring"
-                                className="text-sm font-medium text-foreground"
-                            >
-                                Recurring{" "}
-                                <span className="text-xs font-normal text-muted-foreground">
-                                    (optional)
-                                </span>
-                            </label>
-                        </div>
-                        {form.isRecurring ? (
-                            <div className="mt-3 grid grid-cols-2 gap-3">
-                                <div>
-                                    <label htmlFor="res-rrule" className={labelCls}>
-                                        Recurrence Rule
-                                        <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                            (RRULE)
-                                        </span>
-                                    </label>
-                                    <input
-                                        id="res-rrule"
-                                        type="text"
-                                        className={fieldCls}
-                                        placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
-                                        value={form.recurrenceRule}
-                                        onChange={(e) =>
-                                            onFormChange({ recurrenceRule: e.target.value })
-                                        }
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="res-rrule-end" className={labelCls}>
-                                        End Date
-                                    </label>
-                                    <DatePicker
-                                        value={form.recurrenceEndDate}
-                                        onChange={(v) => onFormChange({ recurrenceEndDate: v })}
-                                    />
-                                </div>
-                            </div>
-                        ) : null}
-                    </div>
-                </div>
-
-                {/* Actions */}
-                <div className="mt-5 flex items-center justify-end gap-3 border-t border-border pt-4">
-                    <button type="button" onClick={onCancel} className="btn-outline">
-                        Cancel
-                    </button>
-                    <button type="submit" disabled={isPending} className="btn-cta">
-                        {isPending ? "Creating…" : "Create Reservation"}
-                    </button>
-                </div>
-            </form>
+    if (mode === "modal") {
+        return (
+            <NewReservationModalView
+                form={form}
+                titleError={titleError}
+                timeError={timeError}
+                apiError={apiError}
+                isPending={isPending}
+                lockedCourtName={lockedCourtName}
+                lockedDate={lockedDate}
+                lockedStartTime={lockedStartTime}
+                onFormChange={onFormChange}
+                onSubmit={onSubmit}
+                onCancel={onCancel}
+                onClose={onClose ?? onCancel}
+                onDismissError={onDismissError}
+            />
         );
     }
-
-    const formBody = (
-        <form onSubmit={onSubmit} noValidate>
-            {apiError ? (
-                <div className="mb-4">
-                    <AlertToast title={apiError} variant="error" onClose={onDismissError} />
-                </div>
-            ) : null}
-
-            {editableFields}
-
-            {/* Actions */}
-            <div className="mt-6 flex items-center justify-end gap-3 border-t border-border pt-4">
-                <button type="button" onClick={onCancel} className="btn-outline">
-                    Cancel
-                </button>
-                <button type="submit" disabled={isPending} className="btn-cta">
-                    {isPending ? "Creating…" : "Create Reservation"}
-                </button>
-            </div>
-        </form>
-    );
 
     return (
         <div className="w-full space-y-5">
@@ -507,7 +268,73 @@ export default function NewReservationView({
                     </p>
                 </header>
 
-                <div className="px-5 py-6 sm:px-6">{formBody}</div>
+                <div className="px-5 py-6 sm:px-6">
+                    <form onSubmit={onSubmit} noValidate>
+                        {apiError ? (
+                            <div className="mb-4">
+                                <AlertToast
+                                    title={apiError}
+                                    variant="error"
+                                    onClose={onDismissError}
+                                />
+                            </div>
+                        ) : null}
+
+                        <div className="space-y-4">
+                            <section className="form-section">
+                                <div className="mb-4">
+                                    <h3 className="text-sm font-semibold text-foreground">
+                                        Core Details
+                                    </h3>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        Set the title, type, court, and time for this reservation.
+                                    </p>
+                                </div>
+                                {coreDetailsSection}
+                            </section>
+
+                            <section className="form-section">
+                                <div className="mb-4">
+                                    <h3 className="text-sm font-semibold text-foreground">
+                                        Allowed Booking Types{" "}
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                            (optional)
+                                        </span>
+                                    </h3>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        Restrict which booking types are permitted during this
+                                        reservation.
+                                    </p>
+                                </div>
+                                {allowedTypesSection}
+                            </section>
+
+                            <section className="form-section">
+                                <div className="mb-4">
+                                    <h3 className="text-sm font-semibold text-foreground">
+                                        Recurring{" "}
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                            (optional)
+                                        </span>
+                                    </h3>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        Configure whether this reservation repeats on a schedule.
+                                    </p>
+                                </div>
+                                {recurrenceSection}
+                            </section>
+                        </div>
+
+                        <div className="mt-8 flex items-center justify-end gap-3 border-t border-border pt-5">
+                            <button type="button" onClick={onCancel} className="btn-outline">
+                                Cancel
+                            </button>
+                            <button type="submit" disabled={isPending} className="btn-cta">
+                                {isPending ? "Creating…" : "Create Reservation"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </section>
         </div>
     );

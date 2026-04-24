@@ -8,13 +8,14 @@ import {
     formatUTCDateTime,
     SelectInput,
 } from "@repo/ui";
-import { X } from "lucide-react";
+import { Calendar, Clock, Repeat, ShieldCheck, Trash2 } from "lucide-react";
 import type { CalendarReservation, CalendarReservationType } from "../../types";
 import {
     RESERVATION_TYPE_LABELS,
     RESERVATION_TYPE_COLORS,
     RESERVATION_TYPE_OPTIONS,
 } from "../../types";
+import { ManageReservationModalView } from "./ManageReservationModalView";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
@@ -26,7 +27,6 @@ const BOOKING_TYPE_OPTIONS = [
     { value: "regular", label: "Regular" },
     { value: "training", label: "Training" },
     { value: "tournament", label: "Tournament" },
-    { value: "guest", label: "Guest" },
 ];
 
 const typeOptions = RESERVATION_TYPE_OPTIONS.filter((o) => o.value !== "");
@@ -90,6 +90,29 @@ export default function ManageReservationView({
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     }, []);
 
+    // Delegate immediately — no modal layout in this file
+    if (mode === "modal") {
+        return (
+            <ManageReservationModalView
+                reservation={reservation}
+                courts={courts}
+                form={form}
+                isDirty={isDirty}
+                canEdit={canEdit}
+                apiError={apiError}
+                updateSuccess={updateSuccess}
+                isUpdating={isUpdating}
+                isDeleting={isDeleting}
+                onFormChange={onFormChange}
+                onSubmit={onSubmit}
+                onDelete={onDelete}
+                onDismissError={onDismissError}
+                onBack={onBack}
+                onClose={onClose ?? onBack}
+            />
+        );
+    }
+
     const toggleBookingType = (val: string): void => {
         const next = form.allowedBookingTypes.includes(val)
             ? form.allowedBookingTypes.filter((t) => t !== val)
@@ -97,325 +120,323 @@ export default function ManageReservationView({
         onFormChange({ allowedBookingTypes: next });
     };
 
-    const formBody = (
-        <>
-            {apiError ? (
-                <div className="mb-4">
-                    <AlertToast title={apiError} variant="error" onClose={onDismissError} />
-                </div>
-            ) : null}
-            {updateSuccess ? (
-                <AlertToast
-                    title="Reservation updated successfully."
-                    variant="success"
-                    onClose={() => {
-                        /* auto-dismiss handled by container */
-                    }}
+    const coreDetailsSection = (
+        <div className="space-y-4">
+            <div>
+                <label htmlFor="mr-title" className={labelCls}>
+                    Title <span className="text-destructive">*</span>
+                </label>
+                <input
+                    id="mr-title"
+                    type="text"
+                    className={fieldCls}
+                    placeholder="e.g. Morning Training Block"
+                    value={form.title}
+                    onChange={(e) => onFormChange({ title: e.target.value })}
                 />
-            ) : null}
+            </div>
 
-            {canEdit ? (
-                <form onSubmit={onSubmit} noValidate className="space-y-5">
-                    {/* Core details */}
-                    <div>
-                        <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            Core Details
-                        </p>
-
-                        <div className="space-y-3">
-                            <div>
-                                <label htmlFor="mr-title" className={labelCls}>
-                                    Title
-                                </label>
-                                <input
-                                    id="mr-title"
-                                    type="text"
-                                    className={fieldCls}
-                                    value={form.title}
-                                    onChange={(e) => onFormChange({ title: e.target.value })}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label htmlFor="mr-type" className={labelCls}>
-                                        Reservation Type <span className="text-destructive">*</span>
-                                    </label>
-                                    <SelectInput
-                                        value={form.reservationType}
-                                        onValueChange={(v) =>
-                                            onFormChange({
-                                                reservationType: v as CalendarReservationType,
-                                            })
-                                        }
-                                        options={typeOptions}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label htmlFor="mr-court" className={labelCls}>
-                                        Court <span className="text-destructive">*</span>
-                                    </label>
-                                    <SelectInput
-                                        value={form.courtId}
-                                        onValueChange={(v) => onFormChange({ courtId: v })}
-                                        options={courts.map((court) => ({
-                                            value: court.id,
-                                            label: court.name,
-                                        }))}
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-3">
-                                <div>
-                                    <label htmlFor="mr-date" className={labelCls}>
-                                        Date
-                                    </label>
-                                    <DatePicker
-                                        value={form.date}
-                                        onChange={(v) => onFormChange({ date: v })}
-                                        minDate={todayStr}
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="mr-start-time" className={labelCls}>
-                                        Start Time
-                                    </label>
-                                    <TimeInput
-                                        id="mr-start-time"
-                                        className={fieldCls}
-                                        value={form.startTime}
-                                        onChange={(e) =>
-                                            onFormChange({ startTime: e.target.value })
-                                        }
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="mr-end-time" className={labelCls}>
-                                        End Time
-                                    </label>
-                                    <TimeInput
-                                        id="mr-end-time"
-                                        className={fieldCls}
-                                        value={form.endTime}
-                                        onChange={(e) => onFormChange({ endTime: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Allowed booking types */}
-                    <div className="overflow-hidden rounded-lg border border-border">
-                        <div className="bg-muted/20 px-4 py-2.5">
-                            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Allowed Booking Types
-                            </span>
-                        </div>
-                        <div className="border-t border-border p-4">
-                            <div className="flex flex-wrap gap-2">
-                                {BOOKING_TYPE_OPTIONS.map((opt) => {
-                                    const checked = form.allowedBookingTypes.includes(opt.value);
-                                    return (
-                                        <label
-                                            key={opt.value}
-                                            className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
-                                                checked
-                                                    ? "border-cta bg-cta/10 text-cta"
-                                                    : "border-border bg-background text-foreground hover:bg-muted/30"
-                                            }`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                className="sr-only"
-                                                checked={checked}
-                                                onChange={() => toggleBookingType(opt.value)}
-                                            />
-                                            {opt.label}
-                                        </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Recurring */}
-                    <div className="overflow-hidden rounded-lg border border-border">
-                        <div className="bg-muted/20 px-4 py-2.5">
-                            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Recurrence
-                            </span>
-                        </div>
-                        <div className="space-y-3 border-t border-border p-4">
-                            <div className="flex items-center gap-3">
-                                <input
-                                    id="mr-recurring"
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded border-border accent-cta"
-                                    checked={form.isRecurring}
-                                    onChange={(e) =>
-                                        onFormChange({ isRecurring: e.target.checked })
-                                    }
-                                />
-                                <label
-                                    htmlFor="mr-recurring"
-                                    className="text-sm font-medium text-foreground"
-                                >
-                                    Recurring
-                                </label>
-                            </div>
-
-                            {form.isRecurring ? (
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label htmlFor="mr-rrule" className={labelCls}>
-                                            Recurrence Rule
-                                        </label>
-                                        <input
-                                            id="mr-rrule"
-                                            type="text"
-                                            className={fieldCls}
-                                            placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
-                                            value={form.recurrenceRule}
-                                            onChange={(e) =>
-                                                onFormChange({ recurrenceRule: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                    <div>
-                                        <label htmlFor="mr-rrule-end" className={labelCls}>
-                                            Recurrence End Date
-                                        </label>
-                                        <DatePicker
-                                            value={form.recurrenceEndDate}
-                                            onChange={(v) => onFormChange({ recurrenceEndDate: v })}
-                                        />
-                                    </div>
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    {/* Footer */}
-                    <div className="flex items-center justify-between border-t border-border pt-4">
-                        {mode === "modal" && canEdit ? (
-                            <button
-                                type="button"
-                                onClick={onDelete}
-                                disabled={isDeleting}
-                                className="btn-destructive"
-                            >
-                                {isDeleting ? "Deleting…" : "Delete Reservation"}
-                            </button>
-                        ) : (
-                            <span />
-                        )}
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={onBack} className="btn-outline">
-                                {mode === "modal" ? "Close" : "Back"}
-                            </button>
-                            <button
-                                type="submit"
-                                disabled={!isDirty || isUpdating}
-                                className="btn-cta disabled:opacity-50"
-                            >
-                                {isUpdating ? "Saving…" : "Save Changes"}
-                            </button>
-                        </div>
-                    </div>
-                </form>
-            ) : (
-                <div className="flex justify-start pt-2">
-                    <button type="button" onClick={onBack} className="btn-outline">
-                        {mode === "modal" ? "Close" : "Back"}
-                    </button>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <label htmlFor="mr-type" className={labelCls}>
+                        Reservation Type <span className="text-destructive">*</span>
+                    </label>
+                    <SelectInput
+                        value={form.reservationType}
+                        onValueChange={(v) =>
+                            onFormChange({ reservationType: v as CalendarReservationType })
+                        }
+                        options={typeOptions}
+                    />
                 </div>
-            )}
-        </>
+
+                <div>
+                    <label htmlFor="mr-court" className={labelCls}>
+                        Court <span className="text-destructive">*</span>
+                    </label>
+                    <SelectInput
+                        value={form.courtId}
+                        onValueChange={(v) => onFormChange({ courtId: v })}
+                        options={courts.map((court) => ({
+                            value: court.id,
+                            label: court.name,
+                        }))}
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div>
+                    <label htmlFor="mr-date" className={labelCls}>
+                        Date <span className="text-destructive">*</span>
+                    </label>
+                    <DatePicker
+                        value={form.date}
+                        onChange={(v) => onFormChange({ date: v })}
+                        minDate={todayStr}
+                    />
+                </div>
+                <div>
+                    <label htmlFor="mr-start-time" className={labelCls}>
+                        Start Time <span className="text-destructive">*</span>
+                    </label>
+                    <TimeInput
+                        id="mr-start-time"
+                        className={fieldCls}
+                        value={form.startTime}
+                        onChange={(e) => onFormChange({ startTime: e.target.value })}
+                    />
+                </div>
+                <div>
+                    <label htmlFor="mr-end-time" className={labelCls}>
+                        End Time <span className="text-destructive">*</span>
+                    </label>
+                    <TimeInput
+                        id="mr-end-time"
+                        className={fieldCls}
+                        value={form.endTime}
+                        onChange={(e) => onFormChange({ endTime: e.target.value })}
+                    />
+                </div>
+            </div>
+        </div>
     );
 
-    if (mode === "modal") {
-        return (
-            <div className="flex flex-col">
-                {/* Header */}
-                <div className="mb-5 flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="text-base font-semibold text-foreground">
-                                {reservation.title}
-                            </h2>
-                            <span
-                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${colors.bg} ${colors.text}`}
-                            >
-                                {RESERVATION_TYPE_LABELS[reservation.reservation_type] ??
-                                    reservation.reservation_type}
-                            </span>
-                        </div>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                            {formatUTCDateTime(reservation.start_datetime)} &ndash;{" "}
-                            {formatUTCDateTime(reservation.end_datetime)}
-                        </p>
-                    </div>
-                    {onClose ? (
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Close modal"
-                            className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        >
-                            <X size={15} />
-                        </button>
-                    ) : null}
-                </div>
+    const allowedTypesSection = (
+        <div className="flex flex-wrap gap-2">
+            {BOOKING_TYPE_OPTIONS.map((opt) => {
+                const checked = form.allowedBookingTypes.includes(opt.value);
+                return (
+                    <label
+                        key={opt.value}
+                        className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
+                            checked
+                                ? "border-cta bg-cta/10 text-cta"
+                                : "border-border bg-background text-foreground hover:bg-muted/30"
+                        }`}
+                    >
+                        <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={checked}
+                            onChange={() => toggleBookingType(opt.value)}
+                        />
+                        {opt.label}
+                    </label>
+                );
+            })}
+        </div>
+    );
 
-                {formBody}
+    const recurrenceSection = (
+        <div className="space-y-3">
+            <div className="flex items-center gap-3">
+                <input
+                    id="mr-recurring"
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-border accent-cta"
+                    checked={form.isRecurring}
+                    onChange={(e) => onFormChange({ isRecurring: e.target.checked })}
+                />
+                <label htmlFor="mr-recurring" className="text-sm font-medium text-foreground">
+                    Enable recurring schedule
+                </label>
             </div>
-        );
-    }
 
+            {form.isRecurring ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label htmlFor="mr-rrule" className={labelCls}>
+                            Recurrence Rule
+                            <span className="ml-1 text-xs font-normal text-muted-foreground">
+                                (RRULE)
+                            </span>
+                        </label>
+                        <input
+                            id="mr-rrule"
+                            type="text"
+                            className={fieldCls}
+                            placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
+                            value={form.recurrenceRule}
+                            onChange={(e) => onFormChange({ recurrenceRule: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="mr-rrule-end" className={labelCls}>
+                            End Date
+                        </label>
+                        <DatePicker
+                            value={form.recurrenceEndDate}
+                            onChange={(v) => onFormChange({ recurrenceEndDate: v })}
+                        />
+                    </div>
+                </div>
+            ) : null}
+        </div>
+    );
+
+    // ── Page mode ────────────────────────────────────────────────────────────
     return (
         <div className="w-full space-y-5">
             <Breadcrumb
                 items={[
                     { label: "Reservations", href: "/reservations" },
-                    { label: "Manage Reservation" },
+                    { label: reservation.title },
                 ]}
             />
 
-            <section className="w-full rounded-xl border border-border bg-card px-6 py-6 shadow-sm sm:px-8">
-                <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                        <h1 className="text-xl font-semibold text-foreground">
-                            {reservation.title}
-                        </h1>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {formatUTCDateTime(reservation.start_datetime)} &ndash;{" "}
-                            {formatUTCDateTime(reservation.end_datetime)}
-                        </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        <span
-                            className={`rounded-full px-3 py-1 text-xs font-medium ${colors.bg} ${colors.text}`}
-                        >
-                            {RESERVATION_TYPE_LABELS[reservation.reservation_type] ??
-                                reservation.reservation_type}
-                        </span>
-                        {canEdit ? (
-                            <button
-                                type="button"
-                                onClick={onDelete}
-                                disabled={isDeleting}
-                                className="btn-destructive"
+            {/* Page header card */}
+            <div className="card-surface overflow-hidden">
+                <div className="flex flex-col gap-4 border-b border-border bg-muted/10 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                {reservation.title}
+                            </h1>
+                            <span
+                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${colors.bg} ${colors.text}`}
                             >
-                                {isDeleting ? "Deleting…" : "Delete Reservation"}
-                            </button>
+                                {RESERVATION_TYPE_LABELS[reservation.reservation_type] ??
+                                    reservation.reservation_type}
+                            </span>
+                            {reservation.is_recurring ? (
+                                <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                    <Repeat size={10} />
+                                    Recurring
+                                </span>
+                            ) : null}
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                                <Calendar size={12} />
+                                {formatUTCDateTime(reservation.start_datetime)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <Clock size={12} />
+                                {formatUTCDateTime(reservation.end_datetime)}
+                            </span>
+                        </div>
+                    </div>
+
+                    {canEdit ? (
+                        <button
+                            type="button"
+                            onClick={onDelete}
+                            disabled={isDeleting}
+                            className="btn-destructive flex shrink-0 items-center gap-1.5"
+                        >
+                            <Trash2 size={14} />
+                            {isDeleting ? "Deleting…" : "Delete Reservation"}
+                        </button>
+                    ) : null}
+                </div>
+
+                {/* Alerts */}
+                {apiError || updateSuccess ? (
+                    <div className="px-5 pt-4 sm:px-6">
+                        {apiError ? (
+                            <AlertToast title={apiError} variant="error" onClose={onDismissError} />
+                        ) : null}
+                        {updateSuccess ? (
+                            <AlertToast
+                                title="Reservation updated successfully."
+                                variant="success"
+                                onClose={() => {}}
+                            />
                         ) : null}
                     </div>
-                </header>
+                ) : null}
 
-                <div className="mt-5 space-y-4">{formBody}</div>
-            </section>
+                {/* Form body */}
+                <div className="px-5 py-6 sm:px-6">
+                    {canEdit ? (
+                        <form onSubmit={onSubmit} noValidate>
+                            <div className="space-y-4">
+                                {/* Core Details */}
+                                <section className="form-section">
+                                    <div className="mb-4 flex items-start gap-2.5">
+                                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cta/10">
+                                            <Calendar size={14} className="text-cta" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-foreground">
+                                                Core Details
+                                            </h3>
+                                            <p className="mt-0.5 text-sm text-muted-foreground">
+                                                Update the title, type, court, and schedule.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {coreDetailsSection}
+                                </section>
+
+                                {/* Allowed Booking Types */}
+                                <section className="form-section">
+                                    <div className="mb-4 flex items-start gap-2.5">
+                                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cta/10">
+                                            <ShieldCheck size={14} className="text-cta" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-foreground">
+                                                Allowed Booking Types{" "}
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    (optional)
+                                                </span>
+                                            </h3>
+                                            <p className="mt-0.5 text-sm text-muted-foreground">
+                                                Restrict which booking types are permitted during
+                                                this reservation.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {allowedTypesSection}
+                                </section>
+
+                                {/* Recurrence */}
+                                <section className="form-section">
+                                    <div className="mb-4 flex items-start gap-2.5">
+                                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cta/10">
+                                            <Repeat size={14} className="text-cta" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-foreground">
+                                                Recurring{" "}
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    (optional)
+                                                </span>
+                                            </h3>
+                                            <p className="mt-0.5 text-sm text-muted-foreground">
+                                                Configure whether this reservation repeats on a
+                                                schedule.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {recurrenceSection}
+                                </section>
+                            </div>
+
+                            <div className="mt-8 flex items-center justify-end gap-3 border-t border-border pt-5">
+                                <button type="button" onClick={onBack} className="btn-outline">
+                                    Back
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={!isDirty || isUpdating}
+                                    className="btn-cta disabled:opacity-50"
+                                >
+                                    {isUpdating ? "Saving…" : "Save Changes"}
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="flex justify-start pt-2">
+                            <button type="button" onClick={onBack} className="btn-outline">
+                                Back
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
