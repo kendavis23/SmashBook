@@ -47,4 +47,4 @@ export {
 } from "./hooks";
 
 // Store — exported for feature-level mocking in app tests
-export { useAuthStore, getAccessToken, getTenantSubdomain } from "./store";
+export { useAuthStore, getAccessToken, getTenantSubdomain, getActiveRole } from "./store";

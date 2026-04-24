@@ -1,4 +1,4 @@
-_Last updated: 2026-04-18 11:00 UTC_
+_Last updated: 2026-04-24 00:00 UTC_
 
 # FE Auth Flow
 
@@ -138,7 +138,18 @@ Navbar → handleLogout()           (apps/web-staff/src/layout/dashboard/Navbar.
 | `/unauthorized`    | `UnauthorizedPage.tsx`              | Public                           |
 | `/dashboard`       | `DashboardLayout` + `DashboardPage` | Auth guard via `DashboardLayout` |
 
-**Auth guard:** `DashboardLayout.tsx` — calls `useInitAuth()` and redirects to `/login` if no valid session. There are no `beforeLoad` route guards; protection is entirely layout-level.
+**Auth guard:** `DashboardLayout.tsx` — calls `useInitAuth()` and redirects to `/login` if no valid session.
+
+**Role guard:** Every restricted route also has a `beforeLoad` hook in `app/index.tsx` that calls `requireRole(roles)`. This reads `getActiveRole()` from the auth store and throws a `redirect({ to: "/unauthorized" })` if the current role is not in the allowed list. This prevents direct URL access to routes the sidebar hides — navigating to `/bookings` as a `trainer` shows the 403 Unauthorized page instead of the page content.
+
+```
+requireRole(["owner", "admin"])   ← defined in app/index.tsx
+  → getActiveRole()               reads activeRole from Zustand store (localStorage-persisted)
+  → canAccess(roles, role)        imported from config/routeConfig.ts
+  → if not allowed → redirect to /unauthorized
+```
+
+`getActiveRole()` is exported from `packages/auth/store/index.ts` as a plain getter (safe to call outside React, parallel to `getAccessToken`).
 
 ---
 
@@ -176,7 +187,7 @@ canAccess(roles, userRole);
 - `Dashboard`, `Courts`, `Bookings`, `Players`, `Support`, `Equipment` → visible (no `roles` restriction)
 - `Clubs`, `Calendar`, `Staff`, `Finance`, `Reports`, `Settings` → hidden (`roles: ["owner","admin"]`)
 
-**Changing access:** Edit the `roles` array on the relevant entry in `ROUTES` inside `apps/web-staff/src/config/routeConfig.ts`. No other file needs to change — sidebar, search, and navbar page-title lookup all read from the same source.
+**Changing access:** Edit the `roles` array on the relevant entry in `ROUTES` inside `apps/web-staff/src/config/routeConfig.ts`, **and** update the matching `beforeLoad: requireRole([...])` call on the corresponding route in `apps/web-staff/src/app/index.tsx`. Both must stay in sync — `routeConfig.ts` controls sidebar visibility and `app/index.tsx` controls router-level enforcement.
 
 ---
 
@@ -277,7 +288,8 @@ const canManageCourts = role === "owner" || role === "admin";
 
 **Rule of thumb:**
 
-- Sidebar route gating → `canAccess()` in `routeConfig.ts`
+- Router-level enforcement (blocks direct URL access) → `beforeLoad: requireRole([...])` in `app/index.tsx`
+- Sidebar route gating (hides links) → `canAccess()` in `routeConfig.ts`
 - Page-level redirect → `access.ts` function + `useEffect` in the container
 - Intra-page elements (tabs, buttons) → `access.ts` function, result passed as prop to View
 - **Never** write `role === "owner" || role === "admin"` inline in a component — always call an `access.ts` function
