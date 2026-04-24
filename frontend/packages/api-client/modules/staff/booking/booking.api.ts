@@ -29,6 +29,7 @@ export function getCalendarViewEndpoint(params: CalendarViewParams): Promise<Cal
     const query = new URLSearchParams({ club_id: params.club_id });
     if (params.view) query.set("view", params.view);
     if (params.anchor_date) query.set("anchor_date", params.anchor_date);
+    if (params.court_id) query.set("court_id", params.court_id);
     return fetcher<CalendarResponse>(`/api/v1/bookings/calendar?${query.toString()}`);
 }
 

@@ -26,6 +26,7 @@ export default function CalendarContainer(): JSX.Element {
     const { data, isLoading, error, refetch } = useGetCalendarView(clubId ?? "", {
         view: viewMode,
         anchor_date: anchorDate,
+        ...(viewMode === "week" && selectedCourtId ? { court_id: selectedCourtId } : {}),
     });
 
     const { data: courts = [] } = useListCourts(clubId ?? "");
