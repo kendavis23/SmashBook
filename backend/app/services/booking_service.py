@@ -552,6 +552,7 @@ class BookingService:
         tenant_id: uuid.UUID,
         view: str,
         anchor_date: date,
+        court_id: Optional[uuid.UUID] = None,
     ) -> dict:
         club_result = await self.db.execute(
             select(Club)
@@ -573,34 +574,45 @@ class BookingService:
         start_dt = datetime.combine(date_from, datetime.min.time()).replace(tzinfo=timezone.utc)
         end_dt = datetime.combine(date_to, datetime.max.time()).replace(tzinfo=timezone.utc)
 
-        courts_result = await self.db.execute(
+        courts_query = (
             select(Court)
             .where(Court.club_id == club_id, Court.is_active)
             .order_by(Court.name)
         )
+        if court_id is not None:
+            courts_query = courts_query.where(Court.id == court_id)
+        courts_result = await self.db.execute(courts_query)
         courts = courts_result.scalars().all()
 
+        bookings_filters = [
+            Booking.club_id == club_id,
+            Booking.start_datetime >= start_dt,
+            Booking.start_datetime <= end_dt,
+            Booking.status != BookingStatus.cancelled,
+        ]
+        if court_id is not None:
+            bookings_filters.append(Booking.court_id == court_id)
         bookings_result = await self.db.execute(
             select(Booking)
             .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
             .options(selectinload(Booking.court))
-            .where(
-                Booking.club_id == club_id,
-                Booking.start_datetime >= start_dt,
-                Booking.start_datetime <= end_dt,
-                Booking.status != BookingStatus.cancelled,
-            )
+            .where(*bookings_filters)
             .order_by(Booking.start_datetime)
         )
         bookings = bookings_result.scalars().unique().all()
 
+        reservations_filters = [
+            CalendarReservation.club_id == club_id,
+            CalendarReservation.start_datetime < end_dt,
+            CalendarReservation.end_datetime > start_dt,
+        ]
+        if court_id is not None:
+            reservations_filters.append(
+                (CalendarReservation.court_id == court_id) | (CalendarReservation.court_id.is_(None))
+            )
         reservations_result = await self.db.execute(
             select(CalendarReservation)
-            .where(
-                CalendarReservation.club_id == club_id,
-                CalendarReservation.start_datetime < end_dt,
-                CalendarReservation.end_datetime > start_dt,
-            )
+            .where(*reservations_filters)
             .order_by(CalendarReservation.start_datetime)
         )
         reservations = reservations_result.scalars().all()

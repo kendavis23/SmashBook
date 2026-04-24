@@ -22,7 +22,7 @@ google-cloud-pubsub==2.27.1
 google-cloud-storage==2.19.0
 
 # Payments
-stripe==11.3.0
+stripe>=15.0.0
 
 # Email
 sendgrid==6.11.0

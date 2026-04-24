@@ -1,5 +1,96 @@
 [
   {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-04-21T14:28:12Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      }
+    ],
+    "milestone": null,
+    "number": 168,
+    "state": "OPEN",
+    "title": "Set up secrets, Stripe registration, etc. for payments user stories",
+    "updatedAt": "2026-04-21T14:30:22Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/168",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-04-21T14:00:28Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 167,
+    "state": "OPEN",
+    "title": "Implement messaging infrastructure",
+    "updatedAt": "2026-04-21T14:00:28Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/167",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [
+      {
+        "id": "MDQ6VXNlcjI5MzM3NzMw",
+        "login": "kendavis23",
+        "name": "jkd",
+        "databaseId": 29337730
+      }
+    ],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-04-21T07:34:14Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 166,
+    "state": "OPEN",
+    "title": "Ensure read replica is being deployed and set up correctly",
+    "updatedAt": "2026-04-21T07:34:14Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/166",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
     "assignees": [
       {
         "id": "MDQ6VXNlcjI5MzM3NzMw",
@@ -27,9 +118,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/159",
     "sprint": {
       "duration": 14,
-      "iterationId": "a43df5a1",
-      "startDate": "2026-04-05",
-      "title": "Sprint 3"
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
     }
   },
   {
@@ -42,7 +133,7 @@
       }
     ],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-17T17:33:29Z",
     "createdAt": "2026-04-17T08:20:38Z",
     "labels": [
       {
@@ -54,9 +145,9 @@
     ],
     "milestone": null,
     "number": 158,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Update login to inlcude admin and owner detail",
-    "updatedAt": "2026-04-17T08:20:38Z",
+    "updatedAt": "2026-04-17T17:33:29Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/158",
     "sprint": {
       "duration": 14,
@@ -85,6 +176,12 @@
     "createdAt": "2026-04-15T18:27:30Z",
     "labels": [
       {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      },
+      {
         "id": "LA_kwDORVso0c8AAAACcp2lbw",
         "name": "Testing",
         "description": "",
@@ -95,13 +192,13 @@
     "number": 155,
     "state": "OPEN",
     "title": "full end-to-end testing with test data for booking",
-    "updatedAt": "2026-04-17T14:31:28Z",
+    "updatedAt": "2026-04-19T15:04:13Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/155",
     "sprint": {
       "duration": 14,
-      "iterationId": "a43df5a1",
-      "startDate": "2026-04-05",
-      "title": "Sprint 3"
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
     }
   },
   {
@@ -306,7 +403,7 @@
   {
     "assignees": [],
     "body": "Player books lesson not sure if player can select trainer",
-    "closedAt": null,
+    "closedAt": "2026-04-19T18:08:06Z",
     "createdAt": "2026-03-30T18:12:37Z",
     "labels": [
       {
@@ -320,6 +417,12 @@
         "name": "Coaching",
         "description": "",
         "color": "98ffb6"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
       }
     ],
     "milestone": {
@@ -329,9 +432,9 @@
       "dueOn": null
     },
     "number": 145,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player books lesson",
-    "updatedAt": "2026-03-30T18:12:37Z",
+    "updatedAt": "2026-04-19T18:08:06Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/145",
     "sprint": {
       "duration": 14,
@@ -343,7 +446,7 @@
   {
     "assignees": [],
     "body": "From player and staff perspective, check availability for upcoming dates",
-    "closedAt": null,
+    "closedAt": "2026-04-19T15:12:29Z",
     "createdAt": "2026-03-30T15:54:22Z",
     "labels": [
       {
@@ -372,9 +475,9 @@
       "dueOn": null
     },
     "number": 144,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Availability Service",
-    "updatedAt": "2026-03-30T15:54:22Z",
+    "updatedAt": "2026-04-19T15:12:29Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/144",
     "sprint": {
       "duration": 14,
@@ -477,9 +580,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/141",
     "sprint": {
       "duration": 14,
-      "iterationId": "3a41d995",
-      "startDate": "2026-04-19",
-      "title": "Sprint 4"
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
     }
   },
   {
@@ -540,14 +643,14 @@
     },
     "number": 139,
     "state": "OPEN",
-    "title": "Implement G4 db changes",
-    "updatedAt": "2026-03-28T15:02:59Z",
+    "title": "Implement G6/7/8 db changes",
+    "updatedAt": "2026-04-21T13:59:08Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/139",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
     }
   },
   {
@@ -576,9 +679,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/138",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
     }
   },
   {
@@ -675,9 +778,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/135",
     "sprint": {
       "duration": 14,
-      "iterationId": "3a41d995",
-      "startDate": "2026-04-19",
-      "title": "Sprint 4"
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
     }
   },
   {
@@ -856,7 +959,7 @@
   {
     "assignees": [],
     "body": "Ability to set up the calendar to reserve slots for specific skill levels, block times for training, etc.  Includes recurring. ",
-    "closedAt": null,
+    "closedAt": "2026-04-19T16:25:37Z",
     "createdAt": "2026-03-19T11:55:30Z",
     "labels": [
       {
@@ -879,9 +982,9 @@
       "dueOn": null
     },
     "number": 128,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: Calendar Scheduling, Reserving (including recurring)",
-    "updatedAt": "2026-03-19T11:55:30Z",
+    "updatedAt": "2026-04-19T16:25:37Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/128",
     "sprint": {
       "duration": 14,
@@ -2492,7 +2595,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-19T16:20:55Z",
     "createdAt": "2026-03-08T13:55:30Z",
     "labels": [
       {
@@ -2506,6 +2609,12 @@
         "name": "Admin",
         "description": "",
         "color": "403809"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
       }
     ],
     "milestone": {
@@ -2515,15 +2624,15 @@
       "dueOn": null
     },
     "number": 68,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: assign or update a player's skill level (authorised staff only)",
-    "updatedAt": "2026-03-24T23:03:08Z",
+    "updatedAt": "2026-04-19T16:20:55Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/68",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
     }
   },
   {
@@ -3053,7 +3162,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-19T15:06:14Z",
     "createdAt": "2026-03-08T13:55:02Z",
     "labels": [
       {
@@ -3061,6 +3170,12 @@
         "name": "Coaching",
         "description": "",
         "color": "98ffb6"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
       }
     ],
     "milestone": {
@@ -3070,15 +3185,15 @@
       "dueOn": null
     },
     "number": 53,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Trainer: set and update available working hours",
-    "updatedAt": "2026-03-24T23:03:23Z",
+    "updatedAt": "2026-04-19T15:06:14Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/53",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
     }
   },
   {
@@ -3361,7 +3476,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-17T18:18:59Z",
     "createdAt": "2026-03-08T13:54:47Z",
     "labels": [
       {
@@ -3390,9 +3505,9 @@
       "dueOn": null
     },
     "number": 45,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: create recurring bookings for coaching sessions",
-    "updatedAt": "2026-03-30T12:36:29Z",
+    "updatedAt": "2026-04-17T18:18:59Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/45",
     "sprint": {
       "duration": 14,
@@ -3570,7 +3685,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-19T15:13:52Z",
     "createdAt": "2026-03-08T13:54:38Z",
     "labels": [
       {
@@ -3593,9 +3708,9 @@
       "dueOn": null
     },
     "number": 40,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: view upcoming bookings",
-    "updatedAt": "2026-03-24T23:03:38Z",
+    "updatedAt": "2026-04-19T15:13:52Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/40",
     "sprint": {
       "duration": 14,
@@ -4896,7 +5011,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-19T15:38:34Z",
     "createdAt": "2026-03-08T13:15:39Z",
     "labels": [
       {
@@ -4925,9 +5040,9 @@
       "dueOn": null
     },
     "number": 3,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: reset password via email link",
-    "updatedAt": "2026-03-24T23:01:03Z",
+    "updatedAt": "2026-04-19T15:38:34Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/3",
     "sprint": {
       "duration": 14,

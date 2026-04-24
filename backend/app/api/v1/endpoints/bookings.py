@@ -276,6 +276,7 @@ async def get_calendar_view(
     club_id: uuid.UUID = Query(...),
     view: str = Query(default="week", pattern="^(day|week)$"),
     anchor_date: Optional[date] = Query(default=None, description="Anchor date for the view (defaults to today)"),
+    court_id: Optional[uuid.UUID] = Query(default=None, description="Filter to a single court (omit for all courts)"),
     current_user: User = Depends(require_staff),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_read_db),
@@ -284,6 +285,7 @@ async def get_calendar_view(
     Staff: calendar grid view of all bookings.
     - view=day: single day grid for anchor_date
     - view=week: Mon–Sun week containing anchor_date
+    - court_id: optional filter; omit to return all courts
     Response is grouped by day → court column → bookings.
     Cancelled bookings are excluded.
     """
@@ -296,6 +298,7 @@ async def get_calendar_view(
         tenant_id=tenant.id,
         view=view,
         anchor_date=anchor_date,
+        court_id=court_id,
     )
 
     club = data["club"]

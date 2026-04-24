@@ -31,7 +31,7 @@ from app.core.config import get_settings
 from app.core.security import get_password_hash
 from app.db.models.club import Club
 from app.db.models.tenant import SubscriptionPlan, Tenant
-from app.db.models.user import User, TenantUser, TenantUserRole
+from app.db.models.user import User, TenantUserRole
 from app.db.models.wallet import Wallet
 
 settings = get_settings()
@@ -57,6 +57,7 @@ async def seed():
                 open_games_feature=True,
                 waitlist_feature=True,
                 price_per_month=49.00,
+                booking_fee_pct=1.00,
             )
             db.add(plan)
             await db.flush()
@@ -91,11 +92,11 @@ async def seed():
                 email=ADMIN_EMAIL,
                 full_name="Demo Admin",
                 hashed_password=get_password_hash(ADMIN_PASSWORD),
+                role=TenantUserRole.admin,
                 is_active=True,
             )
             db.add(user)
             await db.flush()
-            db.add(TenantUser(tenant_id=tenant.id, user_id=user.id, role=TenantUserRole.admin))
             db.add(Wallet(user_id=user.id))
             await db.flush()
             print(f"  Created user:   {user.email} ({user.id})")
@@ -111,6 +112,7 @@ async def seed():
                 name="Demo Padel Club",
                 address="1 Court Lane, London, W1A 1AA",
                 currency="GBP",
+                stripe_connect_account_id="acct_1TP4MFAWvH4TGBwI",
             )
             db.add(club)
             await db.flush()

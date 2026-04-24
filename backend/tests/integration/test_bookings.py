@@ -1604,6 +1604,107 @@ class TestCalendarView:
                 await session.delete(obj)
             await session.commit()
 
+    async def test_court_filter_returns_only_that_court(
+        self, client, staff_headers, club, court_with_hours, test_session_factory
+    ):
+        """court_id filter: response contains exactly one court column matching the requested court."""
+        anchor = _future(48).date()
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}&court_id={court_with_hours.id}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        assert len(day["courts"]) == 1
+        assert day["courts"][0]["court_id"] == str(court_with_hours.id)
+
+    async def test_court_filter_excludes_other_court_bookings(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """A booking on a second court must not appear when filtering by the first court."""
+        anchor = _future(48).date()
+
+        # Create a second court
+        async with test_session_factory() as session:
+            court2 = Court(club_id=club.id, name="Court 2", surface_type="indoor", is_active=True)
+            session.add(court2)
+            await session.commit()
+            await session.refresh(court2)
+            court2_id = court2.id
+
+        # Book the second court
+        start = _future(48)
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court2_id, start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}&court_id={court_with_hours.id}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        all_booking_ids = [
+            s["id"]
+            for day in resp.json()["days"]
+            for court in day["courts"]
+            for s in court["slots"]
+            if s["kind"] == "booking"
+        ]
+        assert booking_id not in all_booking_ids
+
+        async with test_session_factory() as session:
+            booking_ids = (
+                await session.execute(select(Booking.id).where(Booking.court_id == court2_id))
+            ).scalars().all()
+            if booking_ids:
+                await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.booking_id.in_(booking_ids)))
+                await session.execute(sql_delete(Booking).where(Booking.id.in_(booking_ids)))
+            await session.execute(sql_delete(Court).where(Court.id == court2_id))
+            await session.commit()
+
+    async def test_court_filter_includes_club_wide_blocks(
+        self, client, staff_headers, club, court_with_hours, staff, test_session_factory
+    ):
+        """A club-wide block (court_id=None) must still appear when filtering by a specific court."""
+        anchor = _future(48).date()
+        start_dt = datetime.combine(anchor, time(12, 0), tzinfo=timezone.utc)
+        end_dt = datetime.combine(anchor, time(14, 0), tzinfo=timezone.utc)
+
+        async with test_session_factory() as session:
+            reservation = CalendarReservation(
+                club_id=club.id,
+                court_id=None,
+                reservation_type=CalendarReservationType.maintenance,
+                title="Club closure",
+                start_datetime=start_dt,
+                end_datetime=end_dt,
+                created_by=staff.id,
+            )
+            session.add(reservation)
+            await session.commit()
+            await session.refresh(reservation)
+            reservation_id = reservation.id
+
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}&court_id={court_with_hours.id}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        court_col = next(c for c in day["courts"] if c["court_id"] == str(court_with_hours.id))
+        block_ids = [s["id"] for s in court_col["slots"] if s["kind"] == "block"]
+        assert str(reservation_id) in block_ids
+
+        async with test_session_factory() as session:
+            obj = await session.get(CalendarReservation, reservation_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
 
 # ---------------------------------------------------------------------------
 # POST /api/v1/bookings — on_behalf_of_user_id (staff creates for a player)
