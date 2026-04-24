@@ -1705,6 +1705,37 @@ class TestCalendarView:
                 await session.delete(obj)
             await session.commit()
 
+    async def test_past_day_time_slots_all_past(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """All time_slots for a date before today must have status='past'."""
+        from datetime import date, timedelta
+        past_date = date.today() - timedelta(days=1)
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={past_date.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        for court_col in day["courts"]:
+            for slot in court_col["time_slots"]:
+                assert slot["status"] == "past", f"Expected 'past', got {slot['status']!r} on {past_date}"
+
+    async def test_future_day_time_slots_not_past(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """time_slots for a future date must not contain any 'past' status."""
+        anchor = _future(48).date()
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={anchor.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        day = resp.json()["days"][0]
+        for court_col in day["courts"]:
+            for slot in court_col["time_slots"]:
+                assert slot["status"] != "past", f"Unexpected 'past' status on future date {anchor}"
+
 
 # ---------------------------------------------------------------------------
 # POST /api/v1/bookings — on_behalf_of_user_id (staff creates for a player)

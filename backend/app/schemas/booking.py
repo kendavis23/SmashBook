@@ -202,7 +202,7 @@ CalendarSlot = Annotated[
 class CalendarTimeSlot(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
-    status: Literal["available", "booked", "blocked"]
+    status: Literal["available", "booked", "blocked", "past"]
     booking_id: Optional[uuid.UUID] = None
     reservation_id: Optional[uuid.UUID] = None
 

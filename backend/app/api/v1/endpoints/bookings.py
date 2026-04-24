@@ -335,14 +335,25 @@ async def get_calendar_view(
         oh = oh_by_dow.get(day.weekday())
         if not oh:
             return []
+        slot_start = datetime.combine(day, oh.open_time, tzinfo=timezone.utc)
+        day_end = datetime.combine(day, oh.close_time, tzinfo=timezone.utc)
+        if day < date.today():
+            result = []
+            while slot_start + slot_duration <= day_end:
+                slot_end = slot_start + slot_duration
+                result.append(CalendarTimeSlot(
+                    start_datetime=slot_start,
+                    end_datetime=slot_end,
+                    status="past",
+                ))
+                slot_start = slot_end
+            return result
         court_bookings = bookings_by_court.get(court_id, [])
         court_reservations = (
             reservations_by_court.get(court_id, [])
             + reservations_by_court.get(None, [])
         )
         result = []
-        slot_start = datetime.combine(day, oh.open_time, tzinfo=timezone.utc)
-        day_end = datetime.combine(day, oh.close_time, tzinfo=timezone.utc)
         while slot_start + slot_duration <= day_end:
             slot_end = slot_start + slot_duration
             booking_match = next(
