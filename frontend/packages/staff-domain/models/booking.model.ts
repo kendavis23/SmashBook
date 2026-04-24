@@ -31,6 +31,7 @@ export interface BookingListFilters {
 export interface CalendarViewFilters {
     view?: "day" | "week";
     anchor_date?: string;
+    court_id?: string;
 }
 
 export interface OpenGameFilters {

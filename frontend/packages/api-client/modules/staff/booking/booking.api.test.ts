@@ -94,6 +94,24 @@ describe("getCalendarViewEndpoint", () => {
             `/api/v1/bookings/calendar?club_id=${CLUB_ID}&view=day&anchor_date=2026-04-11`
         );
     });
+
+    it("calls GET /api/v1/bookings/calendar with court_id for week view", async () => {
+        mockFetcher.mockResolvedValue({
+            view: "week",
+            date_from: "2026-04-07",
+            date_to: "2026-04-13",
+            days: [],
+        });
+        await getCalendarViewEndpoint({
+            club_id: CLUB_ID,
+            view: "week",
+            anchor_date: "2026-04-11",
+            court_id: "court-1",
+        });
+        expect(mockFetcher).toHaveBeenCalledWith(
+            `/api/v1/bookings/calendar?club_id=${CLUB_ID}&view=week&anchor_date=2026-04-11&court_id=court-1`
+        );
+    });
 });
 
 describe("listOpenGamesEndpoint", () => {

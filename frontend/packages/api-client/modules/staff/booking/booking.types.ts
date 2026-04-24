@@ -30,6 +30,7 @@ export interface CalendarViewParams {
     club_id: string;
     view?: "day" | "week";
     anchor_date?: string;
+    court_id?: string;
 }
 
 export interface OpenGameListParams {
