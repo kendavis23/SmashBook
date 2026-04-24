@@ -65,6 +65,12 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
+    StatPill: ({ label, value }: { label: string; value: string }) => (
+        <div>
+            <span>{label}</span>
+            <span>{value}</span>
+        </div>
+    ),
 }));
 
 describe("NewReservationModalContainer", () => {

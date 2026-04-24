@@ -16,7 +16,15 @@ export function ManageBookingModal({ bookingId, onClose, onSuccess }: Props): JS
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card p-6 shadow-2xl">
+            {/*
+              IMPORTANT: flex flex-col + NO overflow-y-auto + NO padding here.
+              Overflow and padding live inside ManageBookingModalView.
+              style={{ height: "90vh" }} keeps the shell fixed so sticky header/footer always show.
+            */}
+            <div
+                className="flex w-full max-w-2xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
+                style={{ height: "90vh" }}
+            >
                 <ManageBookingModalContainer
                     bookingId={bookingId}
                     onClose={onClose}

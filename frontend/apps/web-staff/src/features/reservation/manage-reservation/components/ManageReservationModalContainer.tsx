@@ -123,7 +123,7 @@ export default function ManageReservationModalContainer({
                 },
                 onError: (err) => {
                     setApiError(
-                        err instanceof Error ? err.message : "Failed to update reservation."
+                        (err as { message?: string })?.message || "Failed to update reservation."
                     );
                 },
             });
@@ -143,7 +143,11 @@ export default function ManageReservationModalContainer({
             },
             onError: (err) => {
                 setShowDeleteConfirm(false);
-                setApiError(err instanceof Error ? err.message : "Failed to delete reservation.");
+                setApiError(
+                    err != null && typeof (err as { message?: unknown }).message === "string"
+                        ? (err as { message: string }).message
+                        : "Failed to delete reservation."
+                );
             },
         });
     }, [reservationId, deleteMutation, onClose, onSuccess]);

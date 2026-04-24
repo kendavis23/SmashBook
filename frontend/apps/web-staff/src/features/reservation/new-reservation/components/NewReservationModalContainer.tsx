@@ -147,7 +147,7 @@ export default function NewReservationModalContainer({
             timeError={timeError}
             apiError={apiError}
             isPending={createMutation.isPending}
-            variant="modal"
+            mode="modal"
             lockedCourtName={courtName}
             lockedDate={date}
             lockedStartTime={startTime}

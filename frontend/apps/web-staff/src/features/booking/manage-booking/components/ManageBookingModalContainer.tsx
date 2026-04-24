@@ -147,7 +147,7 @@ export default function ManageBookingModalContainer({
             },
             onError: (err) => {
                 setShowCancelConfirm(false);
-                setApiError(err instanceof Error ? err.message : "Failed to cancel booking.");
+                setApiError((err as { message?: string })?.message || "Failed to cancel booking.");
             },
         });
     }, [bookingId, cancelMutation, onClose, onSuccess]);
@@ -191,6 +191,7 @@ export default function ManageBookingModalContainer({
                 setApiError("");
                 updateMutation.reset();
             }}
+            onDismissSuccess={() => setUpdateSuccess(false)}
             onBack={onClose}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
