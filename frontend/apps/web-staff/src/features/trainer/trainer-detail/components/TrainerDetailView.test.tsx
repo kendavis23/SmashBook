@@ -88,10 +88,7 @@ describe("TrainerDetailView — header", () => {
 
     it("shows Inactive badge for inactive trainer", () => {
         render(
-            <TrainerDetailView
-                {...defaultProps}
-                trainer={{ ...mockTrainer, is_active: false }}
-            />
+            <TrainerDetailView {...defaultProps} trainer={{ ...mockTrainer, is_active: false }} />
         );
         expect(screen.getByText("Inactive")).toBeInTheDocument();
     });
@@ -102,9 +99,7 @@ describe("TrainerDetailView — header", () => {
     });
 
     it("shows fallback when bio is null", () => {
-        render(
-            <TrainerDetailView {...defaultProps} trainer={{ ...mockTrainer, bio: null }} />
-        );
+        render(<TrainerDetailView {...defaultProps} trainer={{ ...mockTrainer, bio: null }} />);
         expect(screen.getByText("No bio provided.")).toBeInTheDocument();
     });
 });
@@ -223,10 +218,7 @@ describe("TrainerDetailView — bookings tab", () => {
 
     it("shows error toast when bookingsError is set", () => {
         render(
-            <TrainerDetailView
-                {...bookingsProps}
-                bookingsError={new Error("Bookings error")}
-            />
+            <TrainerDetailView {...bookingsProps} bookingsError={new Error("Bookings error")} />
         );
         expect(screen.getByText("Bookings error")).toBeInTheDocument();
     });

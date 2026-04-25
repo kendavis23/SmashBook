@@ -279,10 +279,7 @@ export default function ManageReservationView({
     return (
         <div className="w-full space-y-5">
             <Breadcrumb
-                items={[
-                    { label: "Reservations", onClick: onBack },
-                    { label: reservation.title },
-                ]}
+                items={[{ label: "Reservations", onClick: onBack }, { label: reservation.title }]}
             />
 
             {/* Page header card */}

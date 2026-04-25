@@ -262,19 +262,23 @@ export default function NewBookingView({
                 />
             </div>
 
-            {/* Staff (Trainer) */}
-            <div className="mt-4">
-                <label htmlFor="bk-staff-id" className={labelCls}>
-                    Staff (Trainer)
-                </label>
-                <SelectInput
-                    value={form.staffProfileId}
-                    onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                    options={trainers.map((t) => ({ value: t.id, label: t.id }))}
-                    placeholder={trainers.length === 0 ? "No trainers available" : "Select trainer…"}
-                    disabled={trainers.length === 0}
-                />
-            </div>
+            {/* Staff (Trainer) — lesson types only */}
+            {form.bookingType === "lesson_individual" || form.bookingType === "lesson_group" ? (
+                <div className="mt-4">
+                    <label htmlFor="bk-staff-id" className={labelCls}>
+                        Staff (Trainer)
+                    </label>
+                    <SelectInput
+                        value={form.staffProfileId}
+                        onValueChange={(v) => onFormChange({ staffProfileId: v })}
+                        options={trainers.map((t) => ({ value: t.id, label: t.id }))}
+                        placeholder={
+                            trainers.length === 0 ? "No trainers available" : "Select trainer…"
+                        }
+                        disabled={trainers.length === 0}
+                    />
+                </div>
+            ) : null}
         </>
     );
 
@@ -442,7 +446,8 @@ export default function NewBookingView({
                                             </span>
                                         </h3>
                                         <p className="mt-1 text-sm text-muted-foreground">
-                                            Mark as open and set skill range requirements for matchmaking.
+                                            Mark as open and set skill range requirements for
+                                            matchmaking.
                                         </p>
                                     </div>
                                     <div className="mb-4">
@@ -468,20 +473,20 @@ export default function NewBookingView({
                             {/* Event / contact — corporate or tournament only */}
                             {form.bookingType === "corporate_event" ||
                             form.bookingType === "tournament" ? (
-                            <section className="form-section">
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Event &amp; Contact{" "}
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        For corporate or tournament bookings.
-                                    </p>
-                                </div>
-                                {optionalEventFields}
-                            </section>
+                                <section className="form-section">
+                                    <div className="mb-4">
+                                        <h3 className="text-sm font-semibold text-foreground">
+                                            Event &amp; Contact{" "}
+                                            <span className="text-xs font-normal text-muted-foreground">
+                                                (optional)
+                                            </span>
+                                        </h3>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            For corporate or tournament bookings.
+                                        </p>
+                                    </div>
+                                    {optionalEventFields}
+                                </section>
                             ) : null}
 
                             {/* Recurring — non-regular bookings only */}

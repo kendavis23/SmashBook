@@ -65,8 +65,6 @@ export default function NewBookingContainer(): JSX.Element {
 
     const { data: courts = [] } = useListCourts(clubId ?? "");
     const courtList = courts as { id: string; name: string }[];
-    const { data: trainers = [] } = useListTrainers(clubId ?? "");
-    const trainerList = trainers.filter((t) => t.is_active !== false);
 
     const [form, setForm] = useState<NewBookingFormState>(() => ({
         ...createDefaultForm(),
@@ -74,6 +72,11 @@ export default function NewBookingContainer(): JSX.Element {
         bookingDate: search.date ?? "",
         startTime: search.startTime ?? "",
     }));
+
+    const isLessonType =
+        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
+    const { data: trainers = [] } = useListTrainers(isLessonType ? (clubId ?? "") : "");
+    const trainerList = trainers.filter((t) => t.is_active !== false);
 
     // Auto-select the first court once the list loads (only if not pre-filled)
     useEffect(() => {
@@ -195,7 +198,10 @@ export default function NewBookingContainer(): JSX.Element {
     );
 
     const handleCancel = useCallback((): void => {
-        void navigate({ to: "/bookings", search: { ...bookingsCreatedSearch, created: undefined } });
+        void navigate({
+            to: "/bookings",
+            search: { ...bookingsCreatedSearch, created: undefined },
+        });
     }, [navigate]);
 
     const handleDismissError = useCallback((): void => {

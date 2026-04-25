@@ -113,7 +113,7 @@ describe("Sidebar — brand & chrome", () => {
     });
 });
 
-describe("Sidebar — player navigation", () => {
+describe("Sidebar — unrestricted routes (staff role)", () => {
     beforeEach(() => {
         currentRole = "player";
         currentPath = "/dashboard";
@@ -145,7 +145,7 @@ describe("Sidebar — player navigation", () => {
     });
 });
 
-describe("Sidebar — legacy admin links are absent", () => {
+describe("Sidebar — unavailable staff routes", () => {
     beforeEach(() => {
         currentRole = "player";
         currentPath = "/dashboard";
@@ -171,51 +171,49 @@ describe("Sidebar — legacy admin links are absent", () => {
         expect(screen.queryByText("Reports")).not.toBeInTheDocument();
     });
 
-    it("does NOT render Settings link", () => {
+    it("does NOT render Finance section", () => {
         render(<Sidebar />);
-        expect(screen.queryByText("Settings")).not.toBeInTheDocument();
-    });
-});
-
-describe("Sidebar — route visibility is role-agnostic for unrestricted routes", () => {
-    beforeEach(() => {
-        currentRole = "admin";
-        currentPath = "/dashboard";
-    });
-
-    it("still renders the player routes for admin", () => {
-        render(<Sidebar />);
-        expect(screen.getByText("Dashboard")).toBeInTheDocument();
-        expect(screen.getByText("Courts")).toBeInTheDocument();
-        expect(screen.getByText("Bookings")).toBeInTheDocument();
-    });
-
-    it("does not render nonexistent admin-only links", () => {
-        render(<Sidebar />);
-        expect(screen.queryByText("Staff")).not.toBeInTheDocument();
         expect(screen.queryByText("Finance")).not.toBeInTheDocument();
-        expect(screen.queryByText("Reports")).not.toBeInTheDocument();
     });
 });
 
-describe("Sidebar — owner sees the same unrestricted navigation", () => {
+describe("Sidebar — current player routes", () => {
     beforeEach(() => {
-        currentRole = "owner";
+        currentRole = "player";
         currentPath = "/dashboard";
     });
 
-    it("renders the player-facing links", () => {
+    it("renders Courts link", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Dashboard")).toBeInTheDocument();
+        expect(screen.getByText("Courts")).toBeInTheDocument();
+    });
+
+    it("renders Support group routes", () => {
+        render(<Sidebar />);
         expect(screen.getAllByText("Support")[0]).toBeInTheDocument();
         expect(screen.getByText("Equipment")).toBeInTheDocument();
     });
+});
 
-    it("does not render removed finance links", () => {
+describe("Sidebar — staff-only routes remain unavailable", () => {
+    beforeEach(() => {
+        currentRole = "player";
+        currentPath = "/dashboard";
+    });
+
+    it("does NOT render Staff link", () => {
+        render(<Sidebar />);
+        expect(screen.queryByText("Staff")).not.toBeInTheDocument();
+    });
+
+    it("does NOT render Finance link", () => {
         render(<Sidebar />);
         expect(screen.queryByText("Finance")).not.toBeInTheDocument();
+    });
+
+    it("does NOT render Reports link", () => {
+        render(<Sidebar />);
         expect(screen.queryByText("Reports")).not.toBeInTheDocument();
-        expect(screen.queryByText("Staff")).not.toBeInTheDocument();
     });
 });
 
@@ -236,15 +234,14 @@ describe("Sidebar — logout", () => {
 
 describe("Sidebar — group headers", () => {
     beforeEach(() => {
-        currentRole = "owner";
+        currentRole = "player";
         currentPath = "/dashboard";
     });
 
-    it("renders the current player-facing group headers", () => {
+    it("does not render group headers for role-gated groups when role lacks access", () => {
+        currentRole = "player";
         render(<Sidebar />);
-        expect(screen.getByText("Overview")).toBeInTheDocument();
-        expect(screen.getByText("Operations")).toBeInTheDocument();
-        expect(screen.getByText("People")).toBeInTheDocument();
-        expect(screen.getAllByText("Support")[0]).toBeInTheDocument();
+        // Finance & Reports is not part of the player navigation.
+        expect(screen.queryByText("Finance & Reports")).not.toBeInTheDocument();
     });
 });

@@ -149,8 +149,7 @@ function parseExisting(value: string): Partial<RecurrenceState> {
               })
             : [];
 
-        const endType: EndType =
-            opts.until != null ? "until" : "count";
+        const endType: EndType = opts.until != null ? "until" : "count";
 
         const until =
             opts.until instanceof Date

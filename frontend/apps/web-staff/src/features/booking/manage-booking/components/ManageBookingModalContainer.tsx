@@ -7,6 +7,7 @@ import {
     useCancelBooking,
     useListCourts,
     useGetCourtAvailability,
+    useInvitePlayer,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { Booking } from "../../types";
@@ -44,6 +45,7 @@ export default function ManageBookingModalContainer({
 
     const updateMutation = useUpdateBooking(clubId ?? "", bookingId);
     const cancelMutation = useCancelBooking(clubId ?? "");
+    const inviteMutation = useInvitePlayer(clubId ?? "", bookingId);
 
     const [form, setForm] = useState<ManageBookingFormState | null>(null);
 
@@ -92,6 +94,31 @@ export default function ManageBookingModalContainer({
         if ("bookingDate" in patch) setDateChanged(true);
         setForm((prev) => (prev ? { ...prev, ...patch } : prev));
     }, []);
+
+    const handleInvitePlayer = useCallback(
+        (playerId: string): void => {
+            const userId = playerId.trim();
+            if (!userId) {
+                setApiError("Player ID is required.");
+                return;
+            }
+
+            inviteMutation.mutate(
+                { user_id: userId },
+                {
+                    onSuccess: () => {
+                        setApiError("");
+                    },
+                    onError: (err) => {
+                        setApiError(
+                            (err as { message?: string })?.message || "Failed to invite player."
+                        );
+                    },
+                }
+            );
+        },
+        [inviteMutation]
+    );
 
     const handleSubmit = useCallback(
         (e: FormEvent): void => {
@@ -180,9 +207,11 @@ export default function ManageBookingModalContainer({
             apiError={apiError}
             updateSuccess={updateSuccess}
             isUpdating={updateMutation.isPending}
+            isInviting={inviteMutation.isPending}
             isCancelling={cancelMutation.isPending}
             showCancelConfirm={showCancelConfirm}
             onFormChange={handleFormChange}
+            onInvitePlayer={handleInvitePlayer}
             onSubmit={handleSubmit}
             onCancelBooking={() => setShowCancelConfirm(true)}
             onConfirmCancel={handleConfirmCancel}

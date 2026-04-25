@@ -126,9 +126,11 @@ const defaultProps = {
     apiError: "",
     updateSuccess: false,
     isUpdating: false,
+    isInviting: false,
     isCancelling: false,
     showCancelConfirm: false,
     onFormChange: vi.fn(),
+    onInvitePlayer: vi.fn(),
     onSubmit: vi.fn((e: React.FormEvent) => e.preventDefault()),
     onCancelBooking: vi.fn(),
     onConfirmCancel: vi.fn(),
@@ -226,6 +228,39 @@ describe("ManageBookingModalView", () => {
         expect(screen.getByRole("alert")).toHaveTextContent("Update failed");
         fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
         expect(onDismissError).toHaveBeenCalled();
+    });
+
+    it("shows invite section only for open game bookings", () => {
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                booking={{ ...booking, is_open_game: true } as never}
+            />
+        );
+
+        expect(screen.getByText("Invite Player")).toBeInTheDocument();
+    });
+
+    it("hides invite section for non-open game bookings", () => {
+        render(<ManageBookingModalView {...defaultProps} />);
+
+        expect(screen.queryByText("Invite Player")).not.toBeInTheDocument();
+    });
+
+    it("calls onInvitePlayer with the entered player id", () => {
+        const onInvitePlayer = vi.fn();
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                booking={{ ...booking, is_open_game: true } as never}
+                onInvitePlayer={onInvitePlayer}
+            />
+        );
+
+        fireEvent.change(screen.getByLabelText("Player ID"), { target: { value: "user-123" } });
+        fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+
+        expect(onInvitePlayer).toHaveBeenCalledWith("user-123");
     });
 
     it("shows success toast and dismisses it", () => {

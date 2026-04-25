@@ -154,9 +154,11 @@ const defaultProps = {
     apiError: "",
     updateSuccess: false,
     isUpdating: false,
+    isInviting: false,
     isCancelling: false,
     showCancelConfirm: false,
     onFormChange: vi.fn(),
+    onInvitePlayer: vi.fn(),
     onSubmit: vi.fn((event: React.FormEvent) => event.preventDefault()),
     onCancelBooking: vi.fn(),
     onConfirmCancel: vi.fn(),
@@ -216,6 +218,27 @@ describe("ManageBookingView", () => {
         expect(screen.getByRole("alert")).toHaveTextContent("Update failed");
         fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
         expect(onDismissError).toHaveBeenCalled();
+    });
+
+    it("invites a player for open game bookings", () => {
+        const onInvitePlayer = vi.fn();
+        render(<ManageBookingView {...defaultProps} onInvitePlayer={onInvitePlayer} />);
+
+        fireEvent.change(screen.getByLabelText("Player ID"), { target: { value: "user-123" } });
+        fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+
+        expect(onInvitePlayer).toHaveBeenCalledWith("user-123");
+    });
+
+    it("hides invite section for non-open game bookings", () => {
+        render(
+            <ManageBookingView
+                {...defaultProps}
+                booking={{ ...booking, is_open_game: false } as never}
+            />
+        );
+
+        expect(screen.queryByRole("heading", { name: "Invite Player" })).not.toBeInTheDocument();
     });
 
     it("disables save when form is not dirty", () => {

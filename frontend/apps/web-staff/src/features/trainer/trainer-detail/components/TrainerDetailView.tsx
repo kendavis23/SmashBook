@@ -3,12 +3,7 @@ import { Users, Calendar, Clock, BookOpen, ChevronDown, ChevronRight } from "luc
 import { Breadcrumb, AlertToast } from "@repo/ui";
 import { formatUTCDate, formatUTCTime } from "@repo/ui";
 import type { Trainer, TrainerAvailability, TrainerBookingItem, TrainerTab } from "../../types";
-import {
-    TRAINER_TABS,
-    DAY_LABELS,
-    BOOKING_TYPE_LABELS,
-    BOOKING_STATUS_LABELS,
-} from "../../types";
+import { TRAINER_TABS, DAY_LABELS, BOOKING_TYPE_LABELS, BOOKING_STATUS_LABELS } from "../../types";
 import { useState } from "react";
 
 type Props = {
@@ -72,7 +67,9 @@ function AvailabilityRow({ slot }: { slot: TrainerAvailability }): JSX.Element {
                 <div className="space-y-2 border-t border-border p-4 text-sm">
                     <div className="flex gap-2">
                         <span className="text-muted-foreground">Effective from:</span>
-                        <span className="text-foreground">{formatUTCDate(slot.effective_from)}</span>
+                        <span className="text-foreground">
+                            {formatUTCDate(slot.effective_from)}
+                        </span>
                     </div>
                     {slot.effective_until ? (
                         <div className="flex gap-2">
@@ -193,7 +190,9 @@ export default function TrainerDetailView({
 
                             {availabilityError ? (
                                 <AlertToast
-                                    title={availabilityError.message ?? "Failed to load availability."}
+                                    title={
+                                        availabilityError.message ?? "Failed to load availability."
+                                    }
                                     variant="error"
                                     onClose={onRefreshAvailability}
                                 />
@@ -311,8 +310,9 @@ export default function TrainerDetailView({
                                                         {booking.court_name}
                                                     </td>
                                                     <td className="px-3 py-3 text-foreground">
-                                                        {BOOKING_TYPE_LABELS[booking.booking_type] ??
-                                                            booking.booking_type}
+                                                        {BOOKING_TYPE_LABELS[
+                                                            booking.booking_type
+                                                        ] ?? booking.booking_type}
                                                     </td>
                                                     <td className="px-3 py-3 text-foreground">
                                                         {formatUTCDate(booking.start_datetime)}

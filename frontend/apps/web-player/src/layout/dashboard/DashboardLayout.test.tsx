@@ -7,6 +7,10 @@ vi.mock("./ProfileEditModal", () => ({
     default: () => <div data-testid="profile-edit-modal" />,
 }));
 
+vi.mock("./SwitchClubModal", () => ({
+    default: () => null,
+}));
+
 vi.mock("../../providers/ThemeProvider", () => ({
     useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
 }));
@@ -35,6 +39,9 @@ vi.mock("@repo/auth", () => {
         clearAuth: vi.fn(),
         accessToken: "test-token",
         setAuth: vi.fn(),
+        activeClubId: null,
+        activeClubName: null,
+        setActiveClubId: vi.fn(),
     };
     const useAuthStore = vi.fn((selector?: (s: typeof store) => unknown) =>
         selector ? selector(store) : store
@@ -47,6 +54,9 @@ vi.mock("@repo/auth", () => {
             user: store.user,
             role: "staff",
             isAuthenticated: true,
+            activeClubName: null,
+            clubs: [{ club_id: "c1", club_name: "Test Club", role: "staff" }],
+            setActiveClubId: vi.fn(),
         }),
     };
 });

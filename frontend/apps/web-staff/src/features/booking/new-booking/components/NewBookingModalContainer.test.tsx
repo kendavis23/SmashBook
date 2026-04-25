@@ -92,7 +92,12 @@ vi.mock("@repo/ui", () => ({
     ),
 }));
 
-import { useCreateBooking, useGetCourtAvailability, useListCourts, useListTrainers } from "../../hooks";
+import {
+    useCreateBooking,
+    useGetCourtAvailability,
+    useListCourts,
+    useListTrainers,
+} from "../../hooks";
 import { useClubAccess } from "../../store";
 
 const mockUseCreateBooking = useCreateBooking as ReturnType<typeof vi.fn>;

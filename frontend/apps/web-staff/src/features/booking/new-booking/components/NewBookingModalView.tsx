@@ -156,19 +156,26 @@ export function NewBookingModalView({
                         />
                     </div>
 
-                    {/* Staff (Trainer) */}
-                    <div>
-                        <label htmlFor="bk-staff-id" className={labelCls}>
-                            Staff (Trainer)
-                        </label>
-                        <SelectInput
-                            value={form.staffProfileId}
-                            onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                            options={trainers.map((t) => ({ value: t.id, label: t.id }))}
-                            placeholder={trainers.length === 0 ? "No trainers available" : "Select trainer…"}
-                            disabled={trainers.length === 0}
-                        />
-                    </div>
+                    {/* Staff (Trainer) — lesson types only */}
+                    {form.bookingType === "lesson_individual" ||
+                    form.bookingType === "lesson_group" ? (
+                        <div>
+                            <label htmlFor="bk-staff-id" className={labelCls}>
+                                Staff (Trainer)
+                            </label>
+                            <SelectInput
+                                value={form.staffProfileId}
+                                onValueChange={(v) => onFormChange({ staffProfileId: v })}
+                                options={trainers.map((t) => ({ value: t.id, label: t.id }))}
+                                placeholder={
+                                    trainers.length === 0
+                                        ? "No trainers available"
+                                        : "Select trainer…"
+                                }
+                                disabled={trainers.length === 0}
+                            />
+                        </div>
+                    ) : null}
 
                     {/* Collapsible: Open Game & Skill Level — regular bookings only */}
                     {form.bookingType === "regular" ? (
@@ -194,7 +201,8 @@ export function NewBookingModalView({
                             {skillOpen ? (
                                 <div className="space-y-3 border-t border-border p-4">
                                     <p className="text-xs text-muted-foreground">
-                                        Mark as open and set skill range requirements for matchmaking.
+                                        Mark as open and set skill range requirements for
+                                        matchmaking.
                                     </p>
                                     <label className="flex cursor-pointer items-center gap-2">
                                         <input
@@ -266,94 +274,93 @@ export function NewBookingModalView({
                     ) : null}
 
                     {/* Collapsible: Event & Contact — corporate or tournament only */}
-                    {form.bookingType === "corporate_event" ||
-                    form.bookingType === "tournament" ? (
-                    <div className="overflow-hidden rounded-lg border border-border">
-                        <button
-                            type="button"
-                            onClick={() => setEventOpen((o) => !o)}
-                            className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                            aria-expanded={eventOpen}
-                        >
-                            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Event &amp; Contact{" "}
-                                <span className="text-[10px] font-normal normal-case text-muted-foreground">
-                                    (optional)
+                    {form.bookingType === "corporate_event" || form.bookingType === "tournament" ? (
+                        <div className="overflow-hidden rounded-lg border border-border">
+                            <button
+                                type="button"
+                                onClick={() => setEventOpen((o) => !o)}
+                                className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
+                                aria-expanded={eventOpen}
+                            >
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Event &amp; Contact{" "}
+                                    <span className="text-[10px] font-normal normal-case text-muted-foreground">
+                                        (optional)
+                                    </span>
                                 </span>
-                            </span>
+                                {eventOpen ? (
+                                    <ChevronDown size={13} className="text-muted-foreground" />
+                                ) : (
+                                    <ChevronRight size={13} className="text-muted-foreground" />
+                                )}
+                            </button>
                             {eventOpen ? (
-                                <ChevronDown size={13} className="text-muted-foreground" />
-                            ) : (
-                                <ChevronRight size={13} className="text-muted-foreground" />
-                            )}
-                        </button>
-                        {eventOpen ? (
-                            <div className="space-y-3 border-t border-border p-4">
-                                <p className="text-xs text-muted-foreground">
-                                    For corporate or tournament bookings.
-                                </p>
-                                <div>
-                                    <label htmlFor="bk-event-name" className={labelCls}>
-                                        Event name
-                                    </label>
-                                    <input
-                                        id="bk-event-name"
-                                        type="text"
-                                        className={fieldCls}
-                                        placeholder="e.g. Friday Corporate Cup"
-                                        value={form.eventName}
-                                        onChange={(e) =>
-                                            onFormChange({ eventName: e.target.value })
-                                        }
-                                    />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-3 border-t border-border p-4">
+                                    <p className="text-xs text-muted-foreground">
+                                        For corporate or tournament bookings.
+                                    </p>
                                     <div>
-                                        <label htmlFor="bk-contact-name" className={labelCls}>
-                                            Contact name
+                                        <label htmlFor="bk-event-name" className={labelCls}>
+                                            Event name
                                         </label>
                                         <input
-                                            id="bk-contact-name"
+                                            id="bk-event-name"
                                             type="text"
                                             className={fieldCls}
-                                            value={form.contactName}
+                                            placeholder="e.g. Friday Corporate Cup"
+                                            value={form.eventName}
                                             onChange={(e) =>
-                                                onFormChange({ contactName: e.target.value })
+                                                onFormChange({ eventName: e.target.value })
                                             }
                                         />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label htmlFor="bk-contact-name" className={labelCls}>
+                                                Contact name
+                                            </label>
+                                            <input
+                                                id="bk-contact-name"
+                                                type="text"
+                                                className={fieldCls}
+                                                value={form.contactName}
+                                                onChange={(e) =>
+                                                    onFormChange({ contactName: e.target.value })
+                                                }
+                                            />
+                                        </div>
+                                        <div>
+                                            <label htmlFor="bk-contact-email" className={labelCls}>
+                                                Contact email
+                                            </label>
+                                            <input
+                                                id="bk-contact-email"
+                                                type="email"
+                                                className={fieldCls}
+                                                value={form.contactEmail}
+                                                onChange={(e) =>
+                                                    onFormChange({ contactEmail: e.target.value })
+                                                }
+                                            />
+                                        </div>
                                     </div>
                                     <div>
-                                        <label htmlFor="bk-contact-email" className={labelCls}>
-                                            Contact email
+                                        <label htmlFor="bk-contact-phone" className={labelCls}>
+                                            Contact phone
                                         </label>
                                         <input
-                                            id="bk-contact-email"
-                                            type="email"
+                                            id="bk-contact-phone"
+                                            type="tel"
                                             className={fieldCls}
-                                            value={form.contactEmail}
+                                            value={form.contactPhone}
                                             onChange={(e) =>
-                                                onFormChange({ contactEmail: e.target.value })
+                                                onFormChange({ contactPhone: e.target.value })
                                             }
                                         />
                                     </div>
                                 </div>
-                                <div>
-                                    <label htmlFor="bk-contact-phone" className={labelCls}>
-                                        Contact phone
-                                    </label>
-                                    <input
-                                        id="bk-contact-phone"
-                                        type="tel"
-                                        className={fieldCls}
-                                        value={form.contactPhone}
-                                        onChange={(e) =>
-                                            onFormChange({ contactPhone: e.target.value })
-                                        }
-                                    />
-                                </div>
-                            </div>
-                        ) : null}
-                    </div>
+                            ) : null}
+                        </div>
                     ) : null}
                 </div>
             </div>

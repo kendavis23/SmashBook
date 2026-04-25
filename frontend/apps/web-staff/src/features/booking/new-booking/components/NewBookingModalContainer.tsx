@@ -1,7 +1,12 @@
 import { useState, useCallback, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
-import { useCreateBooking, useGetCourtAvailability, useListCourts, useListTrainers } from "../../hooks";
+import {
+    useCreateBooking,
+    useGetCourtAvailability,
+    useListCourts,
+    useListTrainers,
+} from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { BookingInput, BookingType } from "../../types";
 import NewBookingView from "./NewBookingView";
@@ -32,8 +37,6 @@ export default function NewBookingModalContainer({
     const { clubId } = useClubAccess();
     const { data: courts = [] } = useListCourts(clubId ?? "");
     const courtList = courts as { id: string; name: string }[];
-    const { data: trainers = [] } = useListTrainers(clubId ?? "");
-    const trainerList = trainers.filter((t) => t.is_active !== false);
 
     const [form, setForm] = useState<NewBookingFormState>({
         courtId,
@@ -56,6 +59,11 @@ export default function NewBookingModalContainer({
         recurrenceRule: "",
         skipConflicts: false,
     });
+
+    const isLessonType =
+        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
+    const { data: trainers = [] } = useListTrainers(isLessonType ? (clubId ?? "") : "");
+    const trainerList = trainers.filter((t) => t.is_active !== false);
 
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
