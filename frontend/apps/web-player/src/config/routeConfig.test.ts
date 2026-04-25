@@ -12,11 +12,8 @@ describe("ROUTES", () => {
     it("contains all expected top-level route keys", () => {
         const keys = ROUTES.map((r) => r.key);
         expect(keys).toContain("dashboard");
-        expect(keys).toContain("courts");
         expect(keys).toContain("bookings");
-        expect(keys).toContain("players");
-        expect(keys).toContain("equipment");
-        expect(keys).toContain("support");
+        expect(keys).toContain("my-games");
     });
 
     it("every top-level route has a group assigned", () => {
@@ -34,10 +31,7 @@ describe("ROUTES", () => {
         }, {});
 
         expect(grouped["Overview"]).toEqual(["dashboard"]);
-        expect(grouped["Operations"]).toEqual(["courts", "bookings"]);
-        expect(grouped["People"]).toEqual(["players"]);
-        expect(grouped["Support"]).toContain("support");
-        expect(grouped["Support"]).toContain("equipment");
+        expect(grouped["Operations"]).toEqual(["bookings", "my-games"]);
     });
 
     it("each route with a path has a title and breadcrumb", () => {
@@ -59,14 +53,9 @@ describe("getRouteByPath", () => {
         expect(result?.key).toBe("dashboard");
     });
 
-    it("returns the equipment route for /equipment", () => {
-        const result = getRouteByPath("/equipment");
-        expect(result?.key).toBe("equipment");
-    });
-
-    it("returns the support route for /support", () => {
-        const result = getRouteByPath("/support");
-        expect(result?.key).toBe("support");
+    it("returns the my-games route for /my-games", () => {
+        const result = getRouteByPath("/my-games");
+        expect(result?.key).toBe("my-games");
     });
 
     it("matches nested paths using substring logic", () => {
@@ -94,11 +83,8 @@ describe("getSearchableRoutes", () => {
     it("returns all routes for a player", () => {
         const keys = getSearchableRoutes("player").map((route) => route.key);
         expect(keys).toContain("dashboard");
-        expect(keys).toContain("courts");
         expect(keys).toContain("bookings");
-        expect(keys).toContain("players");
-        expect(keys).toContain("support");
-        expect(keys).toContain("equipment");
+        expect(keys).toContain("my-games");
     });
 
     it("returns all unrestricted routes when the user role is missing", () => {

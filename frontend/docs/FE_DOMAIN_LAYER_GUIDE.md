@@ -1,4 +1,4 @@
-_Last updated: 2026-04-12 09:32 UTC_
+_Last updated: 2026-04-25 21:30 UTC_
 
 # Frontend Domain Layer Guide
 
@@ -441,11 +441,12 @@ New module added to api-client?
 
 ## Implemented domain modules
 
-| Domain  | Module       | Model                 | Mapper           | Mapper test           | Service | Hooks                 | Hook test                   |
-| ------- | ------------ | --------------------- | ---------------- | --------------------- | ------- | --------------------- | --------------------------- |
-| `staff` | `club`       | `club.model.ts`       | `club.mapper.ts` | `club.mapper.test.ts` | —       | `club.hooks.ts`       | `club.hooks.test.tsx`       |
-| `staff` | `court`      | `court.model.ts`      | —                | —                     | —       | `court.hooks.ts`      | `court.hooks.test.tsx`      |
-| `staff` | `booking`    | `booking.model.ts`    | —                | —                     | —       | `booking.hooks.ts`    | `booking.hooks.test.tsx`    |
-| `staff` | `membership` | `membership.model.ts` | —                | —                     | —       | `membership.hooks.ts` | `membership.hooks.test.tsx` |
-| `staff` | `equipment`  | `equipment.model.ts`  | —                | —                     | —       | `equipment.hooks.ts`  | `equipment.hooks.test.tsx`  |
-| `staff` | `trainer`    | `trainer.model.ts`    | —                | —                     | —       | `trainer.hooks.ts`    | `trainer.hooks.test.tsx`    |
+| Domain   | Module       | Model                 | Mapper           | Mapper test           | Service | Hooks                 | Hook test                   |
+| -------- | ------------ | --------------------- | ---------------- | --------------------- | ------- | --------------------- | --------------------------- |
+| `staff`  | `club`       | `club.model.ts`       | `club.mapper.ts` | `club.mapper.test.ts` | —       | `club.hooks.ts`       | `club.hooks.test.tsx`       |
+| `staff`  | `court`      | `court.model.ts`      | —                | —                     | —       | `court.hooks.ts`      | `court.hooks.test.tsx`      |
+| `staff`  | `booking`    | `booking.model.ts`    | —                | —                     | —       | `booking.hooks.ts`    | `booking.hooks.test.tsx`    |
+| `staff`  | `membership` | `membership.model.ts` | —                | —                     | —       | `membership.hooks.ts` | `membership.hooks.test.tsx` |
+| `staff`  | `equipment`  | `equipment.model.ts`  | —                | —                     | —       | `equipment.hooks.ts`  | `equipment.hooks.test.tsx`  |
+| `staff`  | `trainer`    | `trainer.model.ts`    | —                | —                     | —       | `trainer.hooks.ts`    | `trainer.hooks.test.tsx`    |
+| `player` | `profile`    | `profile.model.ts`    | —                | —                     | —       | `profile.hooks.ts`    | `profile.hooks.test.tsx`    |

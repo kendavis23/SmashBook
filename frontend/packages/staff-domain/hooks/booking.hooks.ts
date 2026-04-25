@@ -2,17 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
     listBookingsEndpoint,
-    getBookingEndpoint,
-    createBookingEndpoint,
     createRecurringBookingEndpoint,
     updateBookingEndpoint,
-    cancelBookingEndpoint,
     joinBookingEndpoint,
-    invitePlayerEndpoint,
     respondInviteEndpoint,
     getCalendarViewEndpoint,
-    listOpenGamesEndpoint,
 } from "@repo/api-client/modules/staff";
+import {
+    listOpenGamesEndpoint,
+    createBookingEndpoint,
+    getBookingEndpoint,
+    cancelBookingEndpoint,
+    invitePlayerEndpoint,
+} from "@repo/api-client/modules/share";
 import type {
     Booking,
     BookingInput,

@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
 // ---------------------------------------------------------------------------
-// Mock the entire staff api-client module
+// Mock the staff and share api-client modules
 // ---------------------------------------------------------------------------
 
 vi.mock("@repo/api-client/modules/staff", () => ({
@@ -29,21 +29,26 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     getCalendarReservationEndpoint: vi.fn(),
     updateCalendarReservationEndpoint: vi.fn(),
     deleteCalendarReservationEndpoint: vi.fn(),
-    // booking endpoints
+    // booking endpoints (staff-only)
     listBookingsEndpoint: vi.fn(),
-    getBookingEndpoint: vi.fn(),
-    createBookingEndpoint: vi.fn(),
     createRecurringBookingEndpoint: vi.fn(),
     updateBookingEndpoint: vi.fn(),
-    cancelBookingEndpoint: vi.fn(),
     joinBookingEndpoint: vi.fn(),
-    invitePlayerEndpoint: vi.fn(),
     respondInviteEndpoint: vi.fn(),
     getCalendarViewEndpoint: vi.fn(),
+}));
+
+vi.mock("@repo/api-client/modules/share", () => ({
+    // shared booking endpoints
     listOpenGamesEndpoint: vi.fn(),
+    createBookingEndpoint: vi.fn(),
+    getBookingEndpoint: vi.fn(),
+    cancelBookingEndpoint: vi.fn(),
+    invitePlayerEndpoint: vi.fn(),
 }));
 
 import * as staffApi from "@repo/api-client/modules/staff";
+import * as shareApi from "@repo/api-client/modules/share";
 
 import {
     useListBookings,
@@ -190,26 +195,26 @@ describe("useListBookings", () => {
 
 describe("useGetBooking", () => {
     it("returns a single booking by id", async () => {
-        vi.mocked(staffApi.getBookingEndpoint).mockResolvedValue(mockBooking);
+        vi.mocked(shareApi.getBookingEndpoint).mockResolvedValue(mockBooking);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useGetBooking(BOOKING_ID, CLUB_ID), {
             wrapper: Wrapper,
         });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual(mockBooking);
-        expect(staffApi.getBookingEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID);
+        expect(shareApi.getBookingEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID);
     });
 
     it("does not fetch when bookingId is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useGetBooking("", CLUB_ID), { wrapper: Wrapper });
-        expect(staffApi.getBookingEndpoint).not.toHaveBeenCalled();
+        expect(shareApi.getBookingEndpoint).not.toHaveBeenCalled();
     });
 
     it("does not fetch when clubId is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useGetBooking(BOOKING_ID, ""), { wrapper: Wrapper });
-        expect(staffApi.getBookingEndpoint).not.toHaveBeenCalled();
+        expect(shareApi.getBookingEndpoint).not.toHaveBeenCalled();
     });
 });
 
@@ -247,18 +252,18 @@ describe("useGetCalendarView", () => {
 
 describe("useListOpenGames", () => {
     it("returns open games for a club", async () => {
-        vi.mocked(staffApi.listOpenGamesEndpoint).mockResolvedValue([mockOpenGame]);
+        vi.mocked(shareApi.listOpenGamesEndpoint).mockResolvedValue([mockOpenGame]);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useListOpenGames(CLUB_ID), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual([mockOpenGame]);
-        expect(staffApi.listOpenGamesEndpoint).toHaveBeenCalledWith({ club_id: CLUB_ID });
+        expect(shareApi.listOpenGamesEndpoint).toHaveBeenCalledWith({ club_id: CLUB_ID });
     });
 
     it("does not fetch when clubId is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useListOpenGames(""), { wrapper: Wrapper });
-        expect(staffApi.listOpenGamesEndpoint).not.toHaveBeenCalled();
+        expect(shareApi.listOpenGamesEndpoint).not.toHaveBeenCalled();
     });
 });
 
@@ -268,7 +273,7 @@ describe("useListOpenGames", () => {
 
 describe("useCreateBooking", () => {
     it("calls createBookingEndpoint and invalidates bookings list", async () => {
-        vi.mocked(staffApi.createBookingEndpoint).mockResolvedValue(mockBooking);
+        vi.mocked(shareApi.createBookingEndpoint).mockResolvedValue(mockBooking);
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
         const { result } = renderHook(() => useCreateBooking(CLUB_ID), { wrapper: Wrapper });
@@ -278,7 +283,7 @@ describe("useCreateBooking", () => {
             start_datetime: "2026-04-11T10:00:00Z",
         });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.createBookingEndpoint).toHaveBeenCalledWith({
+        expect(shareApi.createBookingEndpoint).toHaveBeenCalledWith({
             club_id: CLUB_ID,
             court_id: "court-1",
             start_datetime: "2026-04-11T10:00:00Z",
@@ -377,13 +382,13 @@ describe("useUpdateBooking", () => {
 
 describe("useCancelBooking", () => {
     it("calls cancelBookingEndpoint and invalidates detail and list", async () => {
-        vi.mocked(staffApi.cancelBookingEndpoint).mockResolvedValue(mockBooking);
+        vi.mocked(shareApi.cancelBookingEndpoint).mockResolvedValue(mockBooking);
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
         const { result } = renderHook(() => useCancelBooking(CLUB_ID), { wrapper: Wrapper });
         result.current.mutate(BOOKING_ID);
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.cancelBookingEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID);
+        expect(shareApi.cancelBookingEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID);
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
         );
@@ -423,7 +428,7 @@ describe("useJoinBooking", () => {
 
 describe("useInvitePlayer", () => {
     it("calls invitePlayerEndpoint and invalidates booking detail", async () => {
-        vi.mocked(staffApi.invitePlayerEndpoint).mockResolvedValue(mockBooking);
+        vi.mocked(shareApi.invitePlayerEndpoint).mockResolvedValue(mockBooking);
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
         const { result } = renderHook(() => useInvitePlayer(CLUB_ID, BOOKING_ID), {
@@ -431,7 +436,7 @@ describe("useInvitePlayer", () => {
         });
         result.current.mutate({ user_id: USER_ID });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.invitePlayerEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID, {
+        expect(shareApi.invitePlayerEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID, {
             user_id: USER_ID,
         });
         expect(invalidate).toHaveBeenCalledWith(

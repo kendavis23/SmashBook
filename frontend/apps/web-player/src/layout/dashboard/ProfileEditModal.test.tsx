@@ -10,13 +10,13 @@ import ProfileEditModal from "./ProfileEditModal";
 const mockMutateAsync = vi.fn();
 
 vi.mock("@repo/player-domain/hooks", () => ({
-    useUpdateProfile: vi.fn(() => ({
+    useUpdateMyProfile: vi.fn(() => ({
         mutateAsync: mockMutateAsync,
         isPending: false,
     })),
 }));
 
-import { useUpdateProfile } from "@repo/player-domain/hooks";
+import { useUpdateMyProfile } from "@repo/player-domain/hooks";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -44,10 +44,10 @@ describe("ProfileEditModal", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.useFakeTimers({ shouldAdvanceTime: true });
-        vi.mocked(useUpdateProfile).mockReturnValue({
+        vi.mocked(useUpdateMyProfile).mockReturnValue({
             mutateAsync: mockMutateAsync,
             isPending: false,
-        } as unknown as ReturnType<typeof useUpdateProfile>);
+        } as unknown as ReturnType<typeof useUpdateMyProfile>);
     });
 
     afterEach(() => {
@@ -322,10 +322,10 @@ describe("ProfileEditModal", () => {
     // ── Pending state ────────────────────────────────────────────────────────────
 
     it("disables Save Changes button while isPending", () => {
-        vi.mocked(useUpdateProfile).mockReturnValue({
+        vi.mocked(useUpdateMyProfile).mockReturnValue({
             mutateAsync: mockMutateAsync,
             isPending: true,
-        } as unknown as ReturnType<typeof useUpdateProfile>);
+        } as unknown as ReturnType<typeof useUpdateMyProfile>);
         render(<ProfileEditModal isOpen={true} onClose={mockOnClose} user={mockUser} />, {
             wrapper,
         });
@@ -333,10 +333,10 @@ describe("ProfileEditModal", () => {
     });
 
     it("shows 'Saving…' label while isPending", () => {
-        vi.mocked(useUpdateProfile).mockReturnValue({
+        vi.mocked(useUpdateMyProfile).mockReturnValue({
             mutateAsync: mockMutateAsync,
             isPending: true,
-        } as unknown as ReturnType<typeof useUpdateProfile>);
+        } as unknown as ReturnType<typeof useUpdateMyProfile>);
         render(<ProfileEditModal isOpen={true} onClose={mockOnClose} user={mockUser} />, {
             wrapper,
         });

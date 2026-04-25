@@ -247,11 +247,11 @@ describe("Navbar — module search", () => {
         render(<Navbar />);
 
         const searchInput = screen.getByLabelText("Search modules");
-        fireEvent.change(searchInput, { target: { value: "s" } });
+        fireEvent.change(searchInput, { target: { value: "my" } });
         fireEvent.keyDown(searchInput, { key: "ArrowUp" });
         fireEvent.keyDown(searchInput, { key: "Enter" });
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/support" });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/my-games" });
     });
 
     it("renders inactive search results and updates the active item on hover", () => {
@@ -261,27 +261,27 @@ describe("Navbar — module search", () => {
             target: { value: "s" },
         });
 
+        const dashboardResult = screen.getByRole("button", { name: /dashboard/i });
         const bookingsResult = screen.getByRole("button", { name: /bookings/i });
-        const supportResult = screen.getByRole("button", { name: /support/i });
 
-        expect(bookingsResult.className).toContain("text-foreground/60");
-        fireEvent.mouseEnter(supportResult);
-        expect(supportResult.className).toContain("bg-accent");
+        expect(dashboardResult.className).toContain("bg-accent");
+        fireEvent.mouseEnter(bookingsResult);
+        expect(bookingsResult.className).toContain("bg-accent");
     });
 
     it("closes search results on escape and outside click", () => {
         render(<Navbar />);
 
         const searchInput = screen.getByLabelText("Search modules");
-        fireEvent.change(searchInput, { target: { value: "equipment" } });
+        fireEvent.change(searchInput, { target: { value: "bookings" } });
 
         fireEvent.keyDown(searchInput, { key: "Escape" });
-        expect(screen.queryByRole("button", { name: /equipment/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /bookings/i })).not.toBeInTheDocument();
 
-        fireEvent.change(searchInput, { target: { value: "equipment" } });
+        fireEvent.change(searchInput, { target: { value: "bookings" } });
 
         fireEvent.mouseDown(document.body);
-        expect(screen.queryByRole("button", { name: /equipment/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /bookings/i })).not.toBeInTheDocument();
     });
 
     it("handles escape when the current search has no results", () => {

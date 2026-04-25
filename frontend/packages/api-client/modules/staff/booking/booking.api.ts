@@ -1,14 +1,10 @@
 import { fetcher } from "../../../core/fetcher";
 import type {
-    BookingCreate,
     BookingUpdate,
     BookingResponse,
     BookingListParams,
     CalendarViewParams,
     CalendarResponse,
-    OpenGameListParams,
-    OpenGameSummary,
-    InvitePlayerRequest,
     InviteRespondRequest,
     RecurringBookingCreate,
     RecurringBookingResponse,
@@ -35,26 +31,6 @@ export function getCalendarViewEndpoint(params: CalendarViewParams): Promise<Cal
     return fetcher<CalendarResponse>(`/api/v1/bookings/calendar?${query.toString()}`);
 }
 
-export function listOpenGamesEndpoint(params: OpenGameListParams): Promise<OpenGameSummary[]> {
-    const query = new URLSearchParams({ club_id: params.club_id });
-    if (params.date) query.set("date", params.date);
-    if (params.min_skill !== undefined) query.set("min_skill", String(params.min_skill));
-    if (params.max_skill !== undefined) query.set("max_skill", String(params.max_skill));
-    return fetcher<OpenGameSummary[]>(`/api/v1/bookings/open-games?${query.toString()}`);
-}
-
-export function createBookingEndpoint(data: BookingCreate): Promise<BookingResponse> {
-    return fetcher<BookingResponse>("/api/v1/bookings", {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify(data),
-    });
-}
-
-export function getBookingEndpoint(bookingId: string, clubId: string): Promise<BookingResponse> {
-    return fetcher<BookingResponse>(`/api/v1/bookings/${bookingId}?club_id=${clubId}`);
-}
-
 export function updateBookingEndpoint(
     bookingId: string,
     clubId: string,
@@ -67,27 +43,9 @@ export function updateBookingEndpoint(
     });
 }
 
-export function cancelBookingEndpoint(bookingId: string, clubId: string): Promise<BookingResponse> {
-    return fetcher<BookingResponse>(`/api/v1/bookings/${bookingId}?club_id=${clubId}`, {
-        method: "DELETE",
-    });
-}
-
 export function joinBookingEndpoint(bookingId: string, clubId: string): Promise<BookingResponse> {
     return fetcher<BookingResponse>(`/api/v1/bookings/${bookingId}/join?club_id=${clubId}`, {
         method: "POST",
-    });
-}
-
-export function invitePlayerEndpoint(
-    bookingId: string,
-    clubId: string,
-    data: InvitePlayerRequest
-): Promise<BookingResponse> {
-    return fetcher<BookingResponse>(`/api/v1/bookings/${bookingId}/invite?club_id=${clubId}`, {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify(data),
     });
 }
 
