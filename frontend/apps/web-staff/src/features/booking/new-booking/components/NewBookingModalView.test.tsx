@@ -151,9 +151,7 @@ describe("NewBookingModalView", () => {
     it("renders Open Game & Skill Level section collapsed by default for regular bookings", () => {
         render(<NewBookingModalView {...defaultProps} />);
 
-        expect(
-            screen.getByRole("button", { name: /Open Game.*Skill Level/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Open Game.*Skill Level/i })).toBeInTheDocument();
         expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Mark as open game")).not.toBeInTheDocument();
     });
@@ -175,11 +173,11 @@ describe("NewBookingModalView", () => {
             <NewBookingModalView
                 {...defaultProps}
                 form={{ ...defaultForm, bookingType: "lesson_individual" }}
-            />,
+            />
         );
 
         expect(
-            screen.queryByRole("button", { name: /Open Game.*Skill Level/i }),
+            screen.queryByRole("button", { name: /Open Game.*Skill Level/i })
         ).not.toBeInTheDocument();
     });
 
@@ -194,7 +192,7 @@ describe("NewBookingModalView", () => {
             <NewBookingModalView
                 {...defaultProps}
                 form={{ ...defaultForm, bookingType: "corporate_event" }}
-            />,
+            />
         );
 
         expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
@@ -206,7 +204,7 @@ describe("NewBookingModalView", () => {
             <NewBookingModalView
                 {...defaultProps}
                 form={{ ...defaultForm, bookingType: "corporate_event" }}
-            />,
+            />
         );
 
         fireEvent.click(screen.getByRole("button", { name: /Event.*Contact/i }));

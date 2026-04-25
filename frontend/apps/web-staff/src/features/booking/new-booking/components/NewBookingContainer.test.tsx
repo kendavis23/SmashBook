@@ -287,9 +287,11 @@ describe("NewBookingContainer — recurring", () => {
     });
 
     it("calls useCreateRecurringBooking.mutate with correct payload on submit", async () => {
-        mockRecurringMutate.mockImplementation((_payload: unknown, options: { onSuccess: () => void }) => {
-            options.onSuccess();
-        });
+        mockRecurringMutate.mockImplementation(
+            (_payload: unknown, options: { onSuccess: () => void }) => {
+                options.onSuccess();
+            }
+        );
 
         render(<NewBookingContainer />);
 

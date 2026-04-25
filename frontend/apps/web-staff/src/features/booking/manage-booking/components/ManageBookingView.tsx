@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import {
     Breadcrumb,
@@ -42,9 +42,11 @@ type Props = {
     apiError: string;
     updateSuccess: boolean;
     isUpdating: boolean;
+    isInviting: boolean;
     isCancelling: boolean;
     showCancelConfirm: boolean;
     onFormChange: (patch: Partial<ManageBookingFormState>) => void;
+    onInvitePlayer: (playerId: string) => void;
     onSubmit: (e: FormEvent) => void;
     onCancelBooking: () => void;
     onConfirmCancel: () => void;
@@ -68,9 +70,11 @@ export default function ManageBookingView({
     apiError,
     updateSuccess,
     isUpdating,
+    isInviting,
     isCancelling,
     showCancelConfirm,
     onFormChange,
+    onInvitePlayer,
     onSubmit,
     onCancelBooking,
     onConfirmCancel,
@@ -83,6 +87,7 @@ export default function ManageBookingView({
     mode = "page",
     onClose,
 }: Props): JSX.Element {
+    const [playerId, setPlayerId] = useState("");
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
     const isCancellable = booking.status !== "cancelled" && booking.status !== "completed";
     const isEditable = booking.status !== "cancelled" && booking.status !== "completed";
@@ -103,9 +108,11 @@ export default function ManageBookingView({
                 apiError={apiError}
                 updateSuccess={updateSuccess}
                 isUpdating={isUpdating}
+                isInviting={isInviting}
                 isCancelling={isCancelling}
                 showCancelConfirm={showCancelConfirm}
                 onFormChange={onFormChange}
+                onInvitePlayer={onInvitePlayer}
                 onSubmit={onSubmit}
                 onCancelBooking={onCancelBooking}
                 onConfirmCancel={onConfirmCancel}
@@ -245,6 +252,51 @@ export default function ManageBookingView({
                             </div>
                         </dl>
                     </section>
+
+                    {booking.is_open_game ? (
+                        <section className="form-section">
+                            <div className="mb-4">
+                                <h3 className="text-sm font-semibold text-foreground">
+                                    Invite Player
+                                </h3>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Enter a player ID to invite them to this open match.
+                                </p>
+                            </div>
+                            <form
+                                className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    onInvitePlayer(playerId);
+                                }}
+                            >
+                                <div className="min-w-0 sm:w-[70%]">
+                                    <label
+                                        htmlFor="booking-invite-player-id"
+                                        className="mb-1 block text-sm font-medium text-foreground"
+                                    >
+                                        Player ID
+                                    </label>
+                                    <input
+                                        id="booking-invite-player-id"
+                                        type="text"
+                                        value={playerId}
+                                        onChange={(event) => setPlayerId(event.target.value)}
+                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                                        className="input-base"
+                                        disabled={isInviting}
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isInviting || !playerId.trim()}
+                                    className="btn-cta sm:w-auto"
+                                >
+                                    {isInviting ? "Inviting…" : "Invite"}
+                                </button>
+                            </form>
+                        </section>
+                    ) : null}
 
                     {/* Players */}
                     {booking.players.length > 0 ? (

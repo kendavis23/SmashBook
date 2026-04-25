@@ -182,7 +182,9 @@ describe("TrainersView — trainers list", () => {
 
     it("calls onViewTrainer with correct trainer when View is clicked", () => {
         const handleView = vi.fn();
-        render(<TrainersView {...defaultProps} trainers={mockTrainers} onViewTrainer={handleView} />);
+        render(
+            <TrainersView {...defaultProps} trainers={mockTrainers} onViewTrainer={handleView} />
+        );
         fireEvent.click(screen.getAllByRole("button", { name: "View" })[0]!);
         expect(handleView).toHaveBeenCalledWith(firstTrainer);
     });

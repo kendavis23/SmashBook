@@ -239,9 +239,7 @@ describe("ManageReservationContainer", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
-        expect(mockNavigate).toHaveBeenCalledWith(
-            expect.objectContaining({ to: "/reservations" })
-        );
+        expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/reservations" }));
     });
 
     it("deletes a reservation after confirmation and navigates away", async () => {

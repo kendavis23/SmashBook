@@ -6,6 +6,7 @@ import ManageBookingContainer from "./ManageBookingContainer";
 const mockNavigate = vi.fn();
 const mockUpdateMutate = vi.fn();
 const mockCancelMutate = vi.fn();
+const mockInviteMutate = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
     useNavigate: () => mockNavigate,
@@ -17,6 +18,7 @@ vi.mock("../../hooks", () => ({
     useGetBooking: vi.fn(),
     useUpdateBooking: vi.fn(),
     useCancelBooking: vi.fn(),
+    useInvitePlayer: vi.fn(),
     useListCourts: vi.fn(),
     useGetCourtAvailability: vi.fn(),
 }));
@@ -94,6 +96,7 @@ import {
     useCancelBooking,
     useGetBooking,
     useGetCourtAvailability,
+    useInvitePlayer,
     useListCourts,
     useUpdateBooking,
 } from "../../hooks";
@@ -102,6 +105,7 @@ import { useClubAccess } from "../../store";
 const mockUseGetBooking = useGetBooking as ReturnType<typeof vi.fn>;
 const mockUseUpdateBooking = useUpdateBooking as ReturnType<typeof vi.fn>;
 const mockUseCancelBooking = useCancelBooking as ReturnType<typeof vi.fn>;
+const mockUseInvitePlayer = useInvitePlayer as ReturnType<typeof vi.fn>;
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
@@ -154,6 +158,10 @@ function setupMocks(overrides?: { isLoading?: boolean; error?: Error | null; dat
         mutate: mockCancelMutate,
         isPending: false,
     });
+    mockUseInvitePlayer.mockReturnValue({
+        mutate: mockInviteMutate,
+        isPending: false,
+    });
 }
 
 describe("ManageBookingContainer", () => {
@@ -162,6 +170,7 @@ describe("ManageBookingContainer", () => {
         mockNavigate.mockReset();
         mockUpdateMutate.mockReset();
         mockCancelMutate.mockReset();
+        mockInviteMutate.mockReset();
     });
 
     it("shows a loading state", () => {
@@ -247,6 +256,25 @@ describe("ManageBookingContainer", () => {
             expect.objectContaining({
                 to: "/bookings",
                 search: expect.objectContaining({ cancelled: true }),
+            })
+        );
+    });
+
+    it("invites a player for open game bookings", async () => {
+        setupMocks({ data: { ...booking, is_open_game: true } });
+        render(<ManageBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByLabelText("Player ID"), { target: { value: " user-123 " } });
+        fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+
+        expect(mockInviteMutate).toHaveBeenCalledWith(
+            { user_id: "user-123" },
+            expect.objectContaining({
+                onSuccess: expect.any(Function),
+                onError: expect.any(Function),
             })
         );
     });

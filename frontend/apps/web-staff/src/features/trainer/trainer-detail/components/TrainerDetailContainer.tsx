@@ -13,10 +13,7 @@ export default function TrainerDetailContainer(): JSX.Element {
 
     const [activeTab, setActiveTab] = useState<TrainerTab>("availability");
 
-    const {
-        data: trainers = [],
-        isLoading: trainersLoading,
-    } = useListTrainers(clubId ?? "");
+    const { data: trainers = [], isLoading: trainersLoading } = useListTrainers(clubId ?? "");
 
     const trainer = (trainers as Trainer[]).find((t) => t.id === trainerId);
 

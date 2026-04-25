@@ -193,7 +193,7 @@ describe("NewBookingView", () => {
             <NewBookingView
                 {...defaultProps}
                 form={{ ...defaultForm, bookingType: "lesson_individual" }}
-            />,
+            />
         );
 
         expect(screen.queryByText("Open Game & Skill Level")).not.toBeInTheDocument();
@@ -293,7 +293,9 @@ describe("NewBookingView — recurring (page mode)", () => {
 
     it("calls onFormChange with isRecurring true when toggle is checked", () => {
         const onFormChange = vi.fn();
-        render(<NewBookingView {...defaultProps} form={nonRegularForm} onFormChange={onFormChange} />);
+        render(
+            <NewBookingView {...defaultProps} form={nonRegularForm} onFormChange={onFormChange} />
+        );
         fireEvent.click(screen.getByLabelText("Enable recurring booking"));
         expect(onFormChange).toHaveBeenCalledWith({ isRecurring: true });
     });
@@ -305,10 +307,7 @@ describe("NewBookingView — recurring (page mode)", () => {
 
     it("renders RecurrencePicker and skip-conflicts checkbox when isRecurring is true", () => {
         render(
-            <NewBookingView
-                {...defaultProps}
-                form={{ ...nonRegularForm, isRecurring: true }}
-            />
+            <NewBookingView {...defaultProps} form={{ ...nonRegularForm, isRecurring: true }} />
         );
         expect(screen.getByLabelText("recurrence rule")).toBeInTheDocument();
         expect(screen.getByLabelText("Skip conflicting slots")).toBeInTheDocument();
@@ -346,10 +345,7 @@ describe("NewBookingView — recurring (page mode)", () => {
 
     it("shows 'Create Series' submit label when isRecurring is true", () => {
         render(
-            <NewBookingView
-                {...defaultProps}
-                form={{ ...nonRegularForm, isRecurring: true }}
-            />
+            <NewBookingView {...defaultProps} form={{ ...nonRegularForm, isRecurring: true }} />
         );
         expect(screen.getByRole("button", { name: "Create Series" })).toBeInTheDocument();
     });
@@ -404,9 +400,7 @@ describe("NewBookingView — modal mode", () => {
     it("renders collapsible Open Game & Skill Level section collapsed by default", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
 
-        expect(
-            screen.getByRole("button", { name: /Open Game.*Skill Level/i }),
-        ).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Open Game.*Skill Level/i })).toBeInTheDocument();
         // Anchor input not visible until expanded
         expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
     });
@@ -424,7 +418,7 @@ describe("NewBookingView — modal mode", () => {
                 mode="modal"
                 courtName="Court 1"
                 form={{ ...defaultForm, bookingType: "corporate_event" }}
-            />,
+            />
         );
 
         expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
@@ -444,7 +438,7 @@ describe("NewBookingView — modal mode", () => {
                 mode="modal"
                 courtName="Court 1"
                 form={{ ...defaultForm, bookingType: "corporate_event" }}
-            />,
+            />
         );
 
         fireEvent.click(screen.getByRole("button", { name: /Event.*Contact/i }));

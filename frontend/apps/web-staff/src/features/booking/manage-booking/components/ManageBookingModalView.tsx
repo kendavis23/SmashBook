@@ -31,6 +31,7 @@ type Props = {
     apiError: string;
     updateSuccess: boolean;
     isUpdating: boolean;
+    isInviting: boolean;
     isCancelling: boolean;
     showCancelConfirm: boolean;
     onFormChange: (patch: Partial<ManageBookingFormState>) => void;
@@ -42,6 +43,7 @@ type Props = {
     onDismissSuccess: () => void;
     onBack: () => void;
     onClose: () => void;
+    onInvitePlayer: (playerId: string) => void;
     onRefreshSlots: () => void;
     selectedPrice: number | null;
 };
@@ -56,6 +58,7 @@ export function ManageBookingModalView({
     apiError,
     updateSuccess,
     isUpdating,
+    isInviting,
     isCancelling,
     showCancelConfirm,
     onFormChange,
@@ -67,11 +70,13 @@ export function ManageBookingModalView({
     onDismissSuccess,
     onBack,
     onClose,
+    onInvitePlayer,
     onRefreshSlots,
     selectedPrice,
 }: Props): JSX.Element {
     const [playersExpanded, setPlayersExpanded] = useState(false);
     const [eventExpanded, setEventExpanded] = useState(false);
+    const [playerId, setPlayerId] = useState("");
 
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
     const isCancellable = booking.status !== "cancelled" && booking.status !== "completed";
@@ -144,7 +149,9 @@ export function ManageBookingModalView({
                     ) : null}
 
                     {/* Read-only context pills — first content after alerts */}
-                    <div className={`grid gap-2 ${booking.is_open_game ? "grid-cols-4" : "grid-cols-3"}`}>
+                    <div
+                        className={`grid gap-2 ${booking.is_open_game ? "grid-cols-4" : "grid-cols-3"}`}
+                    >
                         <StatPill
                             label="Type"
                             value={
@@ -163,13 +170,46 @@ export function ManageBookingModalView({
                             <StatPill
                                 label="Open Game"
                                 value={
-                                    booking.min_skill_level != null || booking.max_skill_level != null
+                                    booking.min_skill_level != null ||
+                                    booking.max_skill_level != null
                                         ? `Skill ${booking.min_skill_level ?? "—"} – ${booking.max_skill_level ?? "—"}`
                                         : "Open"
                                 }
                             />
                         ) : null}
                     </div>
+
+                    {booking.is_open_game ? (
+                        <div>
+                            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                Invite Player
+                            </p>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                <div className="min-w-0 sm:w-[70%]">
+                                    <label className={labelCls} htmlFor="booking-modal-player-id">
+                                        Player ID
+                                    </label>
+                                    <input
+                                        id="booking-modal-player-id"
+                                        type="text"
+                                        value={playerId}
+                                        onChange={(event) => setPlayerId(event.target.value)}
+                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                                        className="input-base"
+                                        disabled={isInviting}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    disabled={isInviting || !playerId.trim()}
+                                    className="btn-cta sm:w-auto"
+                                    onClick={() => onInvitePlayer(playerId)}
+                                >
+                                    {isInviting ? "Inviting…" : "Invite"}
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
 
                     {/* Edit form — only when editable */}
                     {isEditable ? (

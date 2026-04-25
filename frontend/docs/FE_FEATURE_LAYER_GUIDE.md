@@ -360,6 +360,8 @@ export const labelCls = "mb-1 block text-sm font-medium text-foreground";
 | Date + time field       | `DateTimePicker`                                  | `@repo/ui` |
 | Dropdown / select       | `SelectInput`                                     | `@repo/ui` |
 
+**`className="input-base"` is required on every shared input.** `NumberInput`, `TimeInput`, `DatePicker`, `DateTimePicker`, and `SelectInput` ship with no built-in visual styles — they are cross-browser wrappers only. Without `className="input-base"` the field renders as a raw, unstyled browser control. Always pass `className="input-base"` (or a feature-local constant that extends it) so the field picks up the project's shared border, radius, focus ring, and text styles.
+
 ```tsx
 import { NumberInput, TimeInput, DatePicker, DateTimePicker, SelectInput } from "@repo/ui";
 import type { SelectOption } from "@repo/ui";
@@ -370,7 +372,7 @@ const DAY_OPTIONS: SelectOption[] = [
     // ...
 ];
 
-// ✅ Correct — use shared components
+// ✅ Correct — use shared components WITH className="input-base"
 <NumberInput
     className="input-base"
     value={form.capacity}
@@ -404,12 +406,15 @@ const DAY_OPTIONS: SelectOption[] = [
     placeholder="Select day"
 />
 
-// ❌ Wrong — never write these in feature components
+// ❌ Wrong — bare native elements, and missing className="input-base"
 <input type="number" ... />
 <input type="time" ... />
 <input type="date" ... />
 <input type="datetime-local" ... />
 <select>...</select>
+
+// ❌ Also wrong — shared component but no className (renders unstyled)
+<NumberInput value={form.capacity} min={1} onChange={...} />
 ```
 
 **Rule:** if you need a new input variant that `@repo/ui` does not yet export, add the component to `packages/ui/components/` first, export it from `packages/ui/components/index.ts`, then consume it in the feature. Never build a one-off styled input inside a feature.
@@ -795,7 +800,10 @@ export default function EntitiesContainer(): JSX.Element {
         setAppliedFilters({ ...filters });
         void navigate({
             to: "/entities",
-            search: { filterA: filters.filterA || undefined, filterB: filters.filterB || undefined },
+            search: {
+                filterA: filters.filterA || undefined,
+                filterB: filters.filterB || undefined,
+            },
             replace: true,
         });
     }, [filters, navigate]);

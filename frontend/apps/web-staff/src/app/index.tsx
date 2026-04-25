@@ -42,6 +42,10 @@ const EditMembershipPlanPage = lazy(
 );
 const TrainersPage = lazy(() => import("../features/trainer/pages/TrainersPage"));
 const TrainerDetailPage = lazy(() => import("../features/trainer/pages/TrainerDetailPage"));
+const OpenMatchesPage = lazy(() => import("../features/open-match/pages/OpenMatchesPage"));
+const ManageOpenMatchPage = lazy(
+    () => import("../features/open-match/manage-open-match/pages/ManageOpenMatchPage")
+);
 
 function requireRole(roles: UserRole[]) {
     return () => {
@@ -216,7 +220,8 @@ const reservationsRoute = createRoute({
     validateSearch: (search: Record<string, unknown>) => ({
         created: search.created === true ? true : undefined,
         deleted: search.deleted === true ? true : undefined,
-        reservationType: typeof search.reservationType === "string" ? search.reservationType : undefined,
+        reservationType:
+            typeof search.reservationType === "string" ? search.reservationType : undefined,
         courtId: typeof search.courtId === "string" ? search.courtId : undefined,
         fromDt: typeof search.fromDt === "string" ? search.fromDt : undefined,
         toDt: typeof search.toDt === "string" ? search.toDt : undefined,
@@ -236,7 +241,8 @@ const manageReservationRoute = createRoute({
     path: "/reservations/$reservationId",
     beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     validateSearch: (search: Record<string, unknown>) => ({
-        reservationType: typeof search.reservationType === "string" ? search.reservationType : undefined,
+        reservationType:
+            typeof search.reservationType === "string" ? search.reservationType : undefined,
         courtId: typeof search.courtId === "string" ? search.courtId : undefined,
         fromDt: typeof search.fromDt === "string" ? search.fromDt : undefined,
         toDt: typeof search.toDt === "string" ? search.toDt : undefined,
@@ -345,6 +351,30 @@ const trainerDetailRoute = createRoute({
     component: TrainerDetailPage,
 });
 
+const openMatchRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/open-match",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    validateSearch: (search: Record<string, unknown>) => ({
+        date: typeof search.date === "string" ? search.date : undefined,
+        minSkill: typeof search.minSkill === "string" ? search.minSkill : undefined,
+        maxSkill: typeof search.maxSkill === "string" ? search.maxSkill : undefined,
+    }),
+    component: OpenMatchesPage,
+});
+
+const manageOpenMatchRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/open-match/$bookingId",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    validateSearch: (search: Record<string, unknown>) => ({
+        date: typeof search.date === "string" ? search.date : undefined,
+        minSkill: typeof search.minSkill === "string" ? search.minSkill : undefined,
+        maxSkill: typeof search.maxSkill === "string" ? search.maxSkill : undefined,
+    }),
+    component: ManageOpenMatchPage,
+});
+
 const playersRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/players",
@@ -408,6 +438,8 @@ const routeTree = rootRoute.addChildren([
         staffRoute,
         trainersRoute,
         trainerDetailRoute,
+        openMatchRoute,
+        manageOpenMatchRoute,
         playersRoute,
         financeRoute,
         reportsRoute,

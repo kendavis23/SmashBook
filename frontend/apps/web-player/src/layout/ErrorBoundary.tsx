@@ -28,14 +28,14 @@ function ServiceUnavailable() {
             <div className="max-w-md w-full text-center">
                 <div className="mb-8">
                     <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">
-                        Smash<span className="text-blue-600">Book</span>
+                        Smash<span className="text-cta">Book</span>
                     </h1>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-10 py-12">
                     <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
                         <svg
-                            className="w-8 h-8 text-blue-500"
+                            className="w-8 h-8 text-cta"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
