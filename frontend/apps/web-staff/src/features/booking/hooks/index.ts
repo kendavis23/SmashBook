@@ -4,6 +4,7 @@ export {
     useGetCalendarView,
     useListOpenGames,
     useCreateBooking,
+    useCreateRecurringBooking,
     useUpdateBooking,
     useCancelBooking,
     useJoinBooking,
@@ -11,4 +12,5 @@ export {
     useRespondInvite,
     useListCourts,
     useGetCourtAvailability,
+    useListTrainers,
 } from "@repo/staff-domain/hooks";

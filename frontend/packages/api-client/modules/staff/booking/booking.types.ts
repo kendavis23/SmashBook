@@ -122,6 +122,34 @@ export interface OpenGameSummary {
     total_price: number | null;
 }
 
+export interface RecurringBookingCreate {
+    club_id: UUID;
+    court_id: UUID;
+    booking_type?: BookingType;
+    first_start: string;
+    recurrence_rule: string;
+    recurrence_end_date?: string | null;
+    max_players?: number;
+    player_user_ids?: UUID[];
+    notes?: string | null;
+    event_name?: string | null;
+    contact_name?: string | null;
+    contact_email?: string | null;
+    contact_phone?: string | null;
+    staff_profile_id?: UUID | null;
+    skip_conflicts?: boolean;
+}
+
+export interface RecurringBookingSkipped {
+    occurrence: string;
+    reason: string;
+}
+
+export interface RecurringBookingResponse {
+    created: BookingResponse[];
+    skipped: RecurringBookingSkipped[];
+}
+
 export interface CalendarBookingItem {
     kind: "booking";
     id: UUID;

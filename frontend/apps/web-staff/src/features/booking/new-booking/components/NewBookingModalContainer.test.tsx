@@ -10,6 +10,7 @@ vi.mock("../../hooks", () => ({
     useCreateBooking: vi.fn(),
     useListCourts: vi.fn(),
     useGetCourtAvailability: vi.fn(),
+    useListTrainers: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
@@ -91,12 +92,13 @@ vi.mock("@repo/ui", () => ({
     ),
 }));
 
-import { useCreateBooking, useGetCourtAvailability, useListCourts } from "../../hooks";
+import { useCreateBooking, useGetCourtAvailability, useListCourts, useListTrainers } from "../../hooks";
 import { useClubAccess } from "../../store";
 
 const mockUseCreateBooking = useCreateBooking as ReturnType<typeof vi.fn>;
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
+const mockUseListTrainers = useListTrainers as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 
 const defaultProps = {
@@ -112,6 +114,7 @@ function setupMocks(overrides?: { error?: Error | null; isPending?: boolean }) {
     mockUseListCourts.mockReturnValue({
         data: [{ id: "court-1", name: "Court 1" }],
     });
+    mockUseListTrainers.mockReturnValue({ data: [{ id: "trainer-1", is_active: true }] });
     mockUseGetCourtAvailability.mockReturnValue({
         data: {
             slots: [

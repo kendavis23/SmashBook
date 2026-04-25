@@ -184,7 +184,7 @@ describe("NewReservationContainer", () => {
         );
         expect(mockNavigate).toHaveBeenCalledWith({
             to: "/reservations",
-            search: { created: true },
+            search: expect.objectContaining({ created: true }),
         });
     });
 
@@ -193,7 +193,12 @@ describe("NewReservationContainer", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reservations" });
+        expect(mockNavigate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                to: "/reservations",
+                search: expect.objectContaining({ created: undefined }),
+            })
+        );
     });
 
     it("shows api error and resets it when dismissed", () => {

@@ -7,6 +7,7 @@ import {
     DatePicker,
     NumberInput,
     SelectInput,
+    RecurrencePicker,
     formatCurrency,
 } from "@repo/ui";
 import type { BookingType, TimeSlot } from "../../types";
@@ -38,10 +39,15 @@ export type NewBookingFormState = {
     contactEmail: string;
     contactPhone: string;
     onBehalfOf: string;
+    staffProfileId: string;
+    isRecurring: boolean;
+    recurrenceRule: string;
+    skipConflicts: boolean;
 };
 
 type Props = {
     courts: { id: string; name: string }[];
+    trainers: { id: string }[];
     slots: TimeSlot[];
     slotsLoading: boolean;
     form: NewBookingFormState;
@@ -64,6 +70,7 @@ const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
 
 export default function NewBookingView({
     courts,
+    trainers,
     slots,
     slotsLoading,
     form,
@@ -199,7 +206,7 @@ export default function NewBookingView({
                 </div>
             </div>
 
-            {/* Row 3: Max Players | Price | Open game */}
+            {/* Row 3: Max Players | Price */}
             <div className="mt-4 flex flex-wrap items-end gap-4">
                 {/* Max players */}
                 <div className="w-32 shrink-0">
@@ -223,20 +230,6 @@ export default function NewBookingView({
                         {form.startTime ? formatCurrency(selectedPrice) : "—"}
                     </div>
                 </div>
-
-                {/* Open game */}
-                <div className="pb-2">
-                    <label className="flex cursor-pointer items-center gap-2">
-                        <input
-                            type="checkbox"
-                            className="h-4 w-4 rounded border-border accent-cta"
-                            checked={form.isOpenGame}
-                            onChange={(e) => onFormChange({ isOpenGame: e.target.checked })}
-                            aria-label="Mark as open game"
-                        />
-                        <span className="text-sm font-medium text-foreground">Open game</span>
-                    </label>
-                </div>
             </div>
 
             {/* Notes */}
@@ -251,6 +244,35 @@ export default function NewBookingView({
                     placeholder="Internal notes visible to staff only…"
                     value={form.notes}
                     onChange={(e) => onFormChange({ notes: e.target.value })}
+                />
+            </div>
+
+            {/* On behalf of */}
+            <div className="mt-4">
+                <label htmlFor="bk-on-behalf" className={labelCls}>
+                    On behalf of (user ID)
+                </label>
+                <input
+                    id="bk-on-behalf"
+                    type="text"
+                    className={fieldCls}
+                    placeholder="Player user ID"
+                    value={form.onBehalfOf}
+                    onChange={(e) => onFormChange({ onBehalfOf: e.target.value })}
+                />
+            </div>
+
+            {/* Staff (Trainer) */}
+            <div className="mt-4">
+                <label htmlFor="bk-staff-id" className={labelCls}>
+                    Staff (Trainer)
+                </label>
+                <SelectInput
+                    value={form.staffProfileId}
+                    onValueChange={(v) => onFormChange({ staffProfileId: v })}
+                    options={trainers.map((t) => ({ value: t.id, label: t.id }))}
+                    placeholder={trainers.length === 0 ? "No trainers available" : "Select trainer…"}
+                    disabled={trainers.length === 0}
                 />
             </div>
         </>
@@ -344,32 +366,17 @@ export default function NewBookingView({
                     />
                 </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label htmlFor="bk-contact-phone" className={labelCls}>
-                        Contact phone
-                    </label>
-                    <input
-                        id="bk-contact-phone"
-                        type="tel"
-                        className={fieldCls}
-                        value={form.contactPhone}
-                        onChange={(e) => onFormChange({ contactPhone: e.target.value })}
-                    />
-                </div>
-                <div>
-                    <label htmlFor="bk-on-behalf" className={labelCls}>
-                        On behalf of (user ID)
-                    </label>
-                    <input
-                        id="bk-on-behalf"
-                        type="text"
-                        className={fieldCls}
-                        placeholder="Player user ID"
-                        value={form.onBehalfOf}
-                        onChange={(e) => onFormChange({ onBehalfOf: e.target.value })}
-                    />
-                </div>
+            <div>
+                <label htmlFor="bk-contact-phone" className={labelCls}>
+                    Contact phone
+                </label>
+                <input
+                    id="bk-contact-phone"
+                    type="tel"
+                    className={fieldCls}
+                    value={form.contactPhone}
+                    onChange={(e) => onFormChange({ contactPhone: e.target.value })}
+                />
             </div>
         </div>
     );
@@ -378,6 +385,7 @@ export default function NewBookingView({
         return (
             <NewBookingModalView
                 courtName={courtName ?? form.courtId}
+                trainers={trainers}
                 form={form}
                 apiError={apiError}
                 isPending={isPending}
@@ -423,23 +431,43 @@ export default function NewBookingView({
                                 {coreFields}
                             </section>
 
-                            {/* Skill level */}
-                            <section className="form-section">
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Skill Level{" "}
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Set skill range requirements for matchmaking.
-                                    </p>
-                                </div>
-                                {optionalSkillFields}
-                            </section>
+                            {/* Open Game & Skill Level — regular bookings only */}
+                            {form.bookingType === "regular" ? (
+                                <section className="form-section">
+                                    <div className="mb-4">
+                                        <h3 className="text-sm font-semibold text-foreground">
+                                            Open Game &amp; Skill Level{" "}
+                                            <span className="text-xs font-normal text-muted-foreground">
+                                                (optional)
+                                            </span>
+                                        </h3>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            Mark as open and set skill range requirements for matchmaking.
+                                        </p>
+                                    </div>
+                                    <div className="mb-4">
+                                        <label className="flex cursor-pointer items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                className="h-4 w-4 rounded border-border accent-cta"
+                                                checked={form.isOpenGame}
+                                                onChange={(e) =>
+                                                    onFormChange({ isOpenGame: e.target.checked })
+                                                }
+                                                aria-label="Mark as open game"
+                                            />
+                                            <span className="text-sm font-medium text-foreground">
+                                                Open game
+                                            </span>
+                                        </label>
+                                    </div>
+                                    {optionalSkillFields}
+                                </section>
+                            ) : null}
 
-                            {/* Event / contact */}
+                            {/* Event / contact — corporate or tournament only */}
+                            {form.bookingType === "corporate_event" ||
+                            form.bookingType === "tournament" ? (
                             <section className="form-section">
                                 <div className="mb-4">
                                     <h3 className="text-sm font-semibold text-foreground">
@@ -454,6 +482,66 @@ export default function NewBookingView({
                                 </div>
                                 {optionalEventFields}
                             </section>
+                            ) : null}
+
+                            {/* Recurring — non-regular bookings only */}
+                            {form.bookingType !== "regular" ? (
+                                <section className="form-section">
+                                    <div className="mb-4">
+                                        <h3 className="text-sm font-semibold text-foreground">
+                                            Recurrence{" "}
+                                            <span className="text-xs font-normal text-muted-foreground">
+                                                (optional)
+                                            </span>
+                                        </h3>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            Create a series of bookings from a repeating schedule.
+                                        </p>
+                                    </div>
+
+                                    <label className="flex cursor-pointer items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-border accent-cta"
+                                            checked={form.isRecurring}
+                                            onChange={(e) =>
+                                                onFormChange({ isRecurring: e.target.checked })
+                                            }
+                                            aria-label="Enable recurring booking"
+                                        />
+                                        <span className="text-sm font-medium text-foreground">
+                                            Repeat this booking
+                                        </span>
+                                    </label>
+
+                                    {form.isRecurring ? (
+                                        <div className="mt-4 space-y-4">
+                                            <RecurrencePicker
+                                                value={form.recurrenceRule}
+                                                onChange={(rule) =>
+                                                    onFormChange({ recurrenceRule: rule })
+                                                }
+                                            />
+                                            <label className="flex cursor-pointer items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="h-4 w-4 rounded border-border accent-cta"
+                                                    checked={form.skipConflicts}
+                                                    onChange={(e) =>
+                                                        onFormChange({
+                                                            skipConflicts: e.target.checked,
+                                                        })
+                                                    }
+                                                    aria-label="Skip conflicting slots"
+                                                />
+                                                <span className="text-sm text-foreground">
+                                                    Skip conflicting slots
+                                                </span>
+                                            </label>
+                                        </div>
+                                    ) : null}
+                                </section>
+                            ) : null}
                         </div>
 
                         {/* Actions */}
@@ -462,7 +550,13 @@ export default function NewBookingView({
                                 Cancel
                             </button>
                             <button type="submit" disabled={isPending} className="btn-cta">
-                                {isPending ? "Creating…" : "Create Booking"}
+                                {isPending
+                                    ? form.isRecurring
+                                        ? "Creating series…"
+                                        : "Creating…"
+                                    : form.isRecurring
+                                      ? "Create Series"
+                                      : "Create Booking"}
                             </button>
                         </div>
                     </form>

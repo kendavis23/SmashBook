@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import {
     useGetBooking,
     useUpdateBooking,
@@ -27,10 +27,49 @@ function buildInitialForm(booking: Booking): ManageBookingFormState {
     };
 }
 
+type ManageBookingSearch = {
+    created?: boolean;
+    cancelled?: boolean;
+    dateFrom?: string;
+    dateTo?: string;
+    bookingType?: string;
+    bookingStatus?: string;
+    courtId?: string;
+    playerSearch?: string;
+};
+
+type BookingsRouteSearch = {
+    created: boolean | undefined;
+    cancelled: boolean | undefined;
+    dateFrom: string | undefined;
+    dateTo: string | undefined;
+    bookingType: string | undefined;
+    bookingStatus: string | undefined;
+    courtId: string | undefined;
+    playerSearch: string | undefined;
+};
+
+function buildBookingsSearch(
+    search: ManageBookingSearch,
+    flags: Pick<ManageBookingSearch, "created" | "cancelled"> = {}
+): BookingsRouteSearch {
+    return {
+        created: flags.created,
+        cancelled: flags.cancelled,
+        dateFrom: search.dateFrom,
+        dateTo: search.dateTo,
+        bookingType: search.bookingType,
+        bookingStatus: search.bookingStatus,
+        courtId: search.courtId,
+        playerSearch: search.playerSearch,
+    };
+}
+
 export default function ManageBookingContainer(): JSX.Element {
     const { bookingId } = useParams({ strict: false }) as { bookingId: string };
     const navigate = useNavigate();
     const { clubId } = useClubAccess();
+    const filterSearch = useSearch({ strict: false }) as ManageBookingSearch;
 
     const { data: booking, isLoading, error } = useGetBooking(bookingId, clubId ?? "");
 
@@ -120,18 +159,24 @@ export default function ManageBookingContainer(): JSX.Element {
         cancelMutation.mutate(bookingId, {
             onSuccess: () => {
                 setShowCancelConfirm(false);
-                void navigate({ to: "/bookings", search: { cancelled: true } });
+                void navigate({
+                    to: "/bookings",
+                    search: buildBookingsSearch(filterSearch, { cancelled: true }),
+                });
             },
             onError: (err) => {
                 setShowCancelConfirm(false);
                 setApiError(err instanceof Error ? err.message : "Failed to cancel booking.");
             },
         });
-    }, [bookingId, cancelMutation, navigate]);
+    }, [bookingId, cancelMutation, navigate, filterSearch]);
 
     const handleBack = useCallback((): void => {
-        void navigate({ to: "/bookings" });
-    }, [navigate]);
+        void navigate({
+            to: "/bookings",
+            search: buildBookingsSearch(filterSearch),
+        });
+    }, [navigate, filterSearch]);
 
     if (isLoading) {
         return (

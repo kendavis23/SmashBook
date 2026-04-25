@@ -4,6 +4,7 @@ import {
     listBookingsEndpoint,
     getBookingEndpoint,
     createBookingEndpoint,
+    createRecurringBookingEndpoint,
     updateBookingEndpoint,
     cancelBookingEndpoint,
     joinBookingEndpoint,
@@ -23,6 +24,8 @@ import type {
     OpenGameFilters,
     InvitePlayerInput,
     InviteRespondInput,
+    RecurringBookingInput,
+    RecurringBookingResult,
 } from "../models";
 
 // ---------------------------------------------------------------------------
@@ -108,6 +111,20 @@ export function useCreateBooking(clubId: string) {
     const queryClient = useQueryClient();
     return useMutation<Booking, Error, BookingInput>({
         mutationFn: (data: BookingInput) => createBookingEndpoint(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
+        },
+    });
+}
+
+// ---------------------------------------------------------------------------
+// useCreateRecurringBooking — POST /api/v1/bookings/recurring
+// ---------------------------------------------------------------------------
+
+export function useCreateRecurringBooking(clubId: string) {
+    const queryClient = useQueryClient();
+    return useMutation<RecurringBookingResult, Error, RecurringBookingInput>({
+        mutationFn: (data: RecurringBookingInput) => createRecurringBookingEndpoint(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
         },

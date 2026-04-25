@@ -9,7 +9,8 @@ import {
     RouterProvider,
 } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
-import { getAccessToken } from "@repo/auth";
+import { getAccessToken, getActiveRole } from "@repo/auth";
+import { canAccess, type UserRole } from "../config/routeConfig";
 import { DashboardLayout } from "../layout/dashboard";
 
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
@@ -39,6 +40,17 @@ const NewMembershipPlanPage = lazy(
 const EditMembershipPlanPage = lazy(
     () => import("../features/membership/pages/EditMembershipPlanPage")
 );
+const TrainersPage = lazy(() => import("../features/trainer/pages/TrainersPage"));
+const TrainerDetailPage = lazy(() => import("../features/trainer/pages/TrainerDetailPage"));
+
+function requireRole(roles: UserRole[]) {
+    return () => {
+        const role = getActiveRole();
+        if (!canAccess(roles, role ?? undefined)) {
+            throw redirect({ to: "/unauthorized" });
+        }
+    };
+}
 
 function PageLoader() {
     return (
@@ -150,6 +162,7 @@ const dashboardRoute = createRoute({
 const clubsRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/clubs",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     validateSearch: (search: Record<string, unknown>) => ({
         created: search.created === true ? true : undefined,
         updated: search.updated === true ? true : undefined,
@@ -160,18 +173,21 @@ const clubsRoute = createRoute({
 const newClubRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/clubs/new",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: NewClubPage,
 });
 
 const clubDetailRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/clubs/$clubId",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: ClubDetailPage,
 });
 
 const courtsRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/courts",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     validateSearch: (search: Record<string, unknown>) => ({
         created: search.created === true ? true : undefined,
         updated: search.updated === true ? true : undefined,
@@ -182,42 +198,73 @@ const courtsRoute = createRoute({
 const newCourtRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/courts/new",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: NewCourtPage,
 });
 
 const editCourtRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/courts/$courtId",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: EditCourtPage,
 });
 
 const reservationsRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/reservations",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    validateSearch: (search: Record<string, unknown>) => ({
+        created: search.created === true ? true : undefined,
+        deleted: search.deleted === true ? true : undefined,
+        reservationType: typeof search.reservationType === "string" ? search.reservationType : undefined,
+        courtId: typeof search.courtId === "string" ? search.courtId : undefined,
+        fromDt: typeof search.fromDt === "string" ? search.fromDt : undefined,
+        toDt: typeof search.toDt === "string" ? search.toDt : undefined,
+    }),
     component: ReservationsPage,
 });
 
 const newReservationRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/reservations/new",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: NewReservationPage,
 });
 
 const manageReservationRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/reservations/$reservationId",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    validateSearch: (search: Record<string, unknown>) => ({
+        reservationType: typeof search.reservationType === "string" ? search.reservationType : undefined,
+        courtId: typeof search.courtId === "string" ? search.courtId : undefined,
+        fromDt: typeof search.fromDt === "string" ? search.fromDt : undefined,
+        toDt: typeof search.toDt === "string" ? search.toDt : undefined,
+    }),
     component: ManageReservationPage,
 });
 
 const bookingsRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/bookings",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    validateSearch: (search: Record<string, unknown>) => ({
+        created: search.created === true ? true : undefined,
+        cancelled: search.cancelled === true ? true : undefined,
+        dateFrom: typeof search.dateFrom === "string" ? search.dateFrom : undefined,
+        dateTo: typeof search.dateTo === "string" ? search.dateTo : undefined,
+        bookingType: typeof search.bookingType === "string" ? search.bookingType : undefined,
+        bookingStatus: typeof search.bookingStatus === "string" ? search.bookingStatus : undefined,
+        courtId: typeof search.courtId === "string" ? search.courtId : undefined,
+        playerSearch: typeof search.playerSearch === "string" ? search.playerSearch : undefined,
+    }),
     component: BookingsPage,
 });
 
 const newBookingRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/bookings/new",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     validateSearch: (search: Record<string, unknown>) => ({
         courtId: typeof search.courtId === "string" ? search.courtId : undefined,
         date: typeof search.date === "string" ? search.date : undefined,
@@ -229,18 +276,29 @@ const newBookingRoute = createRoute({
 const manageBookingRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/bookings/$bookingId",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    validateSearch: (search: Record<string, unknown>) => ({
+        dateFrom: typeof search.dateFrom === "string" ? search.dateFrom : undefined,
+        dateTo: typeof search.dateTo === "string" ? search.dateTo : undefined,
+        bookingType: typeof search.bookingType === "string" ? search.bookingType : undefined,
+        bookingStatus: typeof search.bookingStatus === "string" ? search.bookingStatus : undefined,
+        courtId: typeof search.courtId === "string" ? search.courtId : undefined,
+        playerSearch: typeof search.playerSearch === "string" ? search.playerSearch : undefined,
+    }),
     component: ManageBookingPage,
 });
 
 const calendarRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/calendar",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: CalendarPage,
 });
 
 const membershipPlansRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/membership-plans",
+    beforeLoad: requireRole(["owner", "admin"]),
     validateSearch: (search: Record<string, unknown>) => ({
         created: search.created === true ? true : undefined,
         updated: search.updated === true ? true : undefined,
@@ -251,48 +309,74 @@ const membershipPlansRoute = createRoute({
 const newMembershipPlanRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/membership-plans/new",
+    beforeLoad: requireRole(["owner", "admin"]),
     component: NewMembershipPlanPage,
 });
 
 const editMembershipPlanRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/membership-plans/$planId",
+    beforeLoad: requireRole(["owner", "admin"]),
     component: EditMembershipPlanPage,
 });
 
 const staffRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/staff",
+    beforeLoad: requireRole(["owner", "admin"]),
     component: StaffPage,
+});
+
+const trainersRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/trainers",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    validateSearch: (search: Record<string, unknown>) => ({
+        created: search.created === true ? true : undefined,
+        updated: search.updated === true ? true : undefined,
+    }),
+    component: TrainersPage,
+});
+
+const trainerDetailRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/trainers/$trainerId",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    component: TrainerDetailPage,
 });
 
 const playersRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/players",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: PlayerPage,
 });
 
 const financeRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/finance",
+    beforeLoad: requireRole(["owner"]),
     component: FinancePage,
 });
 
 const reportsRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/reports",
+    beforeLoad: requireRole(["owner", "admin"]),
     component: ReportPage,
 });
 
 const supportRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/support",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: SupportPage,
 });
 
 const equipmentRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/equipment",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
     component: EquipmentPage,
 });
 
@@ -322,6 +406,8 @@ const routeTree = rootRoute.addChildren([
         newMembershipPlanRoute,
         editMembershipPlanRoute,
         staffRoute,
+        trainersRoute,
+        trainerDetailRoute,
         playersRoute,
         financeRoute,
         reportsRoute,

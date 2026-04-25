@@ -15,27 +15,62 @@ function todayUTCStart(): string {
     return `${y}-${m}-${d}T00:00`;
 }
 
-function createDefaultFilters(): ReservationFilters {
+type ReservationsSearch = {
+    created?: boolean;
+    deleted?: boolean;
+    reservationType?: string;
+    courtId?: string;
+    fromDt?: string;
+    toDt?: string;
+};
+
+type ReservationsRouteSearch = {
+    created: boolean | undefined;
+    deleted: boolean | undefined;
+    reservationType: string | undefined;
+    courtId: string | undefined;
+    fromDt: string | undefined;
+    toDt: string | undefined;
+};
+
+function buildReservationsSearch(
+    filters: ReservationFilters,
+    flags: Pick<ReservationsSearch, "created" | "deleted"> = {}
+): ReservationsRouteSearch {
     return {
-        reservationType: "",
-        courtId: "",
-        fromDt: todayUTCStart(),
-        toDt: "",
+        created: flags.created,
+        deleted: flags.deleted,
+        reservationType: filters.reservationType || undefined,
+        courtId: filters.courtId || undefined,
+        fromDt: filters.fromDt || undefined,
+        toDt: filters.toDt || undefined,
     };
 }
 
 export default function ReservationsContainer(): JSX.Element {
     const navigate = useNavigate();
-    const search = useSearch({ strict: false }) as { created?: boolean; deleted?: boolean };
+    const search = useSearch({ strict: false }) as ReservationsSearch;
     const [successToast, setSuccessToast] = useState(
         search.created ? "Reservation created." : search.deleted ? "Reservation deleted." : ""
     );
-    const [filters, setFilters] = useState<ReservationFilters>(createDefaultFilters);
-    const [appliedFilters, setAppliedFilters] = useState<ReservationFilters>(createDefaultFilters);
+
+    const filtersFromUrl: ReservationFilters = {
+        reservationType: search.reservationType ?? "",
+        courtId: search.courtId ?? "",
+        fromDt: search.fromDt ?? todayUTCStart(),
+        toDt: search.toDt ?? "",
+    };
+
+    const [filters, setFilters] = useState<ReservationFilters>(filtersFromUrl);
+    const [appliedFilters, setAppliedFilters] = useState<ReservationFilters>(filtersFromUrl);
 
     useEffect(() => {
         if (search.created || search.deleted) {
-            void navigate({ to: "/reservations", search: {}, replace: true });
+            void navigate({
+                to: "/reservations",
+                search: buildReservationsSearch(appliedFilters),
+                replace: true,
+            });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -67,7 +102,12 @@ export default function ReservationsContainer(): JSX.Element {
 
     const handleSearch = useCallback((): void => {
         setAppliedFilters({ ...filters });
-    }, [filters]);
+        void navigate({
+            to: "/reservations",
+            search: buildReservationsSearch(filters),
+            replace: true,
+        });
+    }, [filters, navigate]);
 
     const handleCreateClick = useCallback((): void => {
         if (!canCreate) return;
@@ -76,9 +116,18 @@ export default function ReservationsContainer(): JSX.Element {
 
     const handleManageClick = useCallback(
         (reservationId: string): void => {
-            void navigate({ to: "/reservations/$reservationId", params: { reservationId } });
+            void navigate({
+                to: "/reservations/$reservationId",
+                params: { reservationId },
+                search: {
+                    reservationType: appliedFilters.reservationType || undefined,
+                    courtId: appliedFilters.courtId || undefined,
+                    fromDt: appliedFilters.fromDt || undefined,
+                    toDt: appliedFilters.toDt || undefined,
+                },
+            });
         },
-        [navigate]
+        [navigate, appliedFilters]
     );
 
     const handleRefresh = useCallback((): void => {

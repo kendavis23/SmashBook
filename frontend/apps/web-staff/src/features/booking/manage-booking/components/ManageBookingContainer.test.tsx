@@ -10,6 +10,7 @@ const mockCancelMutate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
     useNavigate: () => mockNavigate,
     useParams: () => ({ bookingId: "booking-1" }),
+    useSearch: () => ({}),
 }));
 
 vi.mock("../../hooks", () => ({
@@ -219,7 +220,7 @@ describe("ManageBookingContainer", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/bookings" });
+        expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/bookings" }));
     });
 
     it("cancels a booking after confirmation and navigates away", async () => {
@@ -242,6 +243,11 @@ describe("ManageBookingContainer", () => {
                 onError: expect.any(Function),
             })
         );
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/bookings", search: { cancelled: true } });
+        expect(mockNavigate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                to: "/bookings",
+                search: expect.objectContaining({ cancelled: true }),
+            })
+        );
     });
 });

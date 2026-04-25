@@ -21,6 +21,8 @@ export type {
     PaymentStatus,
     InviteStatus,
     TimeSlot,
+    RecurringBookingInput,
+    RecurringBookingResult,
 } from "@repo/staff-domain/models";
 
 // ─── Feature-specific types ────────────────────────────────────────────────

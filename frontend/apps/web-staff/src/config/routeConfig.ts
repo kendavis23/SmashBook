@@ -12,6 +12,7 @@ import {
     User,
     Users,
     BookMarked,
+    GraduationCap,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -161,6 +162,17 @@ export const ROUTES: RouteConfig[] = [
         subtitle: "Manage team members and their roles.",
         breadcrumb: ["People", "Staff"],
         roles: ["owner", "admin"],
+        group: "People",
+    },
+    {
+        key: "trainers",
+        path: "/trainers",
+        label: "Trainers",
+        icon: GraduationCap,
+        title: "Trainers",
+        subtitle: "View trainer profiles, availability, and bookings.",
+        breadcrumb: ["People", "Trainers"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
         group: "People",
     },
     {

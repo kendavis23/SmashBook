@@ -144,7 +144,7 @@ export function ManageBookingModalView({
                     ) : null}
 
                     {/* Read-only context pills — first content after alerts */}
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className={`grid gap-2 ${booking.is_open_game ? "grid-cols-4" : "grid-cols-3"}`}>
                         <StatPill
                             label="Type"
                             value={
@@ -159,11 +159,16 @@ export function ManageBookingModalView({
                             }
                         />
                         <StatPill label="Total" value={formatCurrency(booking.total_price)} />
-                        <StatPill
-                            label="Created"
-                            value={formatUTCDateTime(booking.created_at)}
-                            type="datetime"
-                        />
+                        {booking.is_open_game ? (
+                            <StatPill
+                                label="Open Game"
+                                value={
+                                    booking.min_skill_level != null || booking.max_skill_level != null
+                                        ? `Skill ${booking.min_skill_level ?? "—"} – ${booking.max_skill_level ?? "—"}`
+                                        : "Open"
+                                }
+                            />
+                        ) : null}
                     </div>
 
                     {/* Edit form — only when editable */}

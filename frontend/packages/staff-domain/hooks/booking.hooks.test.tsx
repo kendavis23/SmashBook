@@ -33,6 +33,7 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     listBookingsEndpoint: vi.fn(),
     getBookingEndpoint: vi.fn(),
     createBookingEndpoint: vi.fn(),
+    createRecurringBookingEndpoint: vi.fn(),
     updateBookingEndpoint: vi.fn(),
     cancelBookingEndpoint: vi.fn(),
     joinBookingEndpoint: vi.fn(),
@@ -50,6 +51,7 @@ import {
     useGetCalendarView,
     useListOpenGames,
     useCreateBooking,
+    useCreateRecurringBooking,
     useUpdateBooking,
     useCancelBooking,
     useJoinBooking,
@@ -284,6 +286,62 @@ describe("useCreateBooking", () => {
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["bookings", CLUB_ID] })
         );
+    });
+});
+
+// ---------------------------------------------------------------------------
+// useCreateRecurringBooking
+// ---------------------------------------------------------------------------
+
+describe("useCreateRecurringBooking", () => {
+    it("calls createRecurringBookingEndpoint and invalidates bookings list", async () => {
+        vi.mocked(staffApi.createRecurringBookingEndpoint).mockResolvedValue({
+            created: [mockBooking],
+            skipped: [],
+        });
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useCreateRecurringBooking(CLUB_ID), {
+            wrapper: Wrapper,
+        });
+        result.current.mutate({
+            club_id: CLUB_ID,
+            court_id: "court-1",
+            first_start: "2026-04-11T10:00:00Z",
+            recurrence_rule: "FREQ=WEEKLY;BYDAY=MO;COUNT=4",
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(staffApi.createRecurringBookingEndpoint).toHaveBeenCalledWith({
+            club_id: CLUB_ID,
+            court_id: "court-1",
+            first_start: "2026-04-11T10:00:00Z",
+            recurrence_rule: "FREQ=WEEKLY;BYDAY=MO;COUNT=4",
+        });
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["bookings", CLUB_ID] })
+        );
+    });
+
+    it("returns created and skipped bookings on success", async () => {
+        const skipped = [{ occurrence: "2026-04-18T10:00:00Z", reason: "conflict" }];
+        vi.mocked(staffApi.createRecurringBookingEndpoint).mockResolvedValue({
+            created: [mockBooking],
+            skipped,
+        });
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(() => useCreateRecurringBooking(CLUB_ID), {
+            wrapper: Wrapper,
+        });
+        result.current.mutate({
+            club_id: CLUB_ID,
+            court_id: "court-1",
+            first_start: "2026-04-11T10:00:00Z",
+            recurrence_rule: "FREQ=WEEKLY;BYDAY=MO",
+            recurrence_end_date: "2026-06-30",
+            skip_conflicts: true,
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual({ created: [mockBooking], skipped });
     });
 });
 

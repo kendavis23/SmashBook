@@ -1,4 +1,4 @@
-_Last updated: 2026-04-18 16:00 UTC_
+_Last updated: 2026-04-25 00:00 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -743,6 +743,110 @@ useEffect(() => {
     }
 }, []);
 ```
+
+---
+
+### Filter persistence across navigation
+
+When a list page has filters, persist them in the URL so they survive navigating to a detail page and back.
+
+**Step 1 — Add `validateSearch` to both the list route and the detail route** in `app/index.tsx`:
+
+```tsx
+// List route — declares all filter params + toast flags
+const entitiesRoute = createRoute({
+    path: "/entities",
+    validateSearch: (search: Record<string, unknown>) => ({
+        created: search.created === true ? true : undefined,
+        filterA: typeof search.filterA === "string" ? search.filterA : undefined,
+        filterB: typeof search.filterB === "string" ? search.filterB : undefined,
+    }),
+    component: EntitiesPage,
+});
+
+// Detail route — carries the same filter params through
+const manageEntityRoute = createRoute({
+    path: "/entities/$entityId",
+    validateSearch: (search: Record<string, unknown>) => ({
+        filterA: typeof search.filterA === "string" ? search.filterA : undefined,
+        filterB: typeof search.filterB === "string" ? search.filterB : undefined,
+    }),
+    component: ManageEntityPage,
+});
+```
+
+**Step 2 — List container: read filters from URL, write on search, carry on manage click:**
+
+```tsx
+type EntitySearch = { created?: boolean; filterA?: string; filterB?: string };
+
+export default function EntitiesContainer(): JSX.Element {
+    const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as EntitySearch;
+
+    const filtersFromUrl: EntityFilters = {
+        filterA: search.filterA ?? "",
+        filterB: search.filterB ?? "",
+    };
+    const [filters, setFilters] = useState<EntityFilters>(filtersFromUrl);
+    const [appliedFilters, setAppliedFilters] = useState<EntityFilters>(filtersFromUrl);
+
+    const handleSearch = useCallback((): void => {
+        setAppliedFilters({ ...filters });
+        void navigate({
+            to: "/entities",
+            search: { filterA: filters.filterA || undefined, filterB: filters.filterB || undefined },
+            replace: true,
+        });
+    }, [filters, navigate]);
+
+    const handleManageClick = useCallback(
+        (entityId: string): void => {
+            void navigate({
+                to: "/entities/$entityId",
+                params: { entityId },
+                search: {
+                    filterA: appliedFilters.filterA || undefined,
+                    filterB: appliedFilters.filterB || undefined,
+                },
+            });
+        },
+        [navigate, appliedFilters]
+    );
+    // ...
+}
+```
+
+**Step 3 — Detail container: read filter params, restore them on back:**
+
+```tsx
+type ManageEntitySearch = { filterA?: string; filterB?: string };
+
+export default function ManageEntityContainer(): JSX.Element {
+    const navigate = useNavigate();
+    const filterSearch = useSearch({ strict: false }) as ManageEntitySearch;
+
+    const handleBack = useCallback((): void => {
+        void navigate({
+            to: "/entities",
+            search: { filterA: filterSearch.filterA, filterB: filterSearch.filterB },
+        });
+    }, [navigate, filterSearch]);
+    // ...
+}
+```
+
+**Step 4 — Detail view: use `onClick: onBack` on the breadcrumb, never a static `href`:**
+
+```tsx
+// ✅ Correct — uses onBack which restores filter params
+<Breadcrumb items={[{ label: "Entities", onClick: onBack }, { label: entity.name }]} />
+
+// ❌ Wrong — static href loses filter params
+<Breadcrumb items={[{ label: "Entities", href: "/entities" }, { label: entity.name }]} />
+```
+
+**Rule:** any breadcrumb item that navigates back to a filtered list must use `onClick: onBack`, not `href`. The `onBack` handler in the container is the single source of truth for where "back" goes and what params it carries.
 
 ---
 

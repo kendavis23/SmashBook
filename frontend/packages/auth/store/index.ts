@@ -98,3 +98,7 @@ export function getAccessToken(): string | null {
 export function getTenantSubdomain(): string | null {
     return useAuthStore.getState().tenantSubdomain;
 }
+
+export function getActiveRole(): string | null {
+    return useAuthStore.getState().activeRole;
+}
