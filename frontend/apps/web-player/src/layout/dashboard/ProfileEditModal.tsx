@@ -1,6 +1,6 @@
 import type { NotificationChannel, UserResponse } from "@repo/auth";
 import { useAuthStore } from "@repo/auth";
-import { useUpdateProfile } from "@repo/player-domain/hooks";
+import { useUpdateMyProfile } from "@repo/player-domain/hooks";
 import { AlertToast } from "@repo/ui";
 import { Bell, Loader2, Mail, MessageSquare, Smartphone, Upload, X } from "lucide-react";
 import type { ChangeEvent, FormEvent, JSX } from "react";
@@ -49,7 +49,7 @@ export default function ProfileEditModal({
     const [errorMessage, setErrorMessage] = useState("");
 
     const setUser = useAuthStore((state) => state.setUser);
-    const updateMutation = useUpdateProfile();
+    const updateMutation = useUpdateMyProfile();
 
     const clearMessages = (): void => {
         setSuccessMessage("");

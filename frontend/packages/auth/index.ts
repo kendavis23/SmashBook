@@ -45,6 +45,7 @@ export {
     tryRefreshToken,
     signOut,
 } from "./hooks";
+export type { PortalType } from "./hooks";
 
 // Store — exported for feature-level mocking in app tests
 export { useAuthStore, getAccessToken, getTenantSubdomain, getActiveRole } from "./store";

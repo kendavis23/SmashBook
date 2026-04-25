@@ -1,4 +1,4 @@
-import { CalendarCheck, Circle, Headphones, LayoutDashboard, Package, User } from "lucide-react";
+import { CalendarCheck, LayoutDashboard, Swords } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type UserRole = "player";
@@ -65,15 +65,6 @@ export const ROUTES: RouteConfig[] = [
         group: "Overview",
     },
     {
-        key: "courts",
-        path: "/courts",
-        label: "Courts",
-        icon: Circle,
-        title: "Courts",
-        breadcrumb: ["Operations", "Courts"],
-        group: "Operations",
-    },
-    {
         key: "bookings",
         path: "/bookings",
         label: "Bookings",
@@ -83,31 +74,13 @@ export const ROUTES: RouteConfig[] = [
         group: "Operations",
     },
     {
-        key: "players",
-        path: "/players",
-        label: "Players",
-        icon: User,
-        title: "Players",
-        breadcrumb: ["People", "Players"],
-        group: "People",
-    },
-    {
-        key: "support",
-        path: "/support",
-        label: "Support",
-        icon: Headphones,
-        title: "Support",
-        breadcrumb: ["Support", "Support"],
-        group: "Support",
-    },
-    {
-        key: "equipment",
-        path: "/equipment",
-        label: "Equipment",
-        icon: Package,
-        title: "Equipment",
-        breadcrumb: ["Support", "Equipment"],
-        group: "Support",
+        key: "my-games",
+        path: "/my-games",
+        label: "My Games",
+        icon: Swords,
+        title: "My Games",
+        breadcrumb: ["Operations", "My Games"],
+        group: "Operations",
     },
 ];
 

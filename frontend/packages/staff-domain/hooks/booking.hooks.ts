@@ -2,17 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
     listBookingsEndpoint,
-    getBookingEndpoint,
-    createBookingEndpoint,
     createRecurringBookingEndpoint,
     updateBookingEndpoint,
-    cancelBookingEndpoint,
-    joinBookingEndpoint,
-    invitePlayerEndpoint,
-    respondInviteEndpoint,
     getCalendarViewEndpoint,
-    listOpenGamesEndpoint,
 } from "@repo/api-client/modules/staff";
+import {
+    listOpenGamesEndpoint,
+    createBookingEndpoint,
+    getBookingEndpoint,
+    cancelBookingEndpoint,
+    invitePlayerEndpoint,
+} from "@repo/api-client/modules/share";
 import type {
     Booking,
     BookingInput,
@@ -23,7 +23,6 @@ import type {
     OpenGame,
     OpenGameFilters,
     InvitePlayerInput,
-    InviteRespondInput,
     RecurringBookingInput,
     RecurringBookingResult,
 } from "../models";
@@ -162,21 +161,6 @@ export function useCancelBooking(clubId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// useJoinBooking — POST /api/v1/bookings/:bookingId/join
-// ---------------------------------------------------------------------------
-
-export function useJoinBooking(clubId: string, bookingId: string) {
-    const queryClient = useQueryClient();
-    return useMutation<Booking, Error, void>({
-        mutationFn: () => joinBookingEndpoint(bookingId, clubId),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
-            queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
-        },
-    });
-}
-
-// ---------------------------------------------------------------------------
 // useInvitePlayer — POST /api/v1/bookings/:bookingId/invite
 // ---------------------------------------------------------------------------
 
@@ -186,21 +170,6 @@ export function useInvitePlayer(clubId: string, bookingId: string) {
         mutationFn: (data: InvitePlayerInput) => invitePlayerEndpoint(bookingId, clubId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
-        },
-    });
-}
-
-// ---------------------------------------------------------------------------
-// useRespondInvite — POST /api/v1/bookings/:bookingId/respond-invite
-// ---------------------------------------------------------------------------
-
-export function useRespondInvite(clubId: string, bookingId: string) {
-    const queryClient = useQueryClient();
-    return useMutation<Booking, Error, InviteRespondInput>({
-        mutationFn: (data: InviteRespondInput) => respondInviteEndpoint(bookingId, clubId, data),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
-            queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
         },
     });
 }

@@ -12,6 +12,8 @@ import { lazy, Suspense } from "react";
 import { getAccessToken } from "@repo/auth";
 import { DashboardLayout } from "../layout/dashboard";
 
+const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
+const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
 const LogoutPage = lazy(() => import("../features/auth/pages/LogoutPage"));
 const UnauthorizedPage = lazy(() => import("../features/auth/pages/UnauthorizedPage"));
@@ -101,6 +103,18 @@ const dashboardRoute = createRoute({
     component: DashboardPage,
 });
 
+const bookingsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/bookings",
+    component: BookingsPage,
+});
+
+const myGamesRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/my-games",
+    component: MyGamesPage,
+});
+
 const routeTree = rootRoute.addChildren([
     indexRoute,
     loginRoute,
@@ -108,7 +122,7 @@ const routeTree = rootRoute.addChildren([
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
-    dashboardLayoutRoute.addChildren([dashboardRoute]),
+    dashboardLayoutRoute.addChildren([dashboardRoute, bookingsRoute, myGamesRoute]),
 ]);
 
 const router = createRouter({ routeTree });

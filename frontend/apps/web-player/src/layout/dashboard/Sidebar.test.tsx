@@ -113,7 +113,7 @@ describe("Sidebar — brand & chrome", () => {
     });
 });
 
-describe("Sidebar — unrestricted routes (staff role)", () => {
+describe("Sidebar — unrestricted routes (player role)", () => {
     beforeEach(() => {
         currentRole = "player";
         currentPath = "/dashboard";
@@ -129,19 +129,9 @@ describe("Sidebar — unrestricted routes (staff role)", () => {
         expect(screen.getByText("Bookings")).toBeInTheDocument();
     });
 
-    it("renders Players link", () => {
+    it("renders My Games link", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Players")).toBeInTheDocument();
-    });
-
-    it("renders Equipment link", () => {
-        render(<Sidebar />);
-        expect(screen.getByText("Equipment")).toBeInTheDocument();
-    });
-
-    it("renders Support link", () => {
-        render(<Sidebar />);
-        expect(screen.getAllByText("Support")[0]).toBeInTheDocument();
+        expect(screen.getByText("My Games")).toBeInTheDocument();
     });
 });
 
@@ -183,15 +173,24 @@ describe("Sidebar — current player routes", () => {
         currentPath = "/dashboard";
     });
 
-    it("renders Courts link", () => {
+    it("does NOT render Courts link", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Courts")).toBeInTheDocument();
+        expect(screen.queryByText("Courts")).not.toBeInTheDocument();
     });
 
-    it("renders Support group routes", () => {
+    it("does NOT render Players link", () => {
         render(<Sidebar />);
-        expect(screen.getAllByText("Support")[0]).toBeInTheDocument();
-        expect(screen.getByText("Equipment")).toBeInTheDocument();
+        expect(screen.queryByText("Players")).not.toBeInTheDocument();
+    });
+
+    it("does NOT render Support link", () => {
+        render(<Sidebar />);
+        expect(screen.queryByText("Support")).not.toBeInTheDocument();
+    });
+
+    it("does NOT render Equipment link", () => {
+        render(<Sidebar />);
+        expect(screen.queryByText("Equipment")).not.toBeInTheDocument();
     });
 });
 

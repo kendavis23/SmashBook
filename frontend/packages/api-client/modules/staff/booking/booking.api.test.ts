@@ -2,15 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
     listBookingsEndpoint,
     getCalendarViewEndpoint,
-    listOpenGamesEndpoint,
-    createBookingEndpoint,
     createRecurringBookingEndpoint,
-    getBookingEndpoint,
     updateBookingEndpoint,
-    cancelBookingEndpoint,
-    joinBookingEndpoint,
-    invitePlayerEndpoint,
-    respondInviteEndpoint,
 } from "./booking.api";
 
 vi.mock("../../../core/fetcher", () => ({ fetcher: vi.fn() }));
@@ -24,7 +17,6 @@ beforeEach(() => {
 
 const CLUB_ID = "club-123";
 const BOOKING_ID = "booking-456";
-const USER_ID = "user-789";
 
 const mockBooking = {
     id: BOOKING_ID,
@@ -115,54 +107,6 @@ describe("getCalendarViewEndpoint", () => {
     });
 });
 
-describe("listOpenGamesEndpoint", () => {
-    it("calls GET /api/v1/bookings/open-games with required club_id", async () => {
-        mockFetcher.mockResolvedValue([]);
-        await listOpenGamesEndpoint({ club_id: CLUB_ID });
-        expect(mockFetcher).toHaveBeenCalledWith(`/api/v1/bookings/open-games?club_id=${CLUB_ID}`);
-    });
-
-    it("calls GET /api/v1/bookings/open-games with all optional params", async () => {
-        mockFetcher.mockResolvedValue([]);
-        await listOpenGamesEndpoint({
-            club_id: CLUB_ID,
-            date: "2026-04-11",
-            min_skill: 3,
-            max_skill: 7,
-        });
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/open-games?club_id=${CLUB_ID}&date=2026-04-11&min_skill=3&max_skill=7`
-        );
-    });
-});
-
-describe("createBookingEndpoint", () => {
-    it("calls POST /api/v1/bookings with body", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        const data = {
-            club_id: CLUB_ID,
-            court_id: "court-1",
-            start_datetime: "2026-04-11T10:00:00Z",
-        };
-        await createBookingEndpoint(data);
-        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/bookings", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        });
-    });
-});
-
-describe("getBookingEndpoint", () => {
-    it("calls GET /api/v1/bookings/:bookingId with club_id query param", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        await getBookingEndpoint(BOOKING_ID, CLUB_ID);
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/${BOOKING_ID}?club_id=${CLUB_ID}`
-        );
-    });
-});
-
 describe("updateBookingEndpoint", () => {
     it("calls PATCH /api/v1/bookings/:bookingId with club_id and body", async () => {
         mockFetcher.mockResolvedValue(mockBooking);
@@ -172,48 +116,6 @@ describe("updateBookingEndpoint", () => {
             `/api/v1/bookings/${BOOKING_ID}?club_id=${CLUB_ID}`,
             {
                 method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            }
-        );
-    });
-});
-
-describe("cancelBookingEndpoint", () => {
-    it("calls DELETE /api/v1/bookings/:bookingId with club_id query param", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        await cancelBookingEndpoint(BOOKING_ID, CLUB_ID);
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/${BOOKING_ID}?club_id=${CLUB_ID}`,
-            {
-                method: "DELETE",
-            }
-        );
-    });
-});
-
-describe("joinBookingEndpoint", () => {
-    it("calls POST /api/v1/bookings/:bookingId/join with club_id query param", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        await joinBookingEndpoint(BOOKING_ID, CLUB_ID);
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/${BOOKING_ID}/join?club_id=${CLUB_ID}`,
-            {
-                method: "POST",
-            }
-        );
-    });
-});
-
-describe("invitePlayerEndpoint", () => {
-    it("calls POST /api/v1/bookings/:bookingId/invite with body", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        const data = { user_id: USER_ID };
-        await invitePlayerEndpoint(BOOKING_ID, CLUB_ID, data);
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/${BOOKING_ID}/invite?club_id=${CLUB_ID}`,
-            {
-                method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
             }
@@ -257,21 +159,5 @@ describe("createRecurringBookingEndpoint", () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
-    });
-});
-
-describe("respondInviteEndpoint", () => {
-    it("calls POST /api/v1/bookings/:bookingId/respond-invite with body", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        const data = { action: "accepted" as const };
-        await respondInviteEndpoint(BOOKING_ID, CLUB_ID, data);
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/${BOOKING_ID}/respond-invite?club_id=${CLUB_ID}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            }
-        );
     });
 });

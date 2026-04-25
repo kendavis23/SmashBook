@@ -5,6 +5,7 @@
     "exports": {
         "./modules/staff": "./modules/staff/index.ts",
         "./modules/staff/*": "./modules/staff/*.ts",
+        "./modules/share": "./modules/share/index.ts",
         "./modules/share/*": "./modules/share/*.ts",
         "./modules/player": "./modules/player/index.ts",
         "./modules/player/*": "./modules/player/*.ts",

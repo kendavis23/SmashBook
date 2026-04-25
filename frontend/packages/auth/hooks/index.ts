@@ -114,9 +114,39 @@ export function useInitAuth() {
 
 // ---------------------------------------------------------------------------
 // useLogin — POST /api/v1/auth/login then GET /api/v1/players/me
+//
+// portalType controls which clubs are accepted:
+//   "player" → only clubs where role === "player"
+//   "staff"  → only clubs where role !== "player"
 // ---------------------------------------------------------------------------
 
-export function useLogin() {
+export type PortalType = "player" | "staff";
+
+const STAFF_ROLES: TenantUserRole[] = [
+    "owner",
+    "admin",
+    "ops_lead",
+    "staff",
+    "front_desk",
+    "trainer",
+    "viewer",
+];
+
+function filterClubsForPortal(clubs: import("../types").ClubSummary[], portalType: PortalType) {
+    if (portalType === "player") {
+        return clubs.filter((c) => c.role === "player");
+    }
+    return clubs.filter((c) => STAFF_ROLES.includes(c.role as TenantUserRole));
+}
+
+function getPortalLoginError(portalType: PortalType): string {
+    if (portalType === "player") {
+        return "This portal is for players only. Please use your player account to log in.";
+    }
+    return "This portal is for staff only. Player accounts cannot access the staff portal.";
+}
+
+export function useLogin(portalType: PortalType = "staff") {
     return useMutation({
         mutationFn: async (credentials: UserLogin): Promise<UserResponse> => {
             const { setTokens, setUser, setTenantSubdomain, setActiveClubId, clearAuth } =
@@ -129,11 +159,19 @@ export function useLogin() {
                 throw new Error("Your account has no clubs assigned. Contact your administrator.");
             }
 
-            setTokens(tokens);
+            const allowedClubs = filterClubsForPortal(tokens.clubs, portalType);
+
+            if (allowedClubs.length === 0) {
+                clearAuth();
+                throw new Error(getPortalLoginError(portalType));
+            }
+
+            // Store only the clubs relevant to this portal.
+            setTokens({ ...tokens, clubs: allowedClubs });
             setTenantSubdomain(credentials.tenant_subdomain);
 
-            // Auto-select the first club and its role immediately on login.
-            const firstClub = tokens.clubs[0]!;
+            // Auto-select the first allowed club and its role immediately on login.
+            const firstClub = allowedClubs[0]!;
             setActiveClubId(firstClub.club_id, firstClub.club_name, firstClub.role);
 
             const user = await getMeService(tokens.access_token, credentials.tenant_subdomain);

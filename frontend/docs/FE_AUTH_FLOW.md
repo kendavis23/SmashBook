@@ -1,4 +1,4 @@
-_Last updated: 2026-04-24 00:00 UTC_
+_Last updated: 2026-04-25 00:00 UTC_
 
 # FE Auth Flow
 
@@ -9,19 +9,28 @@ _Last updated: 2026-04-24 00:00 UTC_
 ```
 User fills form
   → LoginForm.tsx  (features/auth/components/LoginForm.tsx)
-  → useLogin()     (packages/auth/hooks/index.ts)
+  → useLogin()     (apps/<app>/features/auth/hooks/index.ts)
+       wraps useLogin(portalType) from packages/auth/hooks/index.ts
       → loginService()   POST /api/v1/auth/login   → returns { access_token, refresh_token, clubs }
       → if clubs[] is empty → clearAuth() + throw
            "Your account has no clubs assigned. Contact your administrator."
            (applies to ALL roles — owner, admin, staff, etc.)
-      → setTokens()      persists tokens + clubs to Zustand store + localStorage
+      → filterClubsForPortal(clubs, portalType)
+           web-player: keeps only clubs where role === "player"
+           web-staff:  keeps only clubs where role !== "player"
+           → if filtered list is empty → clearAuth() + throw portal-specific error:
+               player portal: "This portal is for players only. Please use your player account to log in."
+               staff portal:  "This portal is for staff only. Player accounts cannot access the staff portal."
+      → setTokens()      persists tokens + filtered clubs to Zustand store + localStorage
       → setTenantSubdomain()
       → setActiveClubId(clubs[0].club_id, clubs[0].club_name, clubs[0].role)
-           auto-selects the first club AND its role on login
+           auto-selects the first allowed club AND its role on login
       → getMeService()   GET /api/v1/players/me    → returns UserResponse
       → setUser()        hydrates user in store (in-memory only, not persisted)
   → navigate("/dashboard")
 ```
+
+**Portal type binding:** Each app's feature hook (`apps/<app>/src/features/auth/hooks/index.ts`) wraps `useLogin` with the correct `portalType` so `LoginForm.tsx` calls it without any portal-specific logic. The `portalType` defaults to `"staff"` in the base hook if called directly.
 
 **Store:** `packages/auth/store/index.ts` — Zustand store (`useAuthStore`), persisted via `localStorage` key `smashbook-auth`.
 
@@ -212,10 +221,12 @@ SwitchClubModal — user selects Club B
 
 **Roles available per app:**
 
-| Application  | Audience                    | Roles Available                                            |
-| ------------ | --------------------------- | ---------------------------------------------------------- |
-| `web-player` | Players / end-users         | `player` only                                              |
-| `web-staff`  | Internal staff / management | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer` |
+| Application  | Audience                    | Roles Available                                                                                                                                 |
+| ------------ | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web-player` | Players / end-users         | `player` only — login rejected if no `player` club present                                                                                      |
+| `web-staff`  | Internal staff / management | `owner`, `admin`, `ops_lead`, `staff`, `front_desk`, `trainer`, `viewer` — `player` clubs are stripped; login rejected if no staff club remains |
+
+**Enforcement point:** `filterClubsForPortal()` in `packages/auth/hooks/index.ts` — called inside `useLogin` on every login attempt before tokens are persisted.
 
 ---
 

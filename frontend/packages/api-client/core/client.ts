@@ -6,7 +6,7 @@ export function createQueryClient() {
     return new QueryClient({
         defaultOptions: {
             queries: {
-                staleTime: 60 * 1000, // 1 min
+                staleTime: 60 * 100,
                 retry: false, // domain hooks configure their own retry logic
             },
         },
