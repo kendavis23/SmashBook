@@ -4,6 +4,7 @@ import {
     getCalendarViewEndpoint,
     listOpenGamesEndpoint,
     createBookingEndpoint,
+    createRecurringBookingEndpoint,
     getBookingEndpoint,
     updateBookingEndpoint,
     cancelBookingEndpoint,
@@ -217,6 +218,45 @@ describe("invitePlayerEndpoint", () => {
                 body: JSON.stringify(data),
             }
         );
+    });
+});
+
+describe("createRecurringBookingEndpoint", () => {
+    it("calls POST /api/v1/bookings/recurring with body", async () => {
+        mockFetcher.mockResolvedValue({ created: [mockBooking], skipped: [] });
+        const data = {
+            club_id: CLUB_ID,
+            court_id: "court-1",
+            first_start: "2026-04-11T10:00:00Z",
+            recurrence_rule: "FREQ=WEEKLY;BYDAY=MO;COUNT=4",
+        };
+        await createRecurringBookingEndpoint(data);
+        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/bookings/recurring", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+    });
+
+    it("calls POST /api/v1/bookings/recurring with skip_conflicts and recurrence_end_date", async () => {
+        mockFetcher.mockResolvedValue({
+            created: [mockBooking],
+            skipped: [{ occurrence: "2026-04-18T10:00:00Z", reason: "conflict" }],
+        });
+        const data = {
+            club_id: CLUB_ID,
+            court_id: "court-1",
+            first_start: "2026-04-11T10:00:00Z",
+            recurrence_rule: "FREQ=WEEKLY;BYDAY=MO",
+            recurrence_end_date: "2026-06-30",
+            skip_conflicts: true,
+        };
+        await createRecurringBookingEndpoint(data);
+        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/bookings/recurring", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
     });
 });
 

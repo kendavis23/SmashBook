@@ -69,4 +69,7 @@ export type {
     CalendarCourtColumn,
     CalendarDay,
     CalendarView,
+    RecurringBookingInput,
+    RecurringBookingSkipped,
+    RecurringBookingResult,
 } from "./booking.model";

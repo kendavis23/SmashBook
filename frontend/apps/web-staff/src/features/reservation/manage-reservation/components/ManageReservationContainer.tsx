@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import {
     useGetCalendarReservation,
     useUpdateCalendarReservation,
@@ -34,10 +34,43 @@ function buildInitialForm(res: CalendarReservation): ManageReservationFormState 
     };
 }
 
+type ManageReservationSearch = {
+    created?: boolean;
+    deleted?: boolean;
+    reservationType?: string;
+    courtId?: string;
+    fromDt?: string;
+    toDt?: string;
+};
+
+type ReservationsRouteSearch = {
+    created: boolean | undefined;
+    deleted: boolean | undefined;
+    reservationType: string | undefined;
+    courtId: string | undefined;
+    fromDt: string | undefined;
+    toDt: string | undefined;
+};
+
+function buildReservationsSearch(
+    search: ManageReservationSearch,
+    flags: Pick<ManageReservationSearch, "created" | "deleted"> = {}
+): ReservationsRouteSearch {
+    return {
+        created: flags.created,
+        deleted: flags.deleted,
+        reservationType: search.reservationType,
+        courtId: search.courtId,
+        fromDt: search.fromDt,
+        toDt: search.toDt,
+    };
+}
+
 export default function ManageReservationContainer(): JSX.Element {
     const { reservationId } = useParams({ strict: false }) as { reservationId: string };
     const navigate = useNavigate();
     const { clubId, role } = useClubAccess();
+    const filterSearch = useSearch({ strict: false }) as ManageReservationSearch;
     const canEdit = canManageReservation(role);
 
     const { data: reservation, isLoading, error } = useGetCalendarReservation(reservationId);
@@ -127,18 +160,24 @@ export default function ManageReservationContainer(): JSX.Element {
     const handleConfirmDelete = useCallback((): void => {
         deleteMutation.mutate(reservationId, {
             onSuccess: () => {
-                void navigate({ to: "/reservations", search: { deleted: true } });
+                void navigate({
+                    to: "/reservations",
+                    search: buildReservationsSearch(filterSearch, { deleted: true }),
+                });
             },
             onError: (err) => {
                 setShowDeleteConfirm(false);
                 setApiError(err instanceof Error ? err.message : "Failed to delete reservation.");
             },
         });
-    }, [reservationId, deleteMutation, navigate]);
+    }, [reservationId, deleteMutation, navigate, filterSearch]);
 
     const handleBack = useCallback((): void => {
-        void navigate({ to: "/reservations" });
-    }, [navigate]);
+        void navigate({
+            to: "/reservations",
+            search: buildReservationsSearch(filterSearch),
+        });
+    }, [navigate, filterSearch]);
 
     if (isLoading) {
         return (

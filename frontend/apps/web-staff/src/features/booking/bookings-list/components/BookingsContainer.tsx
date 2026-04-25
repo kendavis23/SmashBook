@@ -11,20 +11,48 @@ function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
-function createDefaultFilters(): BookingsListFilters {
+type BookingsSearch = {
+    created?: boolean;
+    cancelled?: boolean;
+    dateFrom?: string;
+    dateTo?: string;
+    bookingType?: string;
+    bookingStatus?: string;
+    courtId?: string;
+    playerSearch?: string;
+};
+
+type BookingsRouteSearch = {
+    created: boolean | undefined;
+    cancelled: boolean | undefined;
+    dateFrom: string | undefined;
+    dateTo: string | undefined;
+    bookingType: string | undefined;
+    bookingStatus: string | undefined;
+    courtId: string | undefined;
+    playerSearch: string | undefined;
+};
+
+function buildBookingsSearch(
+    filters: BookingsListFilters,
+    flags: Pick<BookingsSearch, "created" | "cancelled"> = {}
+): BookingsRouteSearch {
     return {
-        dateFrom: todayIso(),
-        dateTo: "",
-        bookingType: "",
-        bookingStatus: "",
-        courtId: "",
-        playerSearch: "",
+        created: flags.created,
+        cancelled: flags.cancelled,
+        dateFrom: filters.dateFrom || undefined,
+        dateTo: filters.dateTo || undefined,
+        bookingType: filters.bookingType || undefined,
+        bookingStatus: filters.bookingStatus || undefined,
+        courtId: filters.courtId || undefined,
+        playerSearch: filters.playerSearch || undefined,
     };
 }
 
 export default function BookingsContainer(): JSX.Element {
     const navigate = useNavigate();
-    const search = useSearch({ strict: false }) as { created?: boolean; cancelled?: boolean };
+    const search = useSearch({ strict: false }) as BookingsSearch;
+
     const [successMessage, setSuccessMessage] = useState<string>(
         search.created === true
             ? "Booking created successfully."
@@ -32,12 +60,26 @@ export default function BookingsContainer(): JSX.Element {
               ? "Booking cancelled successfully."
               : ""
     );
-    const [filters, setFilters] = useState<BookingsListFilters>(createDefaultFilters);
-    const [appliedFilters, setAppliedFilters] = useState<BookingsListFilters>(createDefaultFilters);
+
+    const filtersFromUrl: BookingsListFilters = {
+        dateFrom: search.dateFrom ?? todayIso(),
+        dateTo: search.dateTo ?? "",
+        bookingType: search.bookingType ?? "",
+        bookingStatus: search.bookingStatus ?? "",
+        courtId: search.courtId ?? "",
+        playerSearch: search.playerSearch ?? "",
+    };
+
+    const [filters, setFilters] = useState<BookingsListFilters>(filtersFromUrl);
+    const [appliedFilters, setAppliedFilters] = useState<BookingsListFilters>(filtersFromUrl);
 
     useEffect(() => {
         if (search.created === true || search.cancelled === true) {
-            void navigate({ to: "/bookings", search: {}, replace: true });
+            void navigate({
+                to: "/bookings",
+                search: buildBookingsSearch(appliedFilters),
+                replace: true,
+            });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -71,7 +113,12 @@ export default function BookingsContainer(): JSX.Element {
 
     const handleSearch = useCallback((): void => {
         setAppliedFilters({ ...filters });
-    }, [filters]);
+        void navigate({
+            to: "/bookings",
+            search: buildBookingsSearch(filters),
+            replace: true,
+        });
+    }, [filters, navigate]);
 
     const handleRefresh = useCallback((): void => {
         void refetch();
@@ -86,9 +133,20 @@ export default function BookingsContainer(): JSX.Element {
 
     const handleManageClick = useCallback(
         (bookingId: string): void => {
-            void navigate({ to: "/bookings/$bookingId", params: { bookingId } });
+            void navigate({
+                to: "/bookings/$bookingId",
+                params: { bookingId },
+                search: {
+                    dateFrom: appliedFilters.dateFrom || undefined,
+                    dateTo: appliedFilters.dateTo || undefined,
+                    bookingType: appliedFilters.bookingType || undefined,
+                    bookingStatus: appliedFilters.bookingStatus || undefined,
+                    courtId: appliedFilters.courtId || undefined,
+                    playerSearch: appliedFilters.playerSearch || undefined,
+                },
+            });
         },
-        [navigate]
+        [navigate, appliedFilters]
     );
 
     return (

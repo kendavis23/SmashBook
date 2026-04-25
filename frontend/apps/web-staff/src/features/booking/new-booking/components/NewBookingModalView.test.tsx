@@ -66,10 +66,15 @@ const defaultForm: NewBookingFormState = {
     contactEmail: "",
     contactPhone: "",
     onBehalfOf: "",
+    staffProfileId: "",
+    isRecurring: false,
+    recurrenceRule: "",
+    skipConflicts: false,
 };
 
 const defaultProps = {
     courtName: "Court 1",
+    trainers: [{ id: "trainer-1" }],
     form: defaultForm,
     apiError: "",
     isPending: false,
@@ -143,40 +148,75 @@ describe("NewBookingModalView", () => {
         expect(onDismissError).toHaveBeenCalled();
     });
 
-    it("shows open game checkbox and calls onFormChange on toggle", () => {
+    it("renders Open Game & Skill Level section collapsed by default for regular bookings", () => {
+        render(<NewBookingModalView {...defaultProps} />);
+
+        expect(
+            screen.getByRole("button", { name: /Open Game.*Skill Level/i }),
+        ).toBeInTheDocument();
+        expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Mark as open game")).not.toBeInTheDocument();
+    });
+
+    it("expands Open Game & Skill Level section and shows open game checkbox and skill fields", () => {
         const onFormChange = vi.fn();
         render(<NewBookingModalView {...defaultProps} onFormChange={onFormChange} />);
+
+        fireEvent.click(screen.getByRole("button", { name: /Open Game.*Skill Level/i }));
+        expect(screen.getByLabelText("Mark as open game")).toBeInTheDocument();
+        expect(screen.getByLabelText("Anchor")).toBeInTheDocument();
 
         fireEvent.click(screen.getByLabelText("Mark as open game"));
         expect(onFormChange).toHaveBeenCalledWith({ isOpenGame: true });
     });
 
-    it("renders Skill Level section collapsed by default", () => {
-        render(<NewBookingModalView {...defaultProps} />);
+    it("does not render Open Game & Skill Level section for non-regular booking types", () => {
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "lesson_individual" }}
+            />,
+        );
 
-        expect(screen.getByRole("button", { name: /Skill Level/i })).toBeInTheDocument();
-        expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: /Open Game.*Skill Level/i }),
+        ).not.toBeInTheDocument();
     });
 
-    it("expands Skill Level section on toggle", () => {
+    it("does not render Event & Contact section for regular booking type", () => {
         render(<NewBookingModalView {...defaultProps} />);
 
-        fireEvent.click(screen.getByRole("button", { name: /Skill Level/i }));
-        expect(screen.getByLabelText("Anchor")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /Event.*Contact/i })).not.toBeInTheDocument();
     });
 
-    it("renders Event & Contact section collapsed by default", () => {
-        render(<NewBookingModalView {...defaultProps} />);
+    it("renders Event & Contact section collapsed by default for corporate_event", () => {
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "corporate_event" }}
+            />,
+        );
 
         expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
         expect(screen.queryByLabelText("Event name")).not.toBeInTheDocument();
     });
 
-    it("expands Event & Contact section on toggle", () => {
-        render(<NewBookingModalView {...defaultProps} />);
+    it("expands Event & Contact section on toggle for corporate_event", () => {
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "corporate_event" }}
+            />,
+        );
 
         fireEvent.click(screen.getByRole("button", { name: /Event.*Contact/i }));
         expect(screen.getByLabelText("Event name")).toBeInTheDocument();
+    });
+
+    it("renders On behalf of field outside Event & Contact", () => {
+        render(<NewBookingModalView {...defaultProps} />);
+
+        expect(screen.getByLabelText(/on behalf of/i)).toBeInTheDocument();
     });
 
     it("calls onFormChange when notes field is changed", () => {

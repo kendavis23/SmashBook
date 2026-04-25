@@ -10,6 +10,7 @@ const mockDeleteMutate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
     useNavigate: () => mockNavigate,
     useParams: () => ({ reservationId: "reservation-1" }),
+    useSearch: () => ({}),
 }));
 
 vi.mock("../../hooks", () => ({
@@ -238,7 +239,9 @@ describe("ManageReservationContainer", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reservations" });
+        expect(mockNavigate).toHaveBeenCalledWith(
+            expect.objectContaining({ to: "/reservations" })
+        );
     });
 
     it("deletes a reservation after confirmation and navigates away", async () => {
@@ -261,9 +264,11 @@ describe("ManageReservationContainer", () => {
                 onError: expect.any(Function),
             })
         );
-        expect(mockNavigate).toHaveBeenCalledWith({
-            to: "/reservations",
-            search: { deleted: true },
-        });
+        expect(mockNavigate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                to: "/reservations",
+                search: expect.objectContaining({ deleted: true }),
+            })
+        );
     });
 });

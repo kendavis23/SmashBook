@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
-import { useCreateBooking, useGetCourtAvailability, useListCourts } from "../../hooks";
+import { useCreateBooking, useGetCourtAvailability, useListCourts, useListTrainers } from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { BookingInput, BookingType } from "../../types";
 import NewBookingView from "./NewBookingView";
@@ -32,6 +32,8 @@ export default function NewBookingModalContainer({
     const { clubId } = useClubAccess();
     const { data: courts = [] } = useListCourts(clubId ?? "");
     const courtList = courts as { id: string; name: string }[];
+    const { data: trainers = [] } = useListTrainers(clubId ?? "");
+    const trainerList = trainers.filter((t) => t.is_active !== false);
 
     const [form, setForm] = useState<NewBookingFormState>({
         courtId,
@@ -49,6 +51,10 @@ export default function NewBookingModalContainer({
         contactEmail: "",
         contactPhone: "",
         onBehalfOf: "",
+        staffProfileId: "",
+        isRecurring: false,
+        recurrenceRule: "",
+        skipConflicts: false,
     });
 
     const [courtError, setCourtError] = useState("");
@@ -125,6 +131,7 @@ export default function NewBookingModalContainer({
                 contact_email: form.contactEmail.trim() || null,
                 contact_phone: form.contactPhone.trim() || null,
                 on_behalf_of_user_id: form.onBehalfOf.trim() || null,
+                staff_profile_id: form.staffProfileId.trim() || null,
             };
 
             createMutation.mutate(payload, {
@@ -143,6 +150,7 @@ export default function NewBookingModalContainer({
             mode="modal"
             courtName={courtName}
             courts={courtList}
+            trainers={trainerList}
             slots={slots}
             slotsLoading={slotsLoading}
             form={form}

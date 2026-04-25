@@ -10,6 +10,8 @@ import type {
     OpenGameSummary,
     InvitePlayerRequest,
     InviteRespondRequest,
+    RecurringBookingCreate,
+    RecurringBookingResponse,
 } from "./booking.types";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -83,6 +85,16 @@ export function invitePlayerEndpoint(
     data: InvitePlayerRequest
 ): Promise<BookingResponse> {
     return fetcher<BookingResponse>(`/api/v1/bookings/${bookingId}/invite?club_id=${clubId}`, {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(data),
+    });
+}
+
+export function createRecurringBookingEndpoint(
+    data: RecurringBookingCreate
+): Promise<RecurringBookingResponse> {
+    return fetcher<RecurringBookingResponse>("/api/v1/bookings/recurring", {
         method: "POST",
         headers: JSON_HEADERS,
         body: JSON.stringify(data),

@@ -2,9 +2,15 @@ import { useState, useCallback, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { useCreateBooking, useListCourts, useGetCourtAvailability } from "../../hooks";
+import {
+    useCreateBooking,
+    useCreateRecurringBooking,
+    useListCourts,
+    useGetCourtAvailability,
+    useListTrainers,
+} from "../../hooks";
 import { useClubAccess } from "../../store";
-import type { BookingInput, BookingType } from "../../types";
+import type { BookingInput, BookingType, RecurringBookingInput } from "../../types";
 import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
 
@@ -30,8 +36,23 @@ function createDefaultForm(): NewBookingFormState {
         contactEmail: "",
         contactPhone: "",
         onBehalfOf: "",
+        staffProfileId: "",
+        isRecurring: false,
+        recurrenceRule: "",
+        skipConflicts: false,
     };
 }
+
+const bookingsCreatedSearch = {
+    created: true,
+    cancelled: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+    bookingType: undefined,
+    bookingStatus: undefined,
+    courtId: undefined,
+    playerSearch: undefined,
+};
 
 export default function NewBookingContainer(): JSX.Element {
     const navigate = useNavigate();
@@ -44,6 +65,8 @@ export default function NewBookingContainer(): JSX.Element {
 
     const { data: courts = [] } = useListCourts(clubId ?? "");
     const courtList = courts as { id: string; name: string }[];
+    const { data: trainers = [] } = useListTrainers(clubId ?? "");
+    const trainerList = trainers.filter((t) => t.is_active !== false);
 
     const [form, setForm] = useState<NewBookingFormState>(() => ({
         ...createDefaultForm(),
@@ -79,7 +102,9 @@ export default function NewBookingContainer(): JSX.Element {
     }, [availabilityData]);
 
     const createMutation = useCreateBooking(clubId ?? "");
-    const apiError = (createMutation.error as Error | null)?.message ?? "";
+    const createRecurringMutation = useCreateRecurringBooking(clubId ?? "");
+    const activeMutation = form.isRecurring ? createRecurringMutation : createMutation;
+    const apiError = (activeMutation.error as Error | null)?.message ?? "";
 
     const handleFormChange = useCallback(
         (patch: Partial<NewBookingFormState>): void => {
@@ -115,8 +140,30 @@ export default function NewBookingContainer(): JSX.Element {
             e.preventDefault();
             if (!validate()) return;
 
-            // Combine date + time into an ISO datetime string
             const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
+
+            if (form.isRecurring) {
+                const payload: RecurringBookingInput = {
+                    club_id: clubId ?? "",
+                    court_id: form.courtId,
+                    booking_type: form.bookingType as BookingType,
+                    first_start: startDatetime,
+                    recurrence_rule: form.recurrenceRule,
+                    max_players: parseOptionalNumber(form.maxPlayers) ?? undefined,
+                    notes: form.notes.trim() || null,
+                    event_name: form.eventName.trim() || null,
+                    contact_name: form.contactName.trim() || null,
+                    contact_email: form.contactEmail.trim() || null,
+                    contact_phone: form.contactPhone.trim() || null,
+                    skip_conflicts: form.skipConflicts,
+                };
+                createRecurringMutation.mutate(payload, {
+                    onSuccess: () => {
+                        void navigate({ to: "/bookings", search: bookingsCreatedSearch });
+                    },
+                });
+                return;
+            }
 
             const payload: BookingInput = {
                 club_id: clubId ?? "",
@@ -134,36 +181,38 @@ export default function NewBookingContainer(): JSX.Element {
                 contact_email: form.contactEmail.trim() || null,
                 contact_phone: form.contactPhone.trim() || null,
                 on_behalf_of_user_id: form.onBehalfOf.trim() || null,
+                staff_profile_id: form.staffProfileId.trim() || null,
             };
 
             createMutation.mutate(payload, {
                 onSuccess: () => {
-                    void navigate({ to: "/bookings", search: { created: true } });
+                    void navigate({ to: "/bookings", search: bookingsCreatedSearch });
                 },
             });
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [form, clubId, createMutation, navigate]
+        [form, clubId, createMutation, createRecurringMutation, navigate]
     );
 
     const handleCancel = useCallback((): void => {
-        void navigate({ to: "/bookings" });
+        void navigate({ to: "/bookings", search: { ...bookingsCreatedSearch, created: undefined } });
     }, [navigate]);
 
     const handleDismissError = useCallback((): void => {
-        createMutation.reset();
-    }, [createMutation]);
+        activeMutation.reset();
+    }, [activeMutation]);
 
     return (
         <NewBookingView
             courts={courtList}
+            trainers={trainerList}
             slots={slots}
             slotsLoading={slotsLoading}
             form={form}
             courtError={courtError}
             startError={startError}
             apiError={apiError}
-            isPending={createMutation.isPending}
+            isPending={activeMutation.isPending}
             onFormChange={handleFormChange}
             onSubmit={handleSubmit}
             onCancel={handleCancel}

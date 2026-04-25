@@ -280,7 +280,7 @@ export default function ManageReservationView({
         <div className="w-full space-y-5">
             <Breadcrumb
                 items={[
-                    { label: "Reservations", href: "/reservations" },
+                    { label: "Reservations", onClick: onBack },
                     { label: reservation.title },
                 ]}
             />

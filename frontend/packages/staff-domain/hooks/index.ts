@@ -48,6 +48,7 @@ export {
     useGetCalendarView,
     useListOpenGames,
     useCreateBooking,
+    useCreateRecurringBooking,
     useUpdateBooking,
     useCancelBooking,
     useJoinBooking,

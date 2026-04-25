@@ -123,7 +123,7 @@ export default function ManageBookingView({
     return (
         <div className="w-full space-y-5">
             <Breadcrumb
-                items={[{ label: "Bookings", href: "/bookings" }, { label: "Manage Booking" }]}
+                items={[{ label: "Bookings", onClick: onBack }, { label: "Manage Booking" }]}
             />
 
             <section className="w-full rounded-xl border border-border bg-card px-6 py-6 shadow-sm sm:px-8">
@@ -185,7 +185,7 @@ export default function ManageBookingView({
                                     {BOOKING_TYPE_LABELS[booking.booking_type] ??
                                         booking.booking_type}
                                     {booking.is_open_game ? (
-                                        <span className="ml-1.5 rounded-full bg-info/15 px-1.5 py-0.5 text-[10px] font-medium text-info">
+                                        <span className="ml-1.5 rounded-full bg-cta/15 px-1.5 py-0.5 text-[10px] font-medium text-cta">
                                             Open
                                         </span>
                                     ) : null}

@@ -89,6 +89,22 @@ vi.mock("@repo/ui", () => ({
             <span>{value}</span>
         </div>
     ),
+    RecurrencePicker: ({
+        value,
+        onChange,
+    }: {
+        value?: string;
+        onChange: (rule: string) => void;
+    }) => (
+        <div>
+            <input
+                type="text"
+                aria-label="recurrence rule"
+                value={value ?? ""}
+                onChange={(e) => onChange(e.target.value)}
+            />
+        </div>
+    ),
 }));
 
 const defaultForm: NewBookingFormState = {
@@ -107,10 +123,15 @@ const defaultForm: NewBookingFormState = {
     contactEmail: "",
     contactPhone: "",
     onBehalfOf: "",
+    staffProfileId: "",
+    isRecurring: false,
+    recurrenceRule: "",
+    skipConflicts: false,
 };
 
 const defaultProps = {
     courts: [{ id: "court-1", name: "Court 1" }],
+    trainers: [{ id: "trainer-1" }],
     slots: [
         {
             start_time: "10:00",
@@ -143,15 +164,40 @@ describe("NewBookingView", () => {
         expect(screen.getByText("Core Details")).toBeInTheDocument();
     });
 
-    it("calls onFormChange for number and checkbox fields", () => {
+    it("calls onFormChange for number field", () => {
         const onFormChange = vi.fn();
         render(<NewBookingView {...defaultProps} onFormChange={onFormChange} />);
 
         fireEvent.change(screen.getByLabelText(/max players/i), { target: { value: "6" } });
-        fireEvent.click(screen.getByLabelText(/mark as open game/i));
 
         expect(onFormChange).toHaveBeenCalledWith({ maxPlayers: "6" });
+    });
+
+    it("shows Open Game & Skill Level section for regular booking type", () => {
+        render(<NewBookingView {...defaultProps} />);
+
+        expect(screen.getByText("Open Game & Skill Level")).toBeInTheDocument();
+        expect(screen.getByLabelText(/mark as open game/i)).toBeInTheDocument();
+    });
+
+    it("calls onFormChange with isOpenGame when open game checkbox is toggled", () => {
+        const onFormChange = vi.fn();
+        render(<NewBookingView {...defaultProps} onFormChange={onFormChange} />);
+
+        fireEvent.click(screen.getByLabelText(/mark as open game/i));
         expect(onFormChange).toHaveBeenCalledWith({ isOpenGame: true });
+    });
+
+    it("does not show Open Game & Skill Level section for non-regular booking types", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "lesson_individual" }}
+            />,
+        );
+
+        expect(screen.queryByText("Open Game & Skill Level")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/mark as open game/i)).not.toBeInTheDocument();
     });
 
     it("shows api error and dismisses it", () => {
@@ -225,6 +271,111 @@ describe("NewBookingView", () => {
     });
 });
 
+const nonRegularForm: NewBookingFormState = { ...defaultForm, bookingType: "lesson_individual" };
+
+describe("NewBookingView — recurring (page mode)", () => {
+    it("does not render Recurrence section for regular booking type", () => {
+        render(<NewBookingView {...defaultProps} />);
+        expect(screen.queryByText("Recurrence")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Enable recurring booking")).not.toBeInTheDocument();
+    });
+
+    it("renders Recurrence section heading for non-regular booking type", () => {
+        render(<NewBookingView {...defaultProps} form={nonRegularForm} />);
+        expect(screen.getByText("Recurrence")).toBeInTheDocument();
+    });
+
+    it("shows 'Repeat this booking' checkbox unchecked by default", () => {
+        render(<NewBookingView {...defaultProps} form={nonRegularForm} />);
+        const toggle = screen.getByLabelText("Enable recurring booking");
+        expect(toggle).not.toBeChecked();
+    });
+
+    it("calls onFormChange with isRecurring true when toggle is checked", () => {
+        const onFormChange = vi.fn();
+        render(<NewBookingView {...defaultProps} form={nonRegularForm} onFormChange={onFormChange} />);
+        fireEvent.click(screen.getByLabelText("Enable recurring booking"));
+        expect(onFormChange).toHaveBeenCalledWith({ isRecurring: true });
+    });
+
+    it("does not render RecurrencePicker when isRecurring is false", () => {
+        render(<NewBookingView {...defaultProps} form={nonRegularForm} />);
+        expect(screen.queryByLabelText("recurrence rule")).not.toBeInTheDocument();
+    });
+
+    it("renders RecurrencePicker and skip-conflicts checkbox when isRecurring is true", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...nonRegularForm, isRecurring: true }}
+            />
+        );
+        expect(screen.getByLabelText("recurrence rule")).toBeInTheDocument();
+        expect(screen.getByLabelText("Skip conflicting slots")).toBeInTheDocument();
+    });
+
+    it("calls onFormChange with recurrenceRule when RecurrencePicker changes", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...nonRegularForm, isRecurring: true }}
+                onFormChange={onFormChange}
+            />
+        );
+        fireEvent.change(screen.getByLabelText("recurrence rule"), {
+            target: { value: "FREQ=WEEKLY;BYDAY=MO;COUNT=4" },
+        });
+        expect(onFormChange).toHaveBeenCalledWith({
+            recurrenceRule: "FREQ=WEEKLY;BYDAY=MO;COUNT=4",
+        });
+    });
+
+    it("calls onFormChange with skipConflicts when skip-conflicts checkbox changes", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...nonRegularForm, isRecurring: true }}
+                onFormChange={onFormChange}
+            />
+        );
+        fireEvent.click(screen.getByLabelText("Skip conflicting slots"));
+        expect(onFormChange).toHaveBeenCalledWith({ skipConflicts: true });
+    });
+
+    it("shows 'Create Series' submit label when isRecurring is true", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...nonRegularForm, isRecurring: true }}
+            />
+        );
+        expect(screen.getByRole("button", { name: "Create Series" })).toBeInTheDocument();
+    });
+
+    it("shows 'Creating series…' submit label when isRecurring and isPending", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...nonRegularForm, isRecurring: true }}
+                isPending={true}
+            />
+        );
+        expect(screen.getByRole("button", { name: /creating series/i })).toBeDisabled();
+    });
+
+    it("shows 'Create Booking' when not recurring", () => {
+        render(<NewBookingView {...defaultProps} />);
+        expect(screen.getByRole("button", { name: "Create Booking" })).toBeInTheDocument();
+    });
+
+    it("does not render Recurrence section in modal mode", () => {
+        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+        expect(screen.queryByLabelText("Enable recurring booking")).not.toBeInTheDocument();
+    });
+});
+
 describe("NewBookingView — modal mode", () => {
     it("renders compact heading without court name subtitle", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
@@ -250,24 +401,51 @@ describe("NewBookingView — modal mode", () => {
         expect(onClose).toHaveBeenCalled();
     });
 
-    it("renders collapsible Skill Level and Event & Contact sections collapsed by default", () => {
+    it("renders collapsible Open Game & Skill Level section collapsed by default", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
 
-        expect(screen.getByRole("button", { name: /Skill Level/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
+        expect(
+            screen.getByRole("button", { name: /Open Game.*Skill Level/i }),
+        ).toBeInTheDocument();
         // Anchor input not visible until expanded
         expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
     });
 
-    it("expands Skill Level section when toggled", () => {
+    it("does not show Event & Contact section for regular booking type in modal mode", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
 
-        fireEvent.click(screen.getByRole("button", { name: /Skill Level/i }));
+        expect(screen.queryByRole("button", { name: /Event.*Contact/i })).not.toBeInTheDocument();
+    });
+
+    it("shows Event & Contact section for corporate_event in modal mode", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                mode="modal"
+                courtName="Court 1"
+                form={{ ...defaultForm, bookingType: "corporate_event" }}
+            />,
+        );
+
+        expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
+    });
+
+    it("expands Open Game & Skill Level section when toggled", () => {
+        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+
+        fireEvent.click(screen.getByRole("button", { name: /Open Game.*Skill Level/i }));
         expect(screen.getByLabelText("Anchor")).toBeInTheDocument();
     });
 
-    it("expands Event & Contact section when toggled", () => {
-        render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
+    it("expands Event & Contact section when toggled for corporate_event", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                mode="modal"
+                courtName="Court 1"
+                form={{ ...defaultForm, bookingType: "corporate_event" }}
+            />,
+        );
 
         fireEvent.click(screen.getByRole("button", { name: /Event.*Contact/i }));
         expect(screen.getByLabelText("Event name")).toBeInTheDocument();

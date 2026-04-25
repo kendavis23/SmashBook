@@ -23,6 +23,15 @@ function createDefaultForm(): NewReservationFormState {
     };
 }
 
+const reservationsCreatedSearch = {
+    created: true,
+    deleted: undefined,
+    reservationType: undefined,
+    courtId: undefined,
+    fromDt: undefined,
+    toDt: undefined,
+};
+
 export default function NewReservationContainer(): JSX.Element {
     const navigate = useNavigate();
     const { clubId } = useClubAccess();
@@ -100,7 +109,7 @@ export default function NewReservationContainer(): JSX.Element {
 
             createMutation.mutate(payload, {
                 onSuccess: () => {
-                    void navigate({ to: "/reservations", search: { created: true } });
+                    void navigate({ to: "/reservations", search: reservationsCreatedSearch });
                 },
             });
         },
@@ -109,7 +118,10 @@ export default function NewReservationContainer(): JSX.Element {
     );
 
     const handleCancel = useCallback((): void => {
-        void navigate({ to: "/reservations" });
+        void navigate({
+            to: "/reservations",
+            search: { ...reservationsCreatedSearch, created: undefined },
+        });
     }, [navigate]);
 
     const handleDismissError = useCallback((): void => {

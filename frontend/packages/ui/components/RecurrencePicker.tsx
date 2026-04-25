@@ -14,7 +14,7 @@ import { ChevronDown, RotateCcw } from "lucide-react";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Frequency = "daily" | "weekly" | "monthly";
-type EndType = "never" | "count" | "until";
+type EndType = "count" | "until";
 
 interface RecurrenceState {
     frequency: Frequency;
@@ -94,7 +94,7 @@ function buildRRule(state: RecurrenceState): string {
             .filter((d): d is Weekday => d !== undefined);
     }
 
-    if (state.endType === "count") {
+    if (state.endType === "count" && state.count > 0) {
         options.count = state.count;
     } else if (state.endType === "until" && state.until) {
         const parts = state.until.split("-").map(Number);
@@ -150,7 +150,7 @@ function parseExisting(value: string): Partial<RecurrenceState> {
             : [];
 
         const endType: EndType =
-            opts.count != null ? "count" : opts.until != null ? "until" : "never";
+            opts.until != null ? "until" : "count";
 
         const until =
             opts.until instanceof Date
@@ -175,7 +175,7 @@ function defaultState(): RecurrenceState {
         frequency: "weekly",
         interval: 1,
         byWeekday: [RRule.MO.weekday],
-        endType: "never",
+        endType: "count",
         count: 1,
         until: "",
     };
@@ -367,17 +367,9 @@ export function RecurrencePicker({ value, onChange }: RecurrencePickerProps): JS
             {/* ── End condition ── */}
             <div>
                 <span className={labelCls}>Ends</span>
-                <div className="flex flex-col gap-3">
-                    <RadioOption
-                        id="rp-end-never"
-                        name="rp-end"
-                        checked={state.endType === "never"}
-                        onChange={() => patch({ endType: "never" })}
-                        label="Never"
-                    />
-
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     {/* After N occurrences */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <RadioOption
                             id="rp-end-count"
                             name="rp-end"
@@ -403,8 +395,10 @@ export function RecurrencePicker({ value, onChange }: RecurrencePickerProps): JS
                         </span>
                     </div>
 
+                    <span className="text-muted-foreground/40 text-sm select-none">|</span>
+
                     {/* On a specific date */}
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                         <RadioOption
                             id="rp-end-until"
                             name="rp-end"
@@ -420,7 +414,7 @@ export function RecurrencePicker({ value, onChange }: RecurrencePickerProps): JS
                             disabled={state.endType !== "until"}
                             min={todayStr()}
                             onChange={(e) => patch({ until: e.target.value, endType: "until" })}
-                            className={`${inputCls} flex-1 disabled:cursor-not-allowed disabled:opacity-50`}
+                            className={`${inputCls} w-40 disabled:cursor-not-allowed disabled:opacity-50`}
                             aria-label="End date"
                         />
                     </div>
