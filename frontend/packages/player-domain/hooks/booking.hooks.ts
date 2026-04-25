@@ -7,12 +7,14 @@ import {
     cancelBookingEndpoint,
     invitePlayerEndpoint,
 } from "@repo/api-client/modules/share";
+import { joinBookingEndpoint, respondInviteEndpoint } from "@repo/api-client/modules/player";
 import type {
     Booking,
     BookingInput,
     OpenGame,
     OpenGameFilters,
     InvitePlayerInput,
+    InviteRespondInput,
 } from "../models";
 
 const bookingKeys = {
@@ -69,6 +71,28 @@ export function useInvitePlayer(clubId: string, bookingId: string) {
         mutationFn: (data: InvitePlayerInput) => invitePlayerEndpoint(bookingId, clubId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
+        },
+    });
+}
+
+export function useJoinBooking(clubId: string, bookingId: string) {
+    const queryClient = useQueryClient();
+    return useMutation<Booking, Error, void>({
+        mutationFn: () => joinBookingEndpoint(bookingId, clubId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
+        },
+    });
+}
+
+export function useRespondInvite(clubId: string, bookingId: string) {
+    const queryClient = useQueryClient();
+    return useMutation<Booking, Error, InviteRespondInput>({
+        mutationFn: (data: InviteRespondInput) => respondInviteEndpoint(bookingId, clubId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
+            queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
         },
     });
 }

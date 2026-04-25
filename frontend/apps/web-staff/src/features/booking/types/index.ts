@@ -16,7 +16,6 @@ export type {
     OpenGame,
     OpenGameFilters,
     InvitePlayerInput,
-    InviteRespondInput,
     PlayerRole,
     PaymentStatus,
     InviteStatus,

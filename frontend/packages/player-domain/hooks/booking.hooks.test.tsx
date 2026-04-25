@@ -11,7 +11,13 @@ vi.mock("@repo/api-client/modules/share", () => ({
     invitePlayerEndpoint: vi.fn(),
 }));
 
+vi.mock("@repo/api-client/modules/player", () => ({
+    joinBookingEndpoint: vi.fn(),
+    respondInviteEndpoint: vi.fn(),
+}));
+
 import * as shareApi from "@repo/api-client/modules/share";
+import * as playerApi from "@repo/api-client/modules/player";
 
 import {
     useListOpenGames,
@@ -19,6 +25,8 @@ import {
     useCreateBooking,
     useCancelBooking,
     useInvitePlayer,
+    useJoinBooking,
+    useRespondInvite,
 } from "./booking.hooks";
 
 function makeWrapper() {
@@ -181,6 +189,48 @@ describe("useInvitePlayer", () => {
         });
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
+        );
+    });
+});
+
+describe("useJoinBooking", () => {
+    it("calls joinBookingEndpoint and invalidates detail and list", async () => {
+        vi.mocked(playerApi.joinBookingEndpoint).mockResolvedValue(mockBooking);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useJoinBooking(CLUB_ID, BOOKING_ID), {
+            wrapper: Wrapper,
+        });
+        result.current.mutate();
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(playerApi.joinBookingEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID);
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
+        );
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["bookings", CLUB_ID] })
+        );
+    });
+});
+
+describe("useRespondInvite", () => {
+    it("calls respondInviteEndpoint and invalidates detail and list", async () => {
+        vi.mocked(playerApi.respondInviteEndpoint).mockResolvedValue(mockBooking);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useRespondInvite(CLUB_ID, BOOKING_ID), {
+            wrapper: Wrapper,
+        });
+        result.current.mutate({ action: "accepted" });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(playerApi.respondInviteEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID, {
+            action: "accepted",
+        });
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
+        );
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["bookings", CLUB_ID] })
         );
     });
 });

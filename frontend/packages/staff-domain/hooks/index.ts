@@ -51,7 +51,5 @@ export {
     useCreateRecurringBooking,
     useUpdateBooking,
     useCancelBooking,
-    useJoinBooking,
     useInvitePlayer,
-    useRespondInvite,
 } from "./booking.hooks";

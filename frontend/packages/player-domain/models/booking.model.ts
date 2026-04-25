@@ -44,6 +44,10 @@ export interface InvitePlayerInput {
     user_id: UUID;
 }
 
+export interface InviteRespondInput {
+    action: InviteStatus;
+}
+
 export interface BookingPlayer {
     id: UUID;
     booking_id: UUID;

@@ -10,4 +10,6 @@ export {
     useCreateBooking,
     useCancelBooking,
     useInvitePlayer,
+    useJoinBooking,
+    useRespondInvite,
 } from "./booking.hooks";

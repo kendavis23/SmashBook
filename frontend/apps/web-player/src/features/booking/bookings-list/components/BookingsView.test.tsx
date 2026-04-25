@@ -41,6 +41,17 @@ const defaultProps = {
     error: null,
     onTabChange: vi.fn(),
     onRefresh: vi.fn(),
+    inviteDialogOpen: false,
+    isInvitePending: false,
+    inviteError: null,
+    isRespondInvitePending: false,
+    respondInviteError: null,
+    onOpenInvite: vi.fn(),
+    onCloseInvite: vi.fn(),
+    onInvite: vi.fn(),
+    onDismissInviteError: vi.fn(),
+    onRespondInvite: vi.fn(),
+    onDismissRespondInviteError: vi.fn(),
 };
 
 describe("BookingsView — loading state", () => {
@@ -87,6 +98,56 @@ describe("BookingsView — data state", () => {
         const upcoming = [makeBooking({ status: "confirmed" })];
         render(<BookingsView {...defaultProps} upcoming={upcoming} />);
         expect(screen.getByText("confirmed")).toBeInTheDocument();
+    });
+
+    it("shows accept and decline actions for pending invited player bookings", () => {
+        const onRespondInvite = vi.fn();
+        const upcoming = [
+            makeBooking({
+                role: "player",
+                invite_status: "pending",
+            }),
+        ];
+
+        render(
+            <BookingsView {...defaultProps} upcoming={upcoming} onRespondInvite={onRespondInvite} />
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: /accept/i }));
+        expect(onRespondInvite).toHaveBeenCalledWith("b1", "c1", "accepted");
+
+        fireEvent.click(screen.getByRole("button", { name: /decline/i }));
+        expect(onRespondInvite).toHaveBeenCalledWith("b1", "c1", "declined");
+    });
+
+    it("shows accepted invite status as non-clickable text", () => {
+        const upcoming = [
+            makeBooking({
+                role: "player",
+                invite_status: "accepted",
+            }),
+        ];
+
+        render(<BookingsView {...defaultProps} upcoming={upcoming} />);
+
+        expect(screen.getByText("accepted")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /accept/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /decline/i })).not.toBeInTheDocument();
+    });
+
+    it("shows declined invite status as non-clickable text", () => {
+        const upcoming = [
+            makeBooking({
+                role: "player",
+                invite_status: "declined",
+            }),
+        ];
+
+        render(<BookingsView {...defaultProps} upcoming={upcoming} />);
+
+        expect(screen.getByText("declined")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /accept/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /decline/i })).not.toBeInTheDocument();
     });
 });
 

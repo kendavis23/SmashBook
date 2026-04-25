@@ -1,7 +1,7 @@
-import type { JSX } from "react";
-import { CalendarDays, RefreshCw } from "lucide-react";
+import { useState, type FormEvent, type JSX } from "react";
+import { CalendarDays, Check, RefreshCw, UserPlus, X } from "lucide-react";
 import { Breadcrumb, AlertToast, formatUTCDate, formatUTCTime, formatCurrency } from "@repo/ui";
-import type { PlayerBookingItem, BookingTab } from "../../types";
+import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
 import { BOOKING_TABS } from "../../types";
 
 type Props = {
@@ -12,6 +12,21 @@ type Props = {
     error: Error | null;
     onTabChange: (tab: BookingTab) => void;
     onRefresh: () => void;
+    inviteDialogOpen: boolean;
+    isInvitePending: boolean;
+    inviteError: string | null;
+    isRespondInvitePending: boolean;
+    respondInviteError: string | null;
+    onOpenInvite: (bookingId: string, clubId: string) => void;
+    onCloseInvite: () => void;
+    onInvite: (userId: string) => void;
+    onDismissInviteError: () => void;
+    onRespondInvite: (
+        bookingId: string,
+        clubId: string,
+        action: Extract<InviteStatus, "accepted" | "declined">
+    ) => void;
+    onDismissRespondInviteError: () => void;
 };
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -27,12 +42,100 @@ const PAYMENT_CLASSES: Record<string, string> = {
     refunded: "bg-info/15 text-info",
 };
 
+function InviteDialog({
+    isOpen,
+    isPending,
+    error,
+    onClose,
+    onInvite,
+    onDismissError,
+}: {
+    isOpen: boolean;
+    isPending: boolean;
+    error: string | null;
+    onClose: () => void;
+    onInvite: (userId: string) => void;
+    onDismissError: () => void;
+}): JSX.Element | null {
+    const [playerId, setPlayerId] = useState("");
+
+    if (!isOpen) return null;
+
+    function handleSubmit(e: FormEvent) {
+        e.preventDefault();
+        if (playerId.trim()) onInvite(playerId.trim());
+    }
+
+    function handleClose() {
+        setPlayerId("");
+        onClose();
+    }
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+            onClick={handleClose}
+        >
+            <div
+                className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <h2 className="text-base font-semibold text-foreground">Invite Player</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                    Enter a player ID to invite them to this open match.
+                </p>
+
+                {error ? (
+                    <div className="mt-4">
+                        <AlertToast title={error} variant="error" onClose={onDismissError} />
+                    </div>
+                ) : null}
+
+                <form onSubmit={handleSubmit} noValidate className="mt-5">
+                    <label className="mb-1 block text-sm font-medium text-foreground">
+                        Player ID
+                    </label>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            className="input-base flex-1"
+                            placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                            value={playerId}
+                            onChange={(e) => setPlayerId(e.target.value)}
+                            disabled={isPending}
+                        />
+                        <button
+                            type="submit"
+                            disabled={isPending || !playerId.trim()}
+                            className="btn-cta min-h-10 px-4"
+                        >
+                            {isPending ? "Inviting…" : "Invite"}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
 function BookingTable({
     items,
     emptyMessage,
+    showActions,
+    isRespondInvitePending,
+    onOpenInvite,
+    onRespondInvite,
 }: {
     items: PlayerBookingItem[];
     emptyMessage: string;
+    showActions: boolean;
+    isRespondInvitePending: boolean;
+    onOpenInvite: (bookingId: string, clubId: string) => void;
+    onRespondInvite: (
+        bookingId: string,
+        clubId: string,
+        action: Extract<InviteStatus, "accepted" | "declined">
+    ) => void;
 }): JSX.Element {
     if (items.length === 0) {
         return (
@@ -69,6 +172,11 @@ function BookingTable({
                         <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                             Amount
                         </th>
+                        {showActions ? (
+                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Action
+                            </th>
+                        ) : null}
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -104,6 +212,28 @@ function BookingTable({
                             <td className="px-4 py-3 text-right font-medium text-foreground">
                                 {formatCurrency(booking.amount_due)}
                             </td>
+                            {showActions ? (
+                                <td className="px-4 py-3 text-right">
+                                    {booking.role === "organiser" ? (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                onOpenInvite(booking.booking_id, booking.club_id)
+                                            }
+                                            className="btn-outline inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
+                                        >
+                                            <UserPlus size={12} />
+                                            Invite
+                                        </button>
+                                    ) : (
+                                        <InviteResponseActions
+                                            booking={booking}
+                                            isPending={isRespondInvitePending}
+                                            onRespondInvite={onRespondInvite}
+                                        />
+                                    )}
+                                </td>
+                            ) : null}
                         </tr>
                     ))}
                 </tbody>
@@ -120,6 +250,17 @@ export default function BookingsView({
     error,
     onTabChange,
     onRefresh,
+    inviteDialogOpen,
+    isInvitePending,
+    inviteError,
+    isRespondInvitePending,
+    respondInviteError,
+    onOpenInvite,
+    onCloseInvite,
+    onInvite,
+    onDismissInviteError,
+    onRespondInvite,
+    onDismissRespondInviteError,
 }: Props): JSX.Element {
     const items = activeTab === "upcoming" ? upcoming : past;
     const emptyMessage = activeTab === "upcoming" ? "No upcoming bookings." : "No past bookings.";
@@ -127,6 +268,15 @@ export default function BookingsView({
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Bookings" }]} />
+
+            <InviteDialog
+                isOpen={inviteDialogOpen}
+                isPending={isInvitePending}
+                error={inviteError}
+                onClose={onCloseInvite}
+                onInvite={onInvite}
+                onDismissError={onDismissInviteError}
+            />
 
             <section className="card-surface overflow-hidden">
                 <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
@@ -173,8 +323,17 @@ export default function BookingsView({
                     </div>
                 ) : null}
 
+                {respondInviteError ? (
+                    <div className="px-5 pt-5 sm:px-6">
+                        <AlertToast
+                            title={respondInviteError}
+                            variant="error"
+                            onClose={onDismissRespondInviteError}
+                        />
+                    </div>
+                ) : null}
+
                 <div className="px-5 py-5 sm:px-6">
-                    {/* Tab bar */}
                     <div className="mb-5 flex gap-1 border-b border-border">
                         {BOOKING_TABS.map((tab) => (
                             <button
@@ -203,10 +362,62 @@ export default function BookingsView({
                             <span className="text-sm text-muted-foreground">Loading bookings…</span>
                         </div>
                     ) : (
-                        <BookingTable items={items} emptyMessage={emptyMessage} />
+                        <BookingTable
+                            items={items}
+                            emptyMessage={emptyMessage}
+                            showActions={activeTab === "upcoming"}
+                            isRespondInvitePending={isRespondInvitePending}
+                            onOpenInvite={onOpenInvite}
+                            onRespondInvite={onRespondInvite}
+                        />
                     )}
                 </div>
             </section>
+        </div>
+    );
+}
+
+function InviteResponseActions({
+    booking,
+    isPending,
+    onRespondInvite,
+}: {
+    booking: PlayerBookingItem;
+    isPending: boolean;
+    onRespondInvite: (
+        bookingId: string,
+        clubId: string,
+        action: Extract<InviteStatus, "accepted" | "declined">
+    ) => void;
+}): JSX.Element {
+    if (booking.invite_status !== "pending") {
+        return (
+            <span className="inline-flex rounded-full bg-secondary px-2.5 py-1 text-xs font-medium capitalize text-secondary-foreground">
+                {booking.invite_status}
+            </span>
+        );
+    }
+
+    return (
+        <div className="flex justify-end gap-1.5">
+            <button
+                type="button"
+                disabled={isPending}
+                onClick={() => onRespondInvite(booking.booking_id, booking.club_id, "accepted")}
+                className="btn-cta inline-flex min-h-8 items-center gap-1.5 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+            >
+                <Check size={12} />
+                Accept
+            </button>
+            <button
+                type="button"
+                disabled={isPending}
+                onClick={() => onRespondInvite(booking.booking_id, booking.club_id, "declined")}
+                className="btn-outline inline-flex min-h-8 items-center gap-1.5 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+            >
+                <X size={12} />
+                Decline
+            </button>
         </div>
     );
 }

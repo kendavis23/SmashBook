@@ -35,9 +35,7 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     createBookingEndpoint: vi.fn(),
     updateBookingEndpoint: vi.fn(),
     cancelBookingEndpoint: vi.fn(),
-    joinBookingEndpoint: vi.fn(),
     invitePlayerEndpoint: vi.fn(),
-    respondInviteEndpoint: vi.fn(),
     getCalendarViewEndpoint: vi.fn(),
     listOpenGamesEndpoint: vi.fn(),
     // membership endpoints

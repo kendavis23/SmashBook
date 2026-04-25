@@ -15,6 +15,7 @@ export type {
     OpenGameFilters,
     BookingInput,
     InvitePlayerInput,
+    InviteRespondInput,
     BookingPlayer,
     Booking,
     OpenGame,

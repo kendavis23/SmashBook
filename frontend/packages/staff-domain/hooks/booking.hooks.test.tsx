@@ -33,8 +33,6 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     listBookingsEndpoint: vi.fn(),
     createRecurringBookingEndpoint: vi.fn(),
     updateBookingEndpoint: vi.fn(),
-    joinBookingEndpoint: vi.fn(),
-    respondInviteEndpoint: vi.fn(),
     getCalendarViewEndpoint: vi.fn(),
 }));
 
@@ -59,9 +57,7 @@ import {
     useCreateRecurringBooking,
     useUpdateBooking,
     useCancelBooking,
-    useJoinBooking,
     useInvitePlayer,
-    useRespondInvite,
 } from "./booking.hooks";
 
 // ---------------------------------------------------------------------------
@@ -399,30 +395,6 @@ describe("useCancelBooking", () => {
 });
 
 // ---------------------------------------------------------------------------
-// useJoinBooking
-// ---------------------------------------------------------------------------
-
-describe("useJoinBooking", () => {
-    it("calls joinBookingEndpoint and invalidates detail and list", async () => {
-        vi.mocked(staffApi.joinBookingEndpoint).mockResolvedValue(mockBooking);
-        const { Wrapper, client } = makeWrapper();
-        const invalidate = vi.spyOn(client, "invalidateQueries");
-        const { result } = renderHook(() => useJoinBooking(CLUB_ID, BOOKING_ID), {
-            wrapper: Wrapper,
-        });
-        result.current.mutate();
-        await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.joinBookingEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID);
-        expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
-        );
-        expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["bookings", CLUB_ID] })
-        );
-    });
-});
-
-// ---------------------------------------------------------------------------
 // useInvitePlayer
 // ---------------------------------------------------------------------------
 
@@ -441,32 +413,6 @@ describe("useInvitePlayer", () => {
         });
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
-        );
-    });
-});
-
-// ---------------------------------------------------------------------------
-// useRespondInvite
-// ---------------------------------------------------------------------------
-
-describe("useRespondInvite", () => {
-    it("calls respondInviteEndpoint and invalidates detail and list", async () => {
-        vi.mocked(staffApi.respondInviteEndpoint).mockResolvedValue(mockBooking);
-        const { Wrapper, client } = makeWrapper();
-        const invalidate = vi.spyOn(client, "invalidateQueries");
-        const { result } = renderHook(() => useRespondInvite(CLUB_ID, BOOKING_ID), {
-            wrapper: Wrapper,
-        });
-        result.current.mutate({ action: "accepted" });
-        await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.respondInviteEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID, {
-            action: "accepted",
-        });
-        expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
-        );
-        expect(invalidate).toHaveBeenCalledWith(
-            expect.objectContaining({ queryKey: ["bookings", CLUB_ID] })
         );
     });
 });

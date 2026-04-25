@@ -50,10 +50,6 @@ export interface BookingUpdate {
     contact_phone?: string | null;
 }
 
-export interface InviteRespondRequest {
-    action: InviteStatus;
-}
-
 export interface RecurringBookingCreate {
     club_id: UUID;
     court_id: UUID;

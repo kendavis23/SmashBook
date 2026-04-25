@@ -57,7 +57,6 @@ export type {
     BookingInput,
     BookingUpdateInput,
     InvitePlayerInput,
-    InviteRespondInput,
     BookingPlayer,
     Booking,
     OpenGame,

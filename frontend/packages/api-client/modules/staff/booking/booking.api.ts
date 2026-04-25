@@ -5,7 +5,6 @@ import type {
     BookingListParams,
     CalendarViewParams,
     CalendarResponse,
-    InviteRespondRequest,
     RecurringBookingCreate,
     RecurringBookingResponse,
 } from "./booking.types";
@@ -43,12 +42,6 @@ export function updateBookingEndpoint(
     });
 }
 
-export function joinBookingEndpoint(bookingId: string, clubId: string): Promise<BookingResponse> {
-    return fetcher<BookingResponse>(`/api/v1/bookings/${bookingId}/join?club_id=${clubId}`, {
-        method: "POST",
-    });
-}
-
 export function createRecurringBookingEndpoint(
     data: RecurringBookingCreate
 ): Promise<RecurringBookingResponse> {
@@ -57,19 +50,4 @@ export function createRecurringBookingEndpoint(
         headers: JSON_HEADERS,
         body: JSON.stringify(data),
     });
-}
-
-export function respondInviteEndpoint(
-    bookingId: string,
-    clubId: string,
-    data: InviteRespondRequest
-): Promise<BookingResponse> {
-    return fetcher<BookingResponse>(
-        `/api/v1/bookings/${bookingId}/respond-invite?club_id=${clubId}`,
-        {
-            method: "POST",
-            headers: JSON_HEADERS,
-            body: JSON.stringify(data),
-        }
-    );
 }

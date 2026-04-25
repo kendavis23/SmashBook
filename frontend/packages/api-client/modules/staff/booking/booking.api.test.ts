@@ -4,8 +4,6 @@ import {
     getCalendarViewEndpoint,
     createRecurringBookingEndpoint,
     updateBookingEndpoint,
-    joinBookingEndpoint,
-    respondInviteEndpoint,
 } from "./booking.api";
 
 vi.mock("../../../core/fetcher", () => ({ fetcher: vi.fn() }));
@@ -125,19 +123,6 @@ describe("updateBookingEndpoint", () => {
     });
 });
 
-describe("joinBookingEndpoint", () => {
-    it("calls POST /api/v1/bookings/:bookingId/join with club_id query param", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        await joinBookingEndpoint(BOOKING_ID, CLUB_ID);
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/${BOOKING_ID}/join?club_id=${CLUB_ID}`,
-            {
-                method: "POST",
-            }
-        );
-    });
-});
-
 describe("createRecurringBookingEndpoint", () => {
     it("calls POST /api/v1/bookings/recurring with body", async () => {
         mockFetcher.mockResolvedValue({ created: [mockBooking], skipped: [] });
@@ -174,21 +159,5 @@ describe("createRecurringBookingEndpoint", () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
-    });
-});
-
-describe("respondInviteEndpoint", () => {
-    it("calls POST /api/v1/bookings/:bookingId/respond-invite with body", async () => {
-        mockFetcher.mockResolvedValue(mockBooking);
-        const data = { action: "accepted" as const };
-        await respondInviteEndpoint(BOOKING_ID, CLUB_ID, data);
-        expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/${BOOKING_ID}/respond-invite?club_id=${CLUB_ID}`,
-            {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(data),
-            }
-        );
     });
 });

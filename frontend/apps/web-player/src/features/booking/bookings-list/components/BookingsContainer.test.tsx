@@ -11,6 +11,18 @@ vi.mock("../../hooks", () => ({
         error: null,
         refetch: mockRefetch,
     })),
+    useInvitePlayer: vi.fn(() => ({
+        mutate: vi.fn(),
+        isPending: false,
+        error: null,
+        reset: vi.fn(),
+    })),
+    useRespondInvite: vi.fn(() => ({
+        mutate: vi.fn(),
+        isPending: false,
+        error: null,
+        reset: vi.fn(),
+    })),
 }));
 
 vi.mock("./BookingsView", () => ({
