@@ -94,6 +94,10 @@ seed-staging:
 		--project=smashbook-488121 \
 		--wait
 
+# Run seed against the local dev DB (api container must be up)
+seed-local:
+	docker-compose exec api python scripts/seed_staging.py
+
 # ── Stripe ────────────────────────────────────────────────────────────────────
 # Create a Stripe test payment method (tok_visa): make payment-intent
 payment-intent:
@@ -113,4 +117,4 @@ get-token:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging payment-intent get-token
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging seed-local payment-intent get-token

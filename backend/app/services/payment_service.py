@@ -277,6 +277,7 @@ class PaymentService:
             customer=customer_id,
             payment_method=pm_id,
             confirm=False,
+            automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
             metadata={
                 "booking_id": str(booking.id),
                 "user_id": user_id,
