@@ -146,6 +146,7 @@ const defaultProps = {
     form: defaultForm,
     courtError: "",
     startError: "",
+    onBehalfOfError: "",
     apiError: "",
     isPending: false,
     onFormChange: vi.fn(),

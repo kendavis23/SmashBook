@@ -78,6 +78,7 @@ const defaultProps = {
     trainers: [{ id: "trainer-1" }],
     form: defaultForm,
     apiError: "",
+    onBehalfOfError: "",
     isPending: false,
     selectedPrice: 20,
     onFormChange: vi.fn(),

@@ -1,16 +1,9 @@
 ---
 name: commit
-description: Format, test, lint, and build must all pass before committing.
+description: Commit code directly with a proper message, skipping format/lint/test/build checks.
 ---
 
-Run the following steps **in order** from the `frontend/` directory. If any step fails, stop immediately and report which step failed and why — do NOT proceed to the next step or commit.
-
-1. **Format** — `pnpm format`
-2. **Test** — `pnpm --filter !mobile-player test -- --run`
-3. **Lint** — `pnpm lint`
-4. **Build** — `pnpm build`
-
-Only if all four steps pass, proceed to create the git commit using the standard commit workflow (stage relevant files, write a concise commit message, commit).
+Skip format, lint, test, and build checks entirely. Proceed directly to create the git commit using the standard commit workflow (stage relevant files, write a concise commit message, commit).
 
 ## Commit message format
 

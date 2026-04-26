@@ -88,6 +88,7 @@ export default function NewBookingContainer(): JSX.Element {
     }, [courtList]);
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
+    const [onBehalfOfError, setOnBehalfOfError] = useState("");
 
     const {
         data: availabilityData,
@@ -123,10 +124,15 @@ export default function NewBookingContainer(): JSX.Element {
                     startError
                 )
                     setStartError("");
+                if (
+                    (patch.onBehalfOf !== undefined || patch.isOpenGame !== undefined) &&
+                    onBehalfOfError
+                )
+                    setOnBehalfOfError("");
                 return next;
             });
         },
-        [courtError, startError]
+        [courtError, startError, onBehalfOfError]
     );
 
     const validate = (): boolean => {
@@ -137,6 +143,10 @@ export default function NewBookingContainer(): JSX.Element {
         }
         if (!form.bookingDate || !form.startTime) {
             setStartError("Date and start time are required.");
+            valid = false;
+        }
+        if (!form.isOpenGame && !form.onBehalfOf.trim()) {
+            setOnBehalfOfError("Player user ID is required.");
             valid = false;
         }
         return valid;
@@ -225,6 +235,7 @@ export default function NewBookingContainer(): JSX.Element {
             form={form}
             courtError={courtError}
             startError={startError}
+            onBehalfOfError={onBehalfOfError}
             apiError={apiError}
             isPending={activeMutation.isPending}
             onFormChange={handleFormChange}

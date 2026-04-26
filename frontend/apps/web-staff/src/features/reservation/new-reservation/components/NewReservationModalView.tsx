@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { CalendarRange, X } from "lucide-react";
-import { AlertToast, StatPill, TimeInput } from "@repo/ui";
+import { AlertToast, RecurrencePicker, StatPill, TimeInput } from "@repo/ui";
 import { SelectInput } from "@repo/ui";
 import type { CalendarReservationType } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
@@ -215,40 +215,10 @@ export function NewReservationModalView({
                             </label>
                         </div>
                         {form.isRecurring ? (
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label htmlFor="res-modal-rrule" className={labelCls}>
-                                        Recurrence Rule
-                                        <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                            (RRULE)
-                                        </span>
-                                    </label>
-                                    <input
-                                        id="res-modal-rrule"
-                                        type="text"
-                                        className={fieldCls}
-                                        placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
-                                        value={form.recurrenceRule}
-                                        onChange={(e) =>
-                                            onFormChange({ recurrenceRule: e.target.value })
-                                        }
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="res-modal-rrule-end" className={labelCls}>
-                                        End Date
-                                    </label>
-                                    <input
-                                        id="res-modal-rrule-end"
-                                        type="date"
-                                        className={fieldCls}
-                                        value={form.recurrenceEndDate}
-                                        onChange={(e) =>
-                                            onFormChange({ recurrenceEndDate: e.target.value })
-                                        }
-                                    />
-                                </div>
-                            </div>
+                            <RecurrencePicker
+                                value={form.recurrenceRule}
+                                onChange={(rrule) => onFormChange({ recurrenceRule: rrule })}
+                            />
                         ) : null}
                     </div>
                 </div>

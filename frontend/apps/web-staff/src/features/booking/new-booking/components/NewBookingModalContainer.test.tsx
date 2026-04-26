@@ -5,9 +5,12 @@ import NewBookingModalContainer from "./NewBookingModalContainer";
 
 const mockMutate = vi.fn();
 const mockReset = vi.fn();
+const mockRecurringMutate = vi.fn();
+const mockRecurringReset = vi.fn();
 
 vi.mock("../../hooks", () => ({
     useCreateBooking: vi.fn(),
+    useCreateRecurringBooking: vi.fn(),
     useListCourts: vi.fn(),
     useGetCourtAvailability: vi.fn(),
     useListTrainers: vi.fn(),
@@ -84,6 +87,20 @@ vi.mock("@repo/ui", () => ({
         </select>
     ),
     datetimeLocalToUTC: (value: string) => value,
+    RecurrencePicker: ({
+        value,
+        onChange,
+    }: {
+        value?: string;
+        onChange: (rule: string) => void;
+    }) => (
+        <input
+            type="text"
+            aria-label="recurrence rule"
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
     StatPill: ({ label, value }: { label: string; value: string }) => (
         <div>
             <span>{label}</span>
@@ -94,6 +111,7 @@ vi.mock("@repo/ui", () => ({
 
 import {
     useCreateBooking,
+    useCreateRecurringBooking,
     useGetCourtAvailability,
     useListCourts,
     useListTrainers,
@@ -101,6 +119,7 @@ import {
 import { useClubAccess } from "../../store";
 
 const mockUseCreateBooking = useCreateBooking as ReturnType<typeof vi.fn>;
+const mockUseCreateRecurringBooking = useCreateRecurringBooking as ReturnType<typeof vi.fn>;
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
 const mockUseListTrainers = useListTrainers as ReturnType<typeof vi.fn>;
@@ -114,7 +133,11 @@ const defaultProps = {
     onClose: vi.fn(),
 };
 
-function setupMocks(overrides?: { error?: Error | null; isPending?: boolean }) {
+function setupMocks(overrides?: {
+    error?: Error | null;
+    recurringError?: Error | null;
+    isPending?: boolean;
+}) {
     mockUseClubAccess.mockReturnValue({ clubId: "club-1" });
     mockUseListCourts.mockReturnValue({
         data: [{ id: "court-1", name: "Court 1" }],
@@ -148,6 +171,12 @@ function setupMocks(overrides?: { error?: Error | null; isPending?: boolean }) {
         isPending: overrides?.isPending ?? false,
         error: overrides?.error ?? null,
     });
+    mockUseCreateRecurringBooking.mockReturnValue({
+        mutate: mockRecurringMutate,
+        reset: mockRecurringReset,
+        isPending: overrides?.isPending ?? false,
+        error: overrides?.recurringError ?? null,
+    });
 }
 
 describe("NewBookingModalContainer", () => {
@@ -155,6 +184,8 @@ describe("NewBookingModalContainer", () => {
         setupMocks();
         mockMutate.mockReset();
         mockReset.mockReset();
+        mockRecurringMutate.mockReset();
+        mockRecurringReset.mockReset();
         defaultProps.onClose = vi.fn();
     });
 
@@ -236,18 +267,13 @@ describe("NewBookingModalContainer", () => {
         });
     });
 
-    it("allows missing on behalf of user ID", () => {
+    it("requires on behalf of user ID when booking is not an open game", () => {
         render(<NewBookingModalContainer {...defaultProps} />);
 
         fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
 
-        expect(mockMutate).toHaveBeenCalledWith(
-            expect.objectContaining({
-                is_open_game: false,
-                on_behalf_of_user_id: null,
-            }),
-            expect.objectContaining({ onSuccess: expect.any(Function) })
-        );
+        expect(screen.getByText("Player user ID is required.")).toBeInTheDocument();
+        expect(mockMutate).not.toHaveBeenCalled();
     });
 
     it("unchecks open game when booking type changes", () => {
@@ -261,6 +287,9 @@ describe("NewBookingModalContainer", () => {
         });
 
         expect(screen.getByLabelText(/on behalf of/i)).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
 
         fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
 
@@ -268,7 +297,7 @@ describe("NewBookingModalContainer", () => {
             expect.objectContaining({
                 booking_type: "corporate_event",
                 is_open_game: false,
-                on_behalf_of_user_id: null,
+                on_behalf_of_user_id: "player-owner-1",
             }),
             expect.objectContaining({ onSuccess: expect.any(Function) })
         );
