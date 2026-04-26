@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import {
     Breadcrumb,
     AlertToast,
@@ -54,6 +54,7 @@ type Props = {
     onDismissError: () => void;
     onDismissSuccess?: () => void;
     onBack: () => void;
+    onRefresh: () => void;
     onRefreshSlots: () => void;
     selectedPrice: number | null;
     mode?: "page" | "modal";
@@ -82,6 +83,7 @@ export default function ManageBookingView({
     onDismissError,
     onDismissSuccess,
     onBack,
+    onRefresh,
     onRefreshSlots,
     selectedPrice,
     mode = "page",
@@ -121,6 +123,7 @@ export default function ManageBookingView({
                 onDismissSuccess={onDismissSuccess ?? (() => {})}
                 onBack={onBack}
                 onClose={onClose ?? onBack}
+                onRefresh={onRefresh}
                 onRefreshSlots={onRefreshSlots}
                 selectedPrice={selectedPrice}
             />
@@ -136,20 +139,30 @@ export default function ManageBookingView({
             <section className="w-full rounded-xl border border-border bg-card px-6 py-6 shadow-sm sm:px-8">
                 <header className="flex flex-col gap-3 border-b border-border pb-5 sm:flex-row sm:items-start sm:justify-between">
                     <div>
-                        <h1 className="text-xl font-semibold text-foreground">
-                            {booking.court_name}
-                        </h1>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h1 className="text-xl font-semibold text-foreground">
+                                {booking.court_name}
+                            </h1>
+                            <span
+                                className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors.bg} ${statusColors.text}`}
+                            >
+                                {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
+                            </span>
+                        </div>
                         <p className="mt-1 text-sm text-muted-foreground">
                             {formatUTCDateTime(booking.start_datetime)} &ndash;{" "}
                             {formatUTCDateTime(booking.end_datetime)}
                         </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                        <span
-                            className={`rounded-full px-3 py-1 text-xs font-medium ${statusColors.bg} ${statusColors.text}`}
+                        <button
+                            type="button"
+                            onClick={onRefresh}
+                            className="btn-outline min-h-10 px-4"
+                            aria-label="Refresh booking"
                         >
-                            {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
-                        </span>
+                            <RotateCcw size={14} /> Refresh
+                        </button>
                         {isCancellable ? (
                             <button
                                 type="button"
@@ -253,50 +266,47 @@ export default function ManageBookingView({
                         </dl>
                     </section>
 
-                    {booking.is_open_game ? (
-                        <section className="form-section">
-                            <div className="mb-4">
-                                <h3 className="text-sm font-semibold text-foreground">
-                                    Invite Player
-                                </h3>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Enter a player ID to invite them to this open match.
-                                </p>
-                            </div>
-                            <form
-                                className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    onInvitePlayer(playerId);
-                                }}
-                            >
-                                <div className="min-w-0 sm:w-[70%]">
-                                    <label
-                                        htmlFor="booking-invite-player-id"
-                                        className="mb-1 block text-sm font-medium text-foreground"
-                                    >
-                                        Player ID
-                                    </label>
-                                    <input
-                                        id="booking-invite-player-id"
-                                        type="text"
-                                        value={playerId}
-                                        onChange={(event) => setPlayerId(event.target.value)}
-                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                                        className="input-base"
-                                        disabled={isInviting}
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={isInviting || !playerId.trim()}
-                                    className="btn-cta sm:w-auto"
+                    {/* Invite Player */}
+                    <section className="form-section">
+                        <div className="mb-4">
+                            <h3 className="text-sm font-semibold text-foreground">Invite Player</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                                Enter a player ID to invite them to this open match.
+                            </p>
+                        </div>
+                        <form
+                            className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                onInvitePlayer(playerId);
+                            }}
+                        >
+                            <div className="min-w-0 sm:w-[70%]">
+                                <label
+                                    htmlFor="booking-invite-player-id"
+                                    className="mb-1 block text-sm font-medium text-foreground"
                                 >
-                                    {isInviting ? "Inviting…" : "Invite"}
-                                </button>
-                            </form>
-                        </section>
-                    ) : null}
+                                    Player ID
+                                </label>
+                                <input
+                                    id="booking-invite-player-id"
+                                    type="text"
+                                    value={playerId}
+                                    onChange={(event) => setPlayerId(event.target.value)}
+                                    placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                                    className="input-base"
+                                    disabled={isInviting}
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isInviting || !playerId.trim()}
+                                className="btn-cta sm:w-auto"
+                            >
+                                {isInviting ? "Inviting…" : "Invite"}
+                            </button>
+                        </form>
+                    </section>
 
                     {/* Players */}
                     {booking.players.length > 0 ? (

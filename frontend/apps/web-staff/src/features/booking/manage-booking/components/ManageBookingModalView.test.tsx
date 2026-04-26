@@ -139,6 +139,7 @@ const defaultProps = {
     onDismissSuccess: vi.fn(),
     onBack: vi.fn(),
     onClose: vi.fn(),
+    onRefresh: vi.fn(),
     onRefreshSlots: vi.fn(),
     selectedPrice: null,
 };
@@ -230,7 +231,7 @@ describe("ManageBookingModalView", () => {
         expect(onDismissError).toHaveBeenCalled();
     });
 
-    it("shows invite section only for open game bookings", () => {
+    it("shows invite controls for open game bookings", () => {
         render(
             <ManageBookingModalView
                 {...defaultProps}
@@ -238,7 +239,8 @@ describe("ManageBookingModalView", () => {
             />
         );
 
-        expect(screen.getByText("Invite Player")).toBeInTheDocument();
+        expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Invite" })).toBeInTheDocument();
     });
 
     it("hides invite section for non-open game bookings", () => {
@@ -261,6 +263,34 @@ describe("ManageBookingModalView", () => {
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
 
         expect(onInvitePlayer).toHaveBeenCalledWith("user-123");
+    });
+
+    it("renders notes collapsed by default", () => {
+        render(<ManageBookingModalView {...defaultProps} />);
+
+        expect(screen.getByRole("checkbox", { name: "Notes" })).not.toBeChecked();
+        expect(screen.queryByPlaceholderText(/Internal notes/i)).not.toBeInTheDocument();
+    });
+
+    it("calls onFormChange when notes field is changed", () => {
+        const onFormChange = vi.fn();
+        render(<ManageBookingModalView {...defaultProps} onFormChange={onFormChange} />);
+
+        fireEvent.click(screen.getByRole("checkbox", { name: "Notes" }));
+        fireEvent.change(screen.getByPlaceholderText(/Internal notes/i), {
+            target: { value: "Updated note" },
+        });
+
+        expect(onFormChange).toHaveBeenCalledWith({ notes: "Updated note" });
+    });
+
+    it("expands notes by default when notes already have a value", () => {
+        render(
+            <ManageBookingModalView {...defaultProps} form={{ ...form, notes: "Existing note" }} />
+        );
+
+        expect(screen.getByRole("checkbox", { name: "Notes" })).toBeChecked();
+        expect(screen.getByPlaceholderText(/Internal notes/i)).toHaveValue("Existing note");
     });
 
     it("shows success toast and dismisses it", () => {

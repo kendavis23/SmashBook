@@ -165,6 +165,7 @@ const defaultProps = {
     onDismissCancelConfirm: vi.fn(),
     onDismissError: vi.fn(),
     onBack: vi.fn(),
+    onRefresh: vi.fn(),
     onRefreshSlots: vi.fn(),
     selectedPrice: null,
 };
@@ -230,7 +231,7 @@ describe("ManageBookingView", () => {
         expect(onInvitePlayer).toHaveBeenCalledWith("user-123");
     });
 
-    it("hides invite section for non-open game bookings", () => {
+    it("renders invite section for non-open game bookings", () => {
         render(
             <ManageBookingView
                 {...defaultProps}
@@ -238,7 +239,8 @@ describe("ManageBookingView", () => {
             />
         );
 
-        expect(screen.queryByRole("heading", { name: "Invite Player" })).not.toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Invite Player" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Invite" })).toBeDisabled();
     });
 
     it("disables save when form is not dirty", () => {

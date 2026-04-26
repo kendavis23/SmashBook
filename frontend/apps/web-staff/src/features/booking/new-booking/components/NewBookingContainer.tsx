@@ -36,6 +36,7 @@ function createDefaultForm(): NewBookingFormState {
         contactEmail: "",
         contactPhone: "",
         onBehalfOf: "",
+        playerUserIds: [],
         staffProfileId: "",
         isRecurring: false,
         recurrenceRule: "",
@@ -113,6 +114,9 @@ export default function NewBookingContainer(): JSX.Element {
         (patch: Partial<NewBookingFormState>): void => {
             setForm((prev) => {
                 const next = { ...prev, ...patch };
+                if (patch.bookingType !== undefined) {
+                    next.isOpenGame = false;
+                }
                 if (patch.courtId !== undefined && courtError) setCourtError("");
                 if (
                     (patch.bookingDate !== undefined || patch.startTime !== undefined) &&
@@ -168,6 +172,9 @@ export default function NewBookingContainer(): JSX.Element {
                 return;
             }
 
+            const invitedPlayerIds = form.isOpenGame
+                ? []
+                : form.playerUserIds.map((id) => id.trim()).filter(Boolean);
             const payload: BookingInput = {
                 club_id: clubId ?? "",
                 court_id: form.courtId,
@@ -183,7 +190,8 @@ export default function NewBookingContainer(): JSX.Element {
                 contact_name: form.contactName.trim() || null,
                 contact_email: form.contactEmail.trim() || null,
                 contact_phone: form.contactPhone.trim() || null,
-                on_behalf_of_user_id: form.onBehalfOf.trim() || null,
+                on_behalf_of_user_id: form.isOpenGame ? null : form.onBehalfOf.trim() || null,
+                player_user_ids: invitedPlayerIds.length > 0 ? invitedPlayerIds : undefined,
                 staff_profile_id: form.staffProfileId.trim() || null,
             };
 

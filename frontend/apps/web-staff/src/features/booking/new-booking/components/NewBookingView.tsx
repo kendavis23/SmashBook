@@ -39,6 +39,7 @@ export type NewBookingFormState = {
     contactEmail: string;
     contactPhone: string;
     onBehalfOf: string;
+    playerUserIds: string[];
     staffProfileId: string;
     isRecurring: boolean;
     recurrenceRule: string;
@@ -232,6 +233,102 @@ export default function NewBookingView({
                 </div>
             </div>
 
+            {!form.isOpenGame ||
+            form.bookingType === "lesson_individual" ||
+            form.bookingType === "lesson_group" ? (
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {/* On behalf of */}
+                    {!form.isOpenGame ? (
+                        <div>
+                            <label htmlFor="bk-on-behalf" className={labelCls}>
+                                On behalf of (user ID)
+                                <span className="ml-1 font-normal text-muted-foreground">
+                                    - Staff can create a booking on behalf of a player.
+                                </span>
+                            </label>
+                            <input
+                                id="bk-on-behalf"
+                                type="text"
+                                className={fieldCls}
+                                placeholder="Player user ID"
+                                value={form.onBehalfOf}
+                                onChange={(e) => onFormChange({ onBehalfOf: e.target.value })}
+                            />
+                        </div>
+                    ) : null}
+
+                    {/* Staff (Trainer) — lesson types only */}
+                    {form.bookingType === "lesson_individual" ||
+                    form.bookingType === "lesson_group" ? (
+                        <div>
+                            <label htmlFor="bk-staff-id" className={labelCls}>
+                                Staff (Trainer)
+                                <span className="ml-1 font-normal text-muted-foreground">
+                                    - Lesson assigned to the trainer.
+                                </span>
+                            </label>
+                            <SelectInput
+                                value={form.staffProfileId}
+                                onValueChange={(v) => onFormChange({ staffProfileId: v })}
+                                options={trainers.map((t) => ({ value: t.id, label: t.id }))}
+                                placeholder={
+                                    trainers.length === 0
+                                        ? "No trainers available"
+                                        : "Select trainer…"
+                                }
+                                disabled={trainers.length === 0}
+                            />
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
+
+            {/* Add Players */}
+            {!form.isOpenGame ? (
+                <div className="mt-4">
+                    <label className={labelCls}>
+                        Add Players (user IDs)
+                        <span className="ml-1 font-normal text-muted-foreground">
+                            - Staff can add players.
+                        </span>
+                    </label>
+                    {form.playerUserIds.map((uid, index) => (
+                        <div key={index} className="mb-2 flex items-center gap-2">
+                            <input
+                                type="text"
+                                aria-label={`Invited player ${index + 1}`}
+                                className={fieldCls}
+                                placeholder="Player user ID"
+                                value={uid}
+                                onChange={(e) => {
+                                    const next = [...form.playerUserIds];
+                                    next[index] = e.target.value;
+                                    onFormChange({ playerUserIds: next });
+                                }}
+                            />
+                            <button
+                                type="button"
+                                aria-label={`Remove invited player ${index + 1}`}
+                                onClick={() => {
+                                    const next = form.playerUserIds.filter((_, i) => i !== index);
+                                    onFormChange({ playerUserIds: next });
+                                }}
+                                className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    ))}
+                    <button
+                        type="button"
+                        onClick={() => onFormChange({ playerUserIds: [...form.playerUserIds, ""] })}
+                        className="mt-1 text-sm text-cta hover:underline"
+                    >
+                        + Invite Player
+                    </button>
+                </div>
+            ) : null}
+
             {/* Notes */}
             <div className="mt-4">
                 <label htmlFor="bk-notes" className={labelCls}>
@@ -246,39 +343,6 @@ export default function NewBookingView({
                     onChange={(e) => onFormChange({ notes: e.target.value })}
                 />
             </div>
-
-            {/* On behalf of */}
-            <div className="mt-4">
-                <label htmlFor="bk-on-behalf" className={labelCls}>
-                    On behalf of (user ID)
-                </label>
-                <input
-                    id="bk-on-behalf"
-                    type="text"
-                    className={fieldCls}
-                    placeholder="Player user ID"
-                    value={form.onBehalfOf}
-                    onChange={(e) => onFormChange({ onBehalfOf: e.target.value })}
-                />
-            </div>
-
-            {/* Staff (Trainer) — lesson types only */}
-            {form.bookingType === "lesson_individual" || form.bookingType === "lesson_group" ? (
-                <div className="mt-4">
-                    <label htmlFor="bk-staff-id" className={labelCls}>
-                        Staff (Trainer)
-                    </label>
-                    <SelectInput
-                        value={form.staffProfileId}
-                        onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                        options={trainers.map((t) => ({ value: t.id, label: t.id }))}
-                        placeholder={
-                            trainers.length === 0 ? "No trainers available" : "Select trainer…"
-                        }
-                        disabled={trainers.length === 0}
-                    />
-                </div>
-            ) : null}
         </>
     );
 
@@ -470,24 +534,21 @@ export default function NewBookingView({
                                 </section>
                             ) : null}
 
-                            {/* Event / contact — corporate or tournament only */}
-                            {form.bookingType === "corporate_event" ||
-                            form.bookingType === "tournament" ? (
-                                <section className="form-section">
-                                    <div className="mb-4">
-                                        <h3 className="text-sm font-semibold text-foreground">
-                                            Event &amp; Contact{" "}
-                                            <span className="text-xs font-normal text-muted-foreground">
-                                                (optional)
-                                            </span>
-                                        </h3>
-                                        <p className="mt-1 text-sm text-muted-foreground">
-                                            For corporate or tournament bookings.
-                                        </p>
-                                    </div>
-                                    {optionalEventFields}
-                                </section>
-                            ) : null}
+                            {/* Event / contact  */}
+                            <section className="form-section">
+                                <div className="mb-4">
+                                    <h3 className="text-sm font-semibold text-foreground">
+                                        Event &amp; Contact{" "}
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                            (optional)
+                                        </span>
+                                    </h3>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        For corporate or tournament bookings.
+                                    </p>
+                                </div>
+                                {optionalEventFields}
+                            </section>
 
                             {/* Recurring — non-regular bookings only */}
                             {form.bookingType !== "regular" ? (

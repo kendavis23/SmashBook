@@ -199,6 +199,9 @@ describe("NewBookingModalContainer", () => {
 
         render(<NewBookingModalContainer {...defaultProps} />);
 
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
         fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
 
         await waitFor(() => {
@@ -207,6 +210,7 @@ describe("NewBookingModalContainer", () => {
                     club_id: "club-1",
                     court_id: "court-1",
                     start_datetime: "2026-04-20T10:00",
+                    on_behalf_of_user_id: "player-owner-1",
                 }),
                 expect.objectContaining({ onSuccess: expect.any(Function) })
             );
@@ -222,11 +226,52 @@ describe("NewBookingModalContainer", () => {
 
         render(<NewBookingModalContainer {...defaultProps} onSuccess={onSuccess} />);
 
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
         fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
 
         await waitFor(() => {
             expect(onSuccess).toHaveBeenCalled();
         });
+    });
+
+    it("allows missing on behalf of user ID", () => {
+        render(<NewBookingModalContainer {...defaultProps} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                is_open_game: false,
+                on_behalf_of_user_id: null,
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
+    });
+
+    it("unchecks open game when booking type changes", () => {
+        render(<NewBookingModalContainer {...defaultProps} />);
+
+        fireEvent.click(screen.getByLabelText("Mark as open game"));
+        expect(screen.queryByLabelText(/on behalf of/i)).not.toBeInTheDocument();
+
+        fireEvent.change(screen.getByRole("combobox", { name: "select" }), {
+            target: { value: "corporate_event" },
+        });
+
+        expect(screen.getByLabelText(/on behalf of/i)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                booking_type: "corporate_event",
+                is_open_game: false,
+                on_behalf_of_user_id: null,
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
     });
 
     it("calls onClose when X close button is clicked", () => {

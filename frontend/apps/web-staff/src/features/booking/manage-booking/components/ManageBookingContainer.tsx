@@ -72,7 +72,12 @@ export default function ManageBookingContainer(): JSX.Element {
     const { clubId } = useClubAccess();
     const filterSearch = useSearch({ strict: false }) as ManageBookingSearch;
 
-    const { data: booking, isLoading, error } = useGetBooking(bookingId, clubId ?? "");
+    const {
+        data: booking,
+        isLoading,
+        error,
+        refetch: refetchBooking,
+    } = useGetBooking(bookingId, clubId ?? "");
 
     const { data: courts = [] } = useListCourts(clubId ?? "");
 
@@ -244,6 +249,7 @@ export default function ManageBookingContainer(): JSX.Element {
             onDismissCancelConfirm={() => setShowCancelConfirm(false)}
             onDismissError={() => setApiError("")}
             onBack={handleBack}
+            onRefresh={() => void refetchBooking()}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
         />
