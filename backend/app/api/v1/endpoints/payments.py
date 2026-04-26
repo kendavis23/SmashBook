@@ -1,43 +1,138 @@
-from fastapi import APIRouter, Depends, Request
-from app.db.session import get_db, get_read_db
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import select as sa_select
+
 from app.api.v1.dependencies.auth import get_current_user, require_staff
+from app.core.config import get_settings
+from app.db.models.booking import Booking, BookingPlayer
+from app.db.models.club import Club
+from app.db.session import get_db, get_read_db
+from app.schemas.payment_method import (
+    PaymentIntentRequest,
+    PaymentIntentResponse,
+    PaymentMethodResponse,
+    SavePaymentMethodRequest,
+    SetupIntentResponse,
+)
+from app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+settings = get_settings()
 
 
 @router.post("/stripe/webhook")
 async def stripe_webhook(request: Request, db=Depends(get_db)):
     """
-    Stripe webhook handler. Verifies signature and publishes
-    Pub/Sub payment events for async processing.
-    Handles: payment_intent.succeeded, payment_intent.payment_failed,
-             charge.refunded, customer.subscription.updated
+    Verify Stripe signature and dispatch to the appropriate service method.
+    Handles: payment_intent.succeeded, payment_intent.payment_failed
     """
-    pass
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except stripe.StripeError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
+
+    svc = PaymentService(db)
+    event_type = event["type"]
+
+    if event_type == "payment_intent.succeeded":
+        await svc.confirm_payment(dict(event))
+    elif event_type == "payment_intent.payment_failed":
+        await svc.handle_payment_failed(dict(event))
+
+    return {"received": True}
 
 
-@router.post("/payment-methods")
-async def save_payment_method(current_user=Depends(get_current_user), db=Depends(get_db)):
+@router.post("/payment-intent", response_model=PaymentIntentResponse)
+async def create_payment_intent(
+    body: PaymentIntentRequest,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Create a Stripe PaymentIntent for the current player's share of a booking."""
+    result = await db.execute(
+        sa_select(BookingPlayer).where(
+            BookingPlayer.booking_id == body.booking_id,
+            BookingPlayer.user_id == current_user.id,
+        )
+    )
+    bp = result.scalar_one_or_none()
+    if not bp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found for this player")
+
+    booking = await db.get(Booking, body.booking_id)
+    club = await db.get(Club, booking.club_id)
+    currency = club.currency.lower() if club else "gbp"
+    amount_pence = int(bp.amount_due * 100)
+
+    svc = PaymentService(db)
+    return await svc.create_payment_intent(
+        str(body.booking_id),
+        str(current_user.id),
+        amount_pence,
+        currency,
+        body.payment_method_id,
+    )
+
+
+@router.post("/setup-intent", response_model=SetupIntentResponse)
+async def create_setup_intent(
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Create a Stripe SetupIntent; returns client_secret for the frontend to collect card details."""
+    svc = PaymentService(db)
+    return await svc.create_setup_intent(current_user)
+
+
+@router.post("/payment-methods", response_model=PaymentMethodResponse, status_code=201)
+async def save_payment_method(
+    body: SavePaymentMethodRequest,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """Save a Stripe payment method to the player's account."""
-    pass
+    svc = PaymentService(db)
+    return await svc.save_payment_method(
+        current_user, body.payment_method_id, body.set_as_default
+    )
 
 
-@router.get("/payment-methods")
-async def list_payment_methods(current_user=Depends(get_current_user)):
+@router.get("/payment-methods", response_model=list[PaymentMethodResponse])
+async def list_payment_methods(
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """List saved Stripe payment methods."""
-    pass
+    svc = PaymentService(db)
+    return await svc.list_payment_methods(current_user)
 
 
-@router.delete("/payment-methods/{method_id}")
-async def delete_payment_method(method_id: str, current_user=Depends(get_current_user)):
+@router.delete("/payment-methods/{method_id}", status_code=204)
+async def delete_payment_method(
+    method_id: str,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """Remove a saved payment method."""
-    pass
+    svc = PaymentService(db)
+    await svc.remove_payment_method(current_user, method_id)
+    return Response(status_code=204)
 
 
-@router.patch("/payment-methods/{method_id}/default")
-async def set_default_payment_method(method_id: str, current_user=Depends(get_current_user)):
+@router.patch("/payment-methods/{method_id}/default", response_model=PaymentMethodResponse)
+async def set_default_payment_method(
+    method_id: str,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
     """Set default payment method."""
-    pass
+    svc = PaymentService(db)
+    return await svc.set_default_payment_method(current_user, method_id)
 
 
 @router.get("/wallet")

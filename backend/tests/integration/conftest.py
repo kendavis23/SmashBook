@@ -53,6 +53,7 @@ from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.membership import MembershipPlan
 from app.db.models.court import CalendarReservation, Court
+from app.db.models.payment import Payment, PlatformFee
 from app.db.models.skill import SkillLevelHistory
 from app.db.models.staff import StaffProfile, TrainerAvailability
 from app.db.models.tenant import SubscriptionPlan, Tenant
@@ -168,6 +169,18 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
                     )
                 ).scalars().all()
                 if booking_ids:
+                    payment_ids = (
+                        await session.execute(
+                            select(Payment.id).where(Payment.booking_id.in_(booking_ids))
+                        )
+                    ).scalars().all()
+                    if payment_ids:
+                        await session.execute(
+                            sql_delete(PlatformFee).where(PlatformFee.payment_id.in_(payment_ids))
+                        )
+                        await session.execute(
+                            sql_delete(Payment).where(Payment.id.in_(payment_ids))
+                        )
                     await session.execute(
                         sql_delete(EquipmentRental).where(EquipmentRental.booking_id.in_(booking_ids))
                     )

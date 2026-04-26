@@ -41,6 +41,7 @@ import os
 import sys
 from datetime import datetime, time, timedelta, timezone
 from decimal import Decimal
+from typing import Optional
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -96,8 +97,8 @@ async def _upsert_user(
     email: str,
     full_name: str,
     role: TenantUserRole,
-    skill_level: Decimal | None = None,
-    phone: str | None = None,
+    skill_level: Optional[Decimal] = None,
+    phone: Optional[str] = None,
 ) -> User:
     result = await db.execute(
         select(User).where(User.tenant_id == tenant_id, User.email == email)
@@ -145,7 +146,7 @@ async def _upsert_court(
     name: str,
     surface_type: SurfaceType,
     has_lighting: bool = False,
-    lighting_surcharge: Decimal | None = None,
+    lighting_surcharge: Optional[Decimal] = None,
 ) -> Court:
     result = await db.execute(
         select(Court).where(Court.club_id == club_id, Court.name == name)

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-19 18:00 UTC_
+_Last updated: 2026-04-26 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -139,12 +139,26 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 
 ---
 
+## Payments — `/api/v1/payments`
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/payments/stripe/webhook` | Verify Stripe signature and dispatch to the appropriate handler. Handles `payment_intent.succeeded` (marks payment succeeded, player paid, confirms booking when all players paid) and `payment_intent.payment_failed` (marks payment failed, records reason, notifies player and staff) |
+| `POST` | `/api/v1/payments/payment-intent` | Create a Stripe PaymentIntent for the current player's share of a booking. Derives amount from `BookingPlayer.amount_due`; creates a `pending` Payment record; returns `client_secret` for frontend confirmation |
+| `POST` | `/api/v1/payments/setup-intent` | Create a Stripe SetupIntent; returns `client_secret` and `setup_intent_id` for the frontend to collect card details via Stripe.js |
+| `POST` | `/api/v1/payments/payment-methods` | Attach a Stripe PaymentMethod to the player's Stripe customer; optionally sets it as the default. Creates the Stripe customer record if this is the player's first card |
+| `GET` | `/api/v1/payments/payment-methods` | List all saved card payment methods for the current player, with `is_default` flagged |
+| `DELETE` | `/api/v1/payments/payment-methods/{method_id}` | Detach a saved card from the player's Stripe customer; clears `default_payment_method_id` if the removed card was the default |
+| `PATCH` | `/api/v1/payments/payment-methods/{method_id}/default` | Set an existing saved card as the player's default payment method |
+
+---
+
 ## Not Yet Implemented (stubs)
 
 | File | Endpoints |
 |---|---|
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
-| `payments.py` | Stripe webhook, payment methods (save/list/delete/set-default), wallet (get/top-up/adjust), invoices (list/download), refunds, discounts, in-person payment |
+| `payments.py` | wallet (get/top-up/adjust), invoices (list/download), refunds, discounts, in-person payment |
 | `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
 | `players.py` | `GET /{id}` |
 | `reports.py` | Dashboard, revenue, utilisation, retention, corporate events, transaction log, Stripe payouts, export |

@@ -94,8 +94,23 @@ seed-staging:
 		--project=smashbook-488121 \
 		--wait
 
+# ── Stripe ────────────────────────────────────────────────────────────────────
+# Create a Stripe test payment method (tok_visa): make payment-intent
+payment-intent:
+	curl https://api.stripe.com/v1/payment_methods \
+		-u "$(STRIPE_KEY):" \
+		-d type=card \
+		-d "card[token]=tok_visa"
+
+# ── Local API helpers ─────────────────────────────────────────────────────────
+# Get a JWT token for alice@ace.staging: make get-token
+get-token:
+	curl -s -X POST http://localhost:8080/api/v1/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"tenant_subdomain":"ace","email":"alice@ace.staging","password":"Staging1234"}'
+
 # ── Misc ──────────────────────────────────────────────────────────────────────
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging payment-intent get-token
