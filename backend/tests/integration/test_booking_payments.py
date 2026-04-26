@@ -12,16 +12,13 @@ Platform fees                    — application_fee_amount passed to Stripe PI;
 All Stripe API calls are mocked — no network traffic.
 """
 
-import uuid
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-import pytest
 import pytest_asyncio
 import stripe
 from sqlalchemy import delete as sql_delete, select
 
-from app.core.security import create_access_token
 from app.db.models.booking import (
     Booking,
     BookingPlayer,
