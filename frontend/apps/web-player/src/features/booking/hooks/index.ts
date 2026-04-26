@@ -1,1 +1,6 @@
-export { useMyBookings, useInvitePlayer, useRespondInvite } from "@repo/player-domain/hooks";
+export {
+    useMyBookings,
+    useGetBooking,
+    useInvitePlayer,
+    useRespondInvite,
+} from "@repo/player-domain/hooks";

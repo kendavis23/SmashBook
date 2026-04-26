@@ -1,6 +1,8 @@
 export type {
     PlayerBookingItem,
     PlayerBookings,
+    Booking,
+    BookingPlayer,
     BookingType,
     BookingStatus,
     PlayerRole,

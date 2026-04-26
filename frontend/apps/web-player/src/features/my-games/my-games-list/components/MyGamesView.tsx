@@ -1,5 +1,5 @@
-import type { JSX } from "react";
-import { Swords, RefreshCw } from "lucide-react";
+import { useState, useMemo, useEffect, type JSX } from "react";
+import { Swords, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { Breadcrumb, AlertToast, formatUTCDate, formatUTCTime, formatCurrency } from "@repo/ui";
 import type { PlayerBookingItem } from "../../types";
 
@@ -23,7 +23,24 @@ const PAYMENT_CLASSES: Record<string, string> = {
     refunded: "bg-info/15 text-info",
 };
 
+const thCls =
+    "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
+const tdCls = "px-3 py-3 text-sm text-foreground align-top";
+
+const PAGE_SIZE = 10;
+
 function GamesTable({ items }: { items: PlayerBookingItem[] }): JSX.Element {
+    const [page, setPage] = useState(0);
+    const totalPages = Math.ceil(items.length / PAGE_SIZE);
+    const pageItems = useMemo(
+        () => items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [items, page]
+    );
+
+    useEffect(() => {
+        setPage(0);
+    }, [items]);
+
     if (items.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -34,75 +51,113 @@ function GamesTable({ items }: { items: PlayerBookingItem[] }): JSX.Element {
     }
 
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="border-b border-border bg-muted/10">
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Court
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Date
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Time
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Type
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Role
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Payment
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Amount
-                        </th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                    {items.map((game) => (
-                        <tr key={game.booking_id} className="transition hover:bg-muted/5">
-                            <td className="px-4 py-3 font-medium text-foreground">
-                                {game.court_name}
-                            </td>
-                            <td className="px-4 py-3 text-foreground">
-                                {formatUTCDate(game.start_datetime)}
-                            </td>
-                            <td className="px-4 py-3 text-foreground">
-                                {formatUTCTime(game.start_datetime)} –{" "}
-                                {formatUTCTime(game.end_datetime)}
-                            </td>
-                            <td className="px-4 py-3 capitalize text-foreground">
-                                {game.booking_type.replace(/_/g, " ")}
-                            </td>
-                            <td className="px-4 py-3 capitalize text-foreground">{game.role}</td>
-                            <td className="px-4 py-3">
-                                <span
-                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_CLASSES[game.status] ?? "bg-secondary text-secondary-foreground"}`}
-                                >
-                                    {game.status}
-                                </span>
-                            </td>
-                            <td className="px-4 py-3">
-                                <span
-                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${PAYMENT_CLASSES[game.payment_status] ?? "bg-secondary text-secondary-foreground"}`}
-                                >
-                                    {game.payment_status}
-                                </span>
-                            </td>
-                            <td className="px-4 py-3 text-right font-medium text-foreground">
-                                {formatCurrency(game.amount_due)}
-                            </td>
+        <>
+            <div className="overflow-x-auto" key={page}>
+                <table className="w-full min-w-[700px] border-collapse">
+                    <thead>
+                        <tr className="border-b border-border bg-muted/30">
+                            <th className={thCls}>Court</th>
+                            <th className={thCls}>Date</th>
+                            <th className={thCls}>Time</th>
+                            <th className={thCls}>Type</th>
+                            <th className={thCls}>Role</th>
+                            <th className={thCls}>Status</th>
+                            <th className={thCls}>Payment</th>
+                            <th className={`${thCls} text-right`}>Amount</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        {pageItems.map((game) => (
+                            <tr key={game.booking_id} className="transition hover:bg-muted/20">
+                                <td className={`${tdCls} font-medium`}>{game.court_name}</td>
+                                <td className={tdCls}>
+                                    <span className="whitespace-nowrap text-muted-foreground">
+                                        {formatUTCDate(game.start_datetime)}
+                                    </span>
+                                </td>
+                                <td className={tdCls}>
+                                    <span className="whitespace-nowrap text-muted-foreground">
+                                        {formatUTCTime(game.start_datetime)} –{" "}
+                                        {formatUTCTime(game.end_datetime)}
+                                    </span>
+                                </td>
+                                <td className={tdCls}>
+                                    <span className="capitalize text-muted-foreground">
+                                        {game.booking_type.replace(/_/g, " ")}
+                                    </span>
+                                </td>
+                                <td className={tdCls}>
+                                    <span className="capitalize text-muted-foreground">
+                                        {game.role}
+                                    </span>
+                                </td>
+                                <td className={tdCls}>
+                                    <span
+                                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_CLASSES[game.status] ?? "bg-secondary text-secondary-foreground"}`}
+                                    >
+                                        {game.status}
+                                    </span>
+                                </td>
+                                <td className={tdCls}>
+                                    <span
+                                        className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${PAYMENT_CLASSES[game.payment_status] ?? "bg-secondary text-secondary-foreground"}`}
+                                    >
+                                        {game.payment_status}
+                                    </span>
+                                </td>
+                                <td className={`${tdCls} text-right`}>
+                                    <span className="font-medium text-muted-foreground">
+                                        {formatCurrency(game.amount_due)}
+                                    </span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            {totalPages > 1 ? (
+                <div className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
+                    <span className="text-xs text-muted-foreground">
+                        {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, items.length)} of{" "}
+                        {items.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setPage((p) => p - 1)}
+                            disabled={page === 0}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                            aria-label="Previous page"
+                        >
+                            <ChevronLeft size={14} />
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => setPage(i)}
+                                className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
+                                    i === page
+                                        ? "border-cta bg-cta text-cta-foreground"
+                                        : "border-border bg-card text-foreground hover:bg-muted"
+                                }`}
+                                aria-label={`Page ${i + 1}`}
+                                aria-current={i === page ? "page" : undefined}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => setPage((p) => p + 1)}
+                            disabled={page === totalPages - 1}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                            aria-label="Next page"
+                        >
+                            <ChevronRight size={14} />
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+        </>
     );
 }
 
@@ -156,18 +211,16 @@ export default function MyGamesView({ games, isLoading, error, onRefresh }: Prop
                     </div>
                 ) : null}
 
-                <div className="px-5 py-5 sm:px-6">
-                    {isLoading ? (
-                        <div className="flex items-center justify-center gap-3 py-16">
-                            <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
-                            <span className="text-sm text-muted-foreground">
-                                Loading match history…
-                            </span>
-                        </div>
-                    ) : (
-                        <GamesTable items={games} />
-                    )}
-                </div>
+                {isLoading ? (
+                    <div className="flex items-center justify-center gap-3 py-20">
+                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
+                        <span className="text-sm text-muted-foreground">
+                            Loading match history…
+                        </span>
+                    </div>
+                ) : (
+                    <GamesTable items={games} />
+                )}
             </section>
         </div>
     );

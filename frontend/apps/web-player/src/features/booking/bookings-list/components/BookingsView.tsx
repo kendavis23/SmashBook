@@ -1,5 +1,27 @@
-import { useState, type FormEvent, type JSX } from "react";
-import { CalendarDays, Check, RefreshCw, UserPlus, X } from "lucide-react";
+import {
+    useState,
+    useMemo,
+    useEffect,
+    useRef,
+    type FormEvent,
+    type JSX,
+    type ReactNode,
+    type RefObject,
+} from "react";
+import { createPortal } from "react-dom";
+import {
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    Eye,
+    RefreshCw,
+    Crown,
+    User,
+    CreditCard,
+    X,
+    Check,
+    UserPlus,
+} from "lucide-react";
 import { Breadcrumb, AlertToast, formatUTCDate, formatUTCTime, formatCurrency } from "@repo/ui";
 import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
 import { BOOKING_TABS } from "../../types";
@@ -12,21 +34,12 @@ type Props = {
     error: Error | null;
     onTabChange: (tab: BookingTab) => void;
     onRefresh: () => void;
-    inviteDialogOpen: boolean;
-    isInvitePending: boolean;
-    inviteError: string | null;
-    isRespondInvitePending: boolean;
-    respondInviteError: string | null;
-    onOpenInvite: (bookingId: string, clubId: string) => void;
-    onCloseInvite: () => void;
-    onInvite: (userId: string) => void;
-    onDismissInviteError: () => void;
+    onManageClick: (item: PlayerBookingItem) => void;
+    onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onRespondInvite: (
-        bookingId: string,
-        clubId: string,
+        item: PlayerBookingItem,
         action: Extract<InviteStatus, "accepted" | "declined">
-    ) => void;
-    onDismissRespondInviteError: () => void;
+    ) => Promise<void>;
 };
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -42,101 +55,325 @@ const PAYMENT_CLASSES: Record<string, string> = {
     refunded: "bg-info/15 text-info",
 };
 
-function InviteDialog({
-    isOpen,
-    isPending,
-    error,
-    onClose,
-    onInvite,
-    onDismissError,
+const thCls =
+    "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
+const tdCls = "px-3 py-3 text-sm text-foreground align-top";
+
+const PAGE_SIZE = 10;
+
+function useOutsideClick(ref: RefObject<HTMLElement | null>, onClose: () => void) {
+    useEffect(() => {
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) {
+                onClose();
+            }
+        }
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
+    }, [ref, onClose]);
+}
+
+function FixedDialog({
+    anchorRef,
+    children,
+    dialogRef,
 }: {
-    isOpen: boolean;
-    isPending: boolean;
-    error: string | null;
+    anchorRef: RefObject<HTMLElement | null>;
+    children: ReactNode;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    dialogRef: RefObject<any>;
+}): JSX.Element {
+    const [pos, setPos] = useState({ top: 0, left: 0 });
+
+    useEffect(() => {
+        if (!anchorRef.current) return;
+        const rect = anchorRef.current.getBoundingClientRect();
+        setPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+    }, [anchorRef]);
+
+    return createPortal(
+        <div
+            ref={dialogRef}
+            style={{ position: "absolute", top: pos.top, left: pos.left, zIndex: 9999 }}
+        >
+            {children}
+        </div>,
+        document.body
+    );
+}
+
+function InviteDialog({
+    booking,
+    anchorRef,
+    onInvite,
+    onClose,
+}: {
+    booking: PlayerBookingItem;
+    anchorRef: RefObject<HTMLElement | null>;
+    onInvite: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onClose: () => void;
-    onInvite: (userId: string) => void;
-    onDismissError: () => void;
-}): JSX.Element | null {
-    const [playerId, setPlayerId] = useState("");
+}): JSX.Element {
+    const [userId, setUserId] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState("");
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useOutsideClick(dialogRef, onClose);
 
-    if (!isOpen) return null;
-
-    function handleSubmit(e: FormEvent) {
+    async function handleSubmit(e: FormEvent) {
         e.preventDefault();
-        if (playerId.trim()) onInvite(playerId.trim());
-    }
-
-    function handleClose() {
-        setPlayerId("");
-        onClose();
+        const trimmed = userId.trim();
+        if (!trimmed) return;
+        setBusy(true);
+        setErr("");
+        try {
+            await onInvite(booking, trimmed);
+            onClose();
+        } catch (ex) {
+            setErr((ex as { message?: string })?.message ?? "Failed to invite.");
+        } finally {
+            setBusy(false);
+        }
     }
 
     return (
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
-            onClick={handleClose}
-        >
-            <div
-                className="w-full max-w-lg rounded-2xl border border-border bg-card p-6 shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <h2 className="text-base font-semibold text-foreground">Invite Player</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    Enter a player ID to invite them to this open match.
-                </p>
-
-                {error ? (
-                    <div className="mt-4">
-                        <AlertToast title={error} variant="error" onClose={onDismissError} />
-                    </div>
-                ) : null}
-
-                <form onSubmit={handleSubmit} noValidate className="mt-5">
-                    <label className="mb-1 block text-sm font-medium text-foreground">
-                        Player ID
-                    </label>
-                    <div className="flex gap-2">
-                        <input
-                            type="text"
-                            className="input-base flex-1"
-                            placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                            value={playerId}
-                            onChange={(e) => setPlayerId(e.target.value)}
-                            disabled={isPending}
-                        />
-                        <button
-                            type="submit"
-                            disabled={isPending || !playerId.trim()}
-                            className="btn-cta min-h-10 px-4"
-                        >
-                            {isPending ? "Inviting…" : "Invite"}
-                        </button>
-                    </div>
+        <FixedDialog anchorRef={anchorRef} dialogRef={dialogRef}>
+            <div className="w-64 rounded-xl border border-border bg-card shadow-lg">
+                <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                    <span className="text-xs font-semibold text-foreground">Invite Player</span>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
+                        <X size={13} />
+                    </button>
+                </div>
+                <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-2 p-3">
+                    <input
+                        autoFocus
+                        value={userId}
+                        onChange={(e) => setUserId(e.target.value)}
+                        placeholder="Player user ID"
+                        className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta"
+                    />
+                    {err ? <p className="text-[11px] text-destructive">{err}</p> : null}
+                    <button
+                        type="submit"
+                        disabled={busy || !userId.trim()}
+                        className="inline-flex items-center justify-center gap-1 rounded-lg bg-cta px-3 py-1.5 text-xs font-medium text-cta-foreground transition hover:opacity-90 disabled:opacity-50"
+                    >
+                        {busy ? (
+                            <span className="h-3 w-3 animate-spin rounded-full border border-cta-foreground border-t-transparent" />
+                        ) : null}
+                        Send Invite
+                    </button>
                 </form>
             </div>
-        </div>
+        </FixedDialog>
     );
+}
+
+function RespondDialog({
+    booking,
+    anchorRef,
+    onRespond,
+    onClose,
+}: {
+    booking: PlayerBookingItem;
+    anchorRef: RefObject<HTMLElement | null>;
+    onRespond: (
+        item: PlayerBookingItem,
+        action: Extract<InviteStatus, "accepted" | "declined">
+    ) => Promise<void>;
+    onClose: () => void;
+}): JSX.Element {
+    const [busy, setBusy] = useState<"accepted" | "declined" | null>(null);
+    const [err, setErr] = useState("");
+    const dialogRef = useRef<HTMLDivElement>(null);
+    useOutsideClick(dialogRef, onClose);
+
+    async function handleAction(action: Extract<InviteStatus, "accepted" | "declined">) {
+        setBusy(action);
+        setErr("");
+        try {
+            await onRespond(booking, action);
+            onClose();
+        } catch (ex) {
+            setErr((ex as { message?: string })?.message ?? "Failed to respond.");
+            setBusy(null);
+        }
+    }
+
+    return (
+        <FixedDialog anchorRef={anchorRef} dialogRef={dialogRef}>
+            <div className="w-52 rounded-xl border border-border bg-card shadow-lg">
+                <div className="flex items-center justify-between border-b border-border px-3 py-2">
+                    <span className="text-xs font-semibold text-foreground">Respond to Invite</span>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
+                        <X size={13} />
+                    </button>
+                </div>
+                <div className="flex flex-col gap-2 p-3">
+                    {err ? <p className="text-[11px] text-destructive">{err}</p> : null}
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={() => void handleAction("accepted")}
+                            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-success/15 px-2 py-1.5 text-xs font-medium text-success transition hover:bg-success/25 disabled:opacity-50"
+                        >
+                            {busy === "accepted" ? (
+                                <span className="h-3 w-3 animate-spin rounded-full border border-success border-t-transparent" />
+                            ) : (
+                                <Check size={12} />
+                            )}
+                            Accept
+                        </button>
+                        <button
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={() => void handleAction("declined")}
+                            className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-destructive/15 px-2 py-1.5 text-xs font-medium text-destructive transition hover:bg-destructive/25 disabled:opacity-50"
+                        >
+                            {busy === "declined" ? (
+                                <span className="h-3 w-3 animate-spin rounded-full border border-destructive border-t-transparent" />
+                            ) : (
+                                <X size={12} />
+                            )}
+                            Decline
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </FixedDialog>
+    );
+}
+
+function RoleCell({ booking }: { booking: PlayerBookingItem }): JSX.Element {
+    const isOrganiser = booking.role === "organiser";
+    return (
+        <span
+            title={booking.role}
+            className={`inline-flex items-center justify-center rounded-full p-1 ${
+                isOrganiser ? "bg-cta/10 text-cta" : "bg-secondary text-secondary-foreground"
+            }`}
+        >
+            {isOrganiser ? <Crown size={12} /> : <User size={12} />}
+        </span>
+    );
+}
+
+function InviteCell({
+    booking,
+    allowActions,
+    onInvitePlayer,
+    onRespondInvite,
+}: {
+    booking: PlayerBookingItem;
+    allowActions: boolean;
+    onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
+    onRespondInvite: (
+        item: PlayerBookingItem,
+        action: Extract<InviteStatus, "accepted" | "declined">
+    ) => Promise<void>;
+}): JSX.Element {
+    const [open, setOpen] = useState(false);
+    const anchorRef = useRef<HTMLButtonElement>(null);
+    const isOrganiser = booking.role === "organiser";
+    const isPending = booking.invite_status === "pending";
+
+    if (allowActions && isOrganiser) {
+        return (
+            <div className="relative">
+                <button
+                    ref={anchorRef}
+                    type="button"
+                    onClick={() => setOpen((v) => !v)}
+                    title="Invite a player"
+                    className="inline-flex items-center gap-1 rounded-lg border border-cta/40 bg-cta/10 px-2 py-1 text-[11px] font-medium text-cta transition hover:bg-cta/20"
+                >
+                    <UserPlus size={11} /> Invite
+                </button>
+                {open ? (
+                    <InviteDialog
+                        booking={booking}
+                        anchorRef={anchorRef}
+                        onInvite={onInvitePlayer}
+                        onClose={() => setOpen(false)}
+                    />
+                ) : null}
+            </div>
+        );
+    }
+
+    if (allowActions && isPending) {
+        return (
+            <div className="relative">
+                <button
+                    ref={anchorRef}
+                    type="button"
+                    onClick={() => setOpen((v) => !v)}
+                    title="Respond to invite"
+                    className="inline-flex items-center gap-1 rounded-lg border border-warning/40 bg-warning/10 px-2 py-1 text-[11px] font-medium text-warning transition hover:bg-warning/20"
+                >
+                    Pending
+                </button>
+                {open ? (
+                    <RespondDialog
+                        booking={booking}
+                        anchorRef={anchorRef}
+                        onRespond={onRespondInvite}
+                        onClose={() => setOpen(false)}
+                    />
+                ) : null}
+            </div>
+        );
+    }
+
+    const statusText = booking.invite_status ?? "—";
+    const cls =
+        booking.invite_status === "accepted"
+            ? "text-success"
+            : booking.invite_status === "declined"
+              ? "text-destructive"
+              : "text-muted-foreground";
+
+    return <span className={`text-[11px] font-medium capitalize ${cls}`}>{statusText}</span>;
 }
 
 function BookingTable({
     items,
     emptyMessage,
     showActions,
-    isRespondInvitePending,
-    onOpenInvite,
+    onManageClick,
+    onInvitePlayer,
     onRespondInvite,
 }: {
     items: PlayerBookingItem[];
     emptyMessage: string;
     showActions: boolean;
-    isRespondInvitePending: boolean;
-    onOpenInvite: (bookingId: string, clubId: string) => void;
+    onManageClick: (item: PlayerBookingItem) => void;
+    onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onRespondInvite: (
-        bookingId: string,
-        clubId: string,
+        item: PlayerBookingItem,
         action: Extract<InviteStatus, "accepted" | "declined">
-    ) => void;
+    ) => Promise<void>;
 }): JSX.Element {
+    const [page, setPage] = useState(0);
+    const totalPages = Math.ceil(items.length / PAGE_SIZE);
+    const pageItems = useMemo(
+        () => items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [items, page]
+    );
+
+    useEffect(() => {
+        setPage(0);
+    }, [items]);
+
     if (items.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -147,98 +384,154 @@ function BookingTable({
     }
 
     return (
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-                <thead>
-                    <tr className="border-b border-border bg-muted/10">
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Court
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Date
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Time
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Type
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Payment
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Amount
-                        </th>
-                        {showActions ? (
-                            <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                Action
-                            </th>
-                        ) : null}
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                    {items.map((booking) => (
-                        <tr key={booking.booking_id} className="transition hover:bg-muted/5">
-                            <td className="px-4 py-3 font-medium text-foreground">
-                                {booking.court_name}
-                            </td>
-                            <td className="px-4 py-3 text-foreground">
-                                {formatUTCDate(booking.start_datetime)}
-                            </td>
-                            <td className="px-4 py-3 text-foreground">
-                                {formatUTCTime(booking.start_datetime)} –{" "}
-                                {formatUTCTime(booking.end_datetime)}
-                            </td>
-                            <td className="px-4 py-3 capitalize text-foreground">
-                                {booking.booking_type.replace(/_/g, " ")}
-                            </td>
-                            <td className="px-4 py-3">
-                                <span
-                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${STATUS_CLASSES[booking.status] ?? "bg-secondary text-secondary-foreground"}`}
+        <>
+            <div className="overflow-x-auto" key={page}>
+                <table className="w-full min-w-[780px] border-collapse">
+                    <thead>
+                        <tr className="border-b border-border bg-muted/30">
+                            <th className={thCls}>Court</th>
+                            <th className={thCls}>Date</th>
+                            <th className={thCls}>Time</th>
+                            <th className={thCls}>Type</th>
+                            <th className={`${thCls} text-center`}>Role</th>
+                            <th className={thCls}>Invite</th>
+                            <th className={thCls}>Status</th>
+                            <th className={thCls}>Payment</th>
+                            <th className={`${thCls} text-right`}>Amount</th>
+                            {showActions ? <th className={`${thCls} text-right`}>Action</th> : null}
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                        {pageItems.map((booking) => {
+                            const showPay =
+                                booking.payment_status === "pending" &&
+                                booking.invite_status === "accepted";
+
+                            return (
+                                <tr
+                                    key={booking.booking_id}
+                                    className="transition hover:bg-muted/20"
                                 >
-                                    {booking.status}
-                                </span>
-                            </td>
-                            <td className="px-4 py-3">
-                                <span
-                                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${PAYMENT_CLASSES[booking.payment_status] ?? "bg-secondary text-secondary-foreground"}`}
-                                >
-                                    {booking.payment_status}
-                                </span>
-                            </td>
-                            <td className="px-4 py-3 text-right font-medium text-foreground">
-                                {formatCurrency(booking.amount_due)}
-                            </td>
-                            {showActions ? (
-                                <td className="px-4 py-3 text-right">
-                                    {booking.role === "organiser" ? (
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                onOpenInvite(booking.booking_id, booking.club_id)
-                                            }
-                                            className="btn-outline inline-flex items-center gap-1.5 px-3 py-1.5 text-xs"
-                                        >
-                                            <UserPlus size={12} />
-                                            Invite
-                                        </button>
-                                    ) : (
-                                        <InviteResponseActions
+                                    <td className={`${tdCls} font-medium`}>{booking.court_name}</td>
+                                    <td className={tdCls}>
+                                        <span className="whitespace-nowrap text-muted-foreground">
+                                            {formatUTCDate(booking.start_datetime)}
+                                        </span>
+                                    </td>
+                                    <td className={tdCls}>
+                                        <span className="whitespace-nowrap text-muted-foreground">
+                                            {formatUTCTime(booking.start_datetime)} –{" "}
+                                            {formatUTCTime(booking.end_datetime)}
+                                        </span>
+                                    </td>
+                                    <td className={tdCls}>
+                                        <span className="capitalize text-muted-foreground">
+                                            {booking.booking_type.replace(/_/g, " ")}
+                                        </span>
+                                    </td>
+                                    <td className={`${tdCls} text-center`}>
+                                        <RoleCell booking={booking} />
+                                    </td>
+                                    <td className={tdCls}>
+                                        <InviteCell
                                             booking={booking}
-                                            isPending={isRespondInvitePending}
+                                            allowActions={showActions}
+                                            onInvitePlayer={onInvitePlayer}
                                             onRespondInvite={onRespondInvite}
                                         />
-                                    )}
-                                </td>
-                            ) : null}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
+                                    </td>
+                                    <td className={tdCls}>
+                                        <span
+                                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${STATUS_CLASSES[booking.status] ?? "bg-secondary text-secondary-foreground"}`}
+                                        >
+                                            {booking.status}
+                                        </span>
+                                    </td>
+                                    <td className={tdCls}>
+                                        <span
+                                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${PAYMENT_CLASSES[booking.payment_status] ?? "bg-secondary text-secondary-foreground"}`}
+                                        >
+                                            {booking.payment_status}
+                                        </span>
+                                    </td>
+                                    <td className={`${tdCls} text-right`}>
+                                        <div className="inline-flex items-center justify-end gap-2">
+                                            <span className="font-medium text-muted-foreground">
+                                                {formatCurrency(booking.amount_due)}
+                                            </span>
+                                            {showPay ? (
+                                                <button
+                                                    type="button"
+                                                    title="Pay now"
+                                                    className="inline-flex items-center gap-1 rounded-lg bg-cta px-2.5 py-1 text-[11px] font-semibold text-cta-foreground transition hover:opacity-90"
+                                                >
+                                                    <CreditCard size={11} /> Pay
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </td>
+                                    {showActions ? (
+                                        <td className={`${tdCls} text-right`}>
+                                            <button
+                                                type="button"
+                                                onClick={() => onManageClick(booking)}
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted"
+                                                aria-label={`View booking on ${booking.court_name}`}
+                                                title="View"
+                                            >
+                                                <Eye size={14} />
+                                            </button>
+                                        </td>
+                                    ) : null}
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+
+            {totalPages > 1 ? (
+                <div className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
+                    <span className="text-xs text-muted-foreground">
+                        {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, items.length)} of{" "}
+                        {items.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setPage((p) => p - 1)}
+                            disabled={page === 0}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                            aria-label="Previous page"
+                        >
+                            <ChevronLeft size={14} />
+                        </button>
+                        {Array.from({ length: totalPages }, (_, i) => (
+                            <button
+                                key={i}
+                                onClick={() => setPage(i)}
+                                className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
+                                    i === page
+                                        ? "border-cta bg-cta text-cta-foreground"
+                                        : "border-border bg-card text-foreground hover:bg-muted"
+                                }`}
+                                aria-label={`Page ${i + 1}`}
+                                aria-current={i === page ? "page" : undefined}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+                        <button
+                            onClick={() => setPage((p) => p + 1)}
+                            disabled={page === totalPages - 1}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                            aria-label="Next page"
+                        >
+                            <ChevronRight size={14} />
+                        </button>
+                    </div>
+                </div>
+            ) : null}
+        </>
     );
 }
 
@@ -250,17 +543,9 @@ export default function BookingsView({
     error,
     onTabChange,
     onRefresh,
-    inviteDialogOpen,
-    isInvitePending,
-    inviteError,
-    isRespondInvitePending,
-    respondInviteError,
-    onOpenInvite,
-    onCloseInvite,
-    onInvite,
-    onDismissInviteError,
+    onManageClick,
+    onInvitePlayer,
     onRespondInvite,
-    onDismissRespondInviteError,
 }: Props): JSX.Element {
     const items = activeTab === "upcoming" ? upcoming : past;
     const emptyMessage = activeTab === "upcoming" ? "No upcoming bookings." : "No past bookings.";
@@ -268,15 +553,6 @@ export default function BookingsView({
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Bookings" }]} />
-
-            <InviteDialog
-                isOpen={inviteDialogOpen}
-                isPending={isInvitePending}
-                error={inviteError}
-                onClose={onCloseInvite}
-                onInvite={onInvite}
-                onDismissError={onDismissInviteError}
-            />
 
             <section className="card-surface overflow-hidden">
                 <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
@@ -323,32 +599,22 @@ export default function BookingsView({
                     </div>
                 ) : null}
 
-                {respondInviteError ? (
-                    <div className="px-5 pt-5 sm:px-6">
-                        <AlertToast
-                            title={respondInviteError}
-                            variant="error"
-                            onClose={onDismissRespondInviteError}
-                        />
-                    </div>
-                ) : null}
-
-                <div className="px-5 py-5 sm:px-6">
-                    <div className="mb-5 flex gap-1 border-b border-border">
+                <div>
+                    <div className="flex gap-5 border-b border-border sm:px-2 mb-3">
                         {BOOKING_TABS.map((tab) => (
                             <button
                                 key={tab.id}
                                 type="button"
                                 onClick={() => onTabChange(tab.id)}
-                                className={`px-4 py-2 text-sm font-medium transition ${
+                                className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-1 py-3 text-sm font-medium transition ${
                                     activeTab === tab.id
-                                        ? "border-b-2 border-cta text-cta"
-                                        : "text-muted-foreground hover:text-foreground"
+                                        ? "border-cta text-cta"
+                                        : "border-transparent text-muted-foreground hover:text-foreground"
                                 }`}
                             >
                                 {tab.label}
                                 {tab.id === "upcoming" && upcoming.length > 0 ? (
-                                    <span className="ml-2 rounded-full bg-cta/10 px-1.5 py-0.5 text-[10px] font-semibold text-cta">
+                                    <span className="rounded-full bg-cta/10 px-1.5 py-0.5 text-[10px] font-semibold text-cta">
                                         {upcoming.length}
                                     </span>
                                 ) : null}
@@ -357,7 +623,7 @@ export default function BookingsView({
                     </div>
 
                     {isLoading ? (
-                        <div className="flex items-center justify-center gap-3 py-16">
+                        <div className="flex items-center justify-center gap-3 py-20">
                             <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
                             <span className="text-sm text-muted-foreground">Loading bookings…</span>
                         </div>
@@ -366,58 +632,13 @@ export default function BookingsView({
                             items={items}
                             emptyMessage={emptyMessage}
                             showActions={activeTab === "upcoming"}
-                            isRespondInvitePending={isRespondInvitePending}
-                            onOpenInvite={onOpenInvite}
+                            onManageClick={onManageClick}
+                            onInvitePlayer={onInvitePlayer}
                             onRespondInvite={onRespondInvite}
                         />
                     )}
                 </div>
             </section>
-        </div>
-    );
-}
-
-function InviteResponseActions({
-    booking,
-    isPending,
-    onRespondInvite,
-}: {
-    booking: PlayerBookingItem;
-    isPending: boolean;
-    onRespondInvite: (
-        bookingId: string,
-        clubId: string,
-        action: Extract<InviteStatus, "accepted" | "declined">
-    ) => void;
-}): JSX.Element {
-    if (booking.invite_status !== "pending") {
-        return (
-            <span className="inline-flex rounded-full bg-secondary px-2.5 py-1 text-xs font-medium capitalize text-secondary-foreground">
-                {booking.invite_status}
-            </span>
-        );
-    }
-
-    return (
-        <div className="flex justify-end gap-1.5">
-            <button
-                type="button"
-                disabled={isPending}
-                onClick={() => onRespondInvite(booking.booking_id, booking.club_id, "accepted")}
-                className="btn-cta inline-flex min-h-8 items-center gap-1.5 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
-            >
-                <Check size={12} />
-                Accept
-            </button>
-            <button
-                type="button"
-                disabled={isPending}
-                onClick={() => onRespondInvite(booking.booking_id, booking.club_id, "declined")}
-                className="btn-outline inline-flex min-h-8 items-center gap-1.5 px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
-            >
-                <X size={12} />
-                Decline
-            </button>
         </div>
     );
 }

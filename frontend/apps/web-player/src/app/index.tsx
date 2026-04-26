@@ -13,6 +13,7 @@ import { getAccessToken } from "@repo/auth";
 import { DashboardLayout } from "../layout/dashboard";
 
 const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
+const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
 const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
 const LogoutPage = lazy(() => import("../features/auth/pages/LogoutPage"));
@@ -109,6 +110,12 @@ const bookingsRoute = createRoute({
     component: BookingsPage,
 });
 
+const manageBookingRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/bookings/$bookingId",
+    component: ManageBookingPage,
+});
+
 const myGamesRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/my-games",
@@ -122,7 +129,12 @@ const routeTree = rootRoute.addChildren([
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
-    dashboardLayoutRoute.addChildren([dashboardRoute, bookingsRoute, myGamesRoute]),
+    dashboardLayoutRoute.addChildren([
+        dashboardRoute,
+        bookingsRoute,
+        manageBookingRoute,
+        myGamesRoute,
+    ]),
 ]);
 
 const router = createRouter({ routeTree });

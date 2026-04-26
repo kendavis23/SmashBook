@@ -11,19 +11,19 @@ vi.mock("../../hooks", () => ({
         error: null,
         refetch: mockRefetch,
     })),
-    useInvitePlayer: vi.fn(() => ({
-        mutate: vi.fn(),
-        isPending: false,
-        error: null,
-        reset: vi.fn(),
-    })),
-    useRespondInvite: vi.fn(() => ({
-        mutate: vi.fn(),
-        isPending: false,
-        error: null,
-        reset: vi.fn(),
-    })),
 }));
+
+vi.mock("@tanstack/react-query", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@tanstack/react-query")>();
+    return {
+        ...actual,
+        useQueryClient: vi.fn(() => ({ invalidateQueries: vi.fn() })),
+        useMutation: vi.fn(() => ({
+            mutateAsync: vi.fn().mockResolvedValue(undefined),
+            isPending: false,
+        })),
+    };
+});
 
 vi.mock("./BookingsView", () => ({
     default: (props: {

@@ -1,74 +1,87 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import type { JSX } from "react";
-import { useMyBookings, useInvitePlayer, useRespondInvite } from "../../hooks";
-import type { BookingTab, InviteStatus } from "../../types";
+import { useNavigate } from "@tanstack/react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { invitePlayerEndpoint } from "@repo/api-client/modules/share";
+import { respondInviteEndpoint } from "@repo/api-client/modules/player";
+import { useMyBookings } from "../../hooks";
+import type { BookingTab, PlayerBookingItem, InviteStatus } from "../../types";
 import BookingsView from "./BookingsView";
-
-type RespondTarget = {
-    bookingId: string;
-    clubId: string;
-    action: Extract<InviteStatus, "accepted" | "declined">;
-};
 
 export default function BookingsContainer(): JSX.Element {
     const { data, isLoading, error, refetch } = useMyBookings();
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
-    const [inviteBookingId, setInviteBookingId] = useState<string | null>(null);
-    const [inviteClubId, setInviteClubId] = useState<string | null>(null);
-    const [respondTarget, setRespondTarget] = useState<RespondTarget | null>(null);
-
-    const invitePlayer = useInvitePlayer(inviteClubId ?? "", inviteBookingId ?? "");
-    const {
-        mutate: respondInvite,
-        reset: resetRespondInvite,
-        isPending: isRespondInvitePending,
-        error: respondInviteError,
-    } = useRespondInvite(respondTarget?.clubId ?? "", respondTarget?.bookingId ?? "");
 
     const handleRefresh = useCallback(() => void refetch(), [refetch]);
     const handleTabChange = useCallback((tab: BookingTab) => setActiveTab(tab), []);
 
-    const handleOpenInvite = useCallback((bookingId: string, clubId: string) => {
-        setInviteBookingId(bookingId);
-        setInviteClubId(clubId);
-    }, []);
-
-    const handleCloseInvite = useCallback(() => {
-        setInviteBookingId(null);
-        setInviteClubId(null);
-        invitePlayer.reset();
-    }, [invitePlayer]);
-
-    const handleInvite = useCallback(
-        (userId: string) => {
-            invitePlayer.mutate({ user_id: userId }, { onSuccess: () => handleCloseInvite() });
+    const inviteMutation = useMutation({
+        mutationFn: ({
+            bookingId,
+            clubId,
+            userId,
+        }: {
+            bookingId: string;
+            clubId: string;
+            userId: string;
+        }) => invitePlayerEndpoint(bookingId, clubId, { user_id: userId }),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
         },
-        [invitePlayer, handleCloseInvite]
+    });
+
+    const respondMutation = useMutation({
+        mutationFn: ({
+            bookingId,
+            clubId,
+            action,
+        }: {
+            bookingId: string;
+            clubId: string;
+            action: InviteStatus;
+        }) => respondInviteEndpoint(bookingId, clubId, { action }),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
+        },
+    });
+
+    const handleInvitePlayer = useCallback(
+        (item: PlayerBookingItem, userId: string): Promise<void> =>
+            inviteMutation
+                .mutateAsync({ bookingId: item.booking_id, clubId: item.club_id, userId })
+                .then(() => undefined),
+        [inviteMutation]
     );
 
     const handleRespondInvite = useCallback(
         (
-            bookingId: string,
-            clubId: string,
+            item: PlayerBookingItem,
             action: Extract<InviteStatus, "accepted" | "declined">
-        ) => {
-            resetRespondInvite();
-            setRespondTarget({ bookingId, clubId, action });
-        },
-        [resetRespondInvite]
+        ): Promise<void> =>
+            respondMutation
+                .mutateAsync({ bookingId: item.booking_id, clubId: item.club_id, action })
+                .then(() => undefined),
+        [respondMutation]
     );
 
-    useEffect(() => {
-        if (!respondTarget) return;
-
-        respondInvite(
-            { action: respondTarget.action },
-            {
-                onSuccess: () => void refetch(),
-                onSettled: () => setRespondTarget(null),
-            }
-        );
-    }, [refetch, respondInvite, respondTarget]);
+    const handleManageClick = useCallback(
+        (item: PlayerBookingItem): void => {
+            void navigate({
+                to: "/bookings/$bookingId",
+                params: { bookingId: item.booking_id },
+                search: {
+                    clubId: item.club_id,
+                    role: item.role,
+                    inviteStatus: item.invite_status,
+                    paymentStatus: item.payment_status,
+                    amountDue: item.amount_due,
+                },
+            });
+        },
+        [navigate]
+    );
 
     return (
         <BookingsView
@@ -79,17 +92,9 @@ export default function BookingsContainer(): JSX.Element {
             error={error}
             onTabChange={handleTabChange}
             onRefresh={handleRefresh}
-            inviteDialogOpen={inviteBookingId !== null}
-            isInvitePending={invitePlayer.isPending}
-            inviteError={(invitePlayer.error as Error | null)?.message ?? null}
-            isRespondInvitePending={isRespondInvitePending}
-            respondInviteError={(respondInviteError as Error | null)?.message ?? null}
-            onOpenInvite={handleOpenInvite}
-            onCloseInvite={handleCloseInvite}
-            onInvite={handleInvite}
-            onDismissInviteError={() => invitePlayer.reset()}
+            onManageClick={handleManageClick}
+            onInvitePlayer={handleInvitePlayer}
             onRespondInvite={handleRespondInvite}
-            onDismissRespondInviteError={resetRespondInvite}
         />
     );
 }
