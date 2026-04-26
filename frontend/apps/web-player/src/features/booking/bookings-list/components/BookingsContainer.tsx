@@ -16,6 +16,7 @@ export default function BookingsContainer(): JSX.Element {
 
     const handleRefresh = useCallback(() => void refetch(), [refetch]);
     const handleTabChange = useCallback((tab: BookingTab) => setActiveTab(tab), []);
+    const handleCreateClick = useCallback(() => void navigate({ to: "/bookings/new" }), [navigate]);
 
     const inviteMutation = useMutation({
         mutationFn: ({
@@ -92,6 +93,7 @@ export default function BookingsContainer(): JSX.Element {
             error={error}
             onTabChange={handleTabChange}
             onRefresh={handleRefresh}
+            onCreateClick={handleCreateClick}
             onManageClick={handleManageClick}
             onInvitePlayer={handleInvitePlayer}
             onRespondInvite={handleRespondInvite}

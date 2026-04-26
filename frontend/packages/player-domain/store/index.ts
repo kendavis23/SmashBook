@@ -1,3 +1,6 @@
-// Zustand slices for player domain state.
-// Apps never import this store directly — use hooks/index.ts.
-export {};
+import { useAuth } from "@repo/auth";
+
+export function useClubAccess() {
+    const { clubId } = useAuth();
+    return { clubId };
+}

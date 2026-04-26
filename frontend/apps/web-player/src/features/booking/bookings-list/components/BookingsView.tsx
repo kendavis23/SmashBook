@@ -21,6 +21,7 @@ import {
     X,
     Check,
     UserPlus,
+    Plus,
 } from "lucide-react";
 import { Breadcrumb, AlertToast, formatUTCDate, formatUTCTime, formatCurrency } from "@repo/ui";
 import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
@@ -34,6 +35,7 @@ type Props = {
     error: Error | null;
     onTabChange: (tab: BookingTab) => void;
     onRefresh: () => void;
+    onCreateClick: () => void;
     onManageClick: (item: PlayerBookingItem) => void;
     onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onRespondInvite: (
@@ -543,6 +545,7 @@ export default function BookingsView({
     error,
     onTabChange,
     onRefresh,
+    onCreateClick,
     onManageClick,
     onInvitePlayer,
     onRespondInvite,
@@ -586,6 +589,9 @@ export default function BookingsView({
                             aria-label="Refresh bookings"
                         >
                             <RefreshCw size={14} /> Refresh
+                        </button>
+                        <button onClick={onCreateClick} className="btn-cta min-h-10 px-4">
+                            <Plus size={14} /> New Booking
                         </button>
                     </div>
                 </header>

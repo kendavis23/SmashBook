@@ -1,21 +1,20 @@
 import type { UUID } from "../common";
 export type { UUID };
 
-export type SurfaceType = "indoor" | "outdoor" | "crystal" | "artificial_grass";
+export type {
+    SurfaceType,
+    CourtListParams,
+    CourtResponse,
+    TimeSlot,
+    CourtAvailabilityResponse,
+} from "../../share/court/court.types";
+import type { SurfaceType } from "../../share/court/court.types";
 
 export type CalendarReservationType =
     | "training_block"
     | "private_hire"
     | "maintenance"
     | "tournament_hold";
-
-export interface CourtListParams {
-    club_id?: string;
-    surface_type?: SurfaceType;
-    date?: string;
-    time_from?: string;
-    time_to?: string;
-}
 
 export interface CalendarReservationListParams {
     club_id: string;
@@ -40,30 +39,6 @@ export interface CourtUpdate {
     has_lighting?: boolean;
     lighting_surcharge?: number | null;
     is_active?: boolean;
-}
-
-export interface CourtResponse {
-    id: UUID;
-    club_id: UUID;
-    name: string;
-    surface_type: SurfaceType;
-    has_lighting: boolean;
-    lighting_surcharge: number | null;
-    is_active: boolean;
-}
-
-export interface TimeSlot {
-    start_time: string;
-    end_time: string;
-    is_available: boolean;
-    price: number | null;
-    price_label: string | null;
-}
-
-export interface CourtAvailabilityResponse {
-    court_id: UUID;
-    date: string;
-    slots: TimeSlot[];
 }
 
 export interface CalendarReservationCreate {

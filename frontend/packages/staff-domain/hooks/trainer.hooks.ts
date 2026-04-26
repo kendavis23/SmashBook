@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { listTrainersEndpoint } from "@repo/api-client/modules/share";
 import {
-    listTrainersEndpoint,
     getTrainerAvailabilityEndpoint,
     setTrainerAvailabilityEndpoint,
     updateTrainerAvailabilityEndpoint,

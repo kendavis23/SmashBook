@@ -1,10 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { listCourtsEndpoint, getCourtAvailabilityEndpoint } from "@repo/api-client/modules/share";
 import {
-    listCourtsEndpoint,
     createCourtEndpoint,
     updateCourtEndpoint,
-    getCourtAvailabilityEndpoint,
     listCalendarReservationsEndpoint,
     createCalendarReservationEndpoint,
     getCalendarReservationEndpoint,

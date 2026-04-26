@@ -19,19 +19,21 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     getPricingRulesEndpoint: vi.fn(),
     setPricingRulesEndpoint: vi.fn(),
     stripeConnectEndpoint: vi.fn(),
-    // court endpoints
-    listCourtsEndpoint: vi.fn(),
     createCourtEndpoint: vi.fn(),
     updateCourtEndpoint: vi.fn(),
-    getCourtAvailabilityEndpoint: vi.fn(),
     listCalendarReservationsEndpoint: vi.fn(),
     createCalendarReservationEndpoint: vi.fn(),
     getCalendarReservationEndpoint: vi.fn(),
     updateCalendarReservationEndpoint: vi.fn(),
     deleteCalendarReservationEndpoint: vi.fn(),
 }));
+vi.mock("@repo/api-client/modules/share", () => ({
+    listCourtsEndpoint: vi.fn(),
+    getCourtAvailabilityEndpoint: vi.fn(),
+}));
 
 import * as staffApi from "@repo/api-client/modules/staff";
+import * as shareApi from "@repo/api-client/modules/share";
 
 import {
     useListCourts,
@@ -101,12 +103,12 @@ const mockReservation = {
 
 describe("useListCourts", () => {
     it("returns courts for a club with no filters", async () => {
-        vi.mocked(staffApi.listCourtsEndpoint).mockResolvedValue([mockCourt]);
+        vi.mocked(shareApi.listCourtsEndpoint).mockResolvedValue([mockCourt]);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useListCourts(CLUB_ID), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual([mockCourt]);
-        expect(staffApi.listCourtsEndpoint).toHaveBeenCalledWith({
+        expect(shareApi.listCourtsEndpoint).toHaveBeenCalledWith({
             club_id: CLUB_ID,
             surface_type: undefined,
             date: undefined,
@@ -116,7 +118,7 @@ describe("useListCourts", () => {
     });
 
     it("passes filters to the endpoint", async () => {
-        vi.mocked(staffApi.listCourtsEndpoint).mockResolvedValue([mockCourt]);
+        vi.mocked(shareApi.listCourtsEndpoint).mockResolvedValue([mockCourt]);
         const { Wrapper } = makeWrapper();
         const filters: ListCourtsFilters = {
             surfaceType: "indoor",
@@ -126,7 +128,7 @@ describe("useListCourts", () => {
         };
         const { result } = renderHook(() => useListCourts(CLUB_ID, filters), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.listCourtsEndpoint).toHaveBeenCalledWith({
+        expect(shareApi.listCourtsEndpoint).toHaveBeenCalledWith({
             club_id: CLUB_ID,
             surface_type: "indoor",
             date: "2026-04-08",
@@ -138,7 +140,7 @@ describe("useListCourts", () => {
     it("does not fetch when clubId is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useListCourts(""), { wrapper: Wrapper });
-        expect(staffApi.listCourtsEndpoint).not.toHaveBeenCalled();
+        expect(shareApi.listCourtsEndpoint).not.toHaveBeenCalled();
     });
 });
 
@@ -193,20 +195,20 @@ describe("useUpdateCourt", () => {
 describe("useGetCourtAvailability", () => {
     it("fetches availability for a court on a date", async () => {
         const mockAvailability = { court_id: COURT_ID, date: "2026-04-08", slots: [] };
-        vi.mocked(staffApi.getCourtAvailabilityEndpoint).mockResolvedValue(mockAvailability);
+        vi.mocked(shareApi.getCourtAvailabilityEndpoint).mockResolvedValue(mockAvailability);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useGetCourtAvailability(COURT_ID, "2026-04-08"), {
             wrapper: Wrapper,
         });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual(mockAvailability);
-        expect(staffApi.getCourtAvailabilityEndpoint).toHaveBeenCalledWith(COURT_ID, "2026-04-08");
+        expect(shareApi.getCourtAvailabilityEndpoint).toHaveBeenCalledWith(COURT_ID, "2026-04-08");
     });
 
     it("does not fetch when date is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useGetCourtAvailability(COURT_ID, ""), { wrapper: Wrapper });
-        expect(staffApi.getCourtAvailabilityEndpoint).not.toHaveBeenCalled();
+        expect(shareApi.getCourtAvailabilityEndpoint).not.toHaveBeenCalled();
     });
 });
 

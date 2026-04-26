@@ -41,6 +41,7 @@ const defaultProps = {
     error: null,
     onTabChange: vi.fn(),
     onRefresh: vi.fn(),
+    onCreateClick: vi.fn(),
     onManageClick: vi.fn(),
     onInvitePlayer: vi.fn().mockResolvedValue(undefined),
     onRespondInvite: vi.fn().mockResolvedValue(undefined),
@@ -122,6 +123,13 @@ describe("BookingsView — header", () => {
         render(<BookingsView {...defaultProps} onRefresh={onRefresh} />);
         fireEvent.click(screen.getByRole("button", { name: /refresh bookings/i }));
         expect(onRefresh).toHaveBeenCalledOnce();
+    });
+
+    it("renders New Booking button and calls onCreateClick", () => {
+        const onCreateClick = vi.fn();
+        render(<BookingsView {...defaultProps} onCreateClick={onCreateClick} />);
+        fireEvent.click(screen.getByRole("button", { name: /new booking/i }));
+        expect(onCreateClick).toHaveBeenCalledOnce();
     });
 
     it("shows total count badge when bookings exist", () => {

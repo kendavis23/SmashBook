@@ -1,3 +1,5 @@
+export type { SurfaceType, Court, TimeSlot, CourtAvailability } from "./court.model";
+export type { Trainer } from "./trainer.model";
 export type {
     UUID,
     NotificationChannel,

@@ -12,14 +12,17 @@ import {
     useGetTrainerBookings,
 } from "./trainer.hooks";
 
-vi.mock("@repo/api-client/modules/staff", () => ({
+vi.mock("@repo/api-client/modules/share", () => ({
     listTrainersEndpoint: vi.fn(),
+}));
+vi.mock("@repo/api-client/modules/staff", () => ({
     getTrainerAvailabilityEndpoint: vi.fn(),
     setTrainerAvailabilityEndpoint: vi.fn(),
     updateTrainerAvailabilityEndpoint: vi.fn(),
     deleteTrainerAvailabilityEndpoint: vi.fn(),
     getTrainerBookingsEndpoint: vi.fn(),
 }));
+import * as shareApi from "@repo/api-client/modules/share";
 import * as staffApi from "@repo/api-client/modules/staff";
 
 // ---------------------------------------------------------------------------
@@ -83,7 +86,7 @@ describe("useListTrainers", () => {
     beforeEach(() => vi.clearAllMocks());
 
     it("returns trainers for a club", async () => {
-        vi.mocked(staffApi.listTrainersEndpoint).mockResolvedValue([mockTrainer]);
+        vi.mocked(shareApi.listTrainersEndpoint).mockResolvedValue([mockTrainer]);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useListTrainers(CLUB_ID), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -93,7 +96,7 @@ describe("useListTrainers", () => {
     it("does not fetch when clubId is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useListTrainers(""), { wrapper: Wrapper });
-        expect(staffApi.listTrainersEndpoint).not.toHaveBeenCalled();
+        expect(shareApi.listTrainersEndpoint).not.toHaveBeenCalled();
     });
 });
 
