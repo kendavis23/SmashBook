@@ -1,7 +1,14 @@
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
 import { CalendarDays, X, ChevronDown, ChevronRight } from "lucide-react";
-import { AlertToast, NumberInput, SelectInput, StatPill, formatCurrency } from "@repo/ui";
+import {
+    AlertToast,
+    NumberInput,
+    RecurrencePicker,
+    SelectInput,
+    StatPill,
+    formatCurrency,
+} from "@repo/ui";
 import type { BookingType } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -20,6 +27,7 @@ type Props = {
     trainers: { id: string }[];
     form: NewBookingFormState;
     apiError: string;
+    onBehalfOfError: string;
     isPending: boolean;
     selectedPrice: number | string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
@@ -34,6 +42,7 @@ export function NewBookingModalView({
     trainers,
     form,
     apiError,
+    onBehalfOfError,
     isPending,
     selectedPrice,
     onFormChange,
@@ -140,18 +149,27 @@ export function NewBookingModalView({
                             {!form.isOpenGame ? (
                                 <div>
                                     <label htmlFor="bk-on-behalf" className={labelCls}>
-                                        On behalf of (user ID)
+                                        On behalf of (user ID){" "}
+                                        <span className="text-destructive">*</span>
                                     </label>
                                     <input
                                         id="bk-on-behalf"
                                         type="text"
-                                        className={fieldCls}
+                                        className={
+                                            fieldCls +
+                                            (onBehalfOfError ? " !border-destructive" : "")
+                                        }
                                         placeholder="Player user ID"
                                         value={form.onBehalfOf}
                                         onChange={(e) =>
                                             onFormChange({ onBehalfOf: e.target.value })
                                         }
                                     />
+                                    {onBehalfOfError ? (
+                                        <p className="mt-1 text-xs text-destructive">
+                                            {onBehalfOfError}
+                                        </p>
+                                    ) : null}
                                 </div>
                             ) : null}
 
@@ -446,6 +464,50 @@ export function NewBookingModalView({
                             </div>
                         ) : null}
                     </div>
+                    {/* Recurring — non-regular bookings only */}
+                    {form.bookingType !== "regular" ? (
+                        <div className="overflow-hidden rounded-lg border border-border p-4 space-y-3">
+                            <div className="flex items-center gap-3">
+                                <input
+                                    id="bk-modal-recurring"
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-border accent-cta"
+                                    checked={form.isRecurring}
+                                    onChange={(e) =>
+                                        onFormChange({ isRecurring: e.target.checked })
+                                    }
+                                />
+                                <label
+                                    htmlFor="bk-modal-recurring"
+                                    className="text-sm font-medium text-foreground"
+                                >
+                                    Repeat this booking
+                                </label>
+                            </div>
+                            {form.isRecurring ? (
+                                <div className="space-y-3">
+                                    <RecurrencePicker
+                                        value={form.recurrenceRule}
+                                        onChange={(rule) => onFormChange({ recurrenceRule: rule })}
+                                    />
+                                    <label className="flex cursor-pointer items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-border accent-cta"
+                                            checked={form.skipConflicts}
+                                            onChange={(e) =>
+                                                onFormChange({ skipConflicts: e.target.checked })
+                                            }
+                                            aria-label="Skip conflicting slots"
+                                        />
+                                        <span className="text-sm text-foreground">
+                                            Skip conflicting slots
+                                        </span>
+                                    </label>
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
                 </div>
             </div>
 

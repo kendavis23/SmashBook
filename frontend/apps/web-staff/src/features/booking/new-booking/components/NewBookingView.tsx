@@ -54,6 +54,7 @@ type Props = {
     form: NewBookingFormState;
     courtError: string;
     startError: string;
+    onBehalfOfError: string;
     apiError: string;
     isPending: boolean;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
@@ -79,6 +80,7 @@ export default function NewBookingView({
     startError,
     apiError,
     isPending,
+    onBehalfOfError,
     onFormChange,
     onSubmit,
     onCancel,
@@ -241,19 +243,21 @@ export default function NewBookingView({
                     {!form.isOpenGame ? (
                         <div>
                             <label htmlFor="bk-on-behalf" className={labelCls}>
-                                On behalf of (user ID)
-                                <span className="ml-1 font-normal text-muted-foreground">
-                                    - Staff can create a booking on behalf of a player.
-                                </span>
+                                On behalf of (user ID) <span className="text-destructive">*</span>
                             </label>
                             <input
                                 id="bk-on-behalf"
                                 type="text"
-                                className={fieldCls}
+                                className={
+                                    fieldCls + (onBehalfOfError ? " !border-destructive" : "")
+                                }
                                 placeholder="Player user ID"
                                 value={form.onBehalfOf}
                                 onChange={(e) => onFormChange({ onBehalfOf: e.target.value })}
                             />
+                            {onBehalfOfError ? (
+                                <p className="mt-1 text-xs text-destructive">{onBehalfOfError}</p>
+                            ) : null}
                         </div>
                     ) : null}
 
@@ -456,6 +460,7 @@ export default function NewBookingView({
                 trainers={trainers}
                 form={form}
                 apiError={apiError}
+                onBehalfOfError={onBehalfOfError}
                 isPending={isPending}
                 selectedPrice={selectedPrice}
                 onFormChange={onFormChange}

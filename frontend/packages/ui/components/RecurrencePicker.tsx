@@ -254,7 +254,7 @@ function RadioOption({ id, name, checked, onChange, label }: RadioProps): JSX.El
     return (
         <label
             htmlFor={id}
-            className="flex cursor-pointer items-center gap-2 text-sm text-foreground"
+            className="flex cursor-pointer items-center gap-2 text-sm text-foreground whitespace-nowrap"
         >
             <input
                 id={id}

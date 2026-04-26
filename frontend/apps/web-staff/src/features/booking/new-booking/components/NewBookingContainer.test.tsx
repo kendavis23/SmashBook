@@ -180,6 +180,8 @@ describe("NewBookingContainer", () => {
         mockNavigate.mockReset();
         mockMutate.mockReset();
         mockReset.mockReset();
+        mockRecurringMutate.mockReset();
+        mockRecurringReset.mockReset();
     });
 
     it("shows validation errors and does not submit without required fields", async () => {
@@ -321,7 +323,7 @@ describe("NewBookingContainer", () => {
         );
     });
 
-    it("allows missing on behalf of user ID when booking is not an open game", async () => {
+    it("requires on behalf of user ID when booking is not an open game", async () => {
         render(<NewBookingContainer />);
 
         await waitFor(() => {
@@ -340,13 +342,8 @@ describe("NewBookingContainer", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
 
-        expect(mockMutate).toHaveBeenCalledWith(
-            expect.objectContaining({
-                is_open_game: false,
-                on_behalf_of_user_id: null,
-            }),
-            expect.objectContaining({ onSuccess: expect.any(Function) })
-        );
+        expect(screen.getByText("Player user ID is required.")).toBeInTheDocument();
+        expect(mockMutate).not.toHaveBeenCalled();
     });
 
     it("allows missing on behalf of user ID when booking is an open game", async () => {
@@ -407,6 +404,9 @@ describe("NewBookingContainer", () => {
         });
 
         expect(screen.getByLabelText(/on behalf of/i)).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
 
         fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
 
@@ -414,7 +414,7 @@ describe("NewBookingContainer", () => {
             expect.objectContaining({
                 booking_type: "corporate_event",
                 is_open_game: false,
-                on_behalf_of_user_id: null,
+                on_behalf_of_user_id: "player-owner-1",
             }),
             expect.objectContaining({ onSuccess: expect.any(Function) })
         );
@@ -492,6 +492,9 @@ describe("NewBookingContainer — recurring", () => {
         fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
             target: { value: "10:00" },
         });
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
 
         fireEvent.click(screen.getByLabelText("Enable recurring booking"));
         fireEvent.change(screen.getByLabelText("recurrence rule"), {
@@ -541,6 +544,9 @@ describe("NewBookingContainer — recurring", () => {
         });
         fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
             target: { value: "10:00" },
+        });
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
         });
 
         fireEvent.click(screen.getByLabelText("Enable recurring booking"));

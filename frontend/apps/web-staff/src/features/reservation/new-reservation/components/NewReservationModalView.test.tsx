@@ -40,6 +40,20 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
+    RecurrencePicker: ({
+        value,
+        onChange,
+    }: {
+        value?: string;
+        onChange: (rule: string) => void;
+    }) => (
+        <input
+            type="text"
+            aria-label="recurrence rule"
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
     StatPill: ({ label, value }: { label: string; value: string }) => (
         <div>
             <span>{label}</span>
