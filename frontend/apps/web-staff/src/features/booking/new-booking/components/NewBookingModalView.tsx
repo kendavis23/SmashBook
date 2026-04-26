@@ -21,7 +21,7 @@ type Props = {
     form: NewBookingFormState;
     apiError: string;
     isPending: boolean;
-    selectedPrice: number | null;
+    selectedPrice: number | string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
     onSubmit: (e: FormEvent) => void;
     onCancel: () => void;
@@ -44,6 +44,9 @@ export function NewBookingModalView({
 }: Props): JSX.Element {
     const [skillOpen, setSkillOpen] = useState(false);
     const [eventOpen, setEventOpen] = useState(false);
+    const [notesOpen, setNotesOpen] = useState(Boolean(form.notes));
+    const isLessonType =
+        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
 
     const formattedDate = form.bookingDate
         ? new Date(form.bookingDate + "T00:00:00").toLocaleDateString("en-GB", {
@@ -129,239 +132,320 @@ export function NewBookingModalView({
                         </div>
                     </div>
 
+                    {!form.isOpenGame || isLessonType ? (
+                        <div
+                            className={`grid grid-cols-1 gap-4 ${isLessonType ? "sm:grid-cols-2" : ""}`}
+                        >
+                            {/* On behalf of */}
+                            {!form.isOpenGame ? (
+                                <div>
+                                    <label htmlFor="bk-on-behalf" className={labelCls}>
+                                        On behalf of (user ID)
+                                    </label>
+                                    <input
+                                        id="bk-on-behalf"
+                                        type="text"
+                                        className={fieldCls}
+                                        placeholder="Player user ID"
+                                        value={form.onBehalfOf}
+                                        onChange={(e) =>
+                                            onFormChange({ onBehalfOf: e.target.value })
+                                        }
+                                    />
+                                </div>
+                            ) : null}
+
+                            {/* Staff (Trainer) — lesson types only */}
+                            {isLessonType ? (
+                                <div>
+                                    <label htmlFor="bk-staff-id" className={labelCls}>
+                                        Staff (Trainer)
+                                    </label>
+                                    <SelectInput
+                                        value={form.staffProfileId}
+                                        onValueChange={(v) => onFormChange({ staffProfileId: v })}
+                                        options={trainers.map((t) => ({
+                                            value: t.id,
+                                            label: t.id,
+                                        }))}
+                                        placeholder={
+                                            trainers.length === 0
+                                                ? "No trainers available"
+                                                : "Select trainer…"
+                                        }
+                                        disabled={trainers.length === 0}
+                                    />
+                                </div>
+                            ) : null}
+                        </div>
+                    ) : null}
+
+                    {/* Add Players */}
+                    {!form.isOpenGame ? (
+                        <div>
+                            <label className={labelCls}>
+                                Add Players (user IDs)
+                                <span className="ml-1 font-normal text-muted-foreground">
+                                    - Staff can add players.
+                                </span>
+                            </label>
+                            {form.playerUserIds.map((uid, index) => (
+                                <div key={index} className="mb-2 flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        aria-label={`Invited player ${index + 1}`}
+                                        className={fieldCls}
+                                        placeholder="Player user ID"
+                                        value={uid}
+                                        onChange={(e) => {
+                                            const next = [...form.playerUserIds];
+                                            next[index] = e.target.value;
+                                            onFormChange({ playerUserIds: next });
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        aria-label={`Remove invited player ${index + 1}`}
+                                        onClick={() => {
+                                            const next = form.playerUserIds.filter(
+                                                (_, i) => i !== index
+                                            );
+                                            onFormChange({ playerUserIds: next });
+                                        }}
+                                        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    onFormChange({ playerUserIds: [...form.playerUserIds, ""] })
+                                }
+                                className="mt-1 text-sm text-cta hover:underline"
+                            >
+                                + Invite Player
+                            </button>
+                        </div>
+                    ) : null}
+
                     {/* Notes */}
                     <div>
-                        <label className={labelCls}>Notes</label>
-                        <textarea
-                            rows={3}
-                            className={fieldCls}
-                            placeholder="Internal notes visible to staff only…"
-                            value={form.notes}
-                            onChange={(e) => onFormChange({ notes: e.target.value })}
-                        />
-                    </div>
-
-                    {/* On behalf of */}
-                    <div>
-                        <label htmlFor="bk-on-behalf" className={labelCls}>
-                            On behalf of (user ID)
-                        </label>
-                        <input
-                            id="bk-on-behalf"
-                            type="text"
-                            className={fieldCls}
-                            placeholder="Player user ID"
-                            value={form.onBehalfOf}
-                            onChange={(e) => onFormChange({ onBehalfOf: e.target.value })}
-                        />
-                    </div>
-
-                    {/* Staff (Trainer) — lesson types only */}
-                    {form.bookingType === "lesson_individual" ||
-                    form.bookingType === "lesson_group" ? (
-                        <div>
-                            <label htmlFor="bk-staff-id" className={labelCls}>
-                                Staff (Trainer)
-                            </label>
-                            <SelectInput
-                                value={form.staffProfileId}
-                                onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                                options={trainers.map((t) => ({ value: t.id, label: t.id }))}
-                                placeholder={
-                                    trainers.length === 0
-                                        ? "No trainers available"
-                                        : "Select trainer…"
-                                }
-                                disabled={trainers.length === 0}
+                        <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-border accent-cta"
+                                checked={notesOpen}
+                                onChange={(e) => setNotesOpen(e.target.checked)}
                             />
-                        </div>
-                    ) : null}
+                            <span className="text-sm font-medium text-foreground">Notes</span>
+                        </label>
+                        {notesOpen ? (
+                            <div className="mt-2">
+                                <label htmlFor="bk-notes" className="sr-only">
+                                    Booking notes
+                                </label>
+                                <textarea
+                                    id="bk-notes"
+                                    rows={3}
+                                    className={fieldCls}
+                                    placeholder="Internal notes visible to staff only…"
+                                    value={form.notes}
+                                    onChange={(e) => onFormChange({ notes: e.target.value })}
+                                />
+                            </div>
+                        ) : null}
+                    </div>
 
-                    {/* Collapsible: Open Game & Skill Level — regular bookings only */}
+                    {/* Open Game + Collapsible Skill Level — regular bookings only */}
                     {form.bookingType === "regular" ? (
-                        <div className="overflow-hidden rounded-lg border border-border">
-                            <button
-                                type="button"
-                                onClick={() => setSkillOpen((o) => !o)}
-                                className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                                aria-expanded={skillOpen}
-                            >
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Open Game &amp; Skill Level{" "}
-                                    <span className="text-[10px] font-normal normal-case text-muted-foreground">
-                                        (optional)
-                                    </span>
+                        <div className="space-y-3">
+                            <label className="flex cursor-pointer items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    className="h-4 w-4 rounded border-border accent-cta"
+                                    checked={form.isOpenGame}
+                                    onChange={(e) => onFormChange({ isOpenGame: e.target.checked })}
+                                    aria-label="Mark as open game"
+                                />
+                                <span className="text-sm font-medium text-foreground">
+                                    Open game
                                 </span>
-                                {skillOpen ? (
-                                    <ChevronDown size={13} className="text-muted-foreground" />
-                                ) : (
-                                    <ChevronRight size={13} className="text-muted-foreground" />
-                                )}
-                            </button>
-                            {skillOpen ? (
-                                <div className="space-y-3 border-t border-border p-4">
-                                    <p className="text-xs text-muted-foreground">
-                                        Mark as open and set skill range requirements for
-                                        matchmaking.
-                                    </p>
-                                    <label className="flex cursor-pointer items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            className="h-4 w-4 rounded border-border accent-cta"
-                                            checked={form.isOpenGame}
-                                            onChange={(e) =>
-                                                onFormChange({ isOpenGame: e.target.checked })
-                                            }
-                                            aria-label="Mark as open game"
-                                        />
-                                        <span className="text-sm font-medium text-foreground">
-                                            Open game
+                            </label>
+
+                            <div className="overflow-hidden rounded-lg border border-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setSkillOpen((o) => !o)}
+                                    className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
+                                    aria-expanded={skillOpen}
+                                >
+                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Skill Level{" "}
+                                        <span className="text-[10px] font-normal normal-case text-muted-foreground">
+                                            (optional)
                                         </span>
-                                    </label>
-                                    <div className="grid grid-cols-3 gap-4">
-                                        <div>
-                                            <label htmlFor="bk-anchor-skill" className={labelCls}>
-                                                Anchor
-                                            </label>
-                                            <NumberInput
-                                                id="bk-anchor-skill"
-                                                min={0}
-                                                step={0.1}
-                                                className={fieldCls}
-                                                placeholder="3.5"
-                                                value={form.anchorSkill}
-                                                onChange={(e) =>
-                                                    onFormChange({ anchorSkill: e.target.value })
-                                                }
-                                            />
-                                        </div>
-                                        <div>
-                                            <label htmlFor="bk-skill-min" className={labelCls}>
-                                                Min
-                                            </label>
-                                            <NumberInput
-                                                id="bk-skill-min"
-                                                min={0}
-                                                step={0.1}
-                                                className={fieldCls}
-                                                placeholder="2.5"
-                                                value={form.skillMin}
-                                                onChange={(e) =>
-                                                    onFormChange({ skillMin: e.target.value })
-                                                }
-                                            />
-                                        </div>
-                                        <div>
-                                            <label htmlFor="bk-skill-max" className={labelCls}>
-                                                Max
-                                            </label>
-                                            <NumberInput
-                                                id="bk-skill-max"
-                                                min={0}
-                                                step={0.1}
-                                                className={fieldCls}
-                                                placeholder="4.5"
-                                                value={form.skillMax}
-                                                onChange={(e) =>
-                                                    onFormChange({ skillMax: e.target.value })
-                                                }
-                                            />
+                                    </span>
+                                    {skillOpen ? (
+                                        <ChevronDown size={13} className="text-muted-foreground" />
+                                    ) : (
+                                        <ChevronRight size={13} className="text-muted-foreground" />
+                                    )}
+                                </button>
+                                {skillOpen ? (
+                                    <div className="space-y-3 border-t border-border p-4">
+                                        <p className="text-xs text-muted-foreground">
+                                            Set skill range requirements for matchmaking.
+                                        </p>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div>
+                                                <label
+                                                    htmlFor="bk-anchor-skill"
+                                                    className={labelCls}
+                                                >
+                                                    Anchor
+                                                </label>
+                                                <NumberInput
+                                                    id="bk-anchor-skill"
+                                                    min={0}
+                                                    step={0.1}
+                                                    className={fieldCls}
+                                                    placeholder="3.5"
+                                                    value={form.anchorSkill}
+                                                    onChange={(e) =>
+                                                        onFormChange({
+                                                            anchorSkill: e.target.value,
+                                                        })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="bk-skill-min" className={labelCls}>
+                                                    Min
+                                                </label>
+                                                <NumberInput
+                                                    id="bk-skill-min"
+                                                    min={0}
+                                                    step={0.1}
+                                                    className={fieldCls}
+                                                    placeholder="2.5"
+                                                    value={form.skillMin}
+                                                    onChange={(e) =>
+                                                        onFormChange({ skillMin: e.target.value })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label htmlFor="bk-skill-max" className={labelCls}>
+                                                    Max
+                                                </label>
+                                                <NumberInput
+                                                    id="bk-skill-max"
+                                                    min={0}
+                                                    step={0.1}
+                                                    className={fieldCls}
+                                                    placeholder="4.5"
+                                                    value={form.skillMax}
+                                                    onChange={(e) =>
+                                                        onFormChange({ skillMax: e.target.value })
+                                                    }
+                                                />
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ) : null}
+                                ) : null}
+                            </div>
                         </div>
                     ) : null}
 
-                    {/* Collapsible: Event & Contact — corporate or tournament only */}
-                    {form.bookingType === "corporate_event" || form.bookingType === "tournament" ? (
-                        <div className="overflow-hidden rounded-lg border border-border">
-                            <button
-                                type="button"
-                                onClick={() => setEventOpen((o) => !o)}
-                                className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                                aria-expanded={eventOpen}
-                            >
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Event &amp; Contact{" "}
-                                    <span className="text-[10px] font-normal normal-case text-muted-foreground">
-                                        (optional)
-                                    </span>
+                    {/* Collapsible: Event & Contact */}
+                    <div className="overflow-hidden rounded-lg border border-border">
+                        <button
+                            type="button"
+                            onClick={() => setEventOpen((o) => !o)}
+                            className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
+                            aria-expanded={eventOpen}
+                        >
+                            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                Event &amp; Contact{" "}
+                                <span className="text-[10px] font-normal normal-case text-muted-foreground">
+                                    (optional)
                                 </span>
-                                {eventOpen ? (
-                                    <ChevronDown size={13} className="text-muted-foreground" />
-                                ) : (
-                                    <ChevronRight size={13} className="text-muted-foreground" />
-                                )}
-                            </button>
+                            </span>
                             {eventOpen ? (
-                                <div className="space-y-3 border-t border-border p-4">
-                                    <p className="text-xs text-muted-foreground">
-                                        For corporate or tournament bookings.
-                                    </p>
+                                <ChevronDown size={13} className="text-muted-foreground" />
+                            ) : (
+                                <ChevronRight size={13} className="text-muted-foreground" />
+                            )}
+                        </button>
+                        {eventOpen ? (
+                            <div className="space-y-3 border-t border-border p-4">
+                                <p className="text-xs text-muted-foreground">
+                                    For corporate or tournament bookings.
+                                </p>
+                                <div>
+                                    <label htmlFor="bk-event-name" className={labelCls}>
+                                        Event name
+                                    </label>
+                                    <input
+                                        id="bk-event-name"
+                                        type="text"
+                                        className={fieldCls}
+                                        placeholder="e.g. Friday Corporate Cup"
+                                        value={form.eventName}
+                                        onChange={(e) =>
+                                            onFormChange({ eventName: e.target.value })
+                                        }
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
                                     <div>
-                                        <label htmlFor="bk-event-name" className={labelCls}>
-                                            Event name
+                                        <label htmlFor="bk-contact-name" className={labelCls}>
+                                            Contact name
                                         </label>
                                         <input
-                                            id="bk-event-name"
+                                            id="bk-contact-name"
                                             type="text"
                                             className={fieldCls}
-                                            placeholder="e.g. Friday Corporate Cup"
-                                            value={form.eventName}
+                                            value={form.contactName}
                                             onChange={(e) =>
-                                                onFormChange({ eventName: e.target.value })
+                                                onFormChange({ contactName: e.target.value })
                                             }
                                         />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label htmlFor="bk-contact-name" className={labelCls}>
-                                                Contact name
-                                            </label>
-                                            <input
-                                                id="bk-contact-name"
-                                                type="text"
-                                                className={fieldCls}
-                                                value={form.contactName}
-                                                onChange={(e) =>
-                                                    onFormChange({ contactName: e.target.value })
-                                                }
-                                            />
-                                        </div>
-                                        <div>
-                                            <label htmlFor="bk-contact-email" className={labelCls}>
-                                                Contact email
-                                            </label>
-                                            <input
-                                                id="bk-contact-email"
-                                                type="email"
-                                                className={fieldCls}
-                                                value={form.contactEmail}
-                                                onChange={(e) =>
-                                                    onFormChange({ contactEmail: e.target.value })
-                                                }
-                                            />
-                                        </div>
-                                    </div>
                                     <div>
-                                        <label htmlFor="bk-contact-phone" className={labelCls}>
-                                            Contact phone
+                                        <label htmlFor="bk-contact-email" className={labelCls}>
+                                            Contact email
                                         </label>
                                         <input
-                                            id="bk-contact-phone"
-                                            type="tel"
+                                            id="bk-contact-email"
+                                            type="email"
                                             className={fieldCls}
-                                            value={form.contactPhone}
+                                            value={form.contactEmail}
                                             onChange={(e) =>
-                                                onFormChange({ contactPhone: e.target.value })
+                                                onFormChange({ contactEmail: e.target.value })
                                             }
                                         />
                                     </div>
                                 </div>
-                            ) : null}
-                        </div>
-                    ) : null}
+                                <div>
+                                    <label htmlFor="bk-contact-phone" className={labelCls}>
+                                        Contact phone
+                                    </label>
+                                    <input
+                                        id="bk-contact-phone"
+                                        type="tel"
+                                        className={fieldCls}
+                                        value={form.contactPhone}
+                                        onChange={(e) =>
+                                            onFormChange({ contactPhone: e.target.value })
+                                        }
+                                    />
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
                 </div>
             </div>
 

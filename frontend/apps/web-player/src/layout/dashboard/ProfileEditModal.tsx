@@ -166,27 +166,29 @@ export default function ProfileEditModal({
                                         </span>
                                     )}
                                 </div>
-                                <div>
-                                    <label className="cursor-pointer">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            onChange={handleFileChange}
-                                            className="hidden"
-                                        />
-                                        <div
-                                            className="flex items-center gap-1.5 px-3 py-1.5 
-                      bg-primary/10 hover:bg-primary/15 
+                                <div className="flex-1 flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <label className="cursor-pointer">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={handleFileChange}
+                                                className="hidden"
+                                            />
+                                            <div
+                                                className="flex items-center gap-1.5 px-3 py-1.5
+                      bg-primary/10 hover:bg-primary/15
                       border border-primary/10 hover:border-primary/15
                       rounded-lg transition-colors"
-                                        >
-                                            <Upload className="w-3.5 h-3.5 text-muted-foreground" />
-                                            <span className="text-xs font-medium text-muted-foreground">
-                                                Change photo
-                                            </span>
-                                        </div>{" "}
-                                    </label>
-                                    <p className="text-[11px] text-muted-foreground mt-1.5">
+                                            >
+                                                <Upload className="w-3.5 h-3.5 text-muted-foreground" />
+                                                <span className="text-xs font-medium text-muted-foreground">
+                                                    Change photo
+                                                </span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <p className="text-[11px] text-muted-foreground">
                                         Square image, min 400×400px
                                     </p>
                                 </div>
@@ -282,6 +284,23 @@ export default function ProfileEditModal({
                                     <p className="text-sm text-foreground capitalize mt-0.5">
                                         {user.role}
                                     </p>
+                                </div>
+                            </div>
+
+                            {/* Skill Level — read-only, set by staff */}
+                            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2.5">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wide">
+                                            Skill Level
+                                        </p>
+                                        <p className="text-sm font-semibold text-foreground mt-0.5">
+                                            {user.skill_level ?? "—"}
+                                        </p>
+                                    </div>
+                                    <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                        Set by staff
+                                    </span>
                                 </div>
                             </div>
 

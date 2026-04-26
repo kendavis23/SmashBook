@@ -41,17 +41,10 @@ const defaultProps = {
     error: null,
     onTabChange: vi.fn(),
     onRefresh: vi.fn(),
-    inviteDialogOpen: false,
-    isInvitePending: false,
-    inviteError: null,
-    isRespondInvitePending: false,
-    respondInviteError: null,
-    onOpenInvite: vi.fn(),
-    onCloseInvite: vi.fn(),
-    onInvite: vi.fn(),
-    onDismissInviteError: vi.fn(),
-    onRespondInvite: vi.fn(),
-    onDismissRespondInviteError: vi.fn(),
+    onCreateClick: vi.fn(),
+    onManageClick: vi.fn(),
+    onInvitePlayer: vi.fn().mockResolvedValue(undefined),
+    onRespondInvite: vi.fn().mockResolvedValue(undefined),
 };
 
 describe("BookingsView — loading state", () => {
@@ -100,54 +93,27 @@ describe("BookingsView — data state", () => {
         expect(screen.getByText("confirmed")).toBeInTheDocument();
     });
 
-    it("shows accept and decline actions for pending invited player bookings", () => {
-        const onRespondInvite = vi.fn();
-        const upcoming = [
-            makeBooking({
-                role: "player",
-                invite_status: "pending",
-            }),
-        ];
-
+    it("shows View button for upcoming bookings and calls onManageClick", () => {
+        const onManageClick = vi.fn();
+        const upcoming = [makeBooking()];
         render(
-            <BookingsView {...defaultProps} upcoming={upcoming} onRespondInvite={onRespondInvite} />
+            <BookingsView {...defaultProps} upcoming={upcoming} onManageClick={onManageClick} />
         );
-
-        fireEvent.click(screen.getByRole("button", { name: /accept/i }));
-        expect(onRespondInvite).toHaveBeenCalledWith("b1", "c1", "accepted");
-
-        fireEvent.click(screen.getByRole("button", { name: /decline/i }));
-        expect(onRespondInvite).toHaveBeenCalledWith("b1", "c1", "declined");
+        fireEvent.click(screen.getByRole("button", { name: /view booking on court alpha/i }));
+        expect(onManageClick).toHaveBeenCalledWith(expect.objectContaining({ booking_id: "b1" }));
     });
 
-    it("shows accepted invite status as non-clickable text", () => {
-        const upcoming = [
-            makeBooking({
-                role: "player",
-                invite_status: "accepted",
-            }),
-        ];
+    it("does not show View button for past bookings", () => {
+        const past = [makeBooking()];
+        render(<BookingsView {...defaultProps} activeTab="past" past={past} />);
+        expect(screen.queryByRole("button", { name: /view booking/i })).not.toBeInTheDocument();
+    });
 
-        render(<BookingsView {...defaultProps} upcoming={upcoming} />);
-
+    it("shows invite status text instead of Invite button for past bookings", () => {
+        const past = [makeBooking({ role: "organiser", invite_status: "accepted" })];
+        render(<BookingsView {...defaultProps} activeTab="past" past={past} />);
+        expect(screen.queryByRole("button", { name: /invite a player/i })).not.toBeInTheDocument();
         expect(screen.getByText("accepted")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /accept/i })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /decline/i })).not.toBeInTheDocument();
-    });
-
-    it("shows declined invite status as non-clickable text", () => {
-        const upcoming = [
-            makeBooking({
-                role: "player",
-                invite_status: "declined",
-            }),
-        ];
-
-        render(<BookingsView {...defaultProps} upcoming={upcoming} />);
-
-        expect(screen.getByText("declined")).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /accept/i })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /decline/i })).not.toBeInTheDocument();
     });
 });
 
@@ -157,6 +123,13 @@ describe("BookingsView — header", () => {
         render(<BookingsView {...defaultProps} onRefresh={onRefresh} />);
         fireEvent.click(screen.getByRole("button", { name: /refresh bookings/i }));
         expect(onRefresh).toHaveBeenCalledOnce();
+    });
+
+    it("does not render a New Booking button in the bookings header", () => {
+        const onCreateClick = vi.fn();
+        render(<BookingsView {...defaultProps} onCreateClick={onCreateClick} />);
+        expect(screen.queryByRole("button", { name: /new booking/i })).not.toBeInTheDocument();
+        expect(onCreateClick).not.toHaveBeenCalled();
     });
 
     it("shows total count badge when bookings exist", () => {

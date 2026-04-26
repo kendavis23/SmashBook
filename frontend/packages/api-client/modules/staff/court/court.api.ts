@@ -3,26 +3,15 @@ import type {
     CourtCreate,
     CourtUpdate,
     CourtResponse,
-    CourtAvailabilityResponse,
-    CourtListParams,
     CalendarReservationCreate,
     CalendarReservationUpdate,
     CalendarReservationResponse,
     CalendarReservationListParams,
 } from "./court.types";
 
-const JSON_HEADERS = { "Content-Type": "application/json" };
+export { listCourtsEndpoint, getCourtAvailabilityEndpoint } from "../../share/court/court.api";
 
-export function listCourtsEndpoint(params: CourtListParams): Promise<CourtResponse[]> {
-    const query = new URLSearchParams();
-    if (params.club_id) query.set("club_id", params.club_id);
-    if (params.surface_type) query.set("surface_type", params.surface_type);
-    if (params.date) query.set("date", params.date);
-    if (params.time_from) query.set("time_from", params.time_from);
-    if (params.time_to) query.set("time_to", params.time_to);
-    const qs = query.toString();
-    return fetcher<CourtResponse[]>(`/api/v1/courts${qs ? `?${qs}` : ""}`);
-}
+const JSON_HEADERS = { "Content-Type": "application/json" };
 
 export function createCourtEndpoint(data: CourtCreate): Promise<CourtResponse> {
     return fetcher<CourtResponse>("/api/v1/courts", {
@@ -30,15 +19,6 @@ export function createCourtEndpoint(data: CourtCreate): Promise<CourtResponse> {
         headers: JSON_HEADERS,
         body: JSON.stringify(data),
     });
-}
-
-export function getCourtAvailabilityEndpoint(
-    courtId: string,
-    date: string
-): Promise<CourtAvailabilityResponse> {
-    return fetcher<CourtAvailabilityResponse>(
-        `/api/v1/courts/${courtId}/availability?date=${date}`
-    );
 }
 
 export function updateCourtEndpoint(courtId: string, data: CourtUpdate): Promise<CourtResponse> {

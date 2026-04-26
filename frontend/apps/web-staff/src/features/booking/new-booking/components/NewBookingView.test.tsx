@@ -123,6 +123,7 @@ const defaultForm: NewBookingFormState = {
     contactEmail: "",
     contactPhone: "",
     onBehalfOf: "",
+    playerUserIds: [],
     staffProfileId: "",
     isRecurring: false,
     recurrenceRule: "",
@@ -231,6 +232,69 @@ describe("NewBookingView", () => {
         render(<NewBookingView {...defaultProps} isPending={true} />);
 
         expect(screen.getByRole("button", { name: /creating/i })).toBeDisabled();
+    });
+
+    it("renders '+ Invite Player' button", () => {
+        render(<NewBookingView {...defaultProps} />);
+        expect(screen.getByRole("button", { name: "+ Invite Player" })).toBeInTheDocument();
+    });
+
+    it("hides On behalf and Add Players when booking is an open game", () => {
+        render(<NewBookingView {...defaultProps} form={{ ...defaultForm, isOpenGame: true }} />);
+
+        expect(screen.queryByLabelText(/on behalf of/i)).not.toBeInTheDocument();
+        expect(screen.queryByText("Add Players (user IDs)")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "+ Invite Player" })).not.toBeInTheDocument();
+    });
+
+    it("calls onFormChange with a new empty entry when '+ Invite Player' is clicked", () => {
+        const onFormChange = vi.fn();
+        render(<NewBookingView {...defaultProps} onFormChange={onFormChange} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "+ Invite Player" }));
+        expect(onFormChange).toHaveBeenCalledWith({ playerUserIds: [""] });
+    });
+
+    it("renders existing invited player inputs", () => {
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...defaultForm, playerUserIds: ["uid-1", "uid-2"] }}
+            />
+        );
+
+        expect(screen.getByLabelText("Invited player 1")).toHaveValue("uid-1");
+        expect(screen.getByLabelText("Invited player 2")).toHaveValue("uid-2");
+    });
+
+    it("calls onFormChange with updated list when an invited player input changes", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...defaultForm, playerUserIds: ["uid-1"] }}
+                onFormChange={onFormChange}
+            />
+        );
+
+        fireEvent.change(screen.getByLabelText("Invited player 1"), {
+            target: { value: "uid-new" },
+        });
+        expect(onFormChange).toHaveBeenCalledWith({ playerUserIds: ["uid-new"] });
+    });
+
+    it("calls onFormChange with entry removed when remove button is clicked", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...defaultForm, playerUserIds: ["uid-1", "uid-2"] }}
+                onFormChange={onFormChange}
+            />
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Remove invited player 1" }));
+        expect(onFormChange).toHaveBeenCalledWith({ playerUserIds: ["uid-2"] });
     });
 
     it("shows price field with amount when start time is selected", () => {
@@ -400,15 +464,17 @@ describe("NewBookingView — modal mode", () => {
     it("renders collapsible Open Game & Skill Level section collapsed by default", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
 
-        expect(screen.getByRole("button", { name: /Open Game.*Skill Level/i })).toBeInTheDocument();
+        expect(screen.getByLabelText("Mark as open game")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Skill Level/i })).toBeInTheDocument();
         // Anchor input not visible until expanded
         expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
     });
 
-    it("does not show Event & Contact section for regular booking type in modal mode", () => {
+    it("shows Event & Contact section collapsed for regular booking type in modal mode", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
 
-        expect(screen.queryByRole("button", { name: /Event.*Contact/i })).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
+        expect(screen.queryByLabelText("Event name")).not.toBeInTheDocument();
     });
 
     it("shows Event & Contact section for corporate_event in modal mode", () => {
@@ -427,7 +493,7 @@ describe("NewBookingView — modal mode", () => {
     it("expands Open Game & Skill Level section when toggled", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
 
-        fireEvent.click(screen.getByRole("button", { name: /Open Game.*Skill Level/i }));
+        fireEvent.click(screen.getByRole("button", { name: /Skill Level/i }));
         expect(screen.getByLabelText("Anchor")).toBeInTheDocument();
     });
 

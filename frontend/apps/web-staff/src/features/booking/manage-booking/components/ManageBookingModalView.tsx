@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
-import { RefreshCw, X, ChevronDown, ChevronUp, CalendarCheck } from "lucide-react";
+import { RefreshCw, RotateCcw, X, ChevronDown, ChevronUp, CalendarCheck } from "lucide-react";
 import {
     AlertToast,
     ConfirmDeleteModal,
@@ -43,9 +43,10 @@ type Props = {
     onDismissSuccess: () => void;
     onBack: () => void;
     onClose: () => void;
+    onRefresh: () => void;
     onInvitePlayer: (playerId: string) => void;
     onRefreshSlots: () => void;
-    selectedPrice: number | null;
+    selectedPrice: number | string | null;
 };
 
 export function ManageBookingModalView({
@@ -70,12 +71,14 @@ export function ManageBookingModalView({
     onDismissSuccess,
     onBack,
     onClose,
+    onRefresh,
     onInvitePlayer,
     onRefreshSlots,
     selectedPrice,
 }: Props): JSX.Element {
     const [playersExpanded, setPlayersExpanded] = useState(false);
     const [eventExpanded, setEventExpanded] = useState(false);
+    const [notesOpen, setNotesOpen] = useState(Boolean(form.notes));
     const [playerId, setPlayerId] = useState("");
 
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
@@ -118,14 +121,24 @@ export function ManageBookingModalView({
                             </p>
                         </div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Close modal"
-                        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    >
-                        <X size={16} />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={onRefresh}
+                            aria-label="Refresh booking"
+                            className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        >
+                            <RotateCcw size={15} />
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            aria-label="Close modal"
+                            className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -179,46 +192,39 @@ export function ManageBookingModalView({
                         ) : null}
                     </div>
 
-                    {booking.is_open_game ? (
-                        <div>
-                            <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Invite Player
-                            </p>
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                                <div className="min-w-0 sm:w-[70%]">
-                                    <label className={labelCls} htmlFor="booking-modal-player-id">
-                                        Player ID
-                                    </label>
-                                    <input
-                                        id="booking-modal-player-id"
-                                        type="text"
-                                        value={playerId}
-                                        onChange={(event) => setPlayerId(event.target.value)}
-                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                                        className="input-base"
-                                        disabled={isInviting}
-                                    />
-                                </div>
-                                <button
-                                    type="button"
-                                    disabled={isInviting || !playerId.trim()}
-                                    className="btn-cta sm:w-auto"
-                                    onClick={() => onInvitePlayer(playerId)}
-                                >
-                                    {isInviting ? "Inviting…" : "Invite"}
-                                </button>
+                    {/* Invite Player */}
+                    <div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="min-w-0 sm:w-[70%]">
+                                <label className={labelCls} htmlFor="booking-modal-player-id">
+                                    Player ID
+                                </label>
+                                <input
+                                    id="booking-modal-player-id"
+                                    type="text"
+                                    value={playerId}
+                                    onChange={(event) => setPlayerId(event.target.value)}
+                                    placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                                    className="input-base"
+                                    disabled={isInviting}
+                                />
                             </div>
+                            <button
+                                type="button"
+                                disabled={isInviting || !playerId.trim()}
+                                className="btn-cta sm:w-auto"
+                                onClick={() => onInvitePlayer(playerId)}
+                            >
+                                {isInviting ? "Inviting…" : "Invite"}
+                            </button>
                         </div>
-                    ) : null}
+                    </div>
 
                     {/* Edit form — only when editable */}
                     {isEditable ? (
                         <>
                             {/* Core Details */}
                             <div>
-                                <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Core Details
-                                </p>
                                 <div className="space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <div>
@@ -319,16 +325,34 @@ export function ManageBookingModalView({
 
                             {/* Notes */}
                             <div>
-                                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Notes
-                                </p>
-                                <textarea
-                                    rows={3}
-                                    className={fieldCls}
-                                    placeholder="Internal notes visible to staff only…"
-                                    value={form.notes}
-                                    onChange={(e) => onFormChange({ notes: e.target.value })}
-                                />
+                                <label className="flex cursor-pointer items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-border accent-cta"
+                                        checked={notesOpen}
+                                        onChange={(e) => setNotesOpen(e.target.checked)}
+                                    />
+                                    <span className="text-sm font-medium text-foreground">
+                                        Notes
+                                    </span>
+                                </label>
+                                {notesOpen ? (
+                                    <div className="mt-2">
+                                        <label htmlFor="mb-notes" className="sr-only">
+                                            Booking notes
+                                        </label>
+                                        <textarea
+                                            id="mb-notes"
+                                            rows={3}
+                                            className={fieldCls}
+                                            placeholder="Internal notes visible to staff only…"
+                                            value={form.notes}
+                                            onChange={(e) =>
+                                                onFormChange({ notes: e.target.value })
+                                            }
+                                        />
+                                    </div>
+                                ) : null}
                             </div>
 
                             {/* Players — collapsible */}
@@ -367,6 +391,9 @@ export function ManageBookingModalView({
                                                             Role
                                                         </th>
                                                         <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                            Invite
+                                                        </th>
+                                                        <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                                             Payment
                                                         </th>
                                                         <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -385,6 +412,9 @@ export function ManageBookingModalView({
                                                             </td>
                                                             <td className="px-3 py-2 capitalize text-muted-foreground">
                                                                 {p.role}
+                                                            </td>
+                                                            <td className="px-3 py-2 capitalize text-muted-foreground">
+                                                                {p.invite_status}
                                                             </td>
                                                             <td className="px-3 py-2 capitalize text-muted-foreground">
                                                                 {p.payment_status}

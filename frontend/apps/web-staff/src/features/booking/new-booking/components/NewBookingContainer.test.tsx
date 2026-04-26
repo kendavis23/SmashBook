@@ -217,6 +217,9 @@ describe("NewBookingContainer", () => {
         fireEvent.change(screen.getByRole("combobox", { name: "select" }), {
             target: { value: "corporate_event" },
         });
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
         fireEvent.change(screen.getByLabelText(/event name/i), {
             target: { value: " Spring Cup " },
         });
@@ -230,6 +233,7 @@ describe("NewBookingContainer", () => {
                 start_datetime: "2026-04-20T10:00",
                 max_players: 6,
                 event_name: "Spring Cup",
+                on_behalf_of_user_id: "player-owner-1",
             }),
             expect.objectContaining({ onSuccess: expect.any(Function) })
         );
@@ -238,6 +242,181 @@ describe("NewBookingContainer", () => {
                 to: "/bookings",
                 search: expect.objectContaining({ created: true }),
             })
+        );
+    });
+
+    it("includes player_user_ids in payload when invite player inputs are filled", async () => {
+        mockMutate.mockImplementation((_payload: unknown, options: { onSuccess: () => void }) => {
+            options.onSuccess();
+        });
+
+        render(<NewBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: /select court/i })).toHaveValue("court-1");
+        });
+
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: "Select time" })).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
+            target: { value: "10:00" },
+        });
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
+
+        // Add two invited players
+        fireEvent.click(screen.getByRole("button", { name: "+ Invite Player" }));
+        fireEvent.change(screen.getByLabelText("Invited player 1"), {
+            target: { value: "player-uid-1" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "+ Invite Player" }));
+        fireEvent.change(screen.getByLabelText("Invited player 2"), {
+            target: { value: "player-uid-2" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                player_user_ids: ["player-uid-1", "player-uid-2"],
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
+    });
+
+    it("omits player_user_ids from payload when no players are invited", async () => {
+        mockMutate.mockImplementation((_payload: unknown, options: { onSuccess: () => void }) => {
+            options.onSuccess();
+        });
+
+        render(<NewBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: /select court/i })).toHaveValue("court-1");
+        });
+
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: "Select time" })).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
+            target: { value: "10:00" },
+        });
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({ player_user_ids: undefined }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
+    });
+
+    it("allows missing on behalf of user ID when booking is not an open game", async () => {
+        render(<NewBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: /select court/i })).toHaveValue("court-1");
+        });
+
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: "Select time" })).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
+            target: { value: "10:00" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                is_open_game: false,
+                on_behalf_of_user_id: null,
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
+    });
+
+    it("allows missing on behalf of user ID when booking is an open game", async () => {
+        mockMutate.mockImplementation((_payload: unknown, options: { onSuccess: () => void }) => {
+            options.onSuccess();
+        });
+
+        render(<NewBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: /select court/i })).toHaveValue("court-1");
+        });
+
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: "Select time" })).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
+            target: { value: "10:00" },
+        });
+        fireEvent.click(screen.getByLabelText("Mark as open game"));
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                is_open_game: true,
+                on_behalf_of_user_id: null,
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
+    });
+
+    it("unchecks open game when booking type changes", async () => {
+        render(<NewBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: /select court/i })).toHaveValue("court-1");
+        });
+
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: "Select time" })).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
+            target: { value: "10:00" },
+        });
+
+        fireEvent.click(screen.getByLabelText("Mark as open game"));
+        expect(screen.queryByLabelText(/on behalf of/i)).not.toBeInTheDocument();
+
+        fireEvent.change(getBookingTypeSelect(), {
+            target: { value: "corporate_event" },
+        });
+
+        expect(screen.getByLabelText(/on behalf of/i)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                booking_type: "corporate_event",
+                is_open_game: false,
+                on_behalf_of_user_id: null,
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
         );
     });
 

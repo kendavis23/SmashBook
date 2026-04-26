@@ -13,6 +13,9 @@ import { getAccessToken } from "@repo/auth";
 import { DashboardLayout } from "../layout/dashboard";
 
 const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
+const DashboardPage = lazy(() => import("../features/dashboard/pages/DashboardPage"));
+const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
+const NewBookingPage = lazy(() => import("../features/booking/new-booking/pages/NewBookingPage"));
 const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
 const LogoutPage = lazy(() => import("../features/auth/pages/LogoutPage"));
@@ -26,11 +29,6 @@ function PageLoader() {
             <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
     );
-}
-
-// Placeholder until dashboard feature is built
-function DashboardPage() {
-    return <div className="p-8 text-gray-700">Dashboard — coming soon</div>;
 }
 
 const rootRoute = createRootRoute({
@@ -109,6 +107,18 @@ const bookingsRoute = createRoute({
     component: BookingsPage,
 });
 
+const manageBookingRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/bookings/$bookingId",
+    component: ManageBookingPage,
+});
+
+const newBookingRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/bookings/new",
+    component: NewBookingPage,
+});
+
 const myGamesRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/my-games",
@@ -122,7 +132,13 @@ const routeTree = rootRoute.addChildren([
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
-    dashboardLayoutRoute.addChildren([dashboardRoute, bookingsRoute, myGamesRoute]),
+    dashboardLayoutRoute.addChildren([
+        dashboardRoute,
+        bookingsRoute,
+        newBookingRoute,
+        manageBookingRoute,
+        myGamesRoute,
+    ]),
 ]);
 
 const router = createRouter({ routeTree });

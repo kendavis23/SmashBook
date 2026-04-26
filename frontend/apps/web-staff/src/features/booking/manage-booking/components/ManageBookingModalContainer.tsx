@@ -40,7 +40,12 @@ export default function ManageBookingModalContainer({
 }: Props): JSX.Element {
     const { clubId } = useClubAccess();
 
-    const { data: booking, isLoading, error } = useGetBooking(bookingId, clubId ?? "");
+    const {
+        data: booking,
+        isLoading,
+        error,
+        refetch: refetchBooking,
+    } = useGetBooking(bookingId, clubId ?? "");
     const { data: courts = [] } = useListCourts(clubId ?? "");
 
     const updateMutation = useUpdateBooking(clubId ?? "", bookingId);
@@ -222,6 +227,7 @@ export default function ManageBookingModalContainer({
             }}
             onDismissSuccess={() => setUpdateSuccess(false)}
             onBack={onClose}
+            onRefresh={() => void refetchBooking()}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
             mode="modal"
