@@ -21,7 +21,6 @@ import {
     X,
     Check,
     UserPlus,
-    Plus,
 } from "lucide-react";
 import { Breadcrumb, AlertToast, formatUTCDate, formatUTCTime, formatCurrency } from "@repo/ui";
 import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
@@ -49,12 +48,6 @@ const STATUS_CLASSES: Record<string, string> = {
     pending: "bg-warning/15 text-warning",
     cancelled: "bg-destructive/15 text-destructive",
     completed: "bg-secondary text-secondary-foreground",
-};
-
-const PAYMENT_CLASSES: Record<string, string> = {
-    paid: "bg-success/15 text-success",
-    pending: "bg-warning/15 text-warning",
-    refunded: "bg-info/15 text-info",
 };
 
 const thCls =
@@ -90,7 +83,22 @@ function FixedDialog({
     useEffect(() => {
         if (!anchorRef.current) return;
         const rect = anchorRef.current.getBoundingClientRect();
-        setPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX });
+        const DIALOG_WIDTH = 256; // w-64
+        const DIALOG_HEIGHT = 140; // approximate
+
+        const spaceRight = window.innerWidth - rect.left;
+        const left =
+            spaceRight < DIALOG_WIDTH
+                ? Math.max(0, rect.right + window.scrollX - DIALOG_WIDTH)
+                : rect.left + window.scrollX;
+
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const top =
+            spaceBelow < DIALOG_HEIGHT
+                ? rect.top + window.scrollY - DIALOG_HEIGHT - 4
+                : rect.bottom + window.scrollY + 4;
+
+        setPos({ top, left });
     }, [anchorRef]);
 
     return createPortal(
@@ -288,7 +296,7 @@ function InviteCell({
     const isOrganiser = booking.role === "organiser";
     const isPending = booking.invite_status === "pending";
 
-    if (allowActions && isOrganiser) {
+    if (allowActions && isOrganiser && booking.status === "pending") {
         return (
             <div className="relative">
                 <button
@@ -398,7 +406,6 @@ function BookingTable({
                             <th className={`${thCls} text-center`}>Role</th>
                             <th className={thCls}>Invite</th>
                             <th className={thCls}>Status</th>
-                            <th className={thCls}>Payment</th>
                             <th className={`${thCls} text-right`}>Amount</th>
                             {showActions ? <th className={`${thCls} text-right`}>Action</th> : null}
                         </tr>
@@ -449,13 +456,6 @@ function BookingTable({
                                             {booking.status}
                                         </span>
                                     </td>
-                                    <td className={tdCls}>
-                                        <span
-                                            className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${PAYMENT_CLASSES[booking.payment_status] ?? "bg-secondary text-secondary-foreground"}`}
-                                        >
-                                            {booking.payment_status}
-                                        </span>
-                                    </td>
                                     <td className={`${tdCls} text-right`}>
                                         <div className="inline-flex items-center justify-end gap-2">
                                             <span className="font-medium text-muted-foreground">
@@ -465,7 +465,7 @@ function BookingTable({
                                                 <button
                                                     type="button"
                                                     title="Pay now"
-                                                    className="inline-flex items-center gap-1 rounded-lg bg-cta px-2.5 py-1 text-[11px] font-semibold text-cta-foreground transition hover:opacity-90"
+                                                    className="inline-flex items-center gap-1 rounded-lg border border-cta/40 bg-cta/10 px-2 py-1 text-[11px] font-medium text-cta transition hover:bg-cta/20"
                                                 >
                                                     <CreditCard size={11} /> Pay
                                                 </button>
@@ -545,7 +545,7 @@ export default function BookingsView({
     error,
     onTabChange,
     onRefresh,
-    onCreateClick,
+    onCreateClick: _onCreateClick,
     onManageClick,
     onInvitePlayer,
     onRespondInvite,
@@ -589,9 +589,6 @@ export default function BookingsView({
                             aria-label="Refresh bookings"
                         >
                             <RefreshCw size={14} /> Refresh
-                        </button>
-                        <button onClick={onCreateClick} className="btn-cta min-h-10 px-4">
-                            <Plus size={14} /> New Booking
                         </button>
                     </div>
                 </header>

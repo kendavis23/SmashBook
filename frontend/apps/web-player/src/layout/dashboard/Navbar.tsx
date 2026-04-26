@@ -1,13 +1,12 @@
 import { useAuth, useAuthStore } from "@repo/auth";
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, LogOut, Menu, Search, Settings } from "lucide-react";
+import { LogOut, Menu, Search, Settings } from "lucide-react";
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
 import { getSearchableRoutes } from "../../config/routeConfig";
 
 import ProfileEditModal from "./ProfileEditModal";
-import SwitchClubModal, { type ClubOption } from "./SwitchClubModal";
 
 const AVATAR_COLORS = [
     "bg-blue-600",
@@ -36,19 +35,14 @@ export function avatarBgColor(name: string): string {
 interface NavbarProps {
     mobileOpen?: boolean;
     onOpenMobile?: () => void;
-    clubs?: ClubOption[];
-    isClubsLoading?: boolean;
 }
 
 export default function Navbar({
     mobileOpen = false,
     onOpenMobile = () => {},
-    clubs = [],
-    isClubsLoading = false,
 }: NavbarProps): JSX.Element | null {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-    const [isSwitchClubOpen, setIsSwitchClubOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [activeSearchIndex, setActiveSearchIndex] = useState(0);
@@ -57,7 +51,7 @@ export default function Navbar({
     const searchInputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
-    const { role, activeClubName } = useAuth();
+    const { role } = useAuth();
     const user = useAuthStore((state) => state.user);
     const clearAuth = useAuthStore((state) => state.clearAuth);
     const searchResults = getSearchableRoutes(role ?? undefined).filter((route) =>
@@ -254,29 +248,8 @@ export default function Navbar({
                 </div>
                 {/* end left group */}
 
-                {/* ── Right: active club pill + profile menu ── */}
+                {/* ── Right: profile menu ── */}
                 <div className="flex flex-shrink-0 items-center gap-4">
-                    {/* Active club pill — shown to all roles when a club is active */}
-                    {activeClubName && (
-                        <>
-                            <div className="hidden items-center gap-2.5 sm:flex">
-                                <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cta/10">
-                                    <Building2 size={13} className="text-cta" />
-                                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-emerald-500 ring-1 ring-background" />
-                                </div>
-                                <div className="flex flex-col gap-px leading-none">
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">
-                                        Active Club
-                                    </span>
-                                    <span className="max-w-[140px] truncate text-[13px] font-semibold text-foreground">
-                                        {activeClubName}
-                                    </span>
-                                </div>
-                            </div>
-                            <div className="hidden h-5 w-px bg-border/60 sm:block" />
-                        </>
-                    )}
-
                     <div className="relative" ref={dropdownRef}>
                         <button
                             type="button"
@@ -358,27 +331,6 @@ export default function Navbar({
                                         </div>
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setIsSwitchClubOpen(true);
-                                            setIsDropdownOpen(false);
-                                        }}
-                                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-all duration-150 hover:bg-accent/70"
-                                    >
-                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground/70 transition-colors group-hover:bg-background group-hover:text-foreground">
-                                            <Building2 size={15} />
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-medium text-foreground">
-                                                Switch Club
-                                            </p>
-                                            <p className="truncate text-xs text-muted-foreground/70">
-                                                {activeClubName ?? "Select a club"}
-                                            </p>
-                                        </div>
-                                    </button>
-
                                     <div className="mx-1 border-t border-border/70" />
 
                                     <button
@@ -409,12 +361,6 @@ export default function Navbar({
                 isOpen={isProfileModalOpen}
                 onClose={() => setIsProfileModalOpen(false)}
                 user={user}
-            />
-            <SwitchClubModal
-                isOpen={isSwitchClubOpen}
-                onClose={() => setIsSwitchClubOpen(false)}
-                clubs={clubs}
-                isLoading={isClubsLoading}
             />
         </>
     );

@@ -13,6 +13,7 @@ import { getAccessToken } from "@repo/auth";
 import { DashboardLayout } from "../layout/dashboard";
 
 const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
+const DashboardPage = lazy(() => import("../features/dashboard/pages/DashboardPage"));
 const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
 const NewBookingPage = lazy(() => import("../features/booking/new-booking/pages/NewBookingPage"));
 const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
@@ -28,11 +29,6 @@ function PageLoader() {
             <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
         </div>
     );
-}
-
-// Placeholder until dashboard feature is built
-function DashboardPage() {
-    return <div className="p-8 text-gray-700">Dashboard — coming soon</div>;
 }
 
 const rootRoute = createRootRoute({

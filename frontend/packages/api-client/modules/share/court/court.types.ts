@@ -24,7 +24,7 @@ export interface TimeSlot {
     start_time: string;
     end_time: string;
     is_available: boolean;
-    price: number | null;
+    price: number | string | null;
     price_label: string | null;
 }
 

@@ -125,11 +125,11 @@ describe("BookingsView — header", () => {
         expect(onRefresh).toHaveBeenCalledOnce();
     });
 
-    it("renders New Booking button and calls onCreateClick", () => {
+    it("does not render a New Booking button in the bookings header", () => {
         const onCreateClick = vi.fn();
         render(<BookingsView {...defaultProps} onCreateClick={onCreateClick} />);
-        fireEvent.click(screen.getByRole("button", { name: /new booking/i }));
-        expect(onCreateClick).toHaveBeenCalledOnce();
+        expect(screen.queryByRole("button", { name: /new booking/i })).not.toBeInTheDocument();
+        expect(onCreateClick).not.toHaveBeenCalled();
     });
 
     it("shows total count badge when bookings exist", () => {

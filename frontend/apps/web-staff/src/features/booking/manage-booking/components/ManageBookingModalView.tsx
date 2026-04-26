@@ -46,7 +46,7 @@ type Props = {
     onRefresh: () => void;
     onInvitePlayer: (playerId: string) => void;
     onRefreshSlots: () => void;
-    selectedPrice: number | null;
+    selectedPrice: number | string | null;
 };
 
 export function ManageBookingModalView({

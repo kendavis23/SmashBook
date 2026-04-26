@@ -56,7 +56,7 @@ type Props = {
     onBack: () => void;
     onRefresh: () => void;
     onRefreshSlots: () => void;
-    selectedPrice: number | null;
+    selectedPrice: number | string | null;
     mode?: "page" | "modal";
     onClose?: () => void;
 };

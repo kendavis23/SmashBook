@@ -15,6 +15,7 @@ import type {
     TrainerAvailabilityUpdateInput,
     TrainerBookingItem,
 } from "../models";
+import type { TrainerRead } from "@repo/api-client/modules/share";
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -34,7 +35,10 @@ const trainerKeys = {
 export function useListTrainers(clubId: string, includeInactive?: boolean) {
     return useQuery({
         queryKey: trainerKeys.all(clubId),
-        queryFn: (): Promise<Trainer[]> => listTrainersEndpoint(clubId, includeInactive),
+        queryFn: async (): Promise<Trainer[]> => {
+            const trainers: TrainerRead[] = await listTrainersEndpoint(clubId, includeInactive);
+            return trainers.map((trainer) => ({ ...trainer, availability: [] }));
+        },
         enabled: Boolean(clubId),
     });
 }

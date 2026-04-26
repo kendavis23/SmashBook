@@ -16,18 +16,15 @@ export default function DashboardLayout(): JSX.Element {
 
     const { clubs: jwtClubs } = useAuth();
 
-    // All roles use the clubs array from the login response (JWT clubs).
-    const clubs = jwtClubs.map((c) => ({ id: c.club_id, name: c.club_name, role: c.role }));
-
     // Auto-select the first club for all roles when none is set yet.
     useEffect(() => {
-        if (!activeClubId && clubs.length > 0) {
-            const first = clubs[0];
+        if (!activeClubId && jwtClubs.length > 0) {
+            const first = jwtClubs[0];
             if (first) {
-                setActiveClubId(first.id, first.name, first.role);
+                setActiveClubId(first.club_id, first.club_name, first.role);
             }
         }
-    }, [activeClubId, clubs, setActiveClubId]);
+    }, [activeClubId, jwtClubs, setActiveClubId]);
 
     useEffect(() => {
         if (!isLoading && (!accessToken || isError)) {
@@ -58,12 +55,7 @@ export default function DashboardLayout(): JSX.Element {
                     className="sticky top-0 z-30 flex h-[var(--nav-height)] flex-shrink-0
                         items-center border-b border-border bg-background px-5"
                 >
-                    <Navbar
-                        mobileOpen={mobileOpen}
-                        onOpenMobile={() => setMobileOpen(true)}
-                        clubs={clubs}
-                        isClubsLoading={false}
-                    />
+                    <Navbar mobileOpen={mobileOpen} onOpenMobile={() => setMobileOpen(true)} />
                 </header>
 
                 <main className="flex-1 overflow-y-auto bg-muted/30">

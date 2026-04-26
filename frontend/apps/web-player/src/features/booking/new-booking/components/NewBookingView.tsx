@@ -55,7 +55,7 @@ type Props = {
     onCancel: () => void;
     onDismissError: () => void;
     onRefreshSlots: () => void;
-    selectedPrice: number | null;
+    selectedPrice: number | string | null;
     mode?: NewBookingMode;
     courtName?: string;
     onClose?: () => void;

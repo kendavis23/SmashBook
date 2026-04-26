@@ -21,7 +21,7 @@ type Props = {
     form: NewBookingFormState;
     apiError: string;
     isPending: boolean;
-    selectedPrice: number | null;
+    selectedPrice: number | string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
     onSubmit: (e: FormEvent) => void;
     onCancel: () => void;

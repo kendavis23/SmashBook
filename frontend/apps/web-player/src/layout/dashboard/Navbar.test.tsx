@@ -323,10 +323,9 @@ describe("Navbar — active club pill", () => {
         currentActiveClubName = "Alpha Club";
     });
 
-    it("shows active club name when activeClubName is set", () => {
-        // activeClubName comes from useAuth() mock (currentActiveClubName = "Alpha Club")
+    it("does not render active club name in the compact navbar", () => {
         render(<Navbar />);
-        expect(screen.getByText("Alpha Club")).toBeInTheDocument();
+        expect(screen.queryByText("Alpha Club")).not.toBeInTheDocument();
     });
 
     it("does not render the club pill when activeClubName is null", () => {
@@ -343,18 +342,16 @@ describe("Navbar — Switch Club", () => {
         currentActiveClubName = "Alpha Club";
     });
 
-    it("opens SwitchClubModal when Switch Club is clicked in dropdown", () => {
-        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club", role: "admin" }]} />);
+    it("does not show Switch Club in the profile dropdown", () => {
+        render(<Navbar />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
-        fireEvent.click(screen.getByText("Switch Club"));
-        expect(screen.getByTestId("switch-club-modal")).toBeInTheDocument();
+        expect(screen.queryByText("Switch Club")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("switch-club-modal")).not.toBeInTheDocument();
     });
 
-    it("closes SwitchClubModal when modal calls onClose", () => {
-        render(<Navbar clubs={[{ id: "c1", name: "Alpha Club", role: "admin" }]} />);
+    it("keeps SwitchClubModal closed from the profile dropdown", () => {
+        render(<Navbar />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
-        fireEvent.click(screen.getByText("Switch Club"));
-        fireEvent.click(screen.getByText("close-modal"));
         expect(screen.queryByTestId("switch-club-modal")).not.toBeInTheDocument();
     });
 });
