@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -19,6 +19,7 @@ from app.schemas.trainer import (
     TrainerAvailabilityCreate,
     TrainerAvailabilityRead,
     TrainerAvailabilityUpdate,
+    TrainerAvailableSummary,
     TrainerBookingItem,
     TrainerOpenSlot,
     TrainerRead,
@@ -91,6 +92,90 @@ async def list_trainers(
 
     result = await db.execute(stmt)
     return result.scalars().all()
+
+
+@router.get("/available", response_model=list[TrainerAvailableSummary])
+async def list_available_trainers(
+    club_id: uuid.UUID = Query(...),
+    slot_date: date = Query(..., alias="date"),
+    start_time: time = Query(...),
+    end_time: time = Query(...),
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """Return trainers available for a lesson during the given date and time slot, sorted by full name."""
+    if end_time <= start_time:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="end_time must be after start_time",
+        )
+
+    club_result = await db.execute(
+        select(Club).where(Club.id == club_id, Club.tenant_id == tenant.id)
+    )
+    if not club_result.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+    profiles_result = await db.execute(
+        select(StaffProfile)
+        .where(
+            StaffProfile.club_id == club_id,
+            StaffProfile.role == StaffRole.trainer,
+            StaffProfile.is_active.is_(True),
+        )
+        .options(selectinload(StaffProfile.availability))
+    )
+    profiles = profiles_result.scalars().all()
+    if not profiles:
+        return []
+
+    user_ids = [p.user_id for p in profiles]
+    users_result = await db.execute(
+        select(User.id, User.full_name).where(User.id.in_(user_ids))
+    )
+    user_names: dict[uuid.UUID, str] = {row.id: row.full_name for row in users_result}
+
+    slot_start_dt = datetime.combine(slot_date, start_time, tzinfo=timezone.utc)
+    slot_end_dt = datetime.combine(slot_date, end_time, tzinfo=timezone.utc)
+
+    booked_result = await db.execute(
+        select(Booking.staff_profile_id).where(
+            Booking.staff_profile_id.in_([p.id for p in profiles]),
+            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+            Booking.start_datetime < slot_end_dt,
+            Booking.end_datetime > slot_start_dt,
+        )
+    )
+    booked_trainer_ids = {row[0] for row in booked_result}
+
+    day_of_week = slot_date.weekday()
+    available: list[TrainerAvailableSummary] = []
+    for profile in profiles:
+        if profile.id in booked_trainer_ids:
+            continue
+        in_availability = any(
+            w.day_of_week == day_of_week
+            and w.effective_from <= slot_date
+            and (w.effective_until is None or w.effective_until >= slot_date)
+            and datetime.combine(slot_date, w.start_time, tzinfo=timezone.utc) <= slot_start_dt
+            and datetime.combine(slot_date, w.end_time, tzinfo=timezone.utc) >= slot_end_dt
+            for w in profile.availability
+        )
+        if not in_availability:
+            continue
+        available.append(
+            TrainerAvailableSummary(
+                id=profile.id,
+                user_id=profile.user_id,
+                club_id=profile.club_id,
+                full_name=user_names.get(profile.user_id, ""),
+                bio=profile.bio,
+            )
+        )
+
+    available.sort(key=lambda t: t.full_name)
+    return available
 
 
 @router.get("/{trainer_id}/open-slots", response_model=list[TrainerOpenSlot])

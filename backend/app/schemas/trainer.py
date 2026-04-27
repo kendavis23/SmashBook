@@ -85,3 +85,11 @@ class TrainerBookingItem(BaseModel):
 class TrainerOpenSlot(BaseModel):
     start_datetime: datetime
     end_datetime: datetime
+
+
+class TrainerAvailableSummary(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    club_id: uuid.UUID
+    full_name: str
+    bio: Optional[str]

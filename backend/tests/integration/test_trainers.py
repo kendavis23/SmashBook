@@ -714,3 +714,271 @@ class TestGetTrainerOpenSlots:
             headers={"X-Tenant-ID": str(tenant.id)},
         )
         assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# GET /trainers/available
+# ---------------------------------------------------------------------------
+
+# availability_window fixture: day_of_week=0, 10:00–12:00, effective_from=2026-04-01
+# _SLOT_DATE (2026-04-06) is a Monday → day_of_week=0
+_AVAIL_SLOT_START = "10:30:00"
+_AVAIL_SLOT_END = "11:30:00"
+
+
+class TestListAvailableTrainers:
+    async def test_happy_path_returns_trainer(
+        self, client, player_headers, trainer_profile, trainer_user, availability_window, club
+    ):
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": str(_SLOT_DATE),
+                "start_time": _AVAIL_SLOT_START,
+                "end_time": _AVAIL_SLOT_END,
+            },
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        trainers = resp.json()
+        ids = [t["id"] for t in trainers]
+        assert str(trainer_profile.id) in ids
+        match = next(t for t in trainers if t["id"] == str(trainer_profile.id))
+        assert match["full_name"] == trainer_user.full_name
+        assert match["club_id"] == str(club.id)
+
+    async def test_conflicting_booking_excludes_trainer(
+        self,
+        client,
+        player_headers,
+        trainer_profile,
+        availability_window,
+        trainer_slot_booking,
+        club,
+    ):
+        # trainer_slot_booking covers 10:30–12:00, overlapping 10:30–11:30
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": str(_SLOT_DATE),
+                "start_time": _AVAIL_SLOT_START,
+                "end_time": _AVAIL_SLOT_END,
+            },
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        ids = [t["id"] for t in resp.json()]
+        assert str(trainer_profile.id) not in ids
+
+    async def test_no_availability_window_excludes_trainer(
+        self, client, player_headers, trainer_profile, club
+    ):
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": str(_SLOT_DATE),
+                "start_time": _AVAIL_SLOT_START,
+                "end_time": _AVAIL_SLOT_END,
+            },
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        ids = [t["id"] for t in resp.json()]
+        assert str(trainer_profile.id) not in ids
+
+    async def test_slot_outside_availability_window_excluded(
+        self, client, player_headers, trainer_profile, availability_window, club
+    ):
+        # availability_window is 10:00–12:00; request 08:00–09:00 falls outside
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": str(_SLOT_DATE),
+                "start_time": "08:00:00",
+                "end_time": "09:00:00",
+            },
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        ids = [t["id"] for t in resp.json()]
+        assert str(trainer_profile.id) not in ids
+
+    async def test_wrong_day_of_week_excludes_trainer(
+        self, client, player_headers, trainer_profile, availability_window, club
+    ):
+        # availability_window is day_of_week=0 (Monday); 2026-04-07 is Tuesday
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": "2026-04-07",
+                "start_time": _AVAIL_SLOT_START,
+                "end_time": _AVAIL_SLOT_END,
+            },
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        ids = [t["id"] for t in resp.json()]
+        assert str(trainer_profile.id) not in ids
+
+    async def test_inactive_trainer_excluded(
+        self, client, player_headers, trainer_profile, availability_window, club, test_session_factory
+    ):
+        async with test_session_factory() as session:
+            p = await session.get(StaffProfile, trainer_profile.id)
+            p.is_active = False
+            await session.commit()
+        try:
+            resp = await client.get(
+                f"{BASE}/available",
+                params={
+                    "club_id": str(club.id),
+                    "date": str(_SLOT_DATE),
+                    "start_time": _AVAIL_SLOT_START,
+                    "end_time": _AVAIL_SLOT_END,
+                },
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            ids = [t["id"] for t in resp.json()]
+            assert str(trainer_profile.id) not in ids
+        finally:
+            async with test_session_factory() as session:
+                p = await session.get(StaffProfile, trainer_profile.id)
+                p.is_active = True
+                await session.commit()
+
+    async def test_end_time_before_start_time_returns_422(
+        self, client, player_headers, club
+    ):
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": str(_SLOT_DATE),
+                "start_time": "12:00:00",
+                "end_time": "10:00:00",
+            },
+            headers=player_headers,
+        )
+        assert resp.status_code == 422
+
+    async def test_unknown_club_returns_404(self, client, player_headers):
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(uuid.uuid4()),
+                "date": str(_SLOT_DATE),
+                "start_time": _AVAIL_SLOT_START,
+                "end_time": _AVAIL_SLOT_END,
+            },
+            headers=player_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_403(self, client, club, tenant):
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": str(_SLOT_DATE),
+                "start_time": _AVAIL_SLOT_START,
+                "end_time": _AVAIL_SLOT_END,
+            },
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 403
+
+    async def test_tenant_isolation(self, client, club):
+        from app.core.security import create_access_token
+
+        other_tenant_id = uuid.uuid4()
+        token = create_access_token({"sub": str(uuid.uuid4()), "tid": str(other_tenant_id)})
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "X-Tenant-ID": str(other_tenant_id),
+        }
+        resp = await client.get(
+            f"{BASE}/available",
+            params={
+                "club_id": str(club.id),
+                "date": str(_SLOT_DATE),
+                "start_time": _AVAIL_SLOT_START,
+                "end_time": _AVAIL_SLOT_END,
+            },
+            headers=headers,
+        )
+        # 401 if tenant doesn't exist; 404 if tenant exists but doesn't own the club
+        assert resp.status_code in (401, 404)
+
+    async def test_results_sorted_by_full_name(
+        self,
+        client,
+        player_headers,
+        trainer_profile,
+        availability_window,
+        club,
+        test_session_factory,
+        tenant,
+    ):
+        from tests.integration.conftest import _create_user, _delete_user
+
+        # "Alpha Trainer" sorts before "Test Trainer"
+        second_user = await _create_user(
+            tenant.id, "alpha", "Alpha Trainer", TenantUserRole.trainer, test_session_factory
+        )
+        second_profile = None
+        try:
+            async with test_session_factory() as session:
+                second_profile = StaffProfile(
+                    user_id=second_user.id,
+                    club_id=club.id,
+                    role=StaffRole.trainer,
+                    is_active=True,
+                )
+                session.add(second_profile)
+                await session.flush()
+                w = TrainerAvailability(
+                    staff_profile_id=second_profile.id,
+                    day_of_week=0,
+                    start_time=time(10, 0),
+                    end_time=time(12, 0),
+                    set_by_user_id=second_user.id,
+                    effective_from=date(2026, 4, 1),
+                )
+                session.add(w)
+                await session.commit()
+                await session.refresh(second_profile)
+
+            resp = await client.get(
+                f"{BASE}/available",
+                params={
+                    "club_id": str(club.id),
+                    "date": str(_SLOT_DATE),
+                    "start_time": _AVAIL_SLOT_START,
+                    "end_time": _AVAIL_SLOT_END,
+                },
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            names = [t["full_name"] for t in resp.json()]
+            assert names == sorted(names)
+            assert "Alpha Trainer" in names
+            assert "Test Trainer" in names
+        finally:
+            if second_profile:
+                async with test_session_factory() as session:
+                    await session.execute(
+                        sql_delete(TrainerAvailability).where(
+                            TrainerAvailability.staff_profile_id == second_profile.id
+                        )
+                    )
+                    obj = await session.get(StaffProfile, second_profile.id)
+                    if obj:
+                        await session.delete(obj)
+                    await session.commit()
+            await _delete_user(second_user.id, test_session_factory)
