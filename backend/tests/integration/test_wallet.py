@@ -10,10 +10,8 @@ GET /payments/wallet  — happy path with balance + transactions
                       — wrong tenant → 401
 """
 import uuid
-from datetime import datetime, timezone
 from decimal import Decimal
 
-import pytest_asyncio
 from sqlalchemy import delete as sql_delete
 
 from app.core.security import create_access_token
