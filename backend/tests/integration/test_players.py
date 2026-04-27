@@ -852,7 +852,6 @@ class TestSearchPlayers:
         assert str(player.id) in ids
 
     async def test_excludes_suspended_players(self, client, player, player_headers, tenant, test_session_factory):
-        from sqlalchemy import update as sql_update
         async with test_session_factory() as session:
             u = User(
                 tenant_id=tenant.id,
