@@ -74,7 +74,6 @@ function StaffPage() {
     return <div className="p-8 text-gray-700">Staff — coming soon</div>;
 }
 
-
 function FinancePage() {
     return <div className="p-8 text-gray-700">Finance — coming soon</div>;
 }
