@@ -141,10 +141,11 @@ export default function CourtsContainer(): JSX.Element {
                 setAvailabilityCourt(null);
             } else {
                 setAvailabilityCourt(court);
+                setAvailabilityDate(filters.date || todayIso());
                 setSelectedSlot(null);
             }
         },
-        [availabilityCourt]
+        [availabilityCourt, filters.date]
     );
 
     const handleCloseAvailability = useCallback((): void => {

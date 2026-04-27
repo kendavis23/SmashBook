@@ -46,6 +46,14 @@ export type {
     TrainerBookingItem,
 } from "./trainer.model";
 export type {
+    ClubSummary,
+    TokenResponse,
+    RegisterPlayerInput,
+    SkillLevelUpdateInput,
+    SkillLevelHistoryItem,
+    SkillLevelUpdateResult,
+} from "./player.model";
+export type {
     BookingType,
     BookingStatus,
     PlayerRole,

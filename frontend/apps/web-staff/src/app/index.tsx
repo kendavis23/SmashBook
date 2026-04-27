@@ -46,6 +46,7 @@ const OpenMatchesPage = lazy(() => import("../features/open-match/pages/OpenMatc
 const ManageOpenMatchPage = lazy(
     () => import("../features/open-match/manage-open-match/pages/ManageOpenMatchPage")
 );
+const PlayersPage = lazy(() => import("../features/player/pages/PlayersPage"));
 
 function requireRole(roles: UserRole[]) {
     return () => {
@@ -71,10 +72,6 @@ function DashboardPage() {
 
 function StaffPage() {
     return <div className="p-8 text-gray-700">Staff — coming soon</div>;
-}
-
-function PlayerPage() {
-    return <div className="p-8 text-gray-700">Player — coming soon</div>;
 }
 
 function FinancePage() {
@@ -379,7 +376,10 @@ const playersRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/players",
     beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
-    component: PlayerPage,
+    validateSearch: (search: Record<string, unknown>) => ({
+        registered: search.registered === true ? true : undefined,
+    }),
+    component: PlayersPage,
 });
 
 const financeRoute = createRoute({
