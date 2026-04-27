@@ -11,3 +11,5 @@ export * from "./equipment/equipment.api";
 export * from "./equipment/equipment.types";
 export * from "./trainer/trainer.api";
 export * from "./trainer/trainer.types";
+export * from "./player/player.api";
+export * from "./player/player.types";
