@@ -632,6 +632,7 @@ class BookingService:
         club_id: uuid.UUID,
         tenant_id: uuid.UUID,
         date: Optional[date] = None,
+        player_skill_level: Optional[Decimal] = None,
         min_skill: Optional[Decimal] = None,
         max_skill: Optional[Decimal] = None,
     ) -> list[Booking]:
@@ -668,6 +669,14 @@ class BookingService:
             day_start = datetime.combine(date, datetime.min.time(), tzinfo=timezone.utc)
             day_end = day_start + timedelta(days=1)
             stmt = stmt.where(Booking.start_datetime >= day_start, Booking.start_datetime < day_end)
+
+        if player_skill_level is not None:
+            # Games the player is eligible to join: their level falls within the game's
+            # allowed range, or the game has no restriction (NULL = open to all).
+            stmt = stmt.where(
+                Booking.min_skill_level.is_(None) | (Booking.min_skill_level <= player_skill_level),
+                Booking.max_skill_level.is_(None) | (Booking.max_skill_level >= player_skill_level),
+            )
 
         if min_skill is not None and max_skill is not None:
             # Include games whose skill range overlaps the requested range,

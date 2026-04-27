@@ -254,6 +254,10 @@ async def list_bookings(
 async def list_open_games(
     club_id: uuid.UUID = Query(...),
     game_date: Optional[date] = Query(default=None, alias="date"),
+    player_skill_level: Optional[Decimal] = Query(
+        default=None,
+        description="Filter to games whose skill range includes this level. Games with no skill restriction are always included.",
+    ),
     min_skill: Optional[Decimal] = None,
     max_skill: Optional[Decimal] = None,
     tenant: Tenant = Depends(get_tenant),
@@ -265,6 +269,7 @@ async def list_open_games(
         club_id=club_id,
         tenant_id=tenant.id,
         date=game_date,
+        player_skill_level=player_skill_level,
         min_skill=min_skill,
         max_skill=max_skill,
     )

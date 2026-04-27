@@ -572,6 +572,83 @@ class TestListOpenGames:
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 
+    async def test_player_skill_level_filter_matches(
+        self, client, staff_headers, club, court_with_hours, tenant, test_session_factory
+    ):
+        """player_skill_level=4.5 returns a game whose range [4.0, 5.0] includes it."""
+        start = _future(48)
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                is_open_game=True,
+                skill_level_override_min="4.0",
+                skill_level_override_max="5.0",
+            ),
+            headers=staff_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.get(
+            f"/api/v1/bookings/open-games?club_id={club.id}&player_skill_level=4.5",
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 200
+        assert booking_id in [g["id"] for g in resp.json()]
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_player_skill_level_filter_excludes_out_of_range(
+        self, client, staff_headers, club, court_with_hours, tenant, test_session_factory
+    ):
+        """player_skill_level=2.0 excludes a game whose range [4.0, 5.0] does not include it."""
+        start = _future(48)
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(
+                club.id, court_with_hours.id, start,
+                is_open_game=True,
+                skill_level_override_min="4.0",
+                skill_level_override_max="5.0",
+            ),
+            headers=staff_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        resp = await client.get(
+            f"/api/v1/bookings/open-games?club_id={club.id}&player_skill_level=2.0",
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 200
+        assert booking_id not in [g["id"] for g in resp.json()]
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_player_skill_level_includes_unrestricted_games(
+        self, client, staff_headers, club, court_with_hours, tenant, test_session_factory
+    ):
+        """Games with no skill restriction always appear regardless of player_skill_level."""
+        start = _future(48)
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, is_open_game=True),
+            headers=staff_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+        assert r.json()["min_skill_level"] is None
+
+        resp = await client.get(
+            f"/api/v1/bookings/open-games?club_id={club.id}&player_skill_level=1.0",
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 200
+        assert booking_id in [g["id"] for g in resp.json()]
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
 
 # ---------------------------------------------------------------------------
 # GET /api/v1/bookings/{id}
