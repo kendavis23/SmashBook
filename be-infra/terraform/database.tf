@@ -31,7 +31,7 @@ resource "google_sql_database_instance" "main" {
       enabled                        = false
       point_in_time_recovery_enabled = false
       start_time                     = "19:00"
-      transaction_log_retention_days = 14
+      transaction_log_retention_days = 7
 
       backup_retention_settings {
         retained_backups = 15
@@ -47,7 +47,7 @@ resource "google_sql_database_instance" "main" {
   deletion_protection = true
 
   lifecycle {
-    prevent_destroy = true
+   prevent_destroy = true
     ignore_changes  = []
   }
 }

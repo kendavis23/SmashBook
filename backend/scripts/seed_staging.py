@@ -7,16 +7,21 @@ Creates a realistic multi-tenant dataset for integration testing and demo use:
     Club 1: Ace Padel North   — 4 courts, full pricing + operating hours, 2 staff profiles
                                 10 past + 2 cancelled + 5 upcoming (1 pre-paid) + 2 open-game bookings
                                 Payments: mix of cash / stripe_card / wallet
+                                Membership plans: Basic (£0/mo), Gold (£15/mo, 10% off)
     Club 2: Ace Padel South   — 2 courts, basic pricing
                                 4 past + 2 upcoming bookings
+                                Membership plans: Basic (£0/mo), Gold (£15/mo, 10% off)
     Users: 1 owner, 1 admin, 1 trainer, 1 front-desk, 8 named players
     Wallets: alice £100 pre-loaded, diana £75 pre-loaded
+    Memberships: alice/bob/diana/frank=Gold, charlie/emily/grace/harry=Basic (both clubs)
 
   Tenant 2: "Rally Sports"    (subdomain: rally, plan: Starter)
     Club:   Rally Padel Club  — 2 courts, basic pricing
                                 3 past + 1 cancelled + 2 upcoming bookings
+                                Membership plans: Basic (£0/mo), Gold (£10/mo, 10% off)
     Users: 1 admin, 4 players
     Wallets: rp2 £60 pre-loaded
+    Memberships: rp2/rp3=Gold, rp1/rp4=Basic
 
 All user passwords: Staging1234
 
@@ -68,6 +73,7 @@ from app.db.models.payment import Payment, PaymentMethod, PaymentState, Platform
 from app.db.models.staff import StaffProfile, StaffRole
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import User, TenantUserRole
+from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipStatus, MembershipSubscription
 from app.db.models.wallet import Wallet, WalletTransaction, WalletTransactionType
 
 # ---------------------------------------------------------------------------
@@ -339,6 +345,64 @@ async def _create_booking(
     return booking
 
 
+async def _upsert_membership_plan(
+    db: AsyncSession,
+    club_id,
+    name: str,
+    price: Decimal,
+    discount_pct: Optional[Decimal],
+    description: str,
+) -> MembershipPlan:
+    result = await db.execute(
+        select(MembershipPlan).where(MembershipPlan.club_id == club_id, MembershipPlan.name == name)
+    )
+    plan = result.scalar_one_or_none()
+    if not plan:
+        plan = MembershipPlan(
+            club_id=club_id,
+            name=name,
+            description=description,
+            billing_period=BillingPeriod.monthly,
+            price=price,
+            discount_pct=discount_pct,
+            is_active=True,
+        )
+        db.add(plan)
+    else:
+        plan.description = description
+        plan.price = price
+        plan.discount_pct = discount_pct
+        plan.is_active = True
+    await db.flush()
+    return plan
+
+
+async def _upsert_subscription(
+    db: AsyncSession,
+    user: User,
+    plan: MembershipPlan,
+    club_id,
+) -> MembershipSubscription:
+    result = await db.execute(
+        select(MembershipSubscription).where(
+            MembershipSubscription.user_id == user.id,
+            MembershipSubscription.club_id == club_id,
+        )
+    )
+    if result.scalar_one_or_none():
+        return
+    now = datetime.now(UTC)
+    db.add(MembershipSubscription(
+        user_id=user.id,
+        plan_id=plan.id,
+        club_id=club_id,
+        status=MembershipStatus.active,
+        current_period_start=now - timedelta(days=15),
+        current_period_end=now + timedelta(days=15),
+    ))
+    await db.flush()
+
+
 async def _bookings_exist(db: AsyncSession, club_id) -> bool:
     result = await db.execute(
         select(Booking).where(Booking.club_id == club_id).limit(1)
@@ -467,6 +531,17 @@ async def seed():
             db.add(StaffProfile(user_id=ace_fd.id, club_id=north.id, role=StaffRole.front_desk, is_active=True))
             await db.flush()
 
+        # Membership plans
+        north_basic = await _upsert_membership_plan(db, north.id, "Basic", Decimal("0.00"),  None,               "Standard membership with no discounts.")
+        north_gold  = await _upsert_membership_plan(db, north.id, "Gold",  Decimal("15.00"), Decimal("10.00"),   "Gold membership — 10% off all court bookings.")
+        print("  Membership plans: Basic, Gold")
+        ace_north_tiers = {alice: north_gold, bob: north_gold, charlie: north_basic,
+                           diana: north_gold, emily: north_basic, frank: north_gold,
+                           grace: north_basic, harry: north_basic}
+        for player, plan in ace_north_tiers.items():
+            await _upsert_subscription(db, player, plan, north.id)
+        print("  Memberships: alice/bob/diana/frank=Gold  charlie/emily/grace/harry=Basic")
+
         # Bookings
         if not await _bookings_exist(db, north.id):
             kw = dict(tenant_id=ace.id, fee_pct=ACE_FEE_PCT)
@@ -552,6 +627,16 @@ async def seed():
         ]
         await _create_pricing_rules(db, south.id, south_pricing)
 
+        south_basic = await _upsert_membership_plan(db, south.id, "Basic", Decimal("0.00"),  None,               "Standard membership with no discounts.")
+        south_gold  = await _upsert_membership_plan(db, south.id, "Gold",  Decimal("15.00"), Decimal("10.00"),   "Gold membership — 10% off all court bookings.")
+        print("  Membership plans: Basic, Gold")
+        ace_south_tiers = {alice: south_gold, bob: south_gold, charlie: south_basic,
+                           diana: south_gold, emily: south_basic, frank: south_gold,
+                           grace: south_basic, harry: south_basic}
+        for player, plan in ace_south_tiers.items():
+            await _upsert_subscription(db, player, plan, south.id)
+        print("  Memberships: alice/bob/diana/frank=Gold  charlie/emily/grace/harry=Basic")
+
         if not await _bookings_exist(db, south.id):
             kw = dict(tenant_id=ace.id, fee_pct=ACE_FEE_PCT)
             south_bookings = [
@@ -624,6 +709,14 @@ async def seed():
         ]
         await _create_pricing_rules(db, rally_club.id, rally_pricing)
 
+        rally_basic = await _upsert_membership_plan(db, rally_club.id, "Basic", Decimal("0.00"),  None,               "Standard membership with no discounts.")
+        rally_gold  = await _upsert_membership_plan(db, rally_club.id, "Gold",  Decimal("10.00"), Decimal("10.00"),   "Gold membership — 10% off all court bookings.")
+        print("  Membership plans: Basic, Gold")
+        rally_tiers = {rp1: rally_basic, rp2: rally_gold, rp3: rally_gold, rp4: rally_basic}
+        for player, plan in rally_tiers.items():
+            await _upsert_subscription(db, player, plan, rally_club.id)
+        print("  Memberships: rp2/rp3=Gold  rp1/rp4=Basic")
+
         if not await _bookings_exist(db, rally_club.id):
             kw = dict(tenant_id=rally.id, fee_pct=RALLY_FEE_PCT)
             rally_bookings = [
@@ -668,6 +761,7 @@ async def seed():
         print("    front desk   : frontdesk@ace.staging")
         print("    players      : alice/bob/charlie/diana/emily/frank/grace/harry @ace.staging")
         print("    wallets      : alice £100, diana £75 pre-loaded")
+        print("    memberships  : alice/bob/diana/frank=Gold (10% off), charlie/emily/grace/harry=Basic")
         print(f"    Club 1 id    : {north.id}  (Ace Padel North — 4 courts, 19 bookings)")
         print(f"    Club 2 id    : {south.id}  (Ace Padel South — 2 courts,  6 bookings)")
         print()
@@ -676,6 +770,7 @@ async def seed():
         print("    admin        : admin@rally.staging")
         print("    players      : player1/player2/player3/player4 @rally.staging")
         print("    wallets      : player2 (Zoe Adams) £60 pre-loaded")
+        print("    memberships  : rp2/rp3=Gold (10% off), rp1/rp4=Basic")
         print(f"    Club id      : {rally_club.id}  (Rally Padel Club — 2 courts, 6 bookings)")
         print()
         print("  PAYMENT METHODS seeded:")
