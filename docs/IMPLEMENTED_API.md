@@ -1,4 +1,4 @@
-_Last updated: 2026-04-27 00:00 UTC_
+_Last updated: 2026-04-27 10:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -151,6 +151,7 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | `GET` | `/api/v1/payments/payment-methods` | List all saved card payment methods for the current player, with `is_default` flagged |
 | `DELETE` | `/api/v1/payments/payment-methods/{method_id}` | Detach a saved card from the player's Stripe customer; clears `default_payment_method_id` if the removed card was the default |
 | `PATCH` | `/api/v1/payments/payment-methods/{method_id}/default` | Set an existing saved card as the player's default payment method |
+| `GET` | `/api/v1/payments/wallet` | Get current player's wallet balance, auto-topup settings, and full transaction history (newest first). 404 if no wallet exists |
 
 ---
 
@@ -159,7 +160,7 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | File | Endpoints |
 |---|---|
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
-| `payments.py` | wallet (get/top-up/adjust), invoices (list/download), refunds, discounts, in-person payment |
+| `payments.py` | wallet (top-up/adjust), invoices (list/download), refunds, discounts, in-person payment |
 | `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
 | `players.py` | `GET /{id}` |
 | `reports.py` | Dashboard, revenue, utilisation, retention, corporate events, transaction log, Stripe payouts, export |

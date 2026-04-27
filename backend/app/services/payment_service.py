@@ -27,6 +27,7 @@ from app.db.models.payment import PaymentMethod as PaymentMethodEnum
 from app.db.models.payment import PaymentState
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import User
+from app.db.models.wallet import Wallet, WalletTransaction
 
 settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -451,6 +452,41 @@ class PaymentService:
           - Publish 'send_email' with refund confirmation to notification-events
         """
         pass
+
+    async def get_wallet(self, user_id: uuid.UUID) -> dict:
+        result = await self.db.execute(
+            sa_select(Wallet).where(Wallet.user_id == user_id)
+        )
+        wallet = result.scalar_one_or_none()
+        if not wallet:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+
+        txn_result = await self.db.execute(
+            sa_select(WalletTransaction)
+            .where(WalletTransaction.wallet_id == wallet.id)
+            .order_by(WalletTransaction.created_at.desc())
+        )
+        transactions = txn_result.scalars().all()
+
+        return {
+            "balance": wallet.balance,
+            "currency": wallet.currency,
+            "auto_topup_enabled": wallet.auto_topup_enabled,
+            "auto_topup_threshold": wallet.auto_topup_threshold,
+            "auto_topup_amount": wallet.auto_topup_amount,
+            "transactions": [
+                {
+                    "id": t.id,
+                    "transaction_type": t.transaction_type,
+                    "amount": t.amount,
+                    "balance_after": t.balance_after,
+                    "reference": t.reference,
+                    "notes": t.notes,
+                    "created_at": t.created_at,
+                }
+                for t in transactions
+            ],
+        }
 
     async def top_up_wallet(self, user_id: str, amount_pence: int,
                              payment_method_id: str) -> dict:

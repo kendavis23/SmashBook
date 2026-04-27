@@ -13,6 +13,7 @@ from app.schemas.payment_method import (
     PaymentMethodResponse,
     SavePaymentMethodRequest,
     SetupIntentResponse,
+    WalletResponse,
 )
 from app.services.payment_service import PaymentService
 
@@ -135,10 +136,11 @@ async def set_default_payment_method(
     return await svc.set_default_payment_method(current_user, method_id)
 
 
-@router.get("/wallet")
+@router.get("/wallet", response_model=WalletResponse)
 async def get_wallet(current_user=Depends(get_current_user), db=Depends(get_read_db)):
     """Get wallet balance and transaction history."""
-    pass
+    svc = PaymentService(db)
+    return await svc.get_wallet(current_user.id)
 
 
 @router.post("/wallet/top-up")

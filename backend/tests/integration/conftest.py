@@ -58,7 +58,7 @@ from app.db.models.skill import SkillLevelHistory
 from app.db.models.staff import StaffProfile, TrainerAvailability
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import TenantUserRole, User
-from app.db.models.wallet import Wallet
+from app.db.models.wallet import Wallet, WalletTransaction
 from app.db.session import get_db, get_read_db
 from app.main import app
 
@@ -234,6 +234,15 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
             await session.execute(
                 sql_delete(SkillLevelHistory).where(SkillLevelHistory.user_id.in_(user_ids))
             )
+            wallet_ids = (
+                await session.execute(
+                    select(Wallet.id).where(Wallet.user_id.in_(user_ids))
+                )
+            ).scalars().all()
+            if wallet_ids:
+                await session.execute(
+                    sql_delete(WalletTransaction).where(WalletTransaction.wallet_id.in_(wallet_ids))
+                )
             await session.execute(
                 sql_delete(Wallet).where(Wallet.user_id.in_(user_ids))
             )
@@ -341,6 +350,15 @@ async def _delete_user(user_id: uuid.UUID, session_factory) -> None:
         await session.execute(
             sql_delete(BookingPlayer).where(BookingPlayer.user_id == user_id)
         )
+        wallet_ids = (
+            await session.execute(
+                select(Wallet.id).where(Wallet.user_id == user_id)
+            )
+        ).scalars().all()
+        if wallet_ids:
+            await session.execute(
+                sql_delete(WalletTransaction).where(WalletTransaction.wallet_id.in_(wallet_ids))
+            )
         await session.execute(
             sql_delete(Wallet).where(Wallet.user_id == user_id)
         )
