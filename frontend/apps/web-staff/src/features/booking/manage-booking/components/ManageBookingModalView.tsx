@@ -192,33 +192,35 @@ export function ManageBookingModalView({
                         ) : null}
                     </div>
 
-                    {/* Invite Player */}
-                    <div>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                            <div className="min-w-0 sm:w-[70%]">
-                                <label className={labelCls} htmlFor="booking-modal-player-id">
-                                    Player ID
-                                </label>
-                                <input
-                                    id="booking-modal-player-id"
-                                    type="text"
-                                    value={playerId}
-                                    onChange={(event) => setPlayerId(event.target.value)}
-                                    placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                                    className="input-base"
-                                    disabled={isInviting}
-                                />
+                    {/* Invite Player — only for pending open games */}
+                    {booking.is_open_game && booking.status === "pending" ? (
+                        <div>
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                <div className="min-w-0 sm:w-[70%]">
+                                    <label className={labelCls} htmlFor="booking-modal-player-id">
+                                        Player ID
+                                    </label>
+                                    <input
+                                        id="booking-modal-player-id"
+                                        type="text"
+                                        value={playerId}
+                                        onChange={(event) => setPlayerId(event.target.value)}
+                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                                        className="input-base"
+                                        disabled={isInviting}
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    disabled={isInviting || !playerId.trim()}
+                                    className="btn-cta sm:w-auto"
+                                    onClick={() => onInvitePlayer(playerId)}
+                                >
+                                    {isInviting ? "Inviting…" : "Invite"}
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                disabled={isInviting || !playerId.trim()}
-                                className="btn-cta sm:w-auto"
-                                onClick={() => onInvitePlayer(playerId)}
-                            >
-                                {isInviting ? "Inviting…" : "Invite"}
-                            </button>
                         </div>
-                    </div>
+                    ) : null}
 
                     {/* Edit form — only when editable */}
                     {isEditable ? (
@@ -508,6 +510,111 @@ export function ManageBookingModalView({
                                 ) : null}
                             </div>
                         </>
+                    ) : null}
+
+                    {/* Read-only court details when not editable */}
+                    {!isEditable ? (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <p className={labelCls}>Court</p>
+                                <div
+                                    className={`${fieldCls} cursor-default select-none opacity-80`}
+                                >
+                                    {booking.court_name}
+                                </div>
+                            </div>
+                            <div>
+                                <p className={labelCls}>Price</p>
+                                <div
+                                    className={`${fieldCls} cursor-default select-none opacity-80`}
+                                >
+                                    {formatCurrency(booking.total_price)}
+                                </div>
+                            </div>
+                            <div>
+                                <p className={labelCls}>Date</p>
+                                <div
+                                    className={`${fieldCls} cursor-default select-none opacity-80`}
+                                >
+                                    {formatUTCDateTime(booking.start_datetime)}
+                                </div>
+                            </div>
+                            <div>
+                                <p className={labelCls}>End Time</p>
+                                <div
+                                    className={`${fieldCls} cursor-default select-none opacity-80`}
+                                >
+                                    {formatUTCDateTime(booking.end_datetime)}
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {/* Players — always shown (read-only when not editable) */}
+                    {!isEditable && booking.players.length > 0 ? (
+                        <div className="overflow-hidden rounded-lg border border-border">
+                            <button
+                                type="button"
+                                className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
+                                onClick={() => setPlayersExpanded((v) => !v)}
+                                aria-expanded={playersExpanded}
+                            >
+                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Players ({booking.players.length})
+                                </span>
+                                {playersExpanded ? (
+                                    <ChevronUp size={13} className="text-muted-foreground" />
+                                ) : (
+                                    <ChevronDown size={13} className="text-muted-foreground" />
+                                )}
+                            </button>
+                            {playersExpanded ? (
+                                <div className="overflow-x-auto border-t border-border">
+                                    <table className="w-full min-w-[380px] border-collapse text-sm">
+                                        <thead>
+                                            <tr className="bg-muted/10">
+                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Name
+                                                </th>
+                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Role
+                                                </th>
+                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Invite
+                                                </th>
+                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Payment
+                                                </th>
+                                                <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Amount
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                            {booking.players.map((p) => (
+                                                <tr key={p.id} className="hover:bg-muted/20">
+                                                    <td className="px-3 py-2 font-medium text-foreground">
+                                                        {p.full_name}
+                                                    </td>
+                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
+                                                        {p.role}
+                                                    </td>
+                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
+                                                        {p.invite_status}
+                                                    </td>
+                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
+                                                        {p.payment_status}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-right text-foreground">
+                                                        {formatCurrency(p.amount_due)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : null}
+                        </div>
                     ) : null}
                 </div>
             </div>

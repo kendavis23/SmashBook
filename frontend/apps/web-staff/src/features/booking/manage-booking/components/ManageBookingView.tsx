@@ -266,47 +266,51 @@ export default function ManageBookingView({
                         </dl>
                     </section>
 
-                    {/* Invite Player */}
-                    <section className="form-section">
-                        <div className="mb-4">
-                            <h3 className="text-sm font-semibold text-foreground">Invite Player</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                Enter a player ID to invite them to this open match.
-                            </p>
-                        </div>
-                        <form
-                            className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                onInvitePlayer(playerId);
-                            }}
-                        >
-                            <div className="min-w-0 sm:w-[70%]">
-                                <label
-                                    htmlFor="booking-invite-player-id"
-                                    className="mb-1 block text-sm font-medium text-foreground"
-                                >
-                                    Player ID
-                                </label>
-                                <input
-                                    id="booking-invite-player-id"
-                                    type="text"
-                                    value={playerId}
-                                    onChange={(event) => setPlayerId(event.target.value)}
-                                    placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                                    className="input-base"
-                                    disabled={isInviting}
-                                />
+                    {/* Invite Player — only for pending open games */}
+                    {booking.is_open_game && booking.status === "pending" ? (
+                        <section className="form-section">
+                            <div className="mb-4">
+                                <h3 className="text-sm font-semibold text-foreground">
+                                    Invite Player
+                                </h3>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Enter a player ID to invite them to this open match.
+                                </p>
                             </div>
-                            <button
-                                type="submit"
-                                disabled={isInviting || !playerId.trim()}
-                                className="btn-cta sm:w-auto"
+                            <form
+                                className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    onInvitePlayer(playerId);
+                                }}
                             >
-                                {isInviting ? "Inviting…" : "Invite"}
-                            </button>
-                        </form>
-                    </section>
+                                <div className="min-w-0 sm:w-[70%]">
+                                    <label
+                                        htmlFor="booking-invite-player-id"
+                                        className="mb-1 block text-sm font-medium text-foreground"
+                                    >
+                                        Player ID
+                                    </label>
+                                    <input
+                                        id="booking-invite-player-id"
+                                        type="text"
+                                        value={playerId}
+                                        onChange={(event) => setPlayerId(event.target.value)}
+                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                                        className="input-base"
+                                        disabled={isInviting}
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isInviting || !playerId.trim()}
+                                    className="btn-cta sm:w-auto"
+                                >
+                                    {isInviting ? "Inviting…" : "Invite"}
+                                </button>
+                            </form>
+                        </section>
+                    ) : null}
 
                     {/* Players */}
                     {booking.players.length > 0 ? (

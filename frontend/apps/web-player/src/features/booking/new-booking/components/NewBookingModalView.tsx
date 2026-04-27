@@ -42,7 +42,6 @@ export function NewBookingModalView({
     onDismissError,
     onClose,
 }: Props): JSX.Element {
-    const [skillOpen, setSkillOpen] = useState(false);
     const [eventOpen, setEventOpen] = useState(false);
     const isLessonType =
         form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
@@ -204,105 +203,18 @@ export function NewBookingModalView({
                         </div>
                     ) : null}
 
-                    {/* Open Game + Collapsible Skill Level — regular bookings only */}
+                    {/* Open Game — regular bookings only */}
                     {form.bookingType === "regular" ? (
-                        <div className="space-y-3">
-                            <label className="flex cursor-pointer items-center gap-2">
-                                <input
-                                    type="checkbox"
-                                    className="h-4 w-4 rounded border-border accent-cta"
-                                    checked={form.isOpenGame}
-                                    onChange={(e) => onFormChange({ isOpenGame: e.target.checked })}
-                                    aria-label="Mark as open game"
-                                />
-                                <span className="text-sm font-medium text-foreground">
-                                    Open game
-                                </span>
-                            </label>
-
-                            <div className="overflow-hidden rounded-lg border border-border">
-                                <button
-                                    type="button"
-                                    onClick={() => setSkillOpen((o) => !o)}
-                                    className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                                    aria-expanded={skillOpen}
-                                >
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Skill Level{" "}
-                                        <span className="text-[10px] font-normal normal-case text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </span>
-                                    {skillOpen ? (
-                                        <ChevronDown size={13} className="text-muted-foreground" />
-                                    ) : (
-                                        <ChevronRight size={13} className="text-muted-foreground" />
-                                    )}
-                                </button>
-                                {skillOpen ? (
-                                    <div className="space-y-3 border-t border-border p-4">
-                                        <p className="text-xs text-muted-foreground">
-                                            Set skill range requirements for matchmaking.
-                                        </p>
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div>
-                                                <label
-                                                    htmlFor="bk-anchor-skill"
-                                                    className={labelCls}
-                                                >
-                                                    Anchor
-                                                </label>
-                                                <NumberInput
-                                                    id="bk-anchor-skill"
-                                                    min={0}
-                                                    step={0.1}
-                                                    className={fieldCls}
-                                                    placeholder="3.5"
-                                                    value={form.anchorSkill}
-                                                    onChange={(e) =>
-                                                        onFormChange({
-                                                            anchorSkill: e.target.value,
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="bk-skill-min" className={labelCls}>
-                                                    Min
-                                                </label>
-                                                <NumberInput
-                                                    id="bk-skill-min"
-                                                    min={0}
-                                                    step={0.1}
-                                                    className={fieldCls}
-                                                    placeholder="2.5"
-                                                    value={form.skillMin}
-                                                    onChange={(e) =>
-                                                        onFormChange({ skillMin: e.target.value })
-                                                    }
-                                                />
-                                            </div>
-                                            <div>
-                                                <label htmlFor="bk-skill-max" className={labelCls}>
-                                                    Max
-                                                </label>
-                                                <NumberInput
-                                                    id="bk-skill-max"
-                                                    min={0}
-                                                    step={0.1}
-                                                    className={fieldCls}
-                                                    placeholder="4.5"
-                                                    value={form.skillMax}
-                                                    onChange={(e) =>
-                                                        onFormChange({ skillMax: e.target.value })
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : null}
-                            </div>
-                        </div>
+                        <label className="flex cursor-pointer items-center gap-2">
+                            <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-border accent-cta"
+                                checked={form.isOpenGame}
+                                onChange={(e) => onFormChange({ isOpenGame: e.target.checked })}
+                                aria-label="Mark as open game"
+                            />
+                            <span className="text-sm font-medium text-foreground">Open game</span>
+                        </label>
                     ) : null}
 
                     {/* Collapsible: Event & Contact */}

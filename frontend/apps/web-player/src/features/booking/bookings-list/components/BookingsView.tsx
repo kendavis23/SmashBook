@@ -117,11 +117,13 @@ function InviteDialog({
     anchorRef,
     onInvite,
     onClose,
+    onSuccess,
 }: {
     booking: PlayerBookingItem;
     anchorRef: RefObject<HTMLElement | null>;
     onInvite: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onClose: () => void;
+    onSuccess: (msg: string) => void;
 }): JSX.Element {
     const [userId, setUserId] = useState("");
     const [busy, setBusy] = useState(false);
@@ -138,9 +140,9 @@ function InviteDialog({
         try {
             await onInvite(booking, trimmed);
             onClose();
+            onSuccess("Invitation has been sent!");
         } catch (ex) {
             setErr((ex as { message?: string })?.message ?? "Failed to invite.");
-        } finally {
             setBusy(false);
         }
     }
@@ -188,6 +190,7 @@ function RespondDialog({
     anchorRef,
     onRespond,
     onClose,
+    onSuccess,
 }: {
     booking: PlayerBookingItem;
     anchorRef: RefObject<HTMLElement | null>;
@@ -196,6 +199,7 @@ function RespondDialog({
         action: Extract<InviteStatus, "accepted" | "declined">
     ) => Promise<void>;
     onClose: () => void;
+    onSuccess: (msg: string, variant: "success" | "error") => void;
 }): JSX.Element {
     const [busy, setBusy] = useState<"accepted" | "declined" | null>(null);
     const [err, setErr] = useState("");
@@ -208,6 +212,10 @@ function RespondDialog({
         try {
             await onRespond(booking, action);
             onClose();
+            onSuccess(
+                action === "accepted" ? "Invite accepted!" : "Invite declined.",
+                action === "accepted" ? "success" : "error"
+            );
         } catch (ex) {
             setErr((ex as { message?: string })?.message ?? "Failed to respond.");
             setBusy(null);
@@ -277,6 +285,8 @@ function RoleCell({ booking }: { booking: PlayerBookingItem }): JSX.Element {
     );
 }
 
+type ToastState = { message: string; variant: "success" | "error" } | null;
+
 function InviteCell({
     booking,
     allowActions,
@@ -292,55 +302,78 @@ function InviteCell({
     ) => Promise<void>;
 }): JSX.Element {
     const [open, setOpen] = useState(false);
+    const [toast, setToast] = useState<ToastState>(null);
     const anchorRef = useRef<HTMLButtonElement>(null);
     const isOrganiser = booking.role === "organiser";
     const isPending = booking.invite_status === "pending";
 
     if (allowActions && isOrganiser && booking.status === "pending") {
         return (
-            <div className="relative">
-                <button
-                    ref={anchorRef}
-                    type="button"
-                    onClick={() => setOpen((v) => !v)}
-                    title="Invite a player"
-                    className="inline-flex items-center gap-1 rounded-lg border border-cta/40 bg-cta/10 px-2 py-1 text-[11px] font-medium text-cta transition hover:bg-cta/20"
-                >
-                    <UserPlus size={11} /> Invite
-                </button>
-                {open ? (
-                    <InviteDialog
-                        booking={booking}
-                        anchorRef={anchorRef}
-                        onInvite={onInvitePlayer}
-                        onClose={() => setOpen(false)}
+            <>
+                {toast ? (
+                    <AlertToast
+                        title={toast.message}
+                        variant={toast.variant}
+                        duration={4000}
+                        onClose={() => setToast(null)}
                     />
                 ) : null}
-            </div>
+                <div className="relative">
+                    <button
+                        ref={anchorRef}
+                        type="button"
+                        onClick={() => setOpen((v) => !v)}
+                        title="Invite a player"
+                        className="inline-flex items-center gap-1 rounded-lg border border-cta/40 bg-cta/10 px-2 py-1 text-[11px] font-medium text-cta transition hover:bg-cta/20"
+                    >
+                        <UserPlus size={11} /> Invite
+                    </button>
+                    {open ? (
+                        <InviteDialog
+                            booking={booking}
+                            anchorRef={anchorRef}
+                            onInvite={onInvitePlayer}
+                            onClose={() => setOpen(false)}
+                            onSuccess={(msg) => setToast({ message: msg, variant: "success" })}
+                        />
+                    ) : null}
+                </div>
+            </>
         );
     }
 
     if (allowActions && isPending) {
         return (
-            <div className="relative">
-                <button
-                    ref={anchorRef}
-                    type="button"
-                    onClick={() => setOpen((v) => !v)}
-                    title="Respond to invite"
-                    className="inline-flex items-center gap-1 rounded-lg border border-warning/40 bg-warning/10 px-2 py-1 text-[11px] font-medium text-warning transition hover:bg-warning/20"
-                >
-                    Pending
-                </button>
-                {open ? (
-                    <RespondDialog
-                        booking={booking}
-                        anchorRef={anchorRef}
-                        onRespond={onRespondInvite}
-                        onClose={() => setOpen(false)}
+            <>
+                {toast ? (
+                    <AlertToast
+                        title={toast.message}
+                        variant={toast.variant}
+                        duration={4000}
+                        onClose={() => setToast(null)}
                     />
                 ) : null}
-            </div>
+                <div className="relative">
+                    <button
+                        ref={anchorRef}
+                        type="button"
+                        onClick={() => setOpen((v) => !v)}
+                        title="Respond to invite"
+                        className="inline-flex items-center gap-1 rounded-lg border border-warning/40 bg-warning/10 px-2 py-1 text-[11px] font-medium text-warning transition hover:bg-warning/20"
+                    >
+                        Pending
+                    </button>
+                    {open ? (
+                        <RespondDialog
+                            booking={booking}
+                            anchorRef={anchorRef}
+                            onRespond={onRespondInvite}
+                            onClose={() => setOpen(false)}
+                            onSuccess={(msg, variant) => setToast({ message: msg, variant })}
+                        />
+                    ) : null}
+                </div>
+            </>
         );
     }
 

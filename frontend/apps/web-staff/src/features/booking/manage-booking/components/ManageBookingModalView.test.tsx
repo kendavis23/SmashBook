@@ -235,7 +235,7 @@ describe("ManageBookingModalView", () => {
         render(
             <ManageBookingModalView
                 {...defaultProps}
-                booking={{ ...booking, is_open_game: true } as never}
+                booking={{ ...booking, status: "pending", is_open_game: true } as never}
             />
         );
 
@@ -254,7 +254,7 @@ describe("ManageBookingModalView", () => {
         render(
             <ManageBookingModalView
                 {...defaultProps}
-                booking={{ ...booking, is_open_game: true } as never}
+                booking={{ ...booking, status: "pending", is_open_game: true } as never}
                 onInvitePlayer={onInvitePlayer}
             />
         );

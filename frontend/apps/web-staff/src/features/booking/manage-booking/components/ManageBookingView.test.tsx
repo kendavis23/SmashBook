@@ -223,7 +223,13 @@ describe("ManageBookingView", () => {
 
     it("invites a player for open game bookings", () => {
         const onInvitePlayer = vi.fn();
-        render(<ManageBookingView {...defaultProps} onInvitePlayer={onInvitePlayer} />);
+        render(
+            <ManageBookingView
+                {...defaultProps}
+                booking={{ ...booking, status: "pending" } as never}
+                onInvitePlayer={onInvitePlayer}
+            />
+        );
 
         fireEvent.change(screen.getByLabelText("Player ID"), { target: { value: "user-123" } });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
@@ -231,16 +237,16 @@ describe("ManageBookingView", () => {
         expect(onInvitePlayer).toHaveBeenCalledWith("user-123");
     });
 
-    it("renders invite section for non-open game bookings", () => {
+    it("hides invite section for non-open game bookings", () => {
         render(
             <ManageBookingView
                 {...defaultProps}
-                booking={{ ...booking, is_open_game: false } as never}
+                booking={{ ...booking, status: "pending", is_open_game: false } as never}
             />
         );
 
-        expect(screen.getByRole("heading", { name: "Invite Player" })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Invite" })).toBeDisabled();
+        expect(screen.queryByRole("heading", { name: "Invite Player" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Invite" })).not.toBeInTheDocument();
     });
 
     it("disables save when form is not dirty", () => {
