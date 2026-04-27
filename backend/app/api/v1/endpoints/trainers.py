@@ -91,7 +91,26 @@ async def list_trainers(
         stmt = stmt.where(StaffProfile.is_active.is_(True))
 
     result = await db.execute(stmt)
-    return result.scalars().all()
+    profiles = result.scalars().all()
+
+    user_ids = [p.user_id for p in profiles]
+    users_result = await db.execute(
+        select(User.id, User.full_name).where(User.id.in_(user_ids))
+    )
+    user_names: dict[uuid.UUID, str] = {row.id: row.full_name for row in users_result}
+
+    return [
+        TrainerRead(
+            id=p.id,
+            user_id=p.user_id,
+            club_id=p.club_id,
+            full_name=user_names.get(p.user_id, ""),
+            bio=p.bio,
+            is_active=p.is_active,
+            availability=p.availability,
+        )
+        for p in profiles
+    ]
 
 
 @router.get("/available", response_model=list[TrainerAvailableSummary])

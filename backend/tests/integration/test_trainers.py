@@ -259,6 +259,16 @@ class TestListTrainers:
         )
         assert resp.status_code == 404
 
+    async def test_full_name_in_response(
+        self, client, staff_headers, trainer_profile, trainer_user, club
+    ):
+        resp = await client.get(
+            BASE, params={"club_id": str(club.id)}, headers=staff_headers
+        )
+        assert resp.status_code == 200
+        trainer = next(t for t in resp.json() if t["id"] == str(trainer_profile.id))
+        assert trainer["full_name"] == trainer_user.full_name
+
     async def test_availability_embedded_in_response(
         self, client, staff_headers, trainer_profile, availability_window, club
     ):

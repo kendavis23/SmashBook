@@ -56,6 +56,7 @@ class TrainerRead(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
     club_id: uuid.UUID
+    full_name: str
     bio: Optional[str]
     is_active: bool
     availability: list[TrainerAvailabilityRead]
