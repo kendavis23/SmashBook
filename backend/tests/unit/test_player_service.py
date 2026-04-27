@@ -3,6 +3,7 @@ Unit tests for PlayerService.
 
 The DB session is mocked — no Postgres required.
 Tests cover:
+  - list_players: ORM → PlayerSearchResult mapping, query execution
   - get_booking_history: ORM → PlayerBookingItem mapping and query path selection
   - update_skill_level: skill assignment, audit log creation, response shape
   - get_skill_history: history query and SkillLevelHistoryItem mapping
@@ -15,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from app.db.models.booking import BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
 from app.db.models.skill import SkillLevelHistory
-from app.schemas.user import PlayerBookingItem, SkillLevelHistoryItem, SkillLevelUpdateResponse
+from app.schemas.user import PlayerBookingItem, PlayerSearchResult, SkillLevelHistoryItem, SkillLevelUpdateResponse
 from app.services.player_service import PlayerService
 
 
@@ -73,6 +74,89 @@ def _make_db(rows: list) -> AsyncMock:
     result.scalars.return_value.all.return_value = rows
     db.execute = AsyncMock(return_value=result)
     return db
+
+
+# ---------------------------------------------------------------------------
+# Helpers — list_players
+# ---------------------------------------------------------------------------
+
+
+TENANT_ID = uuid.uuid4()
+
+
+def _make_user(full_name: str, skill_level=None) -> SimpleNamespace:
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        full_name=full_name,
+        skill_level=skill_level,
+    )
+
+
+def _make_list_db(users: list) -> AsyncMock:
+    db = AsyncMock()
+    result = MagicMock()
+    result.scalars.return_value.all.return_value = users
+    db.execute = AsyncMock(return_value=result)
+    return db
+
+
+# ---------------------------------------------------------------------------
+# Tests — list_players
+# ---------------------------------------------------------------------------
+
+
+class TestListPlayers:
+    async def test_empty_result_returns_empty_list(self):
+        svc = PlayerService(_make_list_db([]))
+        result = await svc.list_players(tenant_id=TENANT_ID)
+        assert result == []
+
+    async def test_maps_user_fields_to_player_search_result(self):
+        user = _make_user("Alice Smith", skill_level=Decimal("3.5"))
+        svc = PlayerService(_make_list_db([user]))
+        result = await svc.list_players(tenant_id=TENANT_ID)
+        assert len(result) == 1
+        item = result[0]
+        assert isinstance(item, PlayerSearchResult)
+        assert item.id == user.id
+        assert item.full_name == "Alice Smith"
+        assert item.skill_level == Decimal("3.5")
+
+    async def test_skill_level_none_is_preserved(self):
+        user = _make_user("Bob Jones", skill_level=None)
+        svc = PlayerService(_make_list_db([user]))
+        result = await svc.list_players(tenant_id=TENANT_ID)
+        assert result[0].skill_level is None
+
+    async def test_multiple_users_all_returned(self):
+        users = [_make_user("Alice"), _make_user("Bob"), _make_user("Carol")]
+        svc = PlayerService(_make_list_db(users))
+        result = await svc.list_players(tenant_id=TENANT_ID)
+        assert len(result) == 3
+
+    async def test_executes_exactly_one_query_no_filters(self):
+        db = _make_list_db([])
+        svc = PlayerService(db)
+        await svc.list_players(tenant_id=TENANT_ID)
+        db.execute.assert_called_once()
+
+    async def test_executes_exactly_one_query_with_q(self):
+        db = _make_list_db([])
+        svc = PlayerService(db)
+        await svc.list_players(tenant_id=TENANT_ID, q="alice")
+        db.execute.assert_called_once()
+
+    async def test_club_id_param_does_not_raise(self):
+        db = _make_list_db([])
+        svc = PlayerService(db)
+        result = await svc.list_players(tenant_id=TENANT_ID, club_id=uuid.uuid4())
+        assert result == []
+
+    async def test_club_id_does_not_add_extra_query(self):
+        db = _make_list_db([])
+        svc = PlayerService(db)
+        await svc.list_players(tenant_id=TENANT_ID, club_id=uuid.uuid4())
+        db.execute.assert_called_once()
 
 
 # ---------------------------------------------------------------------------

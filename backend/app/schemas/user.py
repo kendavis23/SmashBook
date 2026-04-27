@@ -104,6 +104,14 @@ class PlayerBookingsResponse(BaseModel):
     past: list[PlayerBookingItem]
 
 
+class PlayerSearchResult(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    skill_level: Optional[Decimal] = None
+
+    model_config = {"from_attributes": True}
+
+
 class SkillLevelUpdate(BaseModel):
     new_level: Decimal
     reason: Optional[str] = None

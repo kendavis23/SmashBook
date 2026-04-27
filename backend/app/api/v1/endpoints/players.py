@@ -1,13 +1,14 @@
 import uuid
+from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db, get_read_db
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.db.models.user import User
 from app.schemas.user import (
     UserResponse, UserProfileUpdate, PlayerBookingItem, PlayerBookingsResponse,
-    SkillLevelUpdate, SkillLevelUpdateResponse, SkillLevelHistoryItem,
+    PlayerSearchResult, SkillLevelUpdate, SkillLevelUpdateResponse, SkillLevelHistoryItem,
 )
 from app.services.player_service import PlayerService
 
@@ -79,6 +80,22 @@ async def get_match_history(
     """
     svc = PlayerService(db)
     return await svc.get_booking_history(current_user.id, completed_only=True)
+
+
+@router.get("", response_model=list[PlayerSearchResult])
+async def search_players(
+    q: Optional[str] = Query(None, description="Case-insensitive name substring filter"),
+    club_id: Optional[uuid.UUID] = Query(None, description="Reserved — will enable club-scoped filtering in G9"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """
+    Return active, non-suspended players in the tenant, sorted by name.
+    Scoped by tenant_id from the auth token. club_id is accepted but not yet applied —
+    it will filter via player_profiles in G9.
+    """
+    svc = PlayerService(db)
+    return await svc.list_players(tenant_id=current_user.tenant_id, q=q, club_id=club_id)
 
 
 @router.get("/{player_id}")

@@ -3,6 +3,7 @@ Integration tests for /api/v1/players endpoints.
 
 Coverage
 --------
+GET  /players                 — happy path, name filter, club_id no-op, exclusions, tenant isolation
 GET  /players/me              — success, unauthenticated, wrong tenant
 PATCH /players/me             — success (partial update), unauthenticated, wrong tenant
 GET  /players/me/bookings     — upcoming/past split, isolation, unauthenticated
@@ -791,3 +792,154 @@ class TestGetSkillHistory:
     async def test_unauthenticated_returns_403(self, client, player):
         resp = await client.get(f"/api/v1/players/{player.id}/skill-history")
         assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Tests — GET /players
+# ---------------------------------------------------------------------------
+
+
+class TestSearchPlayers:
+    async def test_returns_players_in_tenant(self, client, player, player_headers):
+        resp = await client.get("/api/v1/players", headers=player_headers)
+        assert resp.status_code == 200
+        ids = {p["id"] for p in resp.json()}
+        assert str(player.id) in ids
+
+    async def test_response_shape(self, client, player, player_headers):
+        resp = await client.get("/api/v1/players", headers=player_headers)
+        assert resp.status_code == 200
+        items = resp.json()
+        assert isinstance(items, list)
+        assert len(items) >= 1
+        item = next(p for p in items if p["id"] == str(player.id))
+        assert "id" in item
+        assert "full_name" in item
+        assert "skill_level" in item
+
+    async def test_sorted_by_name(self, client, player, player2, player_headers):
+        resp = await client.get("/api/v1/players", headers=player_headers)
+        assert resp.status_code == 200
+        names = [p["full_name"] for p in resp.json()]
+        assert names == sorted(names)
+
+    async def test_name_filter_returns_matching_player(self, client, player, player2, player_headers):
+        # player2 full_name is "Player Two"; search for a prefix unique to them
+        resp = await client.get("/api/v1/players?q=Player+Two", headers=player_headers)
+        assert resp.status_code == 200
+        ids = {p["id"] for p in resp.json()}
+        assert str(player2.id) in ids
+
+    async def test_name_filter_excludes_non_matches(self, client, player, player2, player_headers):
+        resp = await client.get("/api/v1/players?q=Player+Two", headers=player_headers)
+        assert resp.status_code == 200
+        ids = {p["id"] for p in resp.json()}
+        # player fixture is "Test Player" — should not appear
+        assert str(player.id) not in ids
+
+    async def test_name_filter_is_case_insensitive(self, client, player, player_headers):
+        resp = await client.get("/api/v1/players?q=test+player", headers=player_headers)
+        assert resp.status_code == 200
+        ids = {p["id"] for p in resp.json()}
+        assert str(player.id) in ids
+
+    async def test_club_id_param_accepted_as_no_op(self, client, player, player_headers):
+        resp = await client.get(
+            f"/api/v1/players?club_id={uuid.uuid4()}", headers=player_headers
+        )
+        assert resp.status_code == 200
+        ids = {p["id"] for p in resp.json()}
+        assert str(player.id) in ids
+
+    async def test_excludes_suspended_players(self, client, player, player_headers, tenant, test_session_factory):
+        from sqlalchemy import update as sql_update
+        async with test_session_factory() as session:
+            u = User(
+                tenant_id=tenant.id,
+                email=f"suspended-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Suspended Player",
+                hashed_password="x",
+                is_active=True,
+                is_suspended=True,
+                role=TenantUserRole.player,
+            )
+            session.add(u)
+            await session.commit()
+            await session.refresh(u)
+
+        try:
+            resp = await client.get("/api/v1/players", headers=player_headers)
+            assert resp.status_code == 200
+            ids = {p["id"] for p in resp.json()}
+            assert str(u.id) not in ids
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(User, u.id)
+                if obj:
+                    await session.delete(obj)
+                await session.commit()
+
+    async def test_excludes_inactive_players(self, client, player, player_headers, tenant, test_session_factory):
+        async with test_session_factory() as session:
+            u = User(
+                tenant_id=tenant.id,
+                email=f"inactive-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Inactive Player",
+                hashed_password="x",
+                is_active=False,
+                role=TenantUserRole.player,
+            )
+            session.add(u)
+            await session.commit()
+            await session.refresh(u)
+
+        try:
+            resp = await client.get("/api/v1/players", headers=player_headers)
+            assert resp.status_code == 200
+            ids = {p["id"] for p in resp.json()}
+            assert str(u.id) not in ids
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(User, u.id)
+                if obj:
+                    await session.delete(obj)
+                await session.commit()
+
+    async def test_excludes_staff_users(self, client, player, staff, player_headers):
+        resp = await client.get("/api/v1/players", headers=player_headers)
+        assert resp.status_code == 200
+        ids = {p["id"] for p in resp.json()}
+        assert str(staff.id) not in ids
+
+    async def test_no_results_returns_empty_list(self, client, player_headers):
+        resp = await client.get("/api/v1/players?q=zzznomatch", headers=player_headers)
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_unauthenticated_returns_403(self, client):
+        resp = await client.get("/api/v1/players")
+        assert resp.status_code == 403
+
+    async def test_wrong_tenant_returns_401(self, client, player, tenant, plan, test_session_factory):
+        from app.db.models.tenant import Tenant as TenantModel
+
+        subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Other Club", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.commit()
+            await session.refresh(t2)
+
+        try:
+            token = create_access_token({"sub": str(player.id), "tid": str(tenant.id)})
+            resp = await client.get(
+                "/api/v1/players",
+                headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2.id)},
+            )
+            assert resp.status_code == 401
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(TenantModel, t2.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()

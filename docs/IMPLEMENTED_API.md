@@ -1,4 +1,4 @@
-_Last updated: 2026-04-26 00:00 UTC_
+_Last updated: 2026-04-27 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -59,6 +59,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 
 | Method | Path | Description |
 |---|---|---|
+| `GET` | `/api/v1/players` | List active players in the tenant, sorted by name; optional `?q=` name search and `?club_id=` (reserved for G9 club-scoped filtering via `player_profiles`) |
 | `GET` | `/api/v1/players/me` | Get current player's profile |
 | `PATCH` | `/api/v1/players/me` | Update current player's profile details |
 | `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time |

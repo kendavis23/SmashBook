@@ -3,21 +3,44 @@ PlayerService — player profile and skill level management.
 """
 import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus
 from app.db.models.skill import SkillLevelHistory
-from app.db.models.user import User
-from app.schemas.user import PlayerBookingItem, SkillLevelHistoryItem, SkillLevelUpdateResponse
+from app.db.models.user import User, TenantUserRole
+from app.schemas.user import PlayerBookingItem, PlayerSearchResult, SkillLevelHistoryItem, SkillLevelUpdateResponse
 
 
 class PlayerService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def list_players(
+        self,
+        tenant_id: uuid.UUID,
+        q: Optional[str] = None,
+        # club_id reserved — will filter via player_profiles join in G9
+        club_id: Optional[uuid.UUID] = None,
+    ) -> list[PlayerSearchResult]:
+        stmt = (
+            select(User)
+            .where(
+                User.tenant_id == tenant_id,
+                User.role == TenantUserRole.player,
+                User.is_active.is_(True),
+                User.is_suspended.is_(False),
+            )
+            .order_by(User.full_name)
+        )
+        if q:
+            stmt = stmt.where(User.full_name.ilike(f"%{q}%"))
+        result = await self.db.execute(stmt)
+        return [PlayerSearchResult.model_validate(u) for u in result.scalars().all()]
 
     async def update_skill_level(
         self,
