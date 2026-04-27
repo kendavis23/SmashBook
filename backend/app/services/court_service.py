@@ -27,9 +27,10 @@ from app.db.models.booking import (
     PaymentStatus,
     PlayerRole,
 )
-from app.db.models.club import Club, PricingRule
+from app.db.models.club import Club
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.user import User
+from app.services.pricing_service import PricingService
 
 _MAX_OCCURRENCES = 104  # safety cap: ~2 years of weekly sessions
 
@@ -117,24 +118,11 @@ class CourtService:
     async def _get_price(
         self, club_id: uuid.UUID, start: datetime
     ) -> Optional[Decimal]:
-        day_of_week = start.weekday()
-        slot_time = start.time()
-        now = datetime.now(tz=timezone.utc)
-        result = await self.db.execute(
-            select(PricingRule).where(
-                PricingRule.club_id == club_id,
-                PricingRule.day_of_week == day_of_week,
-                PricingRule.is_active,
-                PricingRule.start_time <= slot_time,
-                PricingRule.end_time > slot_time,
-            )
+        pricing_svc = PricingService(self.db)
+        breakdown = await pricing_svc.calculate(
+            club_id, start, max_players=1, user_id=None
         )
-        rule = result.scalar_one_or_none()
-        if not rule:
-            return None
-        if rule.incentive_price and (rule.incentive_expires_at is None or rule.incentive_expires_at > now):
-            return rule.incentive_price
-        return rule.price_per_slot
+        return breakdown.unit_price if breakdown else None
 
     # ------------------------------------------------------------------
     # Public

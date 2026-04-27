@@ -756,8 +756,11 @@ class TestJoinBooking:
         for headers in [staff_headers, player2_headers, skilled_player_headers, p3_headers]:
             await client.post(f"/api/v1/bookings/{booking_id}/join?club_id={club.id}", headers=headers)
 
+        # All 4 slots filled but each player has a pending payment — confirmation
+        # happens via the Stripe webhook once payments clear, not on join.
         final = await client.get(f"/api/v1/bookings/{booking_id}?club_id={club.id}", headers=staff_headers)
-        assert final.json()["status"] == "confirmed"
+        assert final.json()["status"] == "pending"
+        assert len(final.json()["players"]) == 4
 
         async with test_session_factory() as session:
             await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.user_id == p3.id))

@@ -39,10 +39,11 @@ from app.db.models.booking import (
     PlayerRole,
 )
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
-from app.db.models.club import Club, OperatingHours, PricingRule
+from app.db.models.club import Club, OperatingHours
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.staff import StaffProfile, StaffRole
 from app.db.models.user import TenantUserRole, User
+from app.services.pricing_service import PricingService
 
 _STAFF_ROLES = {
     TenantUserRole.owner,
@@ -206,25 +207,6 @@ class BookingService:
         )
         return result.scalar_one()
 
-    async def _get_price(self, club_id: uuid.UUID, start: datetime) -> Optional[Decimal]:
-        day_of_week = start.weekday()
-        slot_time = start.time()
-        now = datetime.now(tz=timezone.utc)
-        result = await self.db.execute(
-            select(PricingRule).where(
-                PricingRule.club_id == club_id,
-                PricingRule.day_of_week == day_of_week,
-                PricingRule.is_active,
-                PricingRule.start_time <= slot_time,
-                PricingRule.end_time > slot_time,
-            )
-        )
-        rule = result.scalar_one_or_none()
-        if not rule:
-            return None
-        if rule.incentive_price and (rule.incentive_expires_at is None or rule.incentive_expires_at > now):
-            return rule.incentive_price
-        return rule.price_per_slot
 
     def _compute_skill_range(
         self,
@@ -422,10 +404,12 @@ class BookingService:
             )
 
         # 14. Price
-        total_price = await self._get_price(club_id, start_datetime)
-
-        # 14. Amount due per player slot
-        amount_due = (total_price / max_players) if total_price else Decimal("0.00")
+        pricing_svc = PricingService(self.db)
+        breakdown = await pricing_svc.calculate(
+            club_id, start_datetime, max_players, organiser_user.id
+        )
+        total_price = breakdown.total_price if breakdown else None
+        amount_due = breakdown.amount_due if breakdown else Decimal("0.00")
 
         # Capture requesting_user.id before any flush — after flush() SQLAlchemy may
         # expire the ORM object (loaded via db.get with a string key), making .id None.
@@ -446,6 +430,9 @@ class BookingService:
             max_skill_level=max_skill,
             is_open_game=is_open_game,
             total_price=total_price,
+            discount_amount=breakdown.discount_amount if breakdown else None,
+            discount_source=breakdown.discount_source if breakdown else None,
+            membership_subscription_id=breakdown.membership_subscription_id if breakdown else None,
             notes=notes,
             event_name=event_name,
             contact_name=contact_name,
@@ -457,15 +444,22 @@ class BookingService:
 
         # 16. Add organiser as BookingPlayer (skip only for staff-admin empty open games)
         if not is_empty_admin_game:
+            organiser_payment_status = (
+                PaymentStatus.paid
+                if (breakdown and breakdown.credit_consumed)
+                else PaymentStatus.pending
+            )
             organiser_bp = BookingPlayer(
                 booking=booking,
                 user=organiser_user,
                 role=PlayerRole.organiser,
                 invite_status=InviteStatus.accepted,
-                payment_status=PaymentStatus.pending,
+                payment_status=organiser_payment_status,
                 amount_due=amount_due,
             )
             self.db.add(organiser_bp)
+            if breakdown and breakdown.credit_consumed:
+                await pricing_svc.consume_credit(breakdown.membership_subscription_id, booking.id)
 
         # 17. Add named players
         for named_user in named_players:
@@ -759,25 +753,44 @@ class BookingService:
             Decimal(str(booking.max_skill_level)) if booking.max_skill_level is not None else None,
         )
 
-        # Fetch club for min_players_to_confirm
-        club = await self.db.get(Club, club_id)
-        amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
+        # Fetch club (needed for max_players context)
+        club = await self.db.get(Club, club_id)  # noqa: F841 — kept for future use
 
+        pricing_svc = PricingService(self.db)
+        breakdown = await pricing_svc.calculate(
+            club_id, booking.start_datetime, booking.max_players, requesting_user.id
+        )
+        amount_due = breakdown.amount_due if breakdown else Decimal("0.00")
+
+        join_payment_status = (
+            PaymentStatus.paid
+            if (breakdown and breakdown.credit_consumed)
+            else PaymentStatus.pending
+        )
         bp = BookingPlayer(
             booking=booking,
             user=requesting_user,
             role=PlayerRole.player,
             invite_status=InviteStatus.accepted,
-            payment_status=PaymentStatus.pending,
+            payment_status=join_payment_status,
             amount_due=amount_due,
         )
         self.db.add(bp)
         await self.db.flush()
 
-        # Auto-confirm
-        new_accepted = accepted + 1
-        if new_accepted >= club.min_players_to_confirm and booking.status == BookingStatus.pending:
-            booking.status = BookingStatus.confirmed
+        if breakdown and breakdown.credit_consumed:
+            await pricing_svc.consume_credit(breakdown.membership_subscription_id, booking.id)
+
+        await self.db.flush()
+
+        # Confirm if all current players are paid (e.g. every slot covered by a membership credit)
+        all_bp_result = await self.db.execute(
+            select(BookingPlayer).where(BookingPlayer.booking_id == booking.id)
+        )
+        all_players = all_bp_result.scalars().all()
+        if all_players and all(p.payment_status == PaymentStatus.paid for p in all_players):
+            if booking.status == BookingStatus.pending:
+                booking.status = BookingStatus.confirmed
 
         await self.db.flush()
         return await self._load_booking(booking.id)
