@@ -41,31 +41,32 @@ export const CALENDAR_VIEW_MODES: { id: CalendarViewMode; label: string }[] = [
     { id: "week", label: "Week" },
 ];
 
+// Color groups: regular=blue, lessons=amber, corporate+tournament=purple
 export const BOOKING_TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
     regular: {
-        bg: "bg-[hsl(214,80%,98%)]", // lighter background
-        text: "text-[hsl(214,70%,60%)]", // softer text
-        border: "border-[hsl(214,70%,80%)]", // lighter border
+        bg: "bg-[hsl(214,80%,98%)]",
+        text: "text-[hsl(214,70%,50%)]",
+        border: "border-[hsl(214,70%,80%)]",
     },
     lesson_individual: {
-        bg: "bg-[hsl(214,80%,98%)]", // lighter background
-        text: "text-[hsl(214,70%,60%)]", // softer text
-        border: "border-[hsl(214,70%,80%)]", // lighter border
+        bg: "bg-[hsl(38,90%,97%)]",
+        text: "text-[hsl(38,70%,40%)]",
+        border: "border-[hsl(38,70%,75%)]",
     },
     lesson_group: {
-        bg: "bg-[hsl(214,80%,98%)]", // lighter background
-        text: "text-[hsl(214,70%,60%)]", // softer text
-        border: "border-[hsl(214,70%,80%)]", // lighter border
+        bg: "bg-[hsl(38,90%,97%)]",
+        text: "text-[hsl(38,70%,40%)]",
+        border: "border-[hsl(38,70%,75%)]",
     },
     corporate_event: {
-        bg: "bg-[hsl(214,80%,98%)]", // lighter background
-        text: "text-[hsl(214,70%,60%)]", // softer text
-        border: "border-[hsl(214,70%,80%)]", // lighter border
+        bg: "bg-[hsl(270,60%,97%)]",
+        text: "text-[hsl(270,50%,45%)]",
+        border: "border-[hsl(270,50%,78%)]",
     },
     tournament: {
-        bg: "bg-[hsl(214,80%,98%)]", // lighter background
-        text: "text-[hsl(214,70%,60%)]", // softer text
-        border: "border-[hsl(214,70%,80%)]", // lighter border
+        bg: "bg-[hsl(270,60%,97%)]",
+        text: "text-[hsl(270,50%,45%)]",
+        border: "border-[hsl(270,50%,78%)]",
     },
 };
 

@@ -40,9 +40,12 @@ describe("CalendarBookingBlock", () => {
             />
         );
 
-        expect(screen.getByRole("button", { name: /league match/i })).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /confirmed/i })).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: /league match/i }));
+        const button = screen.getByRole("button", {
+            name: /regular .* open game .* 10:00 am .* 11:00 am .* confirmed/i,
+        });
+
+        expect(button).toBeInTheDocument();
+        fireEvent.click(button);
         expect(onManageClick).toHaveBeenCalledWith("booking-1");
     });
 

@@ -32,10 +32,14 @@ export default function CalendarContainer(): JSX.Element {
     const { data: courts = [] } = useListCourts(clubId ?? "");
 
     useEffect(() => {
-        if (courts.length > 0 && !selectedCourtId) {
-            setSelectedCourtId((courts[0] as { id: string }).id);
+        setSelectedCourtId("");
+    }, [clubId]);
+
+    useEffect(() => {
+        if (courts.length > 0) {
+            setSelectedCourtId((prev) => prev || (courts[0] as { id: string }).id);
         }
-    }, [courts, selectedCourtId]);
+    }, [courts]);
 
     const handlePrev = useCallback((): void => {
         setAnchorDate((prev) => addDays(prev, viewMode === "week" ? -7 : -1));

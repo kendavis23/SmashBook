@@ -59,10 +59,10 @@ function CalendarBookingBlock({
         availableHeight
     );
 
-    const title = booking.event_name ?? BOOKING_TYPE_LABELS[booking.booking_type] ?? "Booking";
+    const typeLabel = BOOKING_TYPE_LABELS[booking.booking_type] ?? "Booking";
     const timeLabel = `${formatTime(booking.start_datetime)} – ${formatTime(booking.end_datetime)}`;
     const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
-    const ariaLabel = `${title} • ${timeLabel} • ${statusLabel}`;
+    const ariaLabel = `${typeLabel}${booking.is_open_game ? " • Open Game" : ""} • ${timeLabel} • ${statusLabel}`;
 
     const showStatus = height >= 56;
 
@@ -79,11 +79,18 @@ function CalendarBookingBlock({
             <span className={`pointer-events-none absolute inset-0 bg-card`} />
             <span className={`pointer-events-none absolute inset-0 ${typeColors.bg}`} />
             <span className="relative flex h-full flex-col items-start justify-center gap-1">
-                <p
-                    className={`truncate text-[11px] font-semibold leading-tight ${typeColors.text}`}
-                >
-                    {title}
-                </p>
+                <span className="flex w-full items-center gap-1">
+                    <p
+                        className={`truncate text-[11px] font-semibold leading-tight ${typeColors.text}`}
+                    >
+                        {typeLabel}
+                    </p>
+                    {booking.is_open_game ? (
+                        <span className="shrink-0 rounded-full bg-cta px-1.5 py-px text-[8px] font-bold uppercase leading-tight tracking-wide text-white">
+                            Open
+                        </span>
+                    ) : null}
+                </span>
                 <p className="shrink-0 text-[10px] font-medium leading-none text-foreground/70">
                     {timeLabel}
                 </p>

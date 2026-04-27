@@ -94,6 +94,17 @@ export default function ManageBookingContainer(): JSX.Element {
     } = useGetCourtAvailability(form?.courtId ?? "", form?.bookingDate ?? "");
     const slots = availabilityData?.slots ?? [];
     const selectedPrice = slots.find((s) => s.start_time === form?.startTime)?.price ?? null;
+
+    // Auto-select the first available slot when court/date changes and no time is chosen
+    const formStartTime = form?.startTime;
+    useEffect(() => {
+        if (formStartTime || slotsLoading) return;
+        const firstAvailable = slots.find((s) => s.is_available);
+        if (firstAvailable) {
+            setForm((prev) => (prev ? { ...prev, startTime: firstAvailable.start_time } : prev));
+        }
+    }, [slots, slotsLoading, formStartTime]);
+
     const [apiError, setApiError] = useState("");
     const [updateSuccess, setUpdateSuccess] = useState(false);
     const [showCancelConfirm, setShowCancelConfirm] = useState(false);

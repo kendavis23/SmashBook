@@ -261,7 +261,7 @@ describe("ManageBookingContainer", () => {
     });
 
     it("invites a player for open game bookings", async () => {
-        setupMocks({ data: { ...booking, is_open_game: true } });
+        setupMocks({ data: { ...booking, status: "pending", is_open_game: true } });
         render(<ManageBookingContainer />);
 
         await waitFor(() => {

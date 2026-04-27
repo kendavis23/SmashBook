@@ -10,6 +10,8 @@ import {
 } from "@repo/ui";
 import {
     CalendarDays,
+    ChevronLeft,
+    ChevronRight,
     Clock3,
     DoorOpen,
     Loader2,
@@ -18,6 +20,7 @@ import {
     ShieldCheck,
     Users,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import { NewBookingModal } from "../../../booking/new-booking/components/NewBookingModal";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -147,6 +150,28 @@ export default function DashboardView({
     const checkedCourt = courts.find((court) => court.id === availabilityCourtId);
     const availableSlot = firstAvailableSlot(availability);
 
+    const PAGE_SIZE = 3;
+    const [openGamesPage, setOpenGamesPage] = useState(0);
+    useEffect(() => {
+        setOpenGamesPage(0);
+    }, [openGames]);
+    const totalPages = Math.ceil(openGames.length / PAGE_SIZE);
+    const pagedOpenGames = openGames.slice(
+        openGamesPage * PAGE_SIZE,
+        (openGamesPage + 1) * PAGE_SIZE
+    );
+
+    const COURTS_PAGE_SIZE = 4;
+    const [courtsPage, setCourtsPage] = useState(0);
+    useEffect(() => {
+        setCourtsPage(0);
+    }, [courts]);
+    const courtsTotalPages = Math.ceil(courts.length / COURTS_PAGE_SIZE);
+    const pagedCourts = courts.slice(
+        courtsPage * COURTS_PAGE_SIZE,
+        (courtsPage + 1) * COURTS_PAGE_SIZE
+    );
+
     return (
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
             <section className="rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm sm:px-5">
@@ -266,7 +291,7 @@ export default function DashboardView({
                             </div>
                         ) : (
                             <div className="space-y-3">
-                                {openGames.map((game) => (
+                                {pagedOpenGames.map((game) => (
                                     <article
                                         key={game.id}
                                         className="rounded-lg border border-border bg-background p-4"
@@ -322,6 +347,31 @@ export default function DashboardView({
                                         </div>
                                     </article>
                                 ))}
+                                {totalPages > 1 && (
+                                    <div className="flex items-center justify-between pt-1">
+                                        <span className="text-xs text-muted-foreground">
+                                            Page {openGamesPage + 1} of {totalPages}
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setOpenGamesPage((p) => p - 1)}
+                                                disabled={openGamesPage === 0}
+                                                className="btn-ghost-sm px-1.5"
+                                            >
+                                                <ChevronLeft size={14} />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setOpenGamesPage((p) => p + 1)}
+                                                disabled={openGamesPage >= totalPages - 1}
+                                                className="btn-ghost-sm px-1.5"
+                                            >
+                                                <ChevronRight size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -406,54 +456,81 @@ export default function DashboardView({
                                     No courts are available for this club.
                                 </div>
                             ) : (
-                                courts.map((court) => (
-                                    <article
-                                        key={court.id}
-                                        className={`rounded-lg border p-4 transition-colors ${
-                                            court.id === availabilityCourtId
-                                                ? "border-cta/35 bg-cta/5"
-                                                : "border-border bg-background"
-                                        }`}
-                                    >
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <h3 className="truncate text-sm font-semibold text-foreground">
-                                                    {court.name}
-                                                </h3>
-                                                <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                                                    <span className="inline-flex items-center gap-1">
-                                                        <MapPin size={13} />
-                                                        {surfaceLabel(court.surface_type)}
-                                                    </span>
-                                                    {court.has_lighting ? (
+                                <>
+                                    {pagedCourts.map((court) => (
+                                        <article
+                                            key={court.id}
+                                            className={`rounded-lg border p-4 transition-colors ${
+                                                court.id === availabilityCourtId
+                                                    ? "border-cta/35 bg-cta/5"
+                                                    : "border-border bg-background"
+                                            }`}
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="min-w-0">
+                                                    <h3 className="truncate text-sm font-semibold text-foreground">
+                                                        {court.name}
+                                                    </h3>
+                                                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
                                                         <span className="inline-flex items-center gap-1">
-                                                            <ShieldCheck size={13} />
-                                                            Lighting
+                                                            <MapPin size={13} />
+                                                            {surfaceLabel(court.surface_type)}
                                                         </span>
-                                                    ) : null}
-                                                    {court.lighting_surcharge != null &&
-                                                    court.lighting_surcharge > 0 ? (
-                                                        <span className="inline-flex items-center gap-1">
-                                                            +{" "}
-                                                            {formatCurrency(
-                                                                court.lighting_surcharge
-                                                            )}{" "}
-                                                            lighting
-                                                        </span>
-                                                    ) : null}
+                                                        {court.has_lighting ? (
+                                                            <span className="inline-flex items-center gap-1">
+                                                                <ShieldCheck size={13} />
+                                                                Lighting
+                                                            </span>
+                                                        ) : null}
+                                                        {court.lighting_surcharge != null &&
+                                                        court.lighting_surcharge > 0 ? (
+                                                            <span className="inline-flex items-center gap-1">
+                                                                +{" "}
+                                                                {formatCurrency(
+                                                                    court.lighting_surcharge
+                                                                )}{" "}
+                                                                lighting
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
                                                 </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onCheckAvailability(court.id)}
+                                                    disabled={!court.is_active}
+                                                    className="btn-outline shrink-0 px-2.5 py-1.5 text-xs"
+                                                >
+                                                    Availability
+                                                </button>
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => onCheckAvailability(court.id)}
-                                                disabled={!court.is_active}
-                                                className="btn-outline shrink-0 px-2.5 py-1.5 text-xs"
-                                            >
-                                                Availability
-                                            </button>
+                                        </article>
+                                    ))}
+                                    {courtsTotalPages > 1 && (
+                                        <div className="flex items-center justify-between pt-1">
+                                            <span className="text-xs text-muted-foreground">
+                                                Page {courtsPage + 1} of {courtsTotalPages}
+                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourtsPage((p) => p - 1)}
+                                                    disabled={courtsPage === 0}
+                                                    className="btn-ghost-sm px-1.5"
+                                                >
+                                                    <ChevronLeft size={14} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourtsPage((p) => p + 1)}
+                                                    disabled={courtsPage >= courtsTotalPages - 1}
+                                                    className="btn-ghost-sm px-1.5"
+                                                >
+                                                    <ChevronRight size={14} />
+                                                </button>
+                                            </div>
                                         </div>
-                                    </article>
-                                ))
+                                    )}
+                                </>
                             )}
                         </div>
 

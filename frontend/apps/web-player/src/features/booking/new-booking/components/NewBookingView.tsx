@@ -296,53 +296,6 @@ export default function NewBookingView({
         </>
     );
 
-    const optionalSkillFields = (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div>
-                <label htmlFor="bk-anchor-skill" className={labelCls}>
-                    Anchor
-                </label>
-                <NumberInput
-                    id="bk-anchor-skill"
-                    min={0}
-                    step={0.1}
-                    className={fieldCls}
-                    placeholder="3.5"
-                    value={form.anchorSkill}
-                    onChange={(e) => onFormChange({ anchorSkill: e.target.value })}
-                />
-            </div>
-            <div>
-                <label htmlFor="bk-skill-min" className={labelCls}>
-                    Min
-                </label>
-                <NumberInput
-                    id="bk-skill-min"
-                    min={0}
-                    step={0.1}
-                    className={fieldCls}
-                    placeholder="2.5"
-                    value={form.skillMin}
-                    onChange={(e) => onFormChange({ skillMin: e.target.value })}
-                />
-            </div>
-            <div>
-                <label htmlFor="bk-skill-max" className={labelCls}>
-                    Max
-                </label>
-                <NumberInput
-                    id="bk-skill-max"
-                    min={0}
-                    step={0.1}
-                    className={fieldCls}
-                    placeholder="4.5"
-                    value={form.skillMax}
-                    onChange={(e) => onFormChange({ skillMax: e.target.value })}
-                />
-            </div>
-        </div>
-    );
-
     const optionalEventFields = (
         <div className="space-y-4">
             <div>
@@ -449,38 +402,34 @@ export default function NewBookingView({
                                 {coreFields}
                             </section>
 
-                            {/* Open Game & Skill Level — regular bookings only */}
+                            {/* Open Game — regular bookings only */}
                             {form.bookingType === "regular" ? (
                                 <section className="form-section">
                                     <div className="mb-4">
                                         <h3 className="text-sm font-semibold text-foreground">
-                                            Open Game &amp; Skill Level{" "}
+                                            Open Game{" "}
                                             <span className="text-xs font-normal text-muted-foreground">
                                                 (optional)
                                             </span>
                                         </h3>
                                         <p className="mt-1 text-sm text-muted-foreground">
-                                            Mark as open and set skill range requirements for
-                                            matchmaking.
+                                            Mark as open to allow other players to join.
                                         </p>
                                     </div>
-                                    <div className="mb-4">
-                                        <label className="flex cursor-pointer items-center gap-2">
-                                            <input
-                                                type="checkbox"
-                                                className="h-4 w-4 rounded border-border accent-cta"
-                                                checked={form.isOpenGame}
-                                                onChange={(e) =>
-                                                    onFormChange({ isOpenGame: e.target.checked })
-                                                }
-                                                aria-label="Mark as open game"
-                                            />
-                                            <span className="text-sm font-medium text-foreground">
-                                                Open game
-                                            </span>
-                                        </label>
-                                    </div>
-                                    {optionalSkillFields}
+                                    <label className="flex cursor-pointer items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-border accent-cta"
+                                            checked={form.isOpenGame}
+                                            onChange={(e) =>
+                                                onFormChange({ isOpenGame: e.target.checked })
+                                            }
+                                            aria-label="Mark as open game"
+                                        />
+                                        <span className="text-sm font-medium text-foreground">
+                                            Open game
+                                        </span>
+                                    </label>
                                 </section>
                             ) : null}
 
