@@ -89,8 +89,7 @@ class TrainerOpenSlot(BaseModel):
 
 
 class TrainerAvailableSummary(BaseModel):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    staff_profile_id: uuid.UUID
     club_id: uuid.UUID
     full_name: str
     bio: Optional[str]
