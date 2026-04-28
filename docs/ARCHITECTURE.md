@@ -1,10 +1,16 @@
-_Last updated: 2026-04-06 00:00 UTC_
+_Last updated: 2026-04-28 00:00 UTC_
 
 # SmashBook — Architecture
 
 > **Audience:** Engineering (current and future contributors), technical investors/partners  
-> **Last updated:** 2026-03-28 (Service inventory added)  
+> **Last updated:** 2026-04-28 (Analytics & AI design extracted to companion doc)  
 > **Status:** MVP in progress (Sprints 1–6), AI phases follow
+>
+> **Companion documents:**
+> - [`ANALYTICS_AND_AI.md`](ANALYTICS_AND_AI.md) — full design for analytics, reporting, and AI features
+> - [`DATA_MODEL_TARGET_STATE.md`](DATA_MODEL_TARGET_STATE.md) — target schema for every table, column, enum, index
+> - [`DEPLOYMENT.md`](DEPLOYMENT.md) — CI/CD, environment runbooks
+> - [`FE_ARCHITECTURE.md`](FE_ARCHITECTURE.md) — frontend architecture across staff portal, player web, mobile
 
 ---
 
@@ -29,16 +35,13 @@ _Last updated: 2026-04-06 00:00 UTC_
     - [Stripe Connect architecture](#stripe-connect-architecture)
     - [Fee configuration](#fee-configuration)
     - [Webhook handling](#webhook-handling)
-  - [7. AI Architecture](#7-ai-architecture)
+  - [7. Analytics & AI — Summary](#7-analytics--ai--summary)
     - [Service allocation](#service-allocation)
     - [The inference service wrapper](#the-inference-service-wrapper)
-    - [Every AI call: the internal flow](#every-ai-call-the-internal-flow)
+    - [Read-path tiers](#read-path-tiers)
     - [Sync vs async split](#sync-vs-async-split)
-    - [pgvector and RAG](#pgvector-and-rag)
     - [Core principles](#core-principles)
-    - [All AI features by phase](#all-ai-features-by-phase)
-    - [New AI-native service classes](#new-ai-native-service-classes)
-    - [New Pub/Sub topics for AI pipeline](#new-pubsub-topics-for-ai-pipeline)
+    - [Where to find the rest](#where-to-find-the-rest)
   - [8. Infrastructure \& Deployment](#8-infrastructure--deployment)
     - [Environments](#environments)
     - [GCP services used](#gcp-services-used)
@@ -359,7 +362,11 @@ Webhooks are verified using Stripe signature validation before any processing oc
 
 ---
 
-## 7. AI Architecture
+## 7. Analytics & AI — Summary
+
+> **This section is a summary.** The full design — including the four-tier read-path architecture, every AI feature's implementation pattern, materialized views, BigQuery onboarding plan, partitioning strategy for `ai_inference_log`, and the complete user-story-to-design mapping — lives in [`ANALYTICS_AND_AI.md`](ANALYTICS_AND_AI.md).
+
+Analytics and AI are designed together because they share infrastructure: dashboards, AI feature inputs, and forecasting all consume the same pre-computed tables and (eventually) the same BigQuery dataset. Splitting them across documents would duplicate the design.
 
 ### Service allocation
 
@@ -415,117 +422,58 @@ class AIInferenceService:
         return AIInferenceResult(output=output, fallback_used=fallback_used)
 ```
 
-### Every AI call: the internal flow
+The full sequence diagram for an AI call (feature flag check → cache → model call → fallback path → log write) is in [`ANALYTICS_AND_AI.md`](ANALYTICS_AND_AI.md) §9.
 
-```
-Feature service
-    │
-    ├─ ai_feature_flags check ──── disabled ──→ fallback result
-    │                                                    │
-    ▼                                                    │
-AI inference service                                     │
-    │                                                    │
-    ├─ input hash check ────────── cache hit ──→ cached result
-    │                                                    │
-    ▼                                                    │
-Model API call (Anthropic / Vertex AI)                   │
-    │                                                    │
-    ├─ error ───────────────────────────────→ fallback result ─┐
-    │                                                           │
-    ▼                                                           │
-ai_inference_log write ◄─────────────────────────────────────┘
-    │                         (fallback_used = true for errors)
-    ▼
-Result returned to feature service
-    │
-    ├──→ ai_recommendations
-    ├──→ gap_detection_events
-    ├──→ campaign trigger (Pub/Sub)
-    ├──→ pricing_rules update
-    └──→ notification send
-```
+### Read-path tiers
+
+Analytics and AI features share a four-tier read-path architecture. Queries escalate up the tiers as the platform grows; a query never lives in two tiers at once.
+
+| Tier | What it is | Used for |
+|---|---|---|
+| 1. Live OLTP | SQLAlchemy queries against transactional tables | MVP reports, paginated lists, exports |
+| 2. Pre-computed snapshots | Hourly/daily worker-populated tables (`court_utilisation_snapshots`, `player_engagement_scores`) | AI feature inputs, gap detection, dynamic pricing |
+| 3. Materialized views | Nightly-refreshed PostgreSQL views | Historical aggregates, dashboard widgets |
+| 4. BigQuery | Streamed from Pub/Sub via native subscription | Cross-tenant platform analytics (long-term) |
+
+Full design including escalation triggers, partitioning of `ai_inference_log` (mandatory before production), the BigQuery onboarding plan, and per-table refresh schedules is in [`ANALYTICS_AND_AI.md`](ANALYTICS_AND_AI.md) §4–§8.
 
 ### Sync vs async split
 
-**Synchronous** (blocks the user request — must be fast):
+**Synchronous** (blocks the user request — must be fast): dynamic pricing, matchmaking, conversational booking, AI support chatbot, AI insights dashboard (cached). Everything else is async via Pub/Sub.
 
-- **Dynamic pricing** — called at booking time; must resolve before the price is shown to the player. Uses a Vertex AI structured endpoint, not a generative model, so latency is predictable.
-
-**Asynchronous via Pub/Sub** (all other AI features):
-
-- Churn scoring, gap detection, revenue forecasting — scheduled workers publish events; AI workers consume them without ever touching the request path.
-- Notification drafting, re-engagement copy — triggered by gap or churn events; Anthropic API call happens in a worker.
-- Post-match skill updates, segment re-classification — event-driven from booking completion.
-
-The general rule: if the user is waiting for the response, the AI call must be synchronous and use the fastest available model. Everything else goes async.
-
-### pgvector and RAG
-
-pgvector runs as a PostgreSQL extension on the same Cloud SQL instance — no separate vector database. It is used in two contexts:
-
-- **Matchmaking (Phase 2)** — player embeddings (skill level, availability patterns, play style) are stored as vectors. When an open game slot needs filling, a similarity query finds the best-fit players from the same club.
-- **Conversational booking (Phase 3)** — booking history and player preferences are retrieved as context and injected into the Anthropic API prompt, enabling personalised responses without relying on the model's context window alone.
-
-Embeddings are generated by Vertex AI's embedding models and written to the database by the scoring pipeline workers.
+The general rule: if the user is waiting for the response, the AI call must be synchronous and use the fastest available model. Everything else goes async — scheduled workers and Pub/Sub-driven workers handle every other AI feature without touching the request path.
 
 ### Core principles
 
-**1. Graceful degradation** — every AI feature has a non-AI fallback. If the pricing model is unavailable, the service returns the base rate from `pricing_rules`. If matchmaking fails, the booking proceeds without match suggestions. Fallback logic lives inside the feature service, not the inference wrapper, so each feature can define the most appropriate fallback independently.
+**1. Graceful degradation** — every AI feature has a non-AI fallback. Fallback logic lives inside the feature service, not the inference wrapper.
 
-**2. Logging from day one** — all AI inputs and outputs are logged to `ai_inference_log` before any feature goes to production. This table is the foundation for evaluation, debugging, cost tracking, and future model fine-tuning. Partition it by month in production; archive full payloads to Cloud Storage after 90 days and retain only metadata.
+**2. Logging from day one** — all AI inputs and outputs are logged to `ai_inference_log` before any feature goes to production. The table is range-partitioned by month; payloads archive to Cloud Storage after 90 days.
 
-**3. Per-tenant feature gating** — no AI feature runs unless explicitly enabled on the tenant's `subscription_plan` (plan-level) and confirmed in `ai_feature_flags` (runtime override). The two-layer check allows plan-level defaults to be overridden per tenant without schema changes.
+**3. Per-tenant feature gating** — no AI feature runs unless enabled on both the tenant's `subscription_plan` (plan-level) and `ai_feature_flags` (runtime override).
 
-**4. Async where possible** — AI calls that do not need to block the user request are triggered via Pub/Sub. This keeps API response times fast and decouples AI pipeline failures from the core booking flow.
+**4. Async where possible** — AI calls that don't need to block the user request go through Pub/Sub.
 
-**5. Cost alignment** — AI features are gated per subscription plan and consumption is tracked via `ai_inference_log` (token counts per tenant). This supports per-plan AI pricing and makes overage billing straightforward.
+**5. Cost alignment** — token consumption tracked via `ai_inference_log`; per-plan quotas and overage billing built on this foundation.
 
-### All AI features by phase
+### Where to find the rest
 
-| Feature | Trigger | Provider | Output | Phase |
-|---------|---------|----------|--------|-------|
-| Dynamic pricing | Booking request (sync) | Vertex AI | Price multiplier | 1 |
-| Gap detection | Hourly scheduler | Vertex AI | Gap event + discount offer | 1 |
-| Smart notifications | Gap detected | Anthropic | Targeted push / SMS copy | 1 |
-| AI insights dashboard | Dashboard load | Anthropic | Natural-language summary | 1 |
-| Revenue forecasting | Daily scheduler | Vertex AI | Weekly/monthly projections | 1 |
-| Weather-aware reminders | 6h before booking | Weather API + Anthropic | Personalised alert | 1 |
-| Payment anomaly detection | Payment event | Vertex AI | Anomaly flag + staff alert | 1 |
-| Membership tier suggestions | Wallet top-up | Vertex AI | Tier recommendation | 1 |
-| Churn scoring | Daily scheduler | Vertex AI | Risk scores per player | 2 |
-| Player segmentation | Post-scoring | Vertex AI | Segment assignments | 2 |
-| Re-engagement campaigns | Churn threshold crossed | Anthropic | Campaign copy + audience | 2 |
-| Matchmaking | Open game request | pgvector + Vertex AI | Player suggestions | 2 |
-| Skill rating updates | Booking completion | Vertex AI | Skill delta | 2 |
-| Fill the Court | Low utilisation | Vertex AI + Anthropic | Targeted offers + copy | 2 |
-| Conversational booking | Player chat message | Anthropic (tool use) | Confirmed booking | 3 |
-| AI support chatbot | Player support request | Anthropic (tool use) | Resolution / escalation | 3 |
-| CV court analysis | Video upload | Vertex AI Vision | Rally stats, skill signals | 3 |
+The full design — every feature's read/write tables, every service class, every worker, every Pub/Sub topic, the four-tier read-path architecture, the AI insights dashboard design, materialized view inventory, BigQuery onboarding plan, partitioning strategy for `ai_inference_log`, and the complete user-story-to-design mapping — is in [`ANALYTICS_AND_AI.md`](ANALYTICS_AND_AI.md). Specifically:
 
-### New AI-native service classes
-
-These service classes are added alongside the AI-native schema (see `docs/DATA_MODEL.md` — AI schema addendum):
-
-| Service | Responsibilities |
-|---------|-----------------|
-| `ai_inference_service.py` | Centralised wrapper for all AI API calls; handles flag check, logging, fallback, retry |
-| `segmentation_service.py` | Create/update segments, run AI classifier, manage segment memberships |
-| `churn_service.py` | Score players, update `player_engagement_scores`, trigger re-engagement campaigns |
-| `campaign_service.py` | Campaign CRUD, audience selection, send orchestration, conversion tracking |
-| `utilisation_service.py` | Compute and store `court_utilisation_snapshots`, trigger gap detection pipeline |
-| `gap_detection_service.py` | Detect gaps, generate discount offers, write `gap_detection_events`, trigger notifications |
-| `ai_recommendation_service.py` | Create, route, and action recommendations; manage staff approval workflow |
-
-### New Pub/Sub topics for AI pipeline
-
-| Topic | Published by | Consumed by |
-|-------|-------------|-------------|
-| `utilisation-snapshots` | Scheduled worker (hourly) | `gap_detection_worker` |
-| `gap-detected` | `gap_detection_service` | `campaign_worker`, `notification_worker` |
-| `churn-scores-updated` | Scheduled worker (daily) | `campaign_worker` |
-| `segment-assigned` | `segmentation_service` | `campaign_worker` |
-| `recommendation-created` | `ai_recommendation_service` | `notification_worker` (staff alerts) |
-| `campaign-triggered` | `campaign_service` | `notification_worker` |
+| Looking for... | See |
+|---|---|
+| User stories covered by analytics & AI | `ANALYTICS_AND_AI.md` §3 |
+| Read-path tiers (live → snapshots → MVs → BigQuery) | `ANALYTICS_AND_AI.md` §4–§8 |
+| `ai_inference_log` partitioning DDL | `ANALYTICS_AND_AI.md` §10 |
+| Full AI feature catalogue with sync/async classification | `ANALYTICS_AND_AI.md` §11 |
+| New Pub/Sub topics added in AI phases | `ANALYTICS_AND_AI.md` §13 |
+| New service classes | `ANALYTICS_AND_AI.md` §14 |
+| All workers and scheduled jobs | `ANALYTICS_AND_AI.md` §15 |
+| MVP reporting endpoints (utilisation, revenue, exports) | `ANALYTICS_AND_AI.md` §16 |
+| AI insights dashboard design | `ANALYTICS_AND_AI.md` §17 |
+| pgvector and RAG | `ANALYTICS_AND_AI.md` §18 |
+| Cost tracking, capacity, evaluation, drift | `ANALYTICS_AND_AI.md` §19–§20 |
+| Privacy, multi-tenancy, PII handling | `ANALYTICS_AND_AI.md` §21 |
+| Roadmap, phasing, open questions | `ANALYTICS_AND_AI.md` §22–§23 |
 
 ---
 
@@ -635,6 +583,7 @@ Full ADR documents are in `docs/adr/`.
 | [ADR-004](adr/ADR-004-fastapi.md) | FastAPI over Django/Flask | Accepted |
 | [ADR-005](adr/ADR-005-pgvector.md) | pgvector on Cloud SQL over dedicated vector DB | Accepted |
 | [ADR-006](adr/ADR-006-service-layer-isolation.md) | Tenant isolation in service layer over RLS | Accepted |
+| [ADR-007](adr/ADR-007-tiered-read-path.md) | Four-tier read-path architecture (OLTP → snapshots → MVs → BigQuery) | Accepted |
 
 ---
 

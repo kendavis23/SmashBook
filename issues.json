@@ -1,8 +1,216 @@
 [
   {
     "assignees": [],
-    "body": "",
+    "body": "Provide clear report to show financial reconcilation of bookings, payments, etc. by time period",
     "closedAt": null,
+    "createdAt": "2026-04-28T20:06:38Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      }
+    ],
+    "milestone": null,
+    "number": 186,
+    "state": "OPEN",
+    "title": "Reconciliation report",
+    "updatedAt": "2026-04-28T20:06:38Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/186",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-27T16:42:34Z",
+    "createdAt": "2026-04-27T08:25:29Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 183,
+    "state": "CLOSED",
+    "title": "New endpoint for trainer availability where I'm provided club, beginning and ending time, then I check all trainers and return those who are available including name",
+    "updatedAt": "2026-04-27T16:42:34Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/183",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-27T16:42:29Z",
+    "createdAt": "2026-04-27T08:22:23Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 182,
+    "state": "CLOSED",
+    "title": "Update trainer list endpoint to include name",
+    "updatedAt": "2026-04-27T16:42:29Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/182",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-27T14:45:04Z",
+    "createdAt": "2026-04-27T08:20:37Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 181,
+    "state": "CLOSED",
+    "title": "Update Open Games endpoint to accept player_skill_level and return open matches that include player skill level",
+    "updatedAt": "2026-04-27T14:45:04Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/181",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-27T15:49:15Z",
+    "createdAt": "2026-04-27T08:11:58Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 180,
+    "state": "CLOSED",
+    "title": "Add feature (new endpoint) to get list of players associated with a specific club",
+    "updatedAt": "2026-04-27T15:49:15Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/180",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "For launch, the most important addition is capturing stripe_payout_id on payments — it's a single column, populated via the payout.paid Stripe webhook, and it's the one missing link that clubs and your finance team will actually need. The period-close immutability problem is real but can be deferred — most early-stage SaaS platforms operate on trust and audit logs rather than enforced immutability until they have a compliance requirement that forces it.",
+    "closedAt": null,
+    "createdAt": "2026-04-27T05:46:51Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      }
+    ],
+    "milestone": null,
+    "number": 179,
+    "state": "OPEN",
+    "title": "Stripe_payout_id addition to support reconciliation",
+    "updatedAt": "2026-04-27T05:46:51Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/179",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-24T12:34:32Z",
+    "createdAt": "2026-04-24T08:17:57Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 171,
+    "state": "CLOSED",
+    "title": "change calendar endpoint so past dates show as not available",
+    "updatedAt": "2026-04-24T12:34:32Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/171",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-24T12:34:32Z",
+    "createdAt": "2026-04-24T08:17:26Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 170,
+    "state": "CLOSED",
+    "title": "change calendar endpoint to include optional court id",
+    "updatedAt": "2026-04-24T12:34:32Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/170",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-04-26T20:14:39Z",
     "createdAt": "2026-04-21T14:28:12Z",
     "labels": [
       {
@@ -20,9 +228,9 @@
     ],
     "milestone": null,
     "number": 168,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Set up secrets, Stripe registration, etc. for payments user stories",
-    "updatedAt": "2026-04-21T14:30:22Z",
+    "updatedAt": "2026-04-26T20:14:39Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/168",
     "sprint": {
       "duration": 14,
@@ -100,7 +308,7 @@
       }
     ],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-27T13:23:09Z",
     "createdAt": "2026-04-17T15:34:20Z",
     "labels": [
       {
@@ -112,9 +320,9 @@
     ],
     "milestone": null,
     "number": 159,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Downsize db for staging",
-    "updatedAt": "2026-04-17T15:34:20Z",
+    "updatedAt": "2026-04-27T13:23:09Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/159",
     "sprint": {
       "duration": 14,
@@ -360,7 +568,7 @@
   {
     "assignees": [],
     "body": "Set rules for what happens when cancellation occurs",
-    "closedAt": null,
+    "closedAt": "2026-04-25T13:05:10Z",
     "createdAt": "2026-03-30T18:14:36Z",
     "labels": [
       {
@@ -389,9 +597,9 @@
       "dueOn": null
     },
     "number": 146,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Cancellation policy",
-    "updatedAt": "2026-03-30T18:14:36Z",
+    "updatedAt": "2026-04-25T13:05:10Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/146",
     "sprint": {
       "duration": 14,
@@ -551,7 +759,7 @@
   {
     "assignees": [],
     "body": "When a player books a court, calculate his price based on membership, discounts, etc. ",
-    "closedAt": null,
+    "closedAt": "2026-04-27T21:08:52Z",
     "createdAt": "2026-03-30T13:12:47Z",
     "labels": [
       {
@@ -574,9 +782,9 @@
       "dueOn": null
     },
     "number": 141,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Calculate player pricing",
-    "updatedAt": "2026-03-30T13:12:47Z",
+    "updatedAt": "2026-04-27T21:08:52Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/141",
     "sprint": {
       "duration": 14,
@@ -3987,7 +4195,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-28T20:02:24Z",
     "createdAt": "2026-03-08T13:54:23Z",
     "labels": [
       {
@@ -4010,9 +4218,9 @@
       "dueOn": null
     },
     "number": 32,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: view wallet transaction history",
-    "updatedAt": "2026-03-24T23:03:47Z",
+    "updatedAt": "2026-04-28T20:02:24Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/32",
     "sprint": {
       "duration": 14,
@@ -4090,15 +4298,15 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/30",
     "sprint": {
       "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
     }
   },
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-27T21:36:23Z",
     "createdAt": "2026-03-08T13:54:17Z",
     "labels": [
       {
@@ -4121,15 +4329,15 @@
       "dueOn": null
     },
     "number": 29,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: view wallet balance",
-    "updatedAt": "2026-03-24T23:03:51Z",
+    "updatedAt": "2026-04-27T21:36:23Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/29",
     "sprint": {
       "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
     }
   },
   {
@@ -4209,7 +4417,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-26T20:14:33Z",
     "createdAt": "2026-03-08T13:54:12Z",
     "labels": [
       {
@@ -4232,9 +4440,9 @@
       "dueOn": null
     },
     "number": 26,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: save a payment card via Stripe for fast future checkout",
-    "updatedAt": "2026-03-24T23:03:54Z",
+    "updatedAt": "2026-04-26T20:14:33Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/26",
     "sprint": {
       "duration": 14,
@@ -4283,7 +4491,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-28T11:48:36Z",
     "createdAt": "2026-03-08T13:54:08Z",
     "labels": [
       {
@@ -4306,9 +4514,9 @@
       "dueOn": null
     },
     "number": 24,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: split cost between players (each pays their share)",
-    "updatedAt": "2026-03-24T23:03:56Z",
+    "updatedAt": "2026-04-28T11:48:37Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/24",
     "sprint": {
       "duration": 14,
@@ -4320,7 +4528,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-04-26T20:14:46Z",
     "createdAt": "2026-03-08T13:54:06Z",
     "labels": [
       {
@@ -4343,9 +4551,9 @@
       "dueOn": null
     },
     "number": 23,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: pay for booking online via Stripe",
-    "updatedAt": "2026-03-24T23:03:58Z",
+    "updatedAt": "2026-04-26T20:14:46Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/23",
     "sprint": {
       "duration": 14,
