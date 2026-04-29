@@ -1,4 +1,4 @@
-_Last updated: 2026-04-29 00:00 UTC_
+_Last updated: 2026-04-29 12:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -49,13 +49,13 @@ Update this table as each stage is delivered. The stage is "Delivered" only when
 The stages below are designed to be delivered in order. The reasoning:
 
 1. **Stage 1 (MVP hardening)** lands first because every item in it is a gap that exists *today* and would block production go-live regardless of AI work — Cloud Storage, read replica, pgvector, production environment scaffold, Terraform remote state. None of it is AI work and all of it derisks what comes next.
-2. **Stage 2 (production readiness)** is the "before any AI worker ships" pass — Memorystore for worker idempotency, dead-letter queues, Cloud Armor, monitoring, the Anthropic and Vertex AI access. It is easy to skip and will bite hard the first time an AI worker fails or a Pub/Sub message gets redelivered.
+2. **Stage 2 (production readiness)** is the "before any AI worker ships" pass — VPC connector, Cloud Armor, monitoring, the Anthropic and Vertex AI access. It is easy to skip and will bite hard the first time production traffic hits the platform.
 3. **Stage 3 (AI Phase 1)** is the first AI delivery — gap detection, dynamic pricing, dashboard insights. This is where the Terraform expansion gets significant: two new workers, three new scheduled jobs, plus operational jobs (partition management, archive, materialized view refresh) that are easy to forget but mandatory.
 4. **Stage 4 (AI Phase 2)** adds churn, segmentation, matchmaking, cancellation prediction. Mostly mechanical — more topics, more workers, more scheduled jobs — once Stage 3 has established the pattern.
 5. **Stage 5 (AI Phase 3)** is conversational booking, support chatbot, CV court analysis. This phase mostly reuses existing infrastructure (Anthropic for language tasks; pgvector already on Cloud SQL); only the competitor scrape job is genuinely new.
 6. **Stage 6 (BigQuery)** is deliberately last. The architecture is explicit that cross-tenant analytics is post-MVP, and it should not be introduced until there is a real reporting query that the four-tier read-path (Tier 1–3) cannot answer.
 
-The single biggest risk in skipping the ordering is **dead-letter queues + Memorystore in Stage 2**. Both are easy to defer and both are required for AI workers to be operationally safe.
+The single biggest risk in skipping the ordering is **worker idempotency (Stage 3.6)**. AI workers must deduplicate Pub/Sub redeliveries before they ship — without it, a single redelivered `gap-detected` event causes duplicate Anthropic API calls and duplicate notification sends. The DLQ work in Stage 1.6 covers the poison-message case; idempotency is the separate "same message delivered twice" case.
 
 ---
 
@@ -184,23 +184,15 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 
 > **Goal:** everything that must exist *before* the first AI worker ships and *before* production go-live. After this stage the platform is operationally safe to run real customer traffic.
 
-### 2.1 Memorystore (Redis)
+### 2.1 Serverless VPC connector
 
-**Why:** `ANALYTICS_AND_AI.md` §13 specifies worker idempotency uses "a Redis cache (24h TTL) before processing." Without this, every AI worker is non-idempotent and Pub/Sub redelivery causes duplicate side effects.
-
-**Resources:**
-- `google_redis_instance.idempotency_cache` — Basic tier, 1 GB to start, private IP only
-- New secret: `padel-redis-url` with `redis://INTERNAL_IP:6379`
-
-### 2.2 Serverless VPC connector
-
-**Why:** Memorystore is private-IP only — Cloud Run reaches it via a Serverless VPC connector. Also enables Cloud SQL private IP later.
+**Why:** Required for Cloud SQL private IP migration (an upcoming hardening step) and any future use of internal-only services. Cheap to add now; expensive to retrofit once production traffic is live and Cloud Run services need to be revision-rolled to attach to it.
 
 **Resources:**
 - `google_vpc_access_connector.main` — `/28` subnet in `europe-west2`
 - Update every Cloud Run service to set `vpc_access { connector = ..., egress = "PRIVATE_RANGES_ONLY" }`
 
-### 2.3 Cloud Armor + global HTTPS load balancer
+### 2.2 Cloud Armor + global HTTPS load balancer
 
 **Why:** `padel-api` is currently directly exposed via Cloud Run's public URL. Production needs a custom domain, managed certificate, and WAF.
 
@@ -212,7 +204,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - `google_compute_security_policy.api` with rate-limit + standard OWASP rules
 - DNS: A record at the registrar pointing the custom domain at the LB IP (out-of-band)
 
-### 2.4 Monitoring & alerting
+### 2.3 Monitoring & alerting
 
 **Why:** No alerts today. Before production, the on-call (Ken) needs paging on the basics.
 
@@ -226,7 +218,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
   - DLQ topic message count >0 (any DLQ)
   - Cloud Run service revision failed deploy
 
-### 2.5 AI provider access
+### 2.4 AI provider access
 
 **Why:** Stage 3 needs Vertex AI and Anthropic from day one.
 
@@ -235,7 +227,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - New secret: `firebase-fcm-credentials` (or migrate notification worker to Firebase Admin SDK with runtime SA — decide before this stage starts)
 - IAM: runtime SA gets `roles/aiplatform.user` (Vertex AI access)
 
-### 2.6 Cloud Scheduler service account
+### 2.5 Cloud Scheduler service account
 
 **Why:** Stage 3 introduces multiple Cloud Run Jobs triggered by Cloud Scheduler. Set up the SA and base permissions now so each later stage just adds invoker bindings.
 
@@ -245,8 +237,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 
 ### Stage 2 deliverables checklist
 
-- [ ] Memorystore live, secret set, VPC connector wired
-- [ ] All Cloud Run services using VPC connector
+- [ ] VPC connector live and attached to all Cloud Run services
 - [ ] Custom domain + LB + Cloud Armor live for `padel-api`
 - [ ] At minimum 6 monitoring alert policies firing to a real notification channel
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`
@@ -299,16 +290,53 @@ Each is `google_cloud_run_v2_job` + `google_cloud_scheduler_job` (with `http_tar
 
 ### 3.5 IAM additions
 
-- Runtime SA: `roles/aiplatform.user` (already added in Stage 2.5)
+- Runtime SA: `roles/aiplatform.user` (already added in Stage 2.4)
 - Runtime SA: `roles/storage.objectAdmin` on `padel-ai-archive-staging` (already added in Stage 1.2)
 - No new bindings unique to Stage 3 if Stages 1–2 were delivered
+
+### 3.6 Worker idempotency table
+
+**Why:** Pub/Sub guarantees at-least-once delivery, so the same `gap-detected` event can arrive twice. Without deduplication, that means two Anthropic API calls and two notification sends per duplicate. AI workers must be idempotent before they ship.
+
+**Design decision (2026-04-29):** use a Postgres table rather than Memorystore (Redis). Rationale:
+- Single-purpose dedup cache does not justify a separate managed service (~£35–40/month for Memorystore Basic in `europe-west2`)
+- Workers already have a Postgres connection — no new dependency, no VPC connector requirement driven by this need alone
+- A Postgres table is durable across worker restarts (Redis Basic tier is not)
+- Throughput is well within Postgres capacity at MVP scale (low thousands of events/day)
+- If volume ever exceeds what Postgres can handle, the table is trivially swapped for Memorystore behind a `dedup_store` interface
+
+**Schema (defined via Alembic, not Terraform):**
+
+```sql
+CREATE TABLE worker_event_dedup (
+    event_id        UUID PRIMARY KEY,
+    worker_name     TEXT NOT NULL,
+    processed_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_worker_event_dedup_processed_at
+    ON worker_event_dedup (processed_at);
+```
+
+**Worker pattern:**
+1. On message receive, `INSERT ... ON CONFLICT (event_id) DO NOTHING RETURNING event_id`
+2. If the insert returned a row → process the event
+3. If the insert returned no row → ack and skip (already processed)
+4. Distinct from `ai_inference_log.input_hash` deduplication, which catches identical-input calls regardless of trigger path (per `ANALYTICS_AND_AI.md` §13)
+
+**Cleanup:**
+- New scheduled job `worker-event-dedup-cleanup-job` (daily) — `DELETE FROM worker_event_dedup WHERE processed_at < now() - interval '24 hours'`
+- Add to the Stage 3.4 jobs table (now eight jobs total, not seven)
+
+**Resources:** none in Terraform. The table is an Alembic migration; the cleanup job follows the Stage 3.4 pattern. Listed here only because the design choice is load-bearing for AI worker correctness.
 
 ### Stage 3 deliverables checklist
 
 - [ ] Two new topics + DLQs live
 - [ ] Two new worker services deployed and consuming
 - [ ] Notification worker subscribed to `gap-detected`
-- [ ] Seven scheduled jobs running on their cadences
+- [ ] Eight scheduled jobs running on their cadences (seven from §3.4 plus dedup cleanup)
+- [ ] `worker_event_dedup` table created and used by every AI worker
 - [ ] First successful `ai_inference_log` write observed in production
 
 ---
@@ -482,7 +510,7 @@ This document is a living blueprint. Update it when any of the following happens
 1. **A stage is delivered.** Mark ✅ in the [Stage Status](#stage-status) table, set the delivered date, and move any items that were descoped or modified into a "Delivered notes" subsection on that stage. Do not delete the original entries — the diff is useful.
 2. **A new feature is added that needs new infrastructure.** Add it to the appropriate stage. If it doesn't fit any existing stage, propose a new stage in the table, justify the placement, and update [Suggested Ordering](#suggested-ordering).
 3. **An ADR or design doc changes the target architecture.** Reflect it here. The bullet "Cloud SQL one primary + one read replica" came from `ARCHITECTURE.md` §11; if §11 changes, this doc changes.
-4. **GCP introduces or deprecates a service** that affects the design — e.g. if Memorystore is replaced by something newer, update the affected stage and explain the swap in a note.
+4. **GCP introduces or deprecates a service** that affects the design — e.g. if a managed service is replaced by something newer, update the affected stage and explain the swap in a note. The original Memorystore-vs-Postgres dedup decision (Stage 3.6) is an example of this pattern.
 
 When Claude is asked to generate Terraform for a stage:
 
