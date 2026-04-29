@@ -124,7 +124,7 @@ export default function TrainerDetailView({
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                                        Trainer #{trainer.id.slice(0, 8)}
+                                        {trainer.full_name}
                                     </h1>
                                     <span
                                         className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${

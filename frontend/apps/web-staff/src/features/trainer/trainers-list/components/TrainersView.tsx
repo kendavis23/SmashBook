@@ -132,7 +132,7 @@ export default function TrainersView({
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-foreground">
-                                                            Trainer #{trainer.id.slice(0, 8)}
+                                                            {trainer.full_name}
                                                         </p>
                                                         {trainer.bio ? (
                                                             <p className="mt-0.5 max-w-xs truncate text-xs text-muted-foreground">

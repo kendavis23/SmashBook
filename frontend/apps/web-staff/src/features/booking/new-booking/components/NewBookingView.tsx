@@ -47,7 +47,7 @@ export type NewBookingFormState = {
     skipConflicts: boolean;
 };
 
-type Trainer = { id: string; user_id: string; full_name: string };
+type Trainer = { staff_profile_id: string; full_name: string };
 
 type Props = {
     courts: { id: string; name: string }[];
@@ -299,7 +299,7 @@ export default function NewBookingView({
                                     value={form.staffProfileId}
                                     onValueChange={(v) => onFormChange({ staffProfileId: v })}
                                     options={trainers.map((t) => ({
-                                        value: t.user_id,
+                                        value: t.staff_profile_id,
                                         label: t.full_name,
                                     }))}
                                     placeholder={

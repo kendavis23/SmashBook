@@ -162,7 +162,7 @@ function setupMocks(overrides?: {
         data: [{ id: "court-1", name: "Court 1" }],
     });
     mockUseListAvailableTrainers.mockReturnValue({
-        data: [{ id: "trainer-1", user_id: "user-trainer-1", full_name: "Jane Trainer" }],
+        data: [{ staff_profile_id: "trainer-1", full_name: "Jane Trainer" }],
         isLoading: false,
         isError: false,
     });

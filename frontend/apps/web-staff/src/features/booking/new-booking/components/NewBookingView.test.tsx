@@ -151,7 +151,7 @@ const defaultForm: NewBookingFormState = {
 
 const defaultProps = {
     courts: [{ id: "court-1", name: "Court 1" }],
-    trainers: [{ id: "trainer-1", user_id: "user-trainer-1", full_name: "Jane Trainer" }],
+    trainers: [{ staff_profile_id: "trainer-1", full_name: "Jane Trainer" }],
     trainersLoading: false,
     trainersError: false,
     slots: [

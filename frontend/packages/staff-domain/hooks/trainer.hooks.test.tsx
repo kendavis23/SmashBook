@@ -114,8 +114,7 @@ const AVAILABLE_PARAMS = {
 };
 
 const mockAvailableSummary = {
-    id: TRAINER_ID,
-    user_id: "user-1",
+    staff_profile_id: TRAINER_ID,
     club_id: CLUB_ID,
     full_name: "Jane Trainer",
     bio: null,

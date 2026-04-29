@@ -23,7 +23,7 @@ const labelCls = "mb-1 block text-sm font-medium text-foreground";
 
 const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
 
-type Trainer = { id: string; user_id: string; full_name: string };
+type Trainer = { staff_profile_id: string; full_name: string };
 
 type Props = {
     courtName: string;
@@ -203,7 +203,7 @@ export function NewBookingModalView({
                                                 onFormChange({ staffProfileId: v })
                                             }
                                             options={trainers.map((t) => ({
-                                                value: t.user_id,
+                                                value: t.staff_profile_id,
                                                 label: t.full_name,
                                             }))}
                                             placeholder={

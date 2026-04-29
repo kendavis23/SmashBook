@@ -25,6 +25,7 @@ const mockTrainer: Trainer = {
     id: "trainer-001-abcd",
     club_id: "club-1",
     user_id: "user-1",
+    full_name: "Aarav Shah",
     bio: "Expert padel coach",
     is_active: true,
     availability: [],
@@ -77,9 +78,9 @@ const defaultProps = {
 };
 
 describe("TrainerDetailView — header", () => {
-    it("shows trainer ID (first 8 chars)", () => {
+    it("shows trainer full name", () => {
         render(<TrainerDetailView {...defaultProps} />);
-        expect(screen.getByText("Trainer #trainer-")).toBeInTheDocument();
+        expect(screen.getByText("Aarav Shah")).toBeInTheDocument();
     });
 
     it("shows Active badge for active trainer", () => {

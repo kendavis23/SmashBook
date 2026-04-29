@@ -38,7 +38,8 @@ describe("listTrainersEndpoint", () => {
 
 describe("listAvailableTrainersEndpoint", () => {
     it("calls GET /api/v1/trainers/available with all params", async () => {
-        mockFetcher.mockResolvedValue([]);
+        const mockSummary = { staff_profile_id: "trainer-1", club_id: CLUB_ID, full_name: "Jane Trainer", bio: null };
+        mockFetcher.mockResolvedValue([mockSummary]);
         await listAvailableTrainersEndpoint({
             clubId: CLUB_ID,
             date: "2026-05-01",
