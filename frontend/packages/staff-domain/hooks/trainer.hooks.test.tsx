@@ -5,6 +5,7 @@ import React from "react";
 
 import {
     useListTrainers,
+    useListAvailableTrainers,
     useGetTrainerAvailability,
     useSetTrainerAvailability,
     useUpdateTrainerAvailability,
@@ -14,6 +15,7 @@ import {
 
 vi.mock("@repo/api-client/modules/share", () => ({
     listTrainersEndpoint: vi.fn(),
+    listAvailableTrainersEndpoint: vi.fn(),
 }));
 vi.mock("@repo/api-client/modules/staff", () => ({
     getTrainerAvailabilityEndpoint: vi.fn(),
@@ -97,6 +99,55 @@ describe("useListTrainers", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useListTrainers(""), { wrapper: Wrapper });
         expect(shareApi.listTrainersEndpoint).not.toHaveBeenCalled();
+    });
+});
+
+// ---------------------------------------------------------------------------
+// useListAvailableTrainers
+// ---------------------------------------------------------------------------
+
+const AVAILABLE_PARAMS = {
+    clubId: CLUB_ID,
+    date: "2026-05-01",
+    startTime: "10:00:00",
+    endTime: "11:00:00",
+};
+
+const mockAvailableSummary = {
+    id: TRAINER_ID,
+    user_id: "user-1",
+    club_id: CLUB_ID,
+    full_name: "Jane Trainer",
+    bio: null,
+};
+
+describe("useListAvailableTrainers", () => {
+    beforeEach(() => vi.clearAllMocks());
+
+    it("returns available trainers for a slot", async () => {
+        vi.mocked(shareApi.listAvailableTrainersEndpoint).mockResolvedValue([mockAvailableSummary]);
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(() => useListAvailableTrainers(AVAILABLE_PARAMS), {
+            wrapper: Wrapper,
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual([mockAvailableSummary]);
+    });
+
+    it("does not fetch when clubId is empty", () => {
+        const { Wrapper } = makeWrapper();
+        renderHook(() => useListAvailableTrainers({ ...AVAILABLE_PARAMS, clubId: "" }), {
+            wrapper: Wrapper,
+        });
+        expect(shareApi.listAvailableTrainersEndpoint).not.toHaveBeenCalled();
+    });
+
+    it("does not fetch when date is empty", () => {
+        const { Wrapper } = makeWrapper();
+        renderHook(() => useListAvailableTrainers({ ...AVAILABLE_PARAMS, date: "" }), {
+            wrapper: Wrapper,
+        });
+        expect(shareApi.listAvailableTrainersEndpoint).not.toHaveBeenCalled();
     });
 });
 

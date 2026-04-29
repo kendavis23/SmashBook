@@ -102,6 +102,7 @@ export default function ManageBookingModalContainer({
             onDismissError={() => setApiError("")}
             onRefresh={() => void refetch()}
             onBack={onClose}
+            clubId={clubId}
             mode="modal"
             onClose={onClose}
         />

@@ -25,6 +25,7 @@ import {
 import { Breadcrumb, AlertToast, formatUTCDate, formatUTCTime, formatCurrency } from "@repo/ui";
 import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
 import { BOOKING_TABS } from "../../types";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
 type Props = {
     upcoming: PlayerBookingItem[];
@@ -149,7 +150,7 @@ function InviteDialog({
 
     return (
         <FixedDialog anchorRef={anchorRef} dialogRef={dialogRef}>
-            <div className="w-64 rounded-xl border border-border bg-card shadow-lg">
+            <div className="w-72 rounded-xl border border-border bg-card shadow-lg">
                 <div className="flex items-center justify-between border-b border-border px-3 py-2">
                     <span className="text-xs font-semibold text-foreground">Invite Player</span>
                     <button
@@ -161,12 +162,13 @@ function InviteDialog({
                     </button>
                 </div>
                 <form onSubmit={(e) => void handleSubmit(e)} className="flex flex-col gap-2 p-3">
-                    <input
-                        autoFocus
+                    <PlayerAutocomplete
+                        inputId={`invite-player-${booking.booking_id}`}
+                        label="Player"
+                        clubId={booking.club_id}
                         value={userId}
-                        onChange={(e) => setUserId(e.target.value)}
-                        placeholder="Player user ID"
-                        className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta"
+                        onChange={setUserId}
+                        disabled={busy}
                     />
                     {err ? <p className="text-[11px] text-destructive">{err}</p> : null}
                     <button

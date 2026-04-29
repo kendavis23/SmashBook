@@ -121,9 +121,9 @@ describe("TrainersView — header", () => {
 });
 
 describe("TrainersView — breadcrumb", () => {
-    it("renders People breadcrumb item", () => {
+    it("does not render stale People breadcrumb item", () => {
         render(<TrainersView {...defaultProps} />);
-        expect(screen.getByText("People")).toBeInTheDocument();
+        expect(screen.queryByText("People")).not.toBeInTheDocument();
     });
 
     it("renders Trainers breadcrumb item", () => {

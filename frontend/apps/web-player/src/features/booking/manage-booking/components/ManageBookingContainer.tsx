@@ -107,6 +107,7 @@ export default function ManageBookingContainer(): JSX.Element {
             onDismissError={() => setApiError("")}
             onRefresh={() => void refetch()}
             onBack={handleBack}
+            clubId={clubId}
         />
     );
 }

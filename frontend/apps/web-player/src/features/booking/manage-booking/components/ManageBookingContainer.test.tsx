@@ -20,6 +20,28 @@ vi.mock("@tanstack/react-router", () => ({
     useSearch: () => mockSearch,
 }));
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+        disabled,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+        disabled?: boolean;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("../../hooks", () => ({
     useGetBooking: vi.fn(),
     useInvitePlayer: vi.fn(),
@@ -211,10 +233,10 @@ describe("ManageBookingContainer", () => {
         render(<ManageBookingContainer />);
 
         await waitFor(() => {
-            expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+            expect(screen.getByLabelText("Player")).toBeInTheDocument();
         });
 
-        fireEvent.change(screen.getByLabelText("Player ID"), {
+        fireEvent.change(screen.getByLabelText("Player"), {
             target: { value: " user-123 " },
         });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
@@ -266,10 +288,10 @@ describe("ManageBookingContainer", () => {
         render(<ManageBookingContainer />);
 
         await waitFor(() => {
-            expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+            expect(screen.getByLabelText("Player")).toBeInTheDocument();
         });
 
-        fireEvent.change(screen.getByLabelText("Player ID"), {
+        fireEvent.change(screen.getByLabelText("Player"), {
             target: { value: "user-xyz" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
@@ -422,10 +444,10 @@ describe("ManageBookingContainer", () => {
         render(<ManageBookingContainer />);
 
         await waitFor(() => {
-            expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+            expect(screen.getByLabelText("Player")).toBeInTheDocument();
         });
 
-        fireEvent.change(screen.getByLabelText("Player ID"), {
+        fireEvent.change(screen.getByLabelText("Player"), {
             target: { value: "user-abc" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));

@@ -1,7 +1,6 @@
 import {
     AlertToast,
     DatePicker,
-    NumberInput,
     SelectInput,
     TimeInput,
     formatCurrency,
@@ -38,8 +37,6 @@ type Props = {
     selectedClubId: string;
     selectedClubName: string;
     joinFilterDate: string;
-    joinFilterMinSkill: string;
-    joinFilterMaxSkill: string;
     bookFilterDate: string;
     bookFilterSurfaceType: "" | SurfaceType;
     bookFilterTimeFrom: string;
@@ -61,8 +58,6 @@ type Props = {
     successMessage: string;
     onClubChange: (clubId: string) => void;
     onJoinFilterDateChange: (date: string) => void;
-    onJoinFilterMinSkillChange: (value: string) => void;
-    onJoinFilterMaxSkillChange: (value: string) => void;
     onBookFilterDateChange: (date: string) => void;
     onBookFilterSurfaceTypeChange: (surfaceType: "" | SurfaceType) => void;
     onBookFilterTimeFromChange: (value: string) => void;
@@ -108,8 +103,6 @@ export default function DashboardView({
     selectedClubId,
     selectedClubName,
     joinFilterDate,
-    joinFilterMinSkill,
-    joinFilterMaxSkill,
     bookFilterDate,
     bookFilterSurfaceType,
     bookFilterTimeFrom,
@@ -131,8 +124,6 @@ export default function DashboardView({
     successMessage,
     onClubChange,
     onJoinFilterDateChange,
-    onJoinFilterMinSkillChange,
-    onJoinFilterMaxSkillChange,
     onBookFilterDateChange,
     onBookFilterSurfaceTypeChange,
     onBookFilterTimeFromChange,
@@ -231,7 +222,7 @@ export default function DashboardView({
                         </button>
                     </div>
 
-                    <div className="grid gap-3 border-b border-border px-4 py-3 sm:grid-cols-3">
+                    <div className="grid gap-3 border-b border-border px-4 py-3 sm:grid-cols-2">
                         <label className="flex flex-col gap-1.5">
                             <span className="text-xs font-semibold text-muted-foreground">
                                 Date
@@ -241,32 +232,6 @@ export default function DashboardView({
                                 onChange={onJoinFilterDateChange}
                                 placeholder="All dates"
                                 className={fieldCls}
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1.5">
-                            <span className="text-xs font-semibold text-muted-foreground">
-                                Min skill
-                            </span>
-                            <NumberInput
-                                min="0"
-                                step="0.1"
-                                value={joinFilterMinSkill}
-                                onChange={(event) => onJoinFilterMinSkillChange(event.target.value)}
-                                className={fieldCls}
-                                placeholder="Any"
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1.5">
-                            <span className="text-xs font-semibold text-muted-foreground">
-                                Max skill
-                            </span>
-                            <NumberInput
-                                min="0"
-                                step="0.1"
-                                value={joinFilterMaxSkill}
-                                onChange={(event) => onJoinFilterMaxSkillChange(event.target.value)}
-                                className={fieldCls}
-                                placeholder="Any"
                             />
                         </label>
                     </div>

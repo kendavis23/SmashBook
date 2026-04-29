@@ -36,7 +36,7 @@ export default function TrainersView({
 }: Props): JSX.Element {
     return (
         <div className="w-full space-y-5">
-            <Breadcrumb items={[{ label: "People" }, { label: "Trainers" }]} />
+            <Breadcrumb items={[{ label: "Trainers" }]} />
 
             <section className="card-surface overflow-hidden">
                 <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">

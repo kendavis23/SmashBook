@@ -4,6 +4,25 @@ import { describe, expect, it, vi } from "vitest";
 import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     formatCurrency: (amount: number | null | undefined) =>
         amount == null ? "—" : `£${amount.toFixed(2)}`,
@@ -132,7 +151,9 @@ const defaultForm: NewBookingFormState = {
 
 const defaultProps = {
     courts: [{ id: "court-1", name: "Court 1" }],
-    trainers: [{ id: "trainer-1" }],
+    trainers: [{ id: "trainer-1", user_id: "user-trainer-1", full_name: "Jane Trainer" }],
+    trainersLoading: false,
+    trainersError: false,
     slots: [
         {
             start_time: "10:00",

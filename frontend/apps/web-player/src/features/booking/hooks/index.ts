@@ -7,4 +7,6 @@ export {
     useListCourts,
     useGetCourtAvailability,
     useListTrainers,
+    useListAvailableTrainers,
+    useSearchPlayers,
 } from "@repo/player-domain/hooks";

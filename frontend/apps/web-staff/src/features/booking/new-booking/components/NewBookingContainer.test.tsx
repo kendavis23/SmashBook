@@ -22,12 +22,31 @@ vi.mock("@tanstack/react-router", () => ({
     useSearch: vi.fn(() => ({})),
 }));
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("../../hooks", () => ({
     useCreateBooking: vi.fn(),
     useCreateRecurringBooking: vi.fn(),
     useListCourts: vi.fn(),
     useGetCourtAvailability: vi.fn(),
-    useListTrainers: vi.fn(),
+    useListAvailableTrainers: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
@@ -132,7 +151,7 @@ import {
     useCreateRecurringBooking,
     useGetCourtAvailability,
     useListCourts,
-    useListTrainers,
+    useListAvailableTrainers,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
 
@@ -140,7 +159,7 @@ const mockUseCreateBooking = useCreateBooking as ReturnType<typeof vi.fn>;
 const mockUseCreateRecurringBooking = useCreateRecurringBooking as ReturnType<typeof vi.fn>;
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
-const mockUseListTrainers = useListTrainers as ReturnType<typeof vi.fn>;
+const mockUseListAvailableTrainers = useListAvailableTrainers as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 
 function setupMocks(overrides?: {
@@ -153,7 +172,11 @@ function setupMocks(overrides?: {
     mockUseListCourts.mockReturnValue({
         data: overrides?.courts ?? [{ id: "court-1", name: "Court 1" }],
     });
-    mockUseListTrainers.mockReturnValue({ data: [{ id: "trainer-1", is_active: true }] });
+    mockUseListAvailableTrainers.mockReturnValue({
+        data: [{ id: "trainer-1", user_id: "user-trainer-1", full_name: "Jane Trainer" }],
+        isLoading: false,
+        isError: false,
+    });
     mockUseGetCourtAvailability.mockReturnValue({
         data: {
             slots: [{ start_time: "10:00", is_available: true, price: 20, price_label: "EUR 20" }],

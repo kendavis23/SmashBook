@@ -9,8 +9,13 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     getSkillHistoryEndpoint: vi.fn(),
 }));
 
+vi.mock("@repo/api-client/modules/share", () => ({
+    searchPlayersEndpoint: vi.fn(),
+}));
+
 import * as staffApi from "@repo/api-client/modules/staff";
-import { useRegisterPlayer, useUpdateSkillLevel, useGetSkillHistory } from "./player.hooks";
+import * as shareApi from "@repo/api-client/modules/share";
+import { useRegisterPlayer, useUpdateSkillLevel, useGetSkillHistory, useSearchPlayers } from "./player.hooks";
 
 function makeWrapper() {
     const client = new QueryClient({
@@ -52,6 +57,7 @@ beforeEach(() => {
     vi.mocked(staffApi.registerPlayerEndpoint).mockReset();
     vi.mocked(staffApi.updateSkillLevelEndpoint).mockReset();
     vi.mocked(staffApi.getSkillHistoryEndpoint).mockReset();
+    vi.mocked(shareApi.searchPlayersEndpoint).mockReset();
 });
 
 describe("useRegisterPlayer", () => {
@@ -102,5 +108,26 @@ describe("useGetSkillHistory", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useGetSkillHistory(""), { wrapper: Wrapper });
         expect(staffApi.getSkillHistoryEndpoint).not.toHaveBeenCalled();
+    });
+});
+
+const mockPlayerSearchResult = { id: "player-1", full_name: "John Doe", skill_level: 3.0 };
+
+describe("useSearchPlayers", () => {
+    it("returns players with no params", async () => {
+        vi.mocked(shareApi.searchPlayersEndpoint).mockResolvedValue([mockPlayerSearchResult]);
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(() => useSearchPlayers(), { wrapper: Wrapper });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual([mockPlayerSearchResult]);
+        expect(shareApi.searchPlayersEndpoint).toHaveBeenCalledWith(undefined);
+    });
+
+    it("passes search params to the endpoint", async () => {
+        vi.mocked(shareApi.searchPlayersEndpoint).mockResolvedValue([mockPlayerSearchResult]);
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(() => useSearchPlayers({ q: "john" }), { wrapper: Wrapper });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(shareApi.searchPlayersEndpoint).toHaveBeenCalledWith({ q: "john" });
     });
 });

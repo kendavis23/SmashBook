@@ -18,6 +18,7 @@ export type InviteStatus = "pending" | "accepted" | "declined";
 export interface OpenGameListParams {
     club_id: string;
     date?: string;
+    player_skill_level?: number;
     min_skill?: number;
     max_skill?: number;
 }

@@ -5,6 +5,7 @@ import { AlertToast, NumberInput, SelectInput, StatPill, formatCurrency } from "
 import type { BookingType } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import type { NewBookingFormState } from "./NewBookingView";
 
 const fieldCls =
@@ -15,13 +16,18 @@ const labelCls = "mb-1 block text-sm font-medium text-foreground";
 
 const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
 
+type Trainer = { id: string; user_id: string; full_name: string };
+
 type Props = {
     courtName: string;
-    trainers: { id: string }[];
+    trainers: Trainer[];
+    trainersLoading: boolean;
+    trainersError: boolean;
     form: NewBookingFormState;
     apiError: string;
     isPending: boolean;
     selectedPrice: number | string | null;
+    clubId?: string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
     onSubmit: (e: FormEvent) => void;
     onCancel: () => void;
@@ -32,10 +38,13 @@ type Props = {
 export function NewBookingModalView({
     courtName,
     trainers,
+    trainersLoading,
+    trainersError,
     form,
     apiError,
     isPending,
     selectedPrice,
+    clubId,
     onFormChange,
     onSubmit,
     onCancel,
@@ -136,20 +145,32 @@ export function NewBookingModalView({
                             <label htmlFor="bk-staff-id" className={labelCls}>
                                 Staff (Trainer)
                             </label>
-                            <SelectInput
-                                value={form.staffProfileId}
-                                onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                                options={trainers.map((t) => ({
-                                    value: t.id,
-                                    label: t.id,
-                                }))}
-                                placeholder={
-                                    trainers.length === 0
-                                        ? "No trainers available"
-                                        : "Select trainer…"
-                                }
-                                disabled={trainers.length === 0}
-                            />
+                            {trainersLoading ? (
+                                <div className={`${fieldCls} opacity-60`}>
+                                    <span className="text-muted-foreground">Loading trainers…</span>
+                                </div>
+                            ) : trainersError ? (
+                                <div className={`${fieldCls} opacity-60`}>
+                                    <span className="text-muted-foreground">
+                                        Failed to load trainers
+                                    </span>
+                                </div>
+                            ) : (
+                                <SelectInput
+                                    value={form.staffProfileId}
+                                    onValueChange={(v) => onFormChange({ staffProfileId: v })}
+                                    options={trainers.map((t) => ({
+                                        value: t.user_id,
+                                        label: t.full_name,
+                                    }))}
+                                    placeholder={
+                                        trainers.length === 0
+                                            ? "No trainers available"
+                                            : "Select trainer…"
+                                    }
+                                    disabled={trainers.length === 0}
+                                />
+                            )}
                         </div>
                     ) : null}
 
@@ -157,25 +178,25 @@ export function NewBookingModalView({
                     {!form.isOpenGame ? (
                         <div>
                             <label className={labelCls}>
-                                Add Players (user IDs)
+                                Add Players
                                 <span className="ml-1 font-normal text-muted-foreground">
                                     - Invite other players.
                                 </span>
                             </label>
                             {form.playerUserIds.map((uid, index) => (
                                 <div key={index} className="mb-2 flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        aria-label={`Invited player ${index + 1}`}
-                                        className={fieldCls}
-                                        placeholder="Player user ID"
-                                        value={uid}
-                                        onChange={(e) => {
-                                            const next = [...form.playerUserIds];
-                                            next[index] = e.target.value;
-                                            onFormChange({ playerUserIds: next });
-                                        }}
-                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <PlayerAutocomplete
+                                            label={`Invited player ${index + 1}`}
+                                            clubId={clubId}
+                                            value={uid}
+                                            onChange={(playerId) => {
+                                                const next = [...form.playerUserIds];
+                                                next[index] = playerId;
+                                                onFormChange({ playerUserIds: next });
+                                            }}
+                                        />
+                                    </div>
                                     <button
                                         type="button"
                                         aria-label={`Remove invited player ${index + 1}`}

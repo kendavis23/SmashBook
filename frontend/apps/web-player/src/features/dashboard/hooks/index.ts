@@ -1,4 +1,5 @@
 export {
+    useMyProfile,
     useCreateBooking,
     useGetCourtAvailability,
     useJoinBooking,

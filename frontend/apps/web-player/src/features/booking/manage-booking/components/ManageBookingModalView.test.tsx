@@ -2,6 +2,28 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ManageBookingModalView } from "./ManageBookingModalView";
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+        disabled,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+        disabled?: boolean;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     AlertToast: ({ title, onClose }: { title: string; onClose: () => void }) => (
         <div role="alert">
@@ -114,7 +136,7 @@ describe("ManageBookingModalView", () => {
         render(<ManageBookingModalView {...defaultProps} playerRole="organiser" />);
 
         expect(screen.getByText("Invite Player")).toBeInTheDocument();
-        expect(screen.getByLabelText("Player ID to invite")).toBeInTheDocument();
+        expect(screen.getByLabelText("Player")).toBeInTheDocument();
     });
 
     it("calls onInvitePlayer and clears input on invite", () => {
@@ -127,13 +149,13 @@ describe("ManageBookingModalView", () => {
             />
         );
 
-        fireEvent.change(screen.getByLabelText("Player ID to invite"), {
+        fireEvent.change(screen.getByLabelText("Player"), {
             target: { value: " user-abc " },
         });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
 
         expect(onInvitePlayer).toHaveBeenCalledWith("user-abc");
-        expect(screen.getByLabelText("Player ID to invite")).toHaveValue("");
+        expect(screen.getByLabelText("Player")).toHaveValue("");
     });
 
     it("disables Invite button when input is empty", () => {

@@ -73,6 +73,7 @@ const defaultProps = {
     onTabChange: vi.fn(),
     onRefreshAvailability: vi.fn(),
     onRefreshBookings: vi.fn(),
+    onCreateAvailability: vi.fn(),
 };
 
 describe("TrainerDetailView — header", () => {

@@ -12,6 +12,7 @@ const JSON_HEADERS = { "Content-Type": "application/json" };
 export function listOpenGamesEndpoint(params: OpenGameListParams): Promise<OpenGameSummary[]> {
     const query = new URLSearchParams({ club_id: params.club_id });
     if (params.date) query.set("date", params.date);
+    if (params.player_skill_level !== undefined) query.set("player_skill_level", String(params.player_skill_level));
     if (params.min_skill !== undefined) query.set("min_skill", String(params.min_skill));
     if (params.max_skill !== undefined) query.set("max_skill", String(params.max_skill));
     return fetcher<OpenGameSummary[]>(`/api/v1/bookings/open-games?${query.toString()}`);

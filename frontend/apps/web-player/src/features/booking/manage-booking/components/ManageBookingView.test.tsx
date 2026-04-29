@@ -2,6 +2,28 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import ManageBookingView from "./ManageBookingView";
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+        disabled,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+        disabled?: boolean;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("./ManageBookingModalView", () => ({
     ManageBookingModalView: ({
         booking,
@@ -144,7 +166,7 @@ describe("ManageBookingView — page mode", () => {
         render(<ManageBookingView {...defaultProps} playerRole="organiser" />);
 
         expect(screen.getByRole("heading", { name: "Invite Player" })).toBeInTheDocument();
-        expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+        expect(screen.getByLabelText("Player")).toBeInTheDocument();
     });
 
     it("calls onInvitePlayer with trimmed id and clears input", () => {
@@ -157,13 +179,13 @@ describe("ManageBookingView — page mode", () => {
             />
         );
 
-        fireEvent.change(screen.getByLabelText("Player ID"), {
+        fireEvent.change(screen.getByLabelText("Player"), {
             target: { value: " user-abc " },
         });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
 
         expect(onInvitePlayer).toHaveBeenCalledWith("user-abc");
-        expect(screen.getByLabelText("Player ID")).toHaveValue("");
+        expect(screen.getByLabelText("Player")).toHaveValue("");
     });
 
     it("disables Invite button when invite input is empty", () => {

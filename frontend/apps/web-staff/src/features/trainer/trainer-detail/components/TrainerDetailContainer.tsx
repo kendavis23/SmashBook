@@ -5,6 +5,7 @@ import { useGetTrainerAvailability, useGetTrainerBookings, useListTrainers } fro
 import { useClubAccess, canManageTrainers } from "../../store";
 import type { Trainer, TrainerTab } from "../../types";
 import TrainerDetailView from "./TrainerDetailView";
+import CreateAvailabilityModal from "./CreateAvailabilityModal";
 
 export default function TrainerDetailContainer(): JSX.Element {
     const { trainerId } = useParams({ strict: false }) as { trainerId: string };
@@ -12,6 +13,7 @@ export default function TrainerDetailContainer(): JSX.Element {
     const canManage = canManageTrainers(role);
 
     const [activeTab, setActiveTab] = useState<TrainerTab>("availability");
+    const [showCreateAvailability, setShowCreateAvailability] = useState(false);
 
     const { data: trainers = [], isLoading: trainersLoading } = useListTrainers(clubId ?? "");
 
@@ -39,6 +41,14 @@ export default function TrainerDetailContainer(): JSX.Element {
         void refetchBookings();
     }, [refetchBookings]);
 
+    const handleCreateAvailability = useCallback((): void => {
+        setShowCreateAvailability(true);
+    }, []);
+
+    const handleAvailabilityCreated = useCallback((): void => {
+        void refetchAvailability();
+    }, [refetchAvailability]);
+
     if (trainersLoading) {
         return (
             <div className="flex items-center justify-center gap-3 py-32">
@@ -57,19 +67,30 @@ export default function TrainerDetailContainer(): JSX.Element {
     }
 
     return (
-        <TrainerDetailView
-            trainer={trainer}
-            availability={availability}
-            availabilityLoading={availabilityLoading}
-            availabilityError={availabilityError as Error | null}
-            bookings={bookings}
-            bookingsLoading={bookingsLoading}
-            bookingsError={bookingsError as Error | null}
-            canManage={canManage}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onRefreshAvailability={handleRefreshAvailability}
-            onRefreshBookings={handleRefreshBookings}
-        />
+        <>
+            <TrainerDetailView
+                trainer={trainer}
+                availability={availability}
+                availabilityLoading={availabilityLoading}
+                availabilityError={availabilityError as Error | null}
+                bookings={bookings}
+                bookingsLoading={bookingsLoading}
+                bookingsError={bookingsError as Error | null}
+                canManage={canManage}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                onRefreshAvailability={handleRefreshAvailability}
+                onRefreshBookings={handleRefreshBookings}
+                onCreateAvailability={handleCreateAvailability}
+            />
+            {showCreateAvailability && clubId ? (
+                <CreateAvailabilityModal
+                    trainerId={trainerId}
+                    clubId={clubId}
+                    onClose={() => setShowCreateAvailability(false)}
+                    onSuccess={handleAvailabilityCreated}
+                />
+            ) : null}
+        </>
     );
 }

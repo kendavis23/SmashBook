@@ -183,8 +183,8 @@ export const ROUTES: RouteConfig[] = [
         icon: GraduationCap,
         title: "Trainers",
         subtitle: "View trainer profiles, availability, and bookings.",
-        breadcrumb: ["People", "Trainers"],
-        roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
+        breadcrumb: ["Trainers"],
+        roles: ["owner", "admin", "ops_lead", "viewer", "trainer"],
         group: "People",
     },
     {

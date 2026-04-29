@@ -4,6 +4,7 @@ export {
     useMyBookings,
     useMyMatchHistory,
 } from "./profile.hooks";
+export { useSearchPlayers } from "./player.hooks";
 export { useListCourts, useGetCourtAvailability } from "./court.hooks";
 export {
     useListOpenGames,
@@ -14,4 +15,4 @@ export {
     useJoinBooking,
     useRespondInvite,
 } from "./booking.hooks";
-export { useListTrainers } from "./trainer.hooks";
+export { useListTrainers, useListAvailableTrainers } from "./trainer.hooks";

@@ -10,6 +10,7 @@ import {
     formatCurrency,
 } from "@repo/ui";
 import type { Booking, PlayerRole, InviteStatus, PaymentStatus } from "../../types";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
 type MyInfo = {
     role: PlayerRole;
@@ -36,6 +37,7 @@ type Props = {
     onRespondInvite: (action: Extract<InviteStatus, "accepted" | "declined">) => void;
     onDismissError: () => void;
     onRefresh: () => void;
+    clubId?: string | null;
     onClose: () => void;
 };
 
@@ -50,6 +52,7 @@ export function ManageBookingModalView({
     onRespondInvite,
     onDismissError,
     onRefresh,
+    clubId,
     onClose,
 }: Props): JSX.Element {
     const [playersExpanded, setPlayersExpanded] = useState(false);
@@ -181,19 +184,17 @@ export function ManageBookingModalView({
                             <p className="mb-2 text-sm font-medium text-foreground">
                                 Invite Player
                             </p>
-                            <p className="mb-3 text-xs text-muted-foreground">
-                                Enter a player ID to invite them to this open match.
-                            </p>
                             <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    className="input-base flex-1"
-                                    placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                                    value={inviteId}
-                                    onChange={(e) => setInviteId(e.target.value)}
-                                    disabled={isInvitePending}
-                                    aria-label="Player ID to invite"
-                                />
+                                <div className="min-w-0 flex-1">
+                                    <PlayerAutocomplete
+                                        inputId="modal-player-invite-id"
+                                        label="Player"
+                                        clubId={clubId ?? booking.club_id}
+                                        value={inviteId}
+                                        onChange={setInviteId}
+                                        disabled={isInvitePending}
+                                    />
+                                </div>
                                 <button
                                     type="button"
                                     disabled={isInvitePending || !inviteId.trim()}
