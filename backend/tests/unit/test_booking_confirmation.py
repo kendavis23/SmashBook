@@ -6,8 +6,6 @@ AND every accepted player has paid. Both conditions must hold simultaneously.
 """
 from unittest.mock import MagicMock
 
-import pytest
-
 from app.db.models.booking import InviteStatus, PaymentStatus
 from app.services.booking_service import _should_confirm
 
