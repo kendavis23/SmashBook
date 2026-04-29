@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.pubsub import publish_notification_event
-from app.db.models.booking import Booking, BookingPlayer, BookingStatus, PaymentStatus
+from app.db.models.booking import Booking, BookingPlayer, BookingStatus, InviteStatus, PaymentStatus
 from app.db.models.club import Club
 from app.db.models.payment import Payment, PlatformFee, PlatformFeeType
 from app.db.models.payment import PaymentMethod as PaymentMethodEnum
@@ -354,14 +354,16 @@ class PaymentService:
             bp.payment_status = PaymentStatus.paid
             self.db.add(bp)
 
-        # Confirm booking when every player has paid
+        # Confirm only when all slots are filled and every accepted player has paid
         result = await self.db.execute(
             sa_select(BookingPlayer).where(BookingPlayer.booking_id == payment.booking_id)
         )
         all_players = result.scalars().all()
-        if all_players and all(p.payment_status == PaymentStatus.paid for p in all_players):
-            booking = await self.db.get(Booking, payment.booking_id)
-            if booking and booking.status == BookingStatus.pending:
+        booking = await self.db.get(Booking, payment.booking_id)
+        if booking and booking.status == BookingStatus.pending:
+            max_p = booking.max_players or 4
+            accepted = [p for p in all_players if p.invite_status == InviteStatus.accepted]
+            if len(accepted) >= max_p and all(p.payment_status == PaymentStatus.paid for p in accepted):
                 booking.status = BookingStatus.confirmed
                 self.db.add(booking)
 

@@ -64,6 +64,16 @@ def _accepted_count(players: list[BookingPlayer]) -> int:
     return sum(1 for p in players if p.invite_status == InviteStatus.accepted)
 
 
+def _should_confirm(booking: Booking, players: list[BookingPlayer]) -> bool:
+    """Return True only when all slots are filled and every accepted player has paid."""
+    max_p = booking.max_players or 4
+    accepted = [p for p in players if p.invite_status == InviteStatus.accepted]
+    return (
+        len(accepted) >= max_p
+        and all(p.payment_status == PaymentStatus.paid for p in accepted)
+    )
+
+
 class BookingService:
 
     def __init__(self, db: AsyncSession):
@@ -443,6 +453,7 @@ class BookingService:
         await self.db.flush()  # get booking.id
 
         # 16. Add organiser as BookingPlayer (skip only for staff-admin empty open games)
+        created_players: list[BookingPlayer] = []
         if not is_empty_admin_game:
             organiser_payment_status = (
                 PaymentStatus.paid
@@ -458,6 +469,7 @@ class BookingService:
                 amount_due=amount_due,
             )
             self.db.add(organiser_bp)
+            created_players.append(organiser_bp)
             if breakdown and breakdown.credit_consumed:
                 await pricing_svc.consume_credit(breakdown.membership_subscription_id, booking.id)
 
@@ -472,12 +484,12 @@ class BookingService:
                 amount_due=amount_due,
             )
             self.db.add(bp)
+            created_players.append(bp)
 
         await self.db.flush()
 
-        # 18. Auto-confirm if player count meets threshold
-        accepted = (0 if is_empty_admin_game else 1) + len(named_players)
-        if accepted >= club.min_players_to_confirm:
+        # 18. Auto-confirm only when all slots are filled and every player has paid
+        if _should_confirm(booking, created_players):
             booking.status = BookingStatus.confirmed
 
         await self.db.flush()
@@ -783,14 +795,13 @@ class BookingService:
 
         await self.db.flush()
 
-        # Confirm if all current players are paid (e.g. every slot covered by a membership credit)
+        # Auto-confirm only when all slots filled and every accepted player has paid
         all_bp_result = await self.db.execute(
             select(BookingPlayer).where(BookingPlayer.booking_id == booking.id)
         )
         all_players = all_bp_result.scalars().all()
-        if all_players and all(p.payment_status == PaymentStatus.paid for p in all_players):
-            if booking.status == BookingStatus.pending:
-                booking.status = BookingStatus.confirmed
+        if booking.status == BookingStatus.pending and _should_confirm(booking, all_players):
+            booking.status = BookingStatus.confirmed
 
         await self.db.flush()
         return await self._load_booking(booking.id)
@@ -892,10 +903,8 @@ class BookingService:
         bp.invite_status = action
 
         if action == InviteStatus.accepted:
-            # Auto-confirm booking if accepted count now meets threshold
-            club = await self.db.get(Club, club_id)
-            new_accepted = _accepted_count(booking.players) + 1  # +1 because bp.invite_status update not yet reflected
-            if new_accepted >= club.min_players_to_confirm and booking.status == BookingStatus.pending:
+            # bp.invite_status is already updated in memory so booking.players reflects the new state
+            if booking.status == BookingStatus.pending and _should_confirm(booking, booking.players):
                 booking.status = BookingStatus.confirmed
 
         await self.db.flush()

@@ -255,7 +255,7 @@ class TestCreateBooking:
         # This test verifies the endpoint doesn't fail for normal player open game creation.
         assert resp.status_code == 201
 
-    async def test_private_booking_with_4_players_auto_confirms(
+    async def test_private_booking_with_4_players_fills_court_but_stays_pending(
         self, client, staff_headers, club, court_with_hours, player2, player_with_skill, test_session_factory, tenant
     ):
         from app.core.security import get_password_hash
@@ -291,7 +291,9 @@ class TestCreateBooking:
 
         assert resp.status_code == 201, resp.text
         body = resp.json()
-        assert body["status"] == "confirmed"
+        # Court is full (4/4) but named players have pending payments — stays pending
+        # until all players pay (confirmed via Stripe webhook)
+        assert body["status"] == "pending"
         assert body["slots_available"] == 0
         assert len(body["players"]) == 4
 

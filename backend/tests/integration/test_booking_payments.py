@@ -328,7 +328,13 @@ class TestConfirmPayment:
             bp = result.scalar_one()
             assert bp.payment_status == PaymentStatus.paid
 
-    async def test_confirms_booking_when_all_paid(self, test_session_factory, booking, player, booking_player):
+    async def test_confirms_booking_when_all_slots_filled_and_all_paid(self, test_session_factory, booking, player, booking_player):
+        # Set max_players=1 so the single booking_player fills the court
+        async with test_session_factory() as session:
+            b = await session.get(Booking, booking.id)
+            b.max_players = 1
+            await session.commit()
+
         await self._seed_payment(test_session_factory, booking, player)
         event = _stripe_event("payment_intent.succeeded")
 
@@ -340,6 +346,20 @@ class TestConfirmPayment:
         async with test_session_factory() as session:
             b = await session.get(Booking, booking.id)
             assert b.status == BookingStatus.confirmed
+
+    async def test_does_not_confirm_when_court_not_full(self, test_session_factory, booking, player, booking_player):
+        # max_players=4 but only 1 player has paid — court not full, must stay pending
+        await self._seed_payment(test_session_factory, booking, player)
+        event = _stripe_event("payment_intent.succeeded")
+
+        async with test_session_factory() as session:
+            svc = PaymentService(session)
+            with patch("stripe.Charge.retrieve", return_value=MagicMock(receipt_url=None)):
+                await svc.confirm_payment(event)
+
+        async with test_session_factory() as session:
+            b = await session.get(Booking, booking.id)
+            assert b.status == BookingStatus.pending
 
     async def test_idempotent_on_duplicate_event(self, test_session_factory, booking, player, booking_player):
         await self._seed_payment(test_session_factory, booking, player)
