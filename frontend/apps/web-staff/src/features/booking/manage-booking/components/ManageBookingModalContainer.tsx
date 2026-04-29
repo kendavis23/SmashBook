@@ -230,6 +230,7 @@ export default function ManageBookingModalContainer({
             onRefresh={() => void refetchBooking()}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
+            clubId={clubId}
             mode="modal"
             onClose={onClose}
         />

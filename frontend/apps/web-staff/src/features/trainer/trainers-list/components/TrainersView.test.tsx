@@ -24,6 +24,7 @@ const mockTrainers: Trainer[] = [
         id: "trainer-001-abcd",
         club_id: "club-1",
         user_id: "user-1",
+        full_name: "Aarav Shah",
         bio: "Expert padel coach",
         is_active: true,
         availability: [{ id: "avail-1" } as never, { id: "avail-2" } as never],
@@ -32,6 +33,7 @@ const mockTrainers: Trainer[] = [
         id: "trainer-002-efgh",
         club_id: "club-1",
         user_id: "user-2",
+        full_name: "Mira Kapoor",
         bio: null,
         is_active: false,
         availability: [],
@@ -121,9 +123,9 @@ describe("TrainersView — header", () => {
 });
 
 describe("TrainersView — breadcrumb", () => {
-    it("renders People breadcrumb item", () => {
+    it("does not render stale People breadcrumb item", () => {
         render(<TrainersView {...defaultProps} />);
-        expect(screen.getByText("People")).toBeInTheDocument();
+        expect(screen.queryByText("People")).not.toBeInTheDocument();
     });
 
     it("renders Trainers breadcrumb item", () => {
@@ -133,9 +135,10 @@ describe("TrainersView — breadcrumb", () => {
 });
 
 describe("TrainersView — trainers list", () => {
-    it("renders trainer IDs (first 8 chars)", () => {
+    it("renders trainer names", () => {
         render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getAllByText("Trainer #trainer-").length).toBeGreaterThan(0);
+        expect(screen.getByText("Aarav Shah")).toBeInTheDocument();
+        expect(screen.getByText("Mira Kapoor")).toBeInTheDocument();
     });
 
     it("renders trainer bio when present", () => {

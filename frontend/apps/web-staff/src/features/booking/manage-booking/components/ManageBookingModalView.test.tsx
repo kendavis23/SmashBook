@@ -4,6 +4,28 @@ import { describe, expect, it, vi } from "vitest";
 import { ManageBookingModalView } from "./ManageBookingModalView";
 import type { ManageBookingFormState } from "./ManageBookingView";
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+        disabled,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+        disabled?: boolean;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     AlertToast: ({ title, onClose }: { title: string; onClose: () => void }) => (
         <div role="alert">
@@ -239,7 +261,7 @@ describe("ManageBookingModalView", () => {
             />
         );
 
-        expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+        expect(screen.getByLabelText("Player")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Invite" })).toBeInTheDocument();
     });
 
@@ -259,7 +281,7 @@ describe("ManageBookingModalView", () => {
             />
         );
 
-        fireEvent.change(screen.getByLabelText("Player ID"), { target: { value: "user-123" } });
+        fireEvent.change(screen.getByLabelText("Player"), { target: { value: "user-123" } });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
 
         expect(onInvitePlayer).toHaveBeenCalledWith("user-123");

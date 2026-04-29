@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -7,7 +7,7 @@ import {
     useCreateRecurringBooking,
     useListCourts,
     useGetCourtAvailability,
-    useListTrainers,
+    useListAvailableTrainers,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { BookingInput, BookingType, RecurringBookingInput } from "../../types";
@@ -74,11 +74,6 @@ export default function NewBookingContainer(): JSX.Element {
         startTime: search.startTime ?? "",
     }));
 
-    const isLessonType =
-        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
-    const { data: trainers = [] } = useListTrainers(isLessonType ? (clubId ?? "") : "");
-    const trainerList = trainers.filter((t) => t.is_active !== false);
-
     // Auto-select the first court once the list loads (only if not pre-filled)
     useEffect(() => {
         if (courtList.length > 0 && !form.courtId) {
@@ -96,7 +91,8 @@ export default function NewBookingContainer(): JSX.Element {
         refetch: refetchSlots,
     } = useGetCourtAvailability(form.courtId, form.bookingDate);
     const slots = availabilityData?.slots ?? [];
-    const selectedPrice = slots.find((s) => s.start_time === form.startTime)?.price ?? null;
+    const selectedSlot = slots.find((s) => s.start_time === form.startTime);
+    const selectedPrice = selectedSlot?.price ?? null;
 
     // Auto-select the first available slot whenever availability data arrives (fresh)
     useEffect(() => {
@@ -105,6 +101,29 @@ export default function NewBookingContainer(): JSX.Element {
         setForm((prev) => ({ ...prev, startTime: first?.start_time ?? "" }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [availabilityData]);
+
+    const isLessonType =
+        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
+    const {
+        data: trainerData = [],
+        isLoading: trainersLoading,
+        isError: trainersError,
+    } = useListAvailableTrainers({
+        clubId: isLessonType ? (clubId ?? "") : "",
+        date: form.bookingDate,
+        startTime: form.startTime,
+        endTime: selectedSlot?.end_time ?? "",
+    });
+
+    const prevTrainerDataRef = useRef(trainerData);
+    useEffect(() => {
+        if (trainerData === prevTrainerDataRef.current) return;
+        prevTrainerDataRef.current = trainerData;
+        if (form.staffProfileId && !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)) {
+            setForm((prev) => ({ ...prev, staffProfileId: "" }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [trainerData]);
 
     const createMutation = useCreateBooking(clubId ?? "");
     const createRecurringMutation = useCreateRecurringBooking(clubId ?? "");
@@ -229,7 +248,9 @@ export default function NewBookingContainer(): JSX.Element {
     return (
         <NewBookingView
             courts={courtList}
-            trainers={trainerList}
+            trainers={trainerData}
+            trainersLoading={trainersLoading}
+            trainersError={trainersError}
             slots={slots}
             slotsLoading={slotsLoading}
             form={form}
@@ -244,6 +265,7 @@ export default function NewBookingContainer(): JSX.Element {
             onDismissError={handleDismissError}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
+            clubId={clubId}
         />
     );
 }

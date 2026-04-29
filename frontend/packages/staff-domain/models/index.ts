@@ -44,8 +44,12 @@ export type {
     TrainerAvailabilityInput,
     TrainerAvailabilityUpdateInput,
     TrainerBookingItem,
+    TrainerAvailableSummary,
+    ListAvailableTrainersParams,
 } from "./trainer.model";
 export type {
+    PlayerSearchResult,
+    PlayerSearchParams,
     ClubSummary,
     TokenResponse,
     RegisterPlayerInput,

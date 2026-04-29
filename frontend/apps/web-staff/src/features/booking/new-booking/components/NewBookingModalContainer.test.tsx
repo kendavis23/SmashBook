@@ -8,12 +8,31 @@ const mockReset = vi.fn();
 const mockRecurringMutate = vi.fn();
 const mockRecurringReset = vi.fn();
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("../../hooks", () => ({
     useCreateBooking: vi.fn(),
     useCreateRecurringBooking: vi.fn(),
     useListCourts: vi.fn(),
     useGetCourtAvailability: vi.fn(),
-    useListTrainers: vi.fn(),
+    useListAvailableTrainers: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
@@ -114,7 +133,7 @@ import {
     useCreateRecurringBooking,
     useGetCourtAvailability,
     useListCourts,
-    useListTrainers,
+    useListAvailableTrainers,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
 
@@ -122,7 +141,7 @@ const mockUseCreateBooking = useCreateBooking as ReturnType<typeof vi.fn>;
 const mockUseCreateRecurringBooking = useCreateRecurringBooking as ReturnType<typeof vi.fn>;
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
-const mockUseListTrainers = useListTrainers as ReturnType<typeof vi.fn>;
+const mockUseListAvailableTrainers = useListAvailableTrainers as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 
 const defaultProps = {
@@ -142,7 +161,11 @@ function setupMocks(overrides?: {
     mockUseListCourts.mockReturnValue({
         data: [{ id: "court-1", name: "Court 1" }],
     });
-    mockUseListTrainers.mockReturnValue({ data: [{ id: "trainer-1", is_active: true }] });
+    mockUseListAvailableTrainers.mockReturnValue({
+        data: [{ staff_profile_id: "trainer-1", full_name: "Jane Trainer" }],
+        isLoading: false,
+        isError: false,
+    });
     mockUseGetCourtAvailability.mockReturnValue({
         data: {
             slots: [

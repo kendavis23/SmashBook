@@ -3,6 +3,28 @@ import { describe, expect, it, vi } from "vitest";
 import BookingsView from "./BookingsView";
 import type { PlayerBookingItem } from "../../types";
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+        disabled,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+        disabled?: boolean;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>

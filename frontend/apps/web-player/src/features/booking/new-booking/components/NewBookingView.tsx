@@ -12,6 +12,7 @@ import {
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import { NewBookingModalView } from "./NewBookingModalView";
 
 export type NewBookingMode = "page" | "modal";
@@ -40,9 +41,13 @@ export type NewBookingFormState = {
     staffProfileId: string;
 };
 
+type Trainer = { staff_profile_id: string; full_name: string };
+
 type Props = {
     courts: { id: string; name: string }[];
-    trainers: { id: string }[];
+    trainers: Trainer[];
+    trainersLoading: boolean;
+    trainersError: boolean;
     slots: TimeSlot[];
     slotsLoading: boolean;
     form: NewBookingFormState;
@@ -56,6 +61,7 @@ type Props = {
     onDismissError: () => void;
     onRefreshSlots: () => void;
     selectedPrice: number | string | null;
+    clubId?: string | null;
     mode?: NewBookingMode;
     courtName?: string;
     onClose?: () => void;
@@ -66,6 +72,8 @@ const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
 export default function NewBookingView({
     courts,
     trainers,
+    trainersLoading,
+    trainersError,
     slots,
     slotsLoading,
     form,
@@ -79,6 +87,7 @@ export default function NewBookingView({
     onDismissError,
     onRefreshSlots,
     selectedPrice,
+    clubId,
     mode = "page",
     courtName,
     onClose,
@@ -236,15 +245,32 @@ export default function NewBookingView({
                             - Lesson assigned to the trainer.
                         </span>
                     </label>
-                    <SelectInput
-                        value={form.staffProfileId}
-                        onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                        options={trainers.map((t) => ({ value: t.id, label: t.id }))}
-                        placeholder={
-                            trainers.length === 0 ? "No trainers available" : "Select trainer…"
-                        }
-                        disabled={trainers.length === 0}
-                    />
+                    {!form.startTime ? (
+                        <div className={`${fieldCls} cursor-not-allowed opacity-50`}>
+                            <span className="text-muted-foreground">Select a time slot first</span>
+                        </div>
+                    ) : trainersLoading ? (
+                        <div className={`${fieldCls} opacity-60`}>
+                            <span className="text-muted-foreground">Loading trainers…</span>
+                        </div>
+                    ) : trainersError ? (
+                        <div className={`${fieldCls} opacity-60`}>
+                            <span className="text-muted-foreground">Failed to load trainers</span>
+                        </div>
+                    ) : (
+                        <SelectInput
+                            value={form.staffProfileId}
+                            onValueChange={(v) => onFormChange({ staffProfileId: v })}
+                            options={trainers.map((t) => ({
+                                value: t.staff_profile_id,
+                                label: t.full_name,
+                            }))}
+                            placeholder={
+                                trainers.length === 0 ? "No trainers available" : "Select trainer…"
+                            }
+                            disabled={trainers.length === 0}
+                        />
+                    )}
                 </div>
             ) : null}
 
@@ -252,25 +278,25 @@ export default function NewBookingView({
             {!form.isOpenGame ? (
                 <div className="mt-4">
                     <label className={labelCls}>
-                        Add Players (user IDs)
+                        Add Players
                         <span className="ml-1 font-normal text-muted-foreground">
                             - Invite other players.
                         </span>
                     </label>
                     {form.playerUserIds.map((uid, index) => (
                         <div key={index} className="mb-2 flex items-center gap-2">
-                            <input
-                                type="text"
-                                aria-label={`Invited player ${index + 1}`}
-                                className={fieldCls}
-                                placeholder="Player user ID"
-                                value={uid}
-                                onChange={(e) => {
-                                    const next = [...form.playerUserIds];
-                                    next[index] = e.target.value;
-                                    onFormChange({ playerUserIds: next });
-                                }}
-                            />
+                            <div className="min-w-0 flex-1">
+                                <PlayerAutocomplete
+                                    label={`Invited player ${index + 1}`}
+                                    clubId={clubId}
+                                    value={uid}
+                                    onChange={(playerId) => {
+                                        const next = [...form.playerUserIds];
+                                        next[index] = playerId;
+                                        onFormChange({ playerUserIds: next });
+                                    }}
+                                />
+                            </div>
                             <button
                                 type="button"
                                 aria-label={`Remove invited player ${index + 1}`}
@@ -357,10 +383,13 @@ export default function NewBookingView({
             <NewBookingModalView
                 courtName={courtName ?? form.courtId}
                 trainers={trainers}
+                trainersLoading={trainersLoading}
+                trainersError={trainersError}
                 form={form}
                 apiError={apiError}
                 isPending={isPending}
                 selectedPrice={selectedPrice}
+                clubId={clubId}
                 onFormChange={onFormChange}
                 onSubmit={onSubmit}
                 onCancel={onCancel}

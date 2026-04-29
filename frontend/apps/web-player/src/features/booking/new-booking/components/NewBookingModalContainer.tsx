@@ -1,11 +1,11 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
 import {
     useCreateBooking,
     useGetCourtAvailability,
     useListCourts,
-    useListTrainers,
+    useListAvailableTrainers,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { BookingInput, BookingType } from "../../types";
@@ -56,11 +56,6 @@ export default function NewBookingModalContainer({
         staffProfileId: "",
     });
 
-    const isLessonType =
-        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
-    const { data: trainers = [] } = useListTrainers(isLessonType ? (clubId ?? "") : "");
-    const trainerList = trainers.filter((t) => t.is_active !== false);
-
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
 
@@ -70,7 +65,8 @@ export default function NewBookingModalContainer({
         refetch: refetchSlots,
     } = useGetCourtAvailability(form.courtId, form.bookingDate);
     const slots = availabilityData?.slots ?? [];
-    const selectedPrice = slots.find((s) => s.start_time === form.startTime)?.price ?? null;
+    const selectedSlot = slots.find((s) => s.start_time === form.startTime);
+    const selectedPrice = selectedSlot?.price ?? null;
 
     // Auto-select first available slot when availability data arrives and no slot is pre-selected
     useEffect(() => {
@@ -79,6 +75,29 @@ export default function NewBookingModalContainer({
         setForm((prev) => ({ ...prev, startTime: first?.start_time ?? "" }));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [availabilityData]);
+
+    const isLessonType =
+        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
+    const {
+        data: trainerData = [],
+        isLoading: trainersLoading,
+        isError: trainersError,
+    } = useListAvailableTrainers({
+        clubId: isLessonType ? (clubId ?? "") : "",
+        date: form.bookingDate,
+        startTime: form.startTime,
+        endTime: selectedSlot?.end_time ?? "",
+    });
+
+    const prevTrainerDataRef = useRef(trainerData);
+    useEffect(() => {
+        if (trainerData === prevTrainerDataRef.current) return;
+        prevTrainerDataRef.current = trainerData;
+        if (form.staffProfileId && !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)) {
+            setForm((prev) => ({ ...prev, staffProfileId: "" }));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [trainerData]);
 
     const createMutation = useCreateBooking(clubId ?? "");
     const apiError = (createMutation.error as Error | null)?.message ?? "";
@@ -159,7 +178,9 @@ export default function NewBookingModalContainer({
             mode="modal"
             courtName={courtName}
             courts={courtList}
-            trainers={trainerList}
+            trainers={trainerData}
+            trainersLoading={trainersLoading}
+            trainersError={trainersError}
             slots={slots}
             slotsLoading={slotsLoading}
             form={form}
@@ -174,6 +195,7 @@ export default function NewBookingModalContainer({
             onDismissError={() => createMutation.reset()}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
+            clubId={clubId}
         />
     );
 }

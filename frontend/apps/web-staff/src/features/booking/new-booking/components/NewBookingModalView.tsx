@@ -13,6 +13,7 @@ import type { BookingType } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
 import type { NewBookingFormState } from "./NewBookingView";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
@@ -22,14 +23,19 @@ const labelCls = "mb-1 block text-sm font-medium text-foreground";
 
 const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
 
+type Trainer = { staff_profile_id: string; full_name: string };
+
 type Props = {
     courtName: string;
-    trainers: { id: string }[];
+    trainers: Trainer[];
+    trainersLoading: boolean;
+    trainersError: boolean;
     form: NewBookingFormState;
     apiError: string;
     onBehalfOfError: string;
     isPending: boolean;
     selectedPrice: number | string | null;
+    clubId?: string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
     onSubmit: (e: FormEvent) => void;
     onCancel: () => void;
@@ -40,11 +46,14 @@ type Props = {
 export function NewBookingModalView({
     courtName,
     trainers,
+    trainersLoading,
+    trainersError,
     form,
     apiError,
     onBehalfOfError,
     isPending,
     selectedPrice,
+    clubId,
     onFormChange,
     onSubmit,
     onCancel,
@@ -149,21 +158,17 @@ export function NewBookingModalView({
                             {!form.isOpenGame ? (
                                 <div>
                                     <label htmlFor="bk-on-behalf" className={labelCls}>
-                                        On behalf of (user ID){" "}
-                                        <span className="text-destructive">*</span>
+                                        On behalf of <span className="text-destructive">*</span>
                                     </label>
-                                    <input
-                                        id="bk-on-behalf"
-                                        type="text"
-                                        className={
-                                            fieldCls +
-                                            (onBehalfOfError ? " !border-destructive" : "")
-                                        }
-                                        placeholder="Player user ID"
+                                    <PlayerAutocomplete
+                                        label="On behalf of"
+                                        inputId="bk-on-behalf"
+                                        clubId={clubId}
                                         value={form.onBehalfOf}
-                                        onChange={(e) =>
-                                            onFormChange({ onBehalfOf: e.target.value })
+                                        onChange={(playerId) =>
+                                            onFormChange({ onBehalfOf: playerId })
                                         }
+                                        error={Boolean(onBehalfOfError)}
                                     />
                                     {onBehalfOfError ? (
                                         <p className="mt-1 text-xs text-destructive">
@@ -179,20 +184,36 @@ export function NewBookingModalView({
                                     <label htmlFor="bk-staff-id" className={labelCls}>
                                         Staff (Trainer)
                                     </label>
-                                    <SelectInput
-                                        value={form.staffProfileId}
-                                        onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                                        options={trainers.map((t) => ({
-                                            value: t.id,
-                                            label: t.id,
-                                        }))}
-                                        placeholder={
-                                            trainers.length === 0
-                                                ? "No trainers available"
-                                                : "Select trainer…"
-                                        }
-                                        disabled={trainers.length === 0}
-                                    />
+                                    {trainersLoading ? (
+                                        <div className={`${fieldCls} opacity-60`}>
+                                            <span className="text-muted-foreground">
+                                                Loading trainers…
+                                            </span>
+                                        </div>
+                                    ) : trainersError ? (
+                                        <div className={`${fieldCls} opacity-60`}>
+                                            <span className="text-muted-foreground">
+                                                Failed to load trainers
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <SelectInput
+                                            value={form.staffProfileId}
+                                            onValueChange={(v) =>
+                                                onFormChange({ staffProfileId: v })
+                                            }
+                                            options={trainers.map((t) => ({
+                                                value: t.staff_profile_id,
+                                                label: t.full_name,
+                                            }))}
+                                            placeholder={
+                                                trainers.length === 0
+                                                    ? "No trainers available"
+                                                    : "Select trainer…"
+                                            }
+                                            disabled={trainers.length === 0}
+                                        />
+                                    )}
                                 </div>
                             ) : null}
                         </div>
@@ -202,25 +223,25 @@ export function NewBookingModalView({
                     {!form.isOpenGame ? (
                         <div>
                             <label className={labelCls}>
-                                Add Players (user IDs)
+                                Add Players
                                 <span className="ml-1 font-normal text-muted-foreground">
                                     - Staff can add players.
                                 </span>
                             </label>
                             {form.playerUserIds.map((uid, index) => (
                                 <div key={index} className="mb-2 flex items-center gap-2">
-                                    <input
-                                        type="text"
-                                        aria-label={`Invited player ${index + 1}`}
-                                        className={fieldCls}
-                                        placeholder="Player user ID"
-                                        value={uid}
-                                        onChange={(e) => {
-                                            const next = [...form.playerUserIds];
-                                            next[index] = e.target.value;
-                                            onFormChange({ playerUserIds: next });
-                                        }}
-                                    />
+                                    <div className="min-w-0 flex-1">
+                                        <PlayerAutocomplete
+                                            label={`Invited player ${index + 1}`}
+                                            clubId={clubId}
+                                            value={uid}
+                                            onChange={(playerId) => {
+                                                const next = [...form.playerUserIds];
+                                                next[index] = playerId;
+                                                onFormChange({ playerUserIds: next });
+                                            }}
+                                        />
+                                    </div>
                                     <button
                                         type="button"
                                         aria-label={`Remove invited player ${index + 1}`}

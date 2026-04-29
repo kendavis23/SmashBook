@@ -333,7 +333,7 @@ const staffRoute = createRoute({
 const trainersRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/trainers",
-    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "viewer", "trainer"]),
     validateSearch: (search: Record<string, unknown>) => ({
         created: search.created === true ? true : undefined,
         updated: search.updated === true ? true : undefined,
@@ -344,7 +344,7 @@ const trainersRoute = createRoute({
 const trainerDetailRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/trainers/$trainerId",
-    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"]),
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "viewer", "trainer"]),
     component: TrainerDetailPage,
 });
 

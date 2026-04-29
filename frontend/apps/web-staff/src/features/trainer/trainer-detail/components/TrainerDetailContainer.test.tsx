@@ -51,6 +51,7 @@ const mockTrainer = {
     id: "trainer-001-abcd",
     club_id: "club-1",
     user_id: "user-1",
+    full_name: "Aarav Shah",
     bio: "Expert padel coach",
     is_active: true,
     availability: [],
@@ -128,7 +129,7 @@ describe("TrainerDetailContainer — data state", () => {
     it("renders trainer detail view when trainer is found", () => {
         setupMocks();
         render(<TrainerDetailContainer />);
-        expect(screen.getByText("Trainer #trainer-")).toBeInTheDocument();
+        expect(screen.getByText("Aarav Shah")).toBeInTheDocument();
     });
 
     it("renders trainer bio", () => {

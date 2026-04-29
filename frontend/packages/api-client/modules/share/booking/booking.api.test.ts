@@ -48,16 +48,25 @@ describe("listOpenGamesEndpoint", () => {
         expect(mockFetcher).toHaveBeenCalledWith(`/api/v1/bookings/open-games?club_id=${CLUB_ID}`);
     });
 
+    it("calls GET /api/v1/bookings/open-games with player_skill_level", async () => {
+        mockFetcher.mockResolvedValue([]);
+        await listOpenGamesEndpoint({ club_id: CLUB_ID, player_skill_level: 5 });
+        expect(mockFetcher).toHaveBeenCalledWith(
+            `/api/v1/bookings/open-games?club_id=${CLUB_ID}&player_skill_level=5`
+        );
+    });
+
     it("calls GET /api/v1/bookings/open-games with all optional params", async () => {
         mockFetcher.mockResolvedValue([]);
         await listOpenGamesEndpoint({
             club_id: CLUB_ID,
             date: "2026-04-11",
+            player_skill_level: 5,
             min_skill: 3,
             max_skill: 7,
         });
         expect(mockFetcher).toHaveBeenCalledWith(
-            `/api/v1/bookings/open-games?club_id=${CLUB_ID}&date=2026-04-11&min_skill=3&max_skill=7`
+            `/api/v1/bookings/open-games?club_id=${CLUB_ID}&date=2026-04-11&player_skill_level=5&min_skill=3&max_skill=7`
         );
     });
 });

@@ -263,6 +263,7 @@ export default function ManageBookingContainer(): JSX.Element {
             onRefresh={() => void refetchBooking()}
             onRefreshSlots={() => void refetchSlots()}
             selectedPrice={selectedPrice}
+            clubId={clubId}
         />
     );
 }

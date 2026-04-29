@@ -13,6 +13,7 @@ import {
 import type { Booking, TimeSlot } from "../../types";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import type { ManageBookingFormState } from "./ManageBookingView";
 
 const fieldCls =
@@ -47,6 +48,7 @@ type Props = {
     onInvitePlayer: (playerId: string) => void;
     onRefreshSlots: () => void;
     selectedPrice: number | string | null;
+    clubId?: string | null;
 };
 
 export function ManageBookingModalView({
@@ -75,6 +77,7 @@ export function ManageBookingModalView({
     onInvitePlayer,
     onRefreshSlots,
     selectedPrice,
+    clubId,
 }: Props): JSX.Element {
     const [playersExpanded, setPlayersExpanded] = useState(false);
     const [eventExpanded, setEventExpanded] = useState(false);
@@ -198,16 +201,15 @@ export function ManageBookingModalView({
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                                 <div className="min-w-0 sm:w-[70%]">
                                     <label className={labelCls} htmlFor="booking-modal-player-id">
-                                        Player ID
+                                        Player
                                     </label>
-                                    <input
-                                        id="booking-modal-player-id"
-                                        type="text"
+                                    <PlayerAutocomplete
+                                        inputId="booking-modal-player-id"
+                                        label="Player"
+                                        clubId={clubId}
                                         value={playerId}
-                                        onChange={(event) => setPlayerId(event.target.value)}
-                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                                        className="input-base"
                                         disabled={isInviting}
+                                        onChange={setPlayerId}
                                     />
                                 </div>
                                 <button

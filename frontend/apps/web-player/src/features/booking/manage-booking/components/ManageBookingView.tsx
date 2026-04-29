@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Check, RotateCcw, UserPlus, X } from "lucide-react";
 import { Breadcrumb, AlertToast, formatUTCDateTime, formatCurrency } from "@repo/ui";
 import type { Booking, PlayerRole, InviteStatus, PaymentStatus } from "../../types";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
 type MyInfo = {
     role: PlayerRole;
@@ -31,6 +32,7 @@ type Props = {
     onDismissError: () => void;
     onRefresh: () => void;
     onBack: () => void;
+    clubId?: string | null;
     mode?: "page" | "modal";
     onClose?: () => void;
 };
@@ -47,6 +49,7 @@ export default function ManageBookingView({
     onDismissError,
     onRefresh,
     onBack,
+    clubId,
     mode = "page",
     onClose,
 }: Props): JSX.Element {
@@ -65,6 +68,7 @@ export default function ManageBookingView({
                 onRespondInvite={onRespondInvite}
                 onDismissError={onDismissError}
                 onRefresh={onRefresh}
+                clubId={clubId}
                 onClose={onClose ?? onBack}
             />
         );
@@ -238,9 +242,6 @@ export default function ManageBookingView({
                                 <h3 className="text-sm font-semibold text-foreground">
                                     Invite Player
                                 </h3>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Enter a player ID to invite them to this open match.
-                                </p>
                             </div>
                             <form
                                 className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -257,15 +258,14 @@ export default function ManageBookingView({
                                         htmlFor="player-invite-id"
                                         className="mb-1 block text-sm font-medium text-foreground"
                                     >
-                                        Player ID
+                                        Player
                                     </label>
-                                    <input
-                                        id="player-invite-id"
-                                        type="text"
-                                        className="input-base"
-                                        placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
+                                    <PlayerAutocomplete
+                                        inputId="player-invite-id"
+                                        label="Player"
+                                        clubId={clubId ?? booking.club_id}
                                         value={inviteId}
-                                        onChange={(e) => setInviteId(e.target.value)}
+                                        onChange={setInviteId}
                                         disabled={isInvitePending}
                                     />
                                 </div>

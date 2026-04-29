@@ -6,14 +6,13 @@ import {
     useJoinBooking,
     useListCourts,
     useListOpenGames,
+    useMyProfile,
 } from "../../hooks";
 import type { BookingModalState, ClubOption, OpenGameFilters, SurfaceType } from "../../types";
 import DashboardView from "./DashboardView";
 
 type JoinFilters = {
     date: string;
-    minSkill: string;
-    maxSkill: string;
 };
 
 type BookFilters = {
@@ -31,12 +30,6 @@ function todayInputValue(): string {
     return `${year}-${month}-${day}`;
 }
 
-function parseOptionalNumber(value: string): number | undefined {
-    if (!value.trim()) return undefined;
-    const parsed = Number.parseFloat(value);
-    return Number.isNaN(parsed) ? undefined : parsed;
-}
-
 export default function DashboardContainer(): JSX.Element {
     const { clubs: authClubs, clubId, setActiveClubId } = useAuth();
     const clubs = useMemo<ClubOption[]>(
@@ -50,8 +43,6 @@ export default function DashboardContainer(): JSX.Element {
     const today = useMemo(() => todayInputValue(), []);
     const [joinFilters, setJoinFilters] = useState<JoinFilters>({
         date: "",
-        minSkill: "",
-        maxSkill: "",
     });
     const [bookFilters, setBookFilters] = useState<BookFilters>({
         date: today,
@@ -65,6 +56,12 @@ export default function DashboardContainer(): JSX.Element {
     const [joinError, setJoinError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const startedJoinRef = useRef("");
+    const {
+        data: myProfile,
+        isLoading: isMyProfileLoading,
+        error: myProfileError,
+    } = useMyProfile();
+    const playerSkillLevel = myProfile?.skill_level ?? undefined;
 
     useEffect(() => {
         if (!clubId && clubs[0]) {
@@ -75,10 +72,9 @@ export default function DashboardContainer(): JSX.Element {
     const openGameFilters = useMemo<OpenGameFilters>(
         () => ({
             date: joinFilters.date || undefined,
-            min_skill: parseOptionalNumber(joinFilters.minSkill),
-            max_skill: parseOptionalNumber(joinFilters.maxSkill),
+            player_skill_level: playerSkillLevel,
         }),
-        [joinFilters.date, joinFilters.maxSkill, joinFilters.minSkill]
+        [joinFilters.date, playerSkillLevel]
     );
 
     const courtFilters = useMemo(
@@ -96,7 +92,7 @@ export default function DashboardContainer(): JSX.Element {
         isLoading: isOpenGamesLoading,
         error: openGamesError,
         refetch: refetchOpenGames,
-    } = useListOpenGames(selectedClubId, openGameFilters);
+    } = useListOpenGames(playerSkillLevel == null ? "" : selectedClubId, openGameFilters);
 
     const {
         data: courts = [],
@@ -165,8 +161,6 @@ export default function DashboardContainer(): JSX.Element {
             selectedClubId={selectedClubId}
             selectedClubName={selectedClub?.name ?? ""}
             joinFilterDate={joinFilters.date}
-            joinFilterMinSkill={joinFilters.minSkill}
-            joinFilterMaxSkill={joinFilters.maxSkill}
             bookFilterDate={bookFilters.date}
             bookFilterSurfaceType={bookFilters.surfaceType}
             bookFilterTimeFrom={bookFilters.timeFrom}
@@ -176,24 +170,18 @@ export default function DashboardContainer(): JSX.Element {
             availability={availability ?? null}
             availabilityCourtId={availabilityCourtId}
             bookingModal={bookingModal}
-            isOpenGamesLoading={isOpenGamesLoading}
+            isOpenGamesLoading={isMyProfileLoading || isOpenGamesLoading}
             isCourtsLoading={isCourtsLoading}
             isAvailabilityLoading={isAvailabilityLoading}
             isJoining={joinMutation.isPending || Boolean(joinBookingId)}
             joiningBookingId={joinBookingId}
-            openGamesError={openGamesError}
+            openGamesError={myProfileError ?? openGamesError}
             courtsError={courtsError}
             availabilityError={availabilityError}
             joinError={joinError}
             successMessage={successMessage}
             onClubChange={handleClubChange}
             onJoinFilterDateChange={(date) => setJoinFilters((prev) => ({ ...prev, date }))}
-            onJoinFilterMinSkillChange={(minSkill) =>
-                setJoinFilters((prev) => ({ ...prev, minSkill }))
-            }
-            onJoinFilterMaxSkillChange={(maxSkill) =>
-                setJoinFilters((prev) => ({ ...prev, maxSkill }))
-            }
             onBookFilterDateChange={(date) => {
                 setBookFilters((prev) => ({ ...prev, date }));
                 setAvailabilityCourtId("");
@@ -211,7 +199,9 @@ export default function DashboardContainer(): JSX.Element {
                 setAvailabilityCourtId("");
             }}
             onCheckAvailability={handleCheckAvailability}
-            onRefreshOpenGames={() => void refetchOpenGames()}
+            onRefreshOpenGames={() => {
+                if (playerSkillLevel != null) void refetchOpenGames();
+            }}
             onRefreshCourts={() => void refetchCourts()}
             onJoinGame={(bookingId) => {
                 setJoinError("");

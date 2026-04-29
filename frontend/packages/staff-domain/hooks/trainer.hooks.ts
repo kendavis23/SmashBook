@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { listTrainersEndpoint } from "@repo/api-client/modules/share";
+import { listTrainersEndpoint, listAvailableTrainersEndpoint } from "@repo/api-client/modules/share";
 import {
     getTrainerAvailabilityEndpoint,
     setTrainerAvailabilityEndpoint,
@@ -14,6 +14,8 @@ import type {
     TrainerAvailabilityInput,
     TrainerAvailabilityUpdateInput,
     TrainerBookingItem,
+    TrainerAvailableSummary,
+    ListAvailableTrainersParams,
 } from "../models";
 import type { TrainerRead } from "@repo/api-client/modules/share";
 
@@ -26,6 +28,8 @@ const trainerKeys = {
     detail: (trainerId: string) => ["trainers", "detail", trainerId] as const,
     availability: (trainerId: string) => ["trainers", trainerId, "availability"] as const,
     bookings: (trainerId: string) => ["trainers", trainerId, "bookings"] as const,
+    available: (params: ListAvailableTrainersParams) =>
+        ["trainers", "available", params.clubId, params.date, params.startTime, params.endTime] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -40,6 +44,18 @@ export function useListTrainers(clubId: string, includeInactive?: boolean) {
             return trainers.map((trainer) => ({ ...trainer, availability: [] }));
         },
         enabled: Boolean(clubId),
+    });
+}
+
+// ---------------------------------------------------------------------------
+// useListAvailableTrainers — GET /api/v1/trainers/available
+// ---------------------------------------------------------------------------
+
+export function useListAvailableTrainers(params: ListAvailableTrainersParams) {
+    return useQuery({
+        queryKey: trainerKeys.available(params),
+        queryFn: (): Promise<TrainerAvailableSummary[]> => listAvailableTrainersEndpoint(params),
+        enabled: Boolean(params.clubId && params.date && params.startTime && params.endTime),
     });
 }
 

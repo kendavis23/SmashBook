@@ -36,6 +36,7 @@ export interface CalendarViewFilters {
 
 export interface OpenGameFilters {
     date?: string;
+    player_skill_level?: number;
     min_skill?: number;
     max_skill?: number;
 }

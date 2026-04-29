@@ -14,6 +14,28 @@ vi.mock("@tanstack/react-router", () => ({
     useSearch: () => ({}),
 }));
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+        disabled,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+        disabled?: boolean;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            disabled={disabled}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("../../hooks", () => ({
     useGetBooking: vi.fn(),
     useUpdateBooking: vi.fn(),
@@ -265,9 +287,9 @@ describe("ManageBookingContainer", () => {
         render(<ManageBookingContainer />);
 
         await waitFor(() => {
-            expect(screen.getByLabelText("Player ID")).toBeInTheDocument();
+            expect(screen.getByLabelText("Player")).toBeInTheDocument();
         });
-        fireEvent.change(screen.getByLabelText("Player ID"), { target: { value: " user-123 " } });
+        fireEvent.change(screen.getByLabelText("Player"), { target: { value: " user-123 " } });
         fireEvent.click(screen.getByRole("button", { name: "Invite" }));
 
         expect(mockInviteMutate).toHaveBeenCalledWith(

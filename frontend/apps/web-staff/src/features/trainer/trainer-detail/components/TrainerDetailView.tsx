@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { Users, Calendar, Clock, BookOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, Calendar, Clock, BookOpen, ChevronDown, ChevronRight, Plus } from "lucide-react";
 import { Breadcrumb, AlertToast } from "@repo/ui";
 import { formatUTCDate, formatUTCTime } from "@repo/ui";
 import type { Trainer, TrainerAvailability, TrainerBookingItem, TrainerTab } from "../../types";
@@ -19,6 +19,7 @@ type Props = {
     onTabChange: (tab: TrainerTab) => void;
     onRefreshAvailability: () => void;
     onRefreshBookings: () => void;
+    onCreateAvailability: () => void;
 };
 
 function BookingStatusBadge({ status }: { status: string }): JSX.Element {
@@ -99,10 +100,12 @@ export default function TrainerDetailView({
     bookings,
     bookingsLoading,
     bookingsError,
+    canManage,
     activeTab,
     onTabChange,
     onRefreshAvailability,
     onRefreshBookings,
+    onCreateAvailability,
 }: Props): JSX.Element {
     return (
         <div className="w-full space-y-5">
@@ -121,7 +124,7 @@ export default function TrainerDetailView({
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                                        Trainer #{trainer.id.slice(0, 8)}
+                                        {trainer.full_name}
                                     </h1>
                                     <span
                                         className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${
@@ -179,13 +182,25 @@ export default function TrainerDetailView({
                                         Recurring time slots when this trainer is available.
                                     </p>
                                 </div>
-                                <button
-                                    onClick={onRefreshAvailability}
-                                    className="btn-outline px-3 py-1.5 text-xs"
-                                    aria-label="Refresh availability"
-                                >
-                                    Refresh
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={onRefreshAvailability}
+                                        className="btn-outline px-3 py-1.5 text-xs"
+                                        aria-label="Refresh availability"
+                                    >
+                                        Refresh
+                                    </button>
+                                    {canManage ? (
+                                        <button
+                                            onClick={onCreateAvailability}
+                                            className="btn-cta flex items-center gap-1 px-3 py-1.5 text-xs"
+                                            aria-label="Create availability"
+                                        >
+                                            <Plus size={12} />
+                                            Create Availability
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
 
                             {availabilityError ? (

@@ -8,7 +8,9 @@ export {
     useUpdateBooking,
     useCancelBooking,
     useInvitePlayer,
+    useSearchPlayers,
     useListCourts,
     useGetCourtAvailability,
     useListTrainers,
+    useListAvailableTrainers,
 } from "@repo/staff-domain/hooks";

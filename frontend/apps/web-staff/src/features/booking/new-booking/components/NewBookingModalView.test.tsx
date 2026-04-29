@@ -4,6 +4,25 @@ import { describe, expect, it, vi } from "vitest";
 import { NewBookingModalView } from "./NewBookingModalView";
 import type { NewBookingFormState } from "./NewBookingView";
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        label,
+        value,
+        onChange,
+    }: {
+        label: string;
+        value: string;
+        onChange: (value: string) => void;
+    }) => (
+        <input
+            type="text"
+            aria-label={label}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     AlertToast: ({ title, onClose }: { title: string; onClose: () => void }) => (
         <div role="alert">
@@ -75,7 +94,9 @@ const defaultForm: NewBookingFormState = {
 
 const defaultProps = {
     courtName: "Court 1",
-    trainers: [{ id: "trainer-1" }],
+    trainers: [{ staff_profile_id: "trainer-1", full_name: "Jane Trainer" }],
+    trainersLoading: false,
+    trainersError: false,
     form: defaultForm,
     apiError: "",
     onBehalfOfError: "",
