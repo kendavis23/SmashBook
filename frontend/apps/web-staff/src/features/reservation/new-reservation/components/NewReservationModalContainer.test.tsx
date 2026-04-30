@@ -99,7 +99,7 @@ describe("NewReservationModalContainer", () => {
             />
         );
         // In modal mode, date is shown as read-only text, not an input
-        expect(screen.getByText("10 May 2026")).toBeInTheDocument();
+        expect(screen.getByText("May 10, 2026")).toBeInTheDocument();
     });
 
     it("shows title validation error when submitting empty title", async () => {

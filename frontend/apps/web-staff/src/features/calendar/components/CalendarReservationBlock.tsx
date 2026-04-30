@@ -64,7 +64,7 @@ function CalendarReservationBlock({
             aria-label={ariaLabel}
             title={ariaLabel}
             onClick={() => onManageClick(block.id)}
-            className={`absolute left-1.5 right-1.5 z-10 cursor-pointer overflow-hidden rounded-md border text-left transition-all duration-150 hover:z-20 hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${style.bg} ${style.border}`}
+            className={`absolute left-1.5 right-1.5 z-10 cursor-pointer overflow-hidden rounded-md border text-left shadow-xs transition-colors duration-150 hover:z-20 hover:border-cta/40 hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta/70 focus-visible:ring-offset-1 ${style.bg} ${style.border}`}
             style={{ top: `${top}px`, height: `${height}px` }}
         >
             {/* Diagonal stripe for maintenance — signals "unavailable" */}
@@ -79,11 +79,11 @@ function CalendarReservationBlock({
                 />
             ) : null}
 
-            <div className="relative flex h-full flex-col items-start justify-center gap-1 pl-2 pr-1 py-1">
-                <p className={`text-[11px] font-semibold leading-none ${style.time}`}>
-                    {style.label}
-                </p>
-                <p className={`shrink-0 text-[10px] font-medium leading-none ${style.time}`}>
+            <div className="relative flex h-full flex-col items-start justify-center gap-0.5 px-2.5 py-1">
+                <p className={`text-xs font-semibold leading-none ${style.time}`}>{style.label}</p>
+                <p
+                    className={`shrink-0 text-[11px] font-medium leading-none tabular-nums ${style.time}`}
+                >
                     {timeLabel}
                 </p>
             </div>

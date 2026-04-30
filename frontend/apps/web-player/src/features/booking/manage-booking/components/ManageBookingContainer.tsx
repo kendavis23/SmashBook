@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import { useGetBooking, useInvitePlayer, useRespondInvite } from "../../hooks";
+import { useMyProfile } from "@repo/player-domain/hooks";
 import type { Booking, PlayerRole, InviteStatus, PaymentStatus } from "../../types";
 import ManageBookingView from "./ManageBookingView";
 
@@ -14,26 +15,24 @@ type MyInfo = {
 
 export default function ManageBookingContainer(): JSX.Element {
     const { bookingId } = useParams({ strict: false }) as { bookingId: string };
-    const search = useSearch({ strict: false }) as {
-        clubId?: string;
-        role?: PlayerRole;
-        inviteStatus?: InviteStatus;
-        paymentStatus?: PaymentStatus;
-        amountDue?: number;
-    };
+    const search = useSearch({ strict: false }) as { clubId?: string };
     const clubId = search.clubId ?? "";
-    const myInfo: MyInfo | undefined =
-        search.role && search.inviteStatus && search.paymentStatus && search.amountDue != null
-            ? {
-                  role: search.role,
-                  inviteStatus: search.inviteStatus,
-                  paymentStatus: search.paymentStatus,
-                  amountDue: search.amountDue,
-              }
-            : undefined;
     const navigate = useNavigate();
 
     const { data: booking, isLoading, error, refetch } = useGetBooking(bookingId, clubId);
+    const { data: profile } = useMyProfile();
+
+    const myInfo: MyInfo | undefined = useMemo(() => {
+        if (!booking || !profile) return undefined;
+        const me = booking.players.find((p) => p.user_id === profile.id);
+        if (!me) return undefined;
+        return {
+            role: me.role,
+            inviteStatus: me.invite_status,
+            paymentStatus: me.payment_status,
+            amountDue: me.amount_due,
+        };
+    }, [booking, profile]);
 
     const playerRole: PlayerRole = myInfo?.role ?? "player";
     const [apiError, setApiError] = useState("");
@@ -99,6 +98,7 @@ export default function ManageBookingContainer(): JSX.Element {
             booking={booking as Booking}
             playerRole={playerRole}
             myInfo={myInfo}
+            myUserId={profile?.id}
             apiError={apiError}
             isInvitePending={inviteMutation.isPending}
             isRespondPending={respondMutation.isPending}

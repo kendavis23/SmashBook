@@ -17,7 +17,18 @@ describe("PlayerAutocomplete", () => {
                 ({
                     data:
                         options?.enabled && params?.q === "Roh"
-                            ? [{ id: "player-1", full_name: "Rohit Sharma", skill_level: 4.0 }]
+                            ? [
+                                  {
+                                      id: "player-1",
+                                      full_name: "Rohit Sharma",
+                                      skill_level: 4.0,
+                                  },
+                                  {
+                                      id: "player-2",
+                                      full_name: "Rohan Patel",
+                                      skill_level: 3.5,
+                                  },
+                              ]
                             : [],
                     isFetching: false,
                     isError: false,
@@ -128,5 +139,40 @@ describe("PlayerAutocomplete", () => {
 
         fireEvent.change(input, { target: { value: "" } });
         expect(onChange).toHaveBeenLastCalledWith("");
+    });
+
+    it("supports arrow key traversal and enter selection", () => {
+        const onChange = vi.fn();
+        render(
+            <PlayerAutocomplete
+                label="Invited player 1"
+                value=""
+                onChange={onChange}
+                clubId="club-1"
+            />
+        );
+
+        const input = screen.getByRole("combobox", { name: "Invited player 1" });
+        fireEvent.change(input, { target: { value: "Roh" } });
+        act(() => {
+            vi.advanceTimersByTime(300);
+        });
+
+        fireEvent.keyDown(input, { key: "ArrowDown" });
+        expect(screen.getByRole("option", { name: /Rohit Sharma/i })).toHaveAttribute(
+            "aria-selected",
+            "true"
+        );
+
+        fireEvent.keyDown(input, { key: "ArrowDown" });
+        expect(screen.getByRole("option", { name: /Rohan Patel/i })).toHaveAttribute(
+            "aria-selected",
+            "true"
+        );
+
+        fireEvent.keyDown(input, { key: "Enter" });
+
+        expect(onChange).toHaveBeenCalledWith("player-2");
+        expect(input).toHaveValue("Rohan Patel");
     });
 });

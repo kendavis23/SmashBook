@@ -150,6 +150,97 @@ describe("BookingsView — booking list", () => {
         expect(screen.getAllByText("Confirmed").length).toBeGreaterThan(0);
     });
 
+    it("shows date and time columns instead of start and end columns", () => {
+        renderView({ bookings: [mockBooking] });
+        expect(screen.getByRole("button", { name: /Sort by Date/i })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /Sort by Time/i })).toBeInTheDocument();
+        expect(screen.queryByRole("columnheader", { name: "Start" })).toBeNull();
+        expect(screen.queryByRole("columnheader", { name: "End" })).toBeNull();
+        expect(screen.getByText("2026-04-11T10:00:00Z - 2026-04-11T11:30:00Z")).toBeInTheDocument();
+    });
+
+    function makeLaterBooking(): Booking {
+        return {
+            ...mockBooking,
+            id: "b-2",
+            court_id: "court-2",
+            court_name: "Court B",
+            start_datetime: "2026-04-12T09:00:00Z",
+            end_datetime: "2026-04-12T10:30:00Z",
+        };
+    }
+
+    it("sorts booking rows from compact sortable headers", () => {
+        const laterBooking = makeLaterBooking();
+
+        renderView({ bookings: [laterBooking, mockBooking] });
+
+        let rows = screen.getAllByRole("row");
+        expect(rows[1]).toHaveTextContent("Court B");
+        expect(rows[2]).toHaveTextContent("Court A");
+
+        fireEvent.click(screen.getByRole("button", { name: /Sort by Court ascending/i }));
+        rows = screen.getAllByRole("row");
+        expect(rows[1]).toHaveTextContent("Court A");
+        expect(rows[2]).toHaveTextContent("Court B");
+
+        fireEvent.click(screen.getByRole("button", { name: /Sort by Court descending/i }));
+        rows = screen.getAllByRole("row");
+        expect(rows[1]).toHaveTextContent("Court B");
+        expect(rows[2]).toHaveTextContent("Court A");
+    });
+
+    it("clears sorting when fresh booking data arrives", () => {
+        const laterBooking: Booking = {
+            ...makeLaterBooking(),
+            id: "b-3",
+        };
+
+        const { rerender } = renderView({ bookings: [mockBooking, laterBooking] });
+
+        fireEvent.click(screen.getByRole("button", { name: /Sort by Court ascending/i }));
+        let rows = screen.getAllByRole("row");
+        expect(rows[1]).toHaveTextContent("Court A");
+        expect(rows[2]).toHaveTextContent("Court B");
+
+        rerender(
+            <BookingsView
+                bookings={[laterBooking, mockBooking]}
+                isLoading={false}
+                error={null}
+                canManage
+                filters={defaultFilters}
+                courts={[]}
+                courtNameMap={{}}
+                onFiltersChange={vi.fn()}
+                onSearch={vi.fn()}
+                onRefresh={vi.fn()}
+                onCreateClick={vi.fn()}
+                onManageClick={vi.fn()}
+            />
+        );
+
+        rows = screen.getAllByRole("row");
+        expect(rows[1]).toHaveTextContent("Court B");
+        expect(rows[2]).toHaveTextContent("Court A");
+    });
+
+    it("clears sorting immediately when refresh is clicked", () => {
+        const laterBooking = makeLaterBooking();
+
+        renderView({ bookings: [laterBooking, mockBooking] });
+
+        fireEvent.click(screen.getByRole("button", { name: /Sort by Court ascending/i }));
+        let rows = screen.getAllByRole("row");
+        expect(rows[1]).toHaveTextContent("Court A");
+        expect(rows[2]).toHaveTextContent("Court B");
+
+        fireEvent.click(screen.getByRole("button", { name: "Refresh bookings" }));
+        rows = screen.getAllByRole("row");
+        expect(rows[1]).toHaveTextContent("Court B");
+        expect(rows[2]).toHaveTextContent("Court A");
+    });
+
     it("shows open game badge for open games", () => {
         renderView({ bookings: [{ ...mockBooking, is_open_game: true }] });
         expect(screen.getByText("Open")).toBeInTheDocument();

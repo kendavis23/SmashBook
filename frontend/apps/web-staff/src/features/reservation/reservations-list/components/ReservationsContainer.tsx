@@ -130,7 +130,10 @@ export default function ReservationsContainer(): JSX.Element {
         [navigate, appliedFilters]
     );
 
+    const [refreshKey, setRefreshKey] = useState(0);
+
     const handleRefresh = useCallback((): void => {
+        setRefreshKey((k) => k + 1);
         void refetch();
     }, [refetch]);
 
@@ -149,6 +152,7 @@ export default function ReservationsContainer(): JSX.Element {
                 onCreateClick={handleCreateClick}
                 onManageClick={handleManageClick}
                 onRefresh={handleRefresh}
+                refreshKey={refreshKey}
             />
             {successToast ? (
                 <AlertToast

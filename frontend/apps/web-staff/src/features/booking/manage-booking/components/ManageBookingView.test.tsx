@@ -113,7 +113,8 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
-    formatUTCDateTime: (value: string) => value,
+    formatUTCDate: (value: string) => `date:${value}`,
+    formatUTCTime: (value: string) => `time:${value}`,
     formatCurrency: (amount: number | null) => (amount == null ? "—" : `£${amount.toFixed(2)}`),
 }));
 
@@ -197,8 +198,15 @@ describe("ManageBookingView", () => {
         render(<ManageBookingView {...defaultProps} />);
 
         expect(screen.getByRole("heading", { name: "Court 1" })).toBeInTheDocument();
+        expect(screen.getByText("date:2026-04-20T10:00:00Z")).toBeInTheDocument();
+        expect(
+            screen.getByText("time:2026-04-20T10:00:00Z - time:2026-04-20T11:30:00Z")
+        ).toBeInTheDocument();
+        expect(screen.getByText("£20.00")).toBeInTheDocument();
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Cancel Booking" })).toBeInTheDocument();
+        expect(screen.queryByText("Created")).not.toBeInTheDocument();
+        expect(screen.queryByText("End")).not.toBeInTheDocument();
     });
 
     it("calls edit and navigation callbacks", () => {

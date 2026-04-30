@@ -57,7 +57,7 @@ export function ManageOpenMatchModalView({
     };
 
     return (
-        <div className="flex h-full flex-col">
+        <div className="flex h-full flex-col overflow-hidden rounded-xl">
             {/* ── Sticky header ── */}
             <div className="shrink-0 border-b border-border px-6 pb-5 pt-6">
                 <div className="flex items-start justify-between gap-3">

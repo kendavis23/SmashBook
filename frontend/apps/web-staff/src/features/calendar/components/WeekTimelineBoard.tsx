@@ -6,8 +6,6 @@ import type {
     CalendarTimeSlot,
 } from "../types";
 import {
-    CALENDAR_SLOT_ROW_HEIGHT,
-    CALENDAR_TIME_RAIL_WIDTH,
     CALENDAR_TIME_SLOTS,
     formatShortDate,
     formatSlotTime,
@@ -32,7 +30,10 @@ type Props = {
     ) => void;
 };
 
-const DAY_COLUMN_MIN_WIDTH = 140;
+const TIMELINE_SLOT_ROW_HEIGHT = 48;
+const TIMELINE_TIME_RAIL_WIDTH = 80;
+const DAY_COLUMN_MIN_WIDTH = 132;
+const CURRENT_TIME_SCROLL_OFFSET = 104;
 
 function useCurrentTimeMinutes(): number {
     const [minutes, setMinutes] = useState(() => {
@@ -64,9 +65,9 @@ function WeekTimelineBoard({
 
     const startOfDayMinutes = firstSlot ? getMinutesFromTime(firstSlot.start_time) : 0;
     const endOfDayMinutes = lastSlot ? getMinutesFromTime(lastSlot.end_time) : 0;
-    const boardHeight = CALENDAR_TIME_SLOTS.length * CALENDAR_SLOT_ROW_HEIGHT;
+    const boardHeight = CALENDAR_TIME_SLOTS.length * TIMELINE_SLOT_ROW_HEIGHT;
 
-    const gridTemplateColumns = `${CALENDAR_TIME_RAIL_WIDTH}px repeat(${Math.max(days.length, 1)}, minmax(${DAY_COLUMN_MIN_WIDTH}px, 1fr))`;
+    const gridTemplateColumns = `${TIMELINE_TIME_RAIL_WIDTH}px repeat(${Math.max(days.length, 1)}, minmax(${DAY_COLUMN_MIN_WIDTH}px, 1fr))`;
 
     const currentTimePct =
         firstSlot &&
@@ -85,7 +86,7 @@ function WeekTimelineBoard({
     useEffect(() => {
         if (hasToday && currentTimePct !== null && scrollRef.current) {
             const targetPx = (currentTimePct / 100) * boardHeight;
-            const offset = Math.max(0, targetPx - 120);
+            const offset = Math.max(0, targetPx - CURRENT_TIME_SCROLL_OFFSET);
             scrollRef.current.scrollTop = offset;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -130,7 +131,7 @@ function WeekTimelineBoard({
     }
 
     return (
-        <section className="isolate flex min-h-0 flex-1 flex-col overflow-hidden">
+        <section className="isolate flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
             {/* Single scroll container — header and body share horizontal scroll so borders align */}
             <div ref={scrollRef} className="min-h-0 flex-1 overflow-x-auto overflow-y-auto">
                 <div className="min-w-fit">
@@ -139,7 +140,7 @@ function WeekTimelineBoard({
                         className="sticky top-0 z-30 grid border-b border-border bg-card"
                         style={{ gridTemplateColumns }}
                     >
-                        <div className="sticky left-0 z-40 flex items-center border-r border-border bg-card px-4 py-3">
+                        <div className="sticky left-0 z-40 flex items-center border-r border-border bg-muted/10 px-3 py-2">
                             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Time
                             </span>
@@ -155,12 +156,12 @@ function WeekTimelineBoard({
                             return (
                                 <div
                                     key={date}
-                                    className={`border-r border-border/70 px-3 py-3 text-center last:border-r-0 ${
+                                    className={`border-r border-border/70 px-3 py-2 text-center last:border-r-0 ${
                                         isToday ? "bg-cta/5" : "bg-card"
                                     }`}
                                 >
                                     <p
-                                        className={`text-[11px] font-semibold uppercase tracking-widest ${
+                                        className={`text-[11px] font-semibold uppercase tracking-wide ${
                                             isToday ? "text-cta" : "text-muted-foreground"
                                         }`}
                                     >
@@ -183,7 +184,7 @@ function WeekTimelineBoard({
                                         </p>
                                     </div>
                                     <p
-                                        className={`mt-0.5 text-[10px] ${isToday ? "text-cta/70" : "text-muted-foreground"}`}
+                                        className={`mt-0.5 text-[11px] ${isToday ? "text-cta/70" : "text-muted-foreground"}`}
                                     >
                                         {bookings.length === 0
                                             ? "No bookings"
@@ -196,7 +197,7 @@ function WeekTimelineBoard({
 
                     {/* Time rail + day columns */}
                     <div
-                        className="relative grid"
+                        className="relative grid bg-background"
                         style={{ gridTemplateColumns, height: `${boardHeight}px` }}
                     >
                         {/* Time rail */}
@@ -204,10 +205,10 @@ function WeekTimelineBoard({
                             {CALENDAR_TIME_SLOTS.map((slot) => (
                                 <div
                                     key={`${slot.start_time}-${slot.end_time}`}
-                                    className="flex items-start border-b border-border/50 px-3 pt-1.5 last:border-b-0"
-                                    style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
+                                    className="flex items-start border-b border-border/40 px-3 pt-2 last:border-b-0"
+                                    style={{ height: `${TIMELINE_SLOT_ROW_HEIGHT}px` }}
                                 >
-                                    <p className="w-full whitespace-nowrap text-right text-xs font-medium text-muted-foreground">
+                                    <p className="w-full whitespace-nowrap text-right text-xs font-medium tabular-nums text-muted-foreground">
                                         {formatSlotTime(slot.start_time)}
                                     </p>
                                 </div>
@@ -220,7 +221,7 @@ function WeekTimelineBoard({
                             return (
                                 <div
                                     key={date}
-                                    className="relative border-r border-border/70 last:border-r-0"
+                                    className="relative border-r border-border/60 last:border-r-0"
                                     style={{ height: `${boardHeight}px` }}
                                 >
                                     {/* Current time indicator — only inside today's column */}
@@ -230,14 +231,14 @@ function WeekTimelineBoard({
                                             style={{ top: `${currentTimePx}px` }}
                                         >
                                             <div className="h-2 w-2 flex-shrink-0 rounded-full bg-destructive" />
-                                            <div className="h-px flex-1 bg-destructive" />
+                                            <div className="h-px flex-1 bg-destructive/80" />
                                         </div>
                                     ) : null}
                                     {CALENDAR_TIME_SLOTS.map((slot) => (
                                         <div
                                             key={`${date}-${slot.start_time}`}
-                                            className="border-b border-border/40 bg-background/60 last:border-b-0"
-                                            style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
+                                            className="border-b border-border/35 bg-card/40 last:border-b-0"
+                                            style={{ height: `${TIMELINE_SLOT_ROW_HEIGHT}px` }}
                                         />
                                     ))}
 
@@ -264,7 +265,7 @@ function WeekTimelineBoard({
                                                 key={`${ts._courtId}-${ts.start_datetime}`}
                                                 type="button"
                                                 aria-label={`New booking at ${startTime}`}
-                                                className="absolute inset-x-1 z-10 cursor-pointer rounded border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/50 hover:bg-cta/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta"
+                                                className="absolute inset-x-1.5 z-10 cursor-pointer rounded-md border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/45 hover:bg-cta/[0.04] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta/70"
                                                 style={{
                                                     top: `${topPct}%`,
                                                     height: `${heightPct}%`,

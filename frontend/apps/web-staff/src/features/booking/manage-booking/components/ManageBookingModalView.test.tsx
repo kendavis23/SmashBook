@@ -287,18 +287,17 @@ describe("ManageBookingModalView", () => {
         expect(onInvitePlayer).toHaveBeenCalledWith("user-123");
     });
 
-    it("renders notes collapsed by default", () => {
+    it("renders notes expanded by default", () => {
         render(<ManageBookingModalView {...defaultProps} />);
 
-        expect(screen.getByRole("checkbox", { name: "Notes" })).not.toBeChecked();
-        expect(screen.queryByPlaceholderText(/Internal notes/i)).not.toBeInTheDocument();
+        expect(screen.getByLabelText(/Notes/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Internal notes/i)).toBeInTheDocument();
     });
 
     it("calls onFormChange when notes field is changed", () => {
         const onFormChange = vi.fn();
         render(<ManageBookingModalView {...defaultProps} onFormChange={onFormChange} />);
 
-        fireEvent.click(screen.getByRole("checkbox", { name: "Notes" }));
         fireEvent.change(screen.getByPlaceholderText(/Internal notes/i), {
             target: { value: "Updated note" },
         });
@@ -306,12 +305,11 @@ describe("ManageBookingModalView", () => {
         expect(onFormChange).toHaveBeenCalledWith({ notes: "Updated note" });
     });
 
-    it("expands notes by default when notes already have a value", () => {
+    it("shows existing notes value", () => {
         render(
             <ManageBookingModalView {...defaultProps} form={{ ...form, notes: "Existing note" }} />
         );
 
-        expect(screen.getByRole("checkbox", { name: "Notes" })).toBeChecked();
         expect(screen.getByPlaceholderText(/Internal notes/i)).toHaveValue("Existing note");
     });
 
@@ -363,7 +361,6 @@ describe("ManageBookingModalView", () => {
         };
         render(<ManageBookingModalView {...defaultProps} booking={bookingWithPlayer as never} />);
 
-        fireEvent.click(screen.getByRole("button", { name: /Players/i }));
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
     });
 

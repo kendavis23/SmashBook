@@ -105,18 +105,18 @@ describe("OpenMatchesContainer", () => {
         } as unknown as ReturnType<typeof hooks.useListOpenGames>);
     });
 
-    it("defaults to today's date when URL has no filters", () => {
+    it("defaults to the full skill range when URL has no filters", () => {
         vi.useFakeTimers();
         vi.setSystemTime(new Date("2026-04-25T08:00:00Z"));
 
         render(<OpenMatchesContainer />);
 
         expect(hooks.useListOpenGames).toHaveBeenCalledWith("club-1", {
-            date: "2026-04-25",
-            min_skill: undefined,
-            max_skill: undefined,
+            date: undefined,
+            min_skill: 1,
+            max_skill: 7,
         });
-        expect(screen.getByLabelText("Select date")).toHaveValue("2026-04-25");
+        expect(screen.getByLabelText("Select date")).toHaveValue("");
     });
 
     it("passes URL filters into the open games query", () => {

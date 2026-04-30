@@ -109,6 +109,8 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
+    formatUTCDate: (value: string) => value,
+    formatUTCTime: (value: string) => value,
     formatUTCDateTime: (value: string) => value,
     datetimeLocalToUTC: (value: string) => value,
     formatCurrency: (amount: number | null) => (amount == null ? "—" : `£${amount.toFixed(2)}`),

@@ -152,6 +152,18 @@ const defaultProps = {
     onClose: vi.fn(),
 };
 
+function selectBookingType(value: string): void {
+    fireEvent.change(screen.getByRole("combobox", { name: "select" }), {
+        target: { value },
+    });
+}
+
+function selectTrainer(): void {
+    fireEvent.change(screen.getByRole("combobox", { name: /select trainer/i }), {
+        target: { value: "trainer-1" },
+    });
+}
+
 function setupMocks(overrides?: {
     error?: Error | null;
     recurringError?: Error | null;
@@ -299,15 +311,45 @@ describe("NewBookingModalContainer", () => {
         expect(mockMutate).not.toHaveBeenCalled();
     });
 
+    it("requires staff trainer for group lesson bookings", () => {
+        render(<NewBookingModalContainer {...defaultProps} />);
+
+        selectBookingType("lesson_group");
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(screen.getByText("Staff (Trainer) is required.")).toBeInTheDocument();
+        expect(mockMutate).not.toHaveBeenCalled();
+    });
+
+    it("includes staff trainer in lesson booking payload", () => {
+        render(<NewBookingModalContainer {...defaultProps} />);
+
+        selectBookingType("lesson_group");
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
+        selectTrainer();
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                booking_type: "lesson_group",
+                staff_profile_id: "trainer-1",
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
+    });
+
     it("unchecks open game when booking type changes", () => {
         render(<NewBookingModalContainer {...defaultProps} />);
 
         fireEvent.click(screen.getByLabelText("Mark as open game"));
         expect(screen.queryByLabelText(/on behalf of/i)).not.toBeInTheDocument();
 
-        fireEvent.change(screen.getByRole("combobox", { name: "select" }), {
-            target: { value: "corporate_event" },
-        });
+        selectBookingType("corporate_event");
 
         expect(screen.getByLabelText(/on behalf of/i)).toBeInTheDocument();
         fireEvent.change(screen.getByLabelText(/on behalf of/i), {

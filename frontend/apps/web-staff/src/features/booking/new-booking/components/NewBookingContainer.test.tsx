@@ -17,6 +17,12 @@ function getBookingTypeSelect(): HTMLElement {
     return select;
 }
 
+function selectTrainer(): void {
+    fireEvent.change(screen.getByRole("combobox", { name: /select trainer/i }), {
+        target: { value: "trainer-1" },
+    });
+}
+
 vi.mock("@tanstack/react-router", () => ({
     useNavigate: () => mockNavigate,
     useSearch: vi.fn(() => ({})),
@@ -27,17 +33,31 @@ vi.mock("../../components/PlayerAutocomplete", () => ({
         label,
         value,
         onChange,
+        onSelect,
     }: {
         label: string;
         value: string;
         onChange: (value: string) => void;
+        onSelect?: (player: { id: string; full_name: string }) => void;
     }) => (
-        <input
-            type="text"
-            aria-label={label}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-        />
+        <div>
+            <input
+                type="text"
+                aria-label={label}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+            />
+            {onSelect ? (
+                <button
+                    type="button"
+                    onClick={() =>
+                        onSelect({ id: value || "uid-selected", full_name: "Selected Player" })
+                    }
+                >
+                    Select player
+                </button>
+            ) : null}
+        </div>
     ),
 }));
 
@@ -294,15 +314,14 @@ describe("NewBookingContainer", () => {
             target: { value: "player-owner-1" },
         });
 
-        // Add two invited players
-        fireEvent.click(screen.getByRole("button", { name: "+ Invite Player" }));
-        fireEvent.change(screen.getByLabelText("Invited player 1"), {
+        fireEvent.change(screen.getByLabelText("Invite player"), {
             target: { value: "player-uid-1" },
         });
-        fireEvent.click(screen.getByRole("button", { name: "+ Invite Player" }));
-        fireEvent.change(screen.getByLabelText("Invited player 2"), {
+        fireEvent.click(screen.getByRole("button", { name: "Select player" }));
+        fireEvent.change(screen.getByLabelText("Invite player"), {
             target: { value: "player-uid-2" },
         });
+        fireEvent.click(screen.getByRole("button", { name: "Select player" }));
 
         fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
 
@@ -367,6 +386,78 @@ describe("NewBookingContainer", () => {
 
         expect(screen.getByText("Player user ID is required.")).toBeInTheDocument();
         expect(mockMutate).not.toHaveBeenCalled();
+    });
+
+    it("requires staff trainer for individual lesson bookings", async () => {
+        render(<NewBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: /select court/i })).toHaveValue("court-1");
+        });
+
+        fireEvent.change(getBookingTypeSelect(), {
+            target: { value: "lesson_individual" },
+        });
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: "Select time" })).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
+            target: { value: "10:00" },
+        });
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(screen.getByText("Staff (Trainer) is required.")).toBeInTheDocument();
+        expect(mockMutate).not.toHaveBeenCalled();
+    });
+
+    it("submits individual lesson bookings with max players fixed to one", async () => {
+        mockMutate.mockImplementation((_payload: unknown, options: { onSuccess: () => void }) => {
+            options.onSuccess();
+        });
+
+        render(<NewBookingContainer />);
+
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: /select court/i })).toHaveValue("court-1");
+        });
+
+        fireEvent.change(screen.getByLabelText(/max players/i), { target: { value: "6" } });
+        fireEvent.change(getBookingTypeSelect(), {
+            target: { value: "lesson_individual" },
+        });
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-04-20" },
+        });
+        await waitFor(() => {
+            expect(screen.getByRole("combobox", { name: "Select time" })).toBeInTheDocument();
+        });
+        fireEvent.change(screen.getByRole("combobox", { name: "Select time" }), {
+            target: { value: "10:00" },
+        });
+        fireEvent.change(screen.getByLabelText(/on behalf of/i), {
+            target: { value: "player-owner-1" },
+        });
+        selectTrainer();
+
+        expect(screen.getByLabelText(/max players/i)).toHaveValue(1);
+        expect(screen.getByLabelText(/max players/i)).toBeDisabled();
+
+        fireEvent.click(screen.getByRole("button", { name: "Create Booking" }));
+
+        expect(mockMutate).toHaveBeenCalledWith(
+            expect.objectContaining({
+                booking_type: "lesson_individual",
+                max_players: 1,
+            }),
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
     });
 
     it("allows missing on behalf of user ID when booking is an open game", async () => {
@@ -518,6 +609,7 @@ describe("NewBookingContainer — recurring", () => {
         fireEvent.change(screen.getByLabelText(/on behalf of/i), {
             target: { value: "player-owner-1" },
         });
+        selectTrainer();
 
         fireEvent.click(screen.getByLabelText("Enable recurring booking"));
         fireEvent.change(screen.getByLabelText("recurrence rule"), {
@@ -532,6 +624,7 @@ describe("NewBookingContainer — recurring", () => {
                 court_id: "court-1",
                 first_start: "2026-04-20T10:00",
                 recurrence_rule: "FREQ=WEEKLY;BYDAY=MO;COUNT=4",
+                staff_profile_id: "trainer-1",
                 skip_conflicts: false,
             }),
             expect.objectContaining({ onSuccess: expect.any(Function) })
@@ -571,6 +664,7 @@ describe("NewBookingContainer — recurring", () => {
         fireEvent.change(screen.getByLabelText(/on behalf of/i), {
             target: { value: "player-owner-1" },
         });
+        selectTrainer();
 
         fireEvent.click(screen.getByLabelText("Enable recurring booking"));
         fireEvent.click(screen.getByLabelText("Skip conflicting slots"));

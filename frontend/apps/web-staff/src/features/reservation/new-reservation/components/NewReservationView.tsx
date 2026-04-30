@@ -1,5 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo } from "react";
+import { CalendarRange, Clock3, RefreshCw } from "lucide-react";
 import {
     Breadcrumb,
     AlertToast,
@@ -17,6 +18,14 @@ const fieldCls =
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
 const labelCls = "mb-1 block text-sm font-medium text-foreground";
+
+const sectionShellCls =
+    "rounded-xl border border-border/80 bg-card/95 p-4 shadow-sm shadow-black/5 sm:p-5";
+
+const sectionHeaderCls =
+    "mb-4 flex items-start justify-between gap-3 border-b border-border/60 pb-3";
+
+const sectionKickerCls = "text-[11px] font-semibold uppercase tracking-wide text-cta";
 
 const BOOKING_TYPE_OPTIONS = [
     { value: "regular", label: "Regular" },
@@ -69,7 +78,7 @@ export default function NewReservationView({
     lockedCourtName,
     lockedDate,
     lockedStartTime,
-    lockedEndTime: _lockedEndTime,
+    lockedEndTime,
     onFormChange,
     onSubmit,
     onCancel,
@@ -87,6 +96,17 @@ export default function NewReservationView({
             : [...form.allowedBookingTypes, val];
         onFormChange({ allowedBookingTypes: next });
     };
+
+    const selectedCourtName =
+        courts.find((court) => court.id === form.courtId)?.name ?? "Not selected";
+
+    const formattedDate = form.date
+        ? new Date(form.date + "T00:00:00").toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+          })
+        : "Not selected";
 
     const coreDetailsSection = (
         <div className="space-y-4">
@@ -207,7 +227,7 @@ export default function NewReservationView({
 
     const recurrenceSection = (
         <div className="space-y-3">
-            <div className="flex items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 bg-muted/10 px-3 py-3">
                 <input
                     id="res-recurring"
                     type="checkbox"
@@ -215,10 +235,10 @@ export default function NewReservationView({
                     checked={form.isRecurring}
                     onChange={(e) => onFormChange({ isRecurring: e.target.checked })}
                 />
-                <label htmlFor="res-recurring" className="text-sm font-medium text-foreground">
+                <span className="text-sm font-medium text-foreground">
                     Enable recurring schedule
-                </label>
-            </div>
+                </span>
+            </label>
 
             {form.isRecurring ? (
                 <RecurrencePicker
@@ -240,6 +260,7 @@ export default function NewReservationView({
                 lockedCourtName={lockedCourtName}
                 lockedDate={lockedDate}
                 lockedStartTime={lockedStartTime}
+                lockedEndTime={lockedEndTime}
                 onFormChange={onFormChange}
                 onSubmit={onSubmit}
                 onCancel={onCancel}
@@ -259,16 +280,40 @@ export default function NewReservationView({
             />
 
             <section className="card-surface overflow-hidden">
-                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
-                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                        New Reservation
-                    </h1>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                        Block court time for training, tournaments, or maintenance.
-                    </p>
+                <header className="relative overflow-hidden border-b border-border bg-muted/15 px-4 py-4 sm:px-6">
+                    <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.14),transparent_42%)] sm:block" />
+                    <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        <div className="max-w-2xl">
+                            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+                                <CalendarRange size={13} className="text-cta" />
+                                Court reservation setup
+                            </div>
+                            <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                                New Reservation
+                            </h1>
+                        </div>
+                        <div className="grid w-full grid-cols-2 gap-2 sm:max-w-sm lg:w-auto lg:flex-none">
+                            <div className="rounded-lg border border-border/70 bg-background/85 px-3 py-2.5 shadow-sm">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Court
+                                </p>
+                                <p className="mt-1 truncate text-sm font-semibold text-foreground">
+                                    {selectedCourtName}
+                                </p>
+                            </div>
+                            <div className="rounded-lg border border-cta/20 bg-cta/5 px-3 py-2.5 shadow-sm">
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Date
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-cta">
+                                    {formattedDate}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </header>
 
-                <div className="px-5 py-6 sm:px-6">
+                <div className="bg-background/40 px-4 py-5 sm:px-6">
                     <form onSubmit={onSubmit} noValidate>
                         {apiError ? (
                             <div className="mb-4">
@@ -280,49 +325,67 @@ export default function NewReservationView({
                             </div>
                         ) : null}
 
-                        <div className="space-y-4">
-                            <section className="form-section">
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Core Details
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Set the title, type, court, and time for this reservation.
-                                    </p>
+                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.85fr)]">
+                            <section className={sectionShellCls}>
+                                <div className={sectionHeaderCls}>
+                                    <div>
+                                        <p className={sectionKickerCls}>Details</p>
+                                        <h3 className="mt-1 text-base font-semibold text-foreground">
+                                            Core Details
+                                        </h3>
+                                        <p className="mt-1 text-sm text-muted-foreground">
+                                            Set the title, type, court, and time for this
+                                            reservation.
+                                        </p>
+                                    </div>
+                                    <Clock3 size={18} className="mt-1 text-muted-foreground" />
                                 </div>
                                 {coreDetailsSection}
                             </section>
 
-                            <section className="form-section">
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Allowed Booking Types{" "}
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Restrict which booking types are permitted during this
-                                        reservation.
-                                    </p>
-                                </div>
-                                {allowedTypesSection}
-                            </section>
+                            <div className="space-y-5">
+                                <section className={sectionShellCls}>
+                                    <div className={sectionHeaderCls}>
+                                        <div>
+                                            <p className={sectionKickerCls}>Booking access</p>
+                                            <h3 className="mt-1 text-base font-semibold text-foreground">
+                                                Allowed Booking Types{" "}
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    (optional)
+                                                </span>
+                                            </h3>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                Restrict which booking types are permitted during
+                                                this reservation.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {allowedTypesSection}
+                                </section>
 
-                            <section className="form-section">
-                                <div className="mb-4">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Recurring{" "}
-                                        <span className="text-xs font-normal text-muted-foreground">
-                                            (optional)
-                                        </span>
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Configure whether this reservation repeats on a schedule.
-                                    </p>
-                                </div>
-                                {recurrenceSection}
-                            </section>
+                                <section className={sectionShellCls}>
+                                    <div className={sectionHeaderCls}>
+                                        <div>
+                                            <p className={sectionKickerCls}>Schedule</p>
+                                            <h3 className="mt-1 text-base font-semibold text-foreground">
+                                                Recurring{" "}
+                                                <span className="text-xs font-normal text-muted-foreground">
+                                                    (optional)
+                                                </span>
+                                            </h3>
+                                            <p className="mt-1 text-sm text-muted-foreground">
+                                                Configure whether this reservation repeats on a
+                                                schedule.
+                                            </p>
+                                        </div>
+                                        <RefreshCw
+                                            size={18}
+                                            className="mt-1 text-muted-foreground"
+                                        />
+                                    </div>
+                                    {recurrenceSection}
+                                </section>
+                            </div>
                         </div>
 
                         <div className="mt-8 flex items-center justify-end gap-3 border-t border-border pt-5">

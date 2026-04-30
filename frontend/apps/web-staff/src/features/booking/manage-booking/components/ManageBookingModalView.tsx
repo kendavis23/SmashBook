@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
-import { RefreshCw, RotateCcw, X, ChevronDown, ChevronUp, CalendarCheck } from "lucide-react";
+import { RefreshCw, RotateCcw, UserRound, X } from "lucide-react";
 import {
     AlertToast,
     ConfirmDeleteModal,
@@ -8,7 +8,6 @@ import {
     formatUTCDateTime,
     formatCurrency,
     SelectInput,
-    StatPill,
 } from "@repo/ui";
 import type { Booking, TimeSlot } from "../../types";
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } from "../../types";
@@ -17,10 +16,79 @@ import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import type { ManageBookingFormState } from "./ManageBookingView";
 
 const fieldCls =
-    "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
+    "w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground " +
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
-const labelCls = "mb-1 block text-sm font-medium text-foreground";
+const labelCls = "mb-1 block text-xs font-medium text-foreground";
+
+const dividerCls = "border-t-2 border-border/20 pt-3";
+const sectionCls = `space-y-2 ${dividerCls}`;
+
+function DetailItem({ label, value }: { label: string; value: string }): JSX.Element {
+    return (
+        <li className="min-w-0 bg-muted/15 px-3 py-2">
+            <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
+                {label}
+            </span>
+            <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
+                {value}
+            </span>
+        </li>
+    );
+}
+
+function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element {
+    const getInitials = (name: string): string =>
+        name
+            .split(" ")
+            .map((part) => part[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "P";
+
+    const formatStatus = (value?: string | null): string =>
+        value
+            ? value
+                  .split("_")
+                  .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+                  .join(" ")
+            : "—";
+
+    return (
+        <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
+            <div className="flex items-center gap-2 border-b border-border/70 bg-muted/15 px-3 py-2">
+                <UserRound size={14} className="text-muted-foreground" />
+                <span className="text-xs font-semibold text-foreground">Player details</span>
+            </div>
+            <div className="divide-y divide-border">
+                {players.map((p) => (
+                    <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
+                            {getInitials(p.full_name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-foreground">
+                                {p.full_name}
+                            </p>
+                            <p className="text-[11px] text-muted-foreground">
+                                <span className="capitalize">{formatStatus(p.role)}</span>
+                                <span className="mx-1.5 opacity-40">&middot;</span>
+                                <span className="text-muted-foreground/60">Invite:</span>{" "}
+                                <span className="capitalize">{formatStatus(p.invite_status)}</span>
+                                <span className="mx-1.5 opacity-40">&middot;</span>
+                                <span className="text-muted-foreground/60">Payment:</span>{" "}
+                                <span className="capitalize">{formatStatus(p.payment_status)}</span>
+                            </p>
+                        </div>
+                        <span className="shrink-0 text-sm font-medium text-foreground">
+                            {formatCurrency(p.amount_due)}
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
 
 type Props = {
     booking: Booking;
@@ -79,9 +147,6 @@ export function ManageBookingModalView({
     selectedPrice,
     clubId,
 }: Props): JSX.Element {
-    const [playersExpanded, setPlayersExpanded] = useState(false);
-    const [eventExpanded, setEventExpanded] = useState(false);
-    const [notesOpen, setNotesOpen] = useState(Boolean(form.notes));
     const [playerId, setPlayerId] = useState("");
 
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
@@ -96,533 +161,351 @@ export function ManageBookingModalView({
         <form
             onSubmit={isEditable ? onSubmit : undefined}
             noValidate
-            className="flex h-full flex-col"
+            className="flex h-full flex-col overflow-hidden rounded-xl bg-card"
         >
-            {/* ── Sticky header ── */}
-            <div className="shrink-0 border-b border-border px-6 pb-5 pt-6">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        {/* Icon badge */}
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                            <CalendarCheck size={18} />
-                        </div>
-                        {/* Title + subtitle */}
-                        <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-lg font-semibold text-foreground">
-                                    {booking.court_name}
-                                </h2>
-                                <span
-                                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusColors.bg} ${statusColors.text}`}
-                                >
-                                    {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
-                                </span>
-                            </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                {formatUTCDateTime(booking.start_datetime)} &ndash;{" "}
-                                {formatUTCDateTime(booking.end_datetime)}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={onRefresh}
-                            aria-label="Refresh booking"
-                            className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-2.5">
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-base font-semibold tracking-tight text-foreground">
+                            {booking.court_name}
+                        </h2>
+                        <span
+                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium ${statusColors.bg} ${statusColors.text}`}
                         >
-                            <RotateCcw size={15} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Close modal"
-                            className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        >
-                            <X size={16} />
-                        </button>
+                            {BOOKING_STATUS_LABELS[booking.status] ?? booking.status}
+                        </span>
                     </div>
                 </div>
-            </div>
-
-            {/* ── Scrollable body ── */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-                <div className="space-y-5">
-                    {/* Error / success alerts — always first inside space-y-5 */}
-                    {apiError ? (
-                        <div className="mb-4">
-                            <AlertToast title={apiError} variant="error" onClose={onDismissError} />
-                        </div>
-                    ) : null}
-                    {updateSuccess ? (
-                        <div className="mb-4">
-                            <AlertToast
-                                title="Booking updated successfully."
-                                variant="success"
-                                onClose={onDismissSuccess}
-                            />
-                        </div>
-                    ) : null}
-
-                    {/* Read-only context pills — first content after alerts */}
-                    <div
-                        className={`grid gap-2 ${booking.is_open_game ? "grid-cols-4" : "grid-cols-3"}`}
+                <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={onRefresh}
+                        aria-label="Refresh booking"
+                        className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
                     >
-                        <StatPill
-                            label="Type"
-                            value={
-                                BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type
-                            }
-                        />
-                        <StatPill
-                            label="Players"
-                            value={
-                                String(booking.players.length) +
-                                (booking.max_players != null ? ` / ${booking.max_players}` : "")
-                            }
-                        />
-                        <StatPill label="Total" value={formatCurrency(booking.total_price)} />
-                        {booking.is_open_game ? (
-                            <StatPill
-                                label="Open Game"
-                                value={
-                                    booking.min_skill_level != null ||
-                                    booking.max_skill_level != null
-                                        ? `Skill ${booking.min_skill_level ?? "—"} – ${booking.max_skill_level ?? "—"}`
-                                        : "Open"
-                                }
-                            />
-                        ) : null}
-                    </div>
+                        <RotateCcw size={15} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Close modal"
+                        className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+            </header>
 
-                    {/* Invite Player — only for pending open games */}
-                    {booking.is_open_game && booking.status === "pending" ? (
-                        <div>
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                                <div className="min-w-0 sm:w-[70%]">
-                                    <label className={labelCls} htmlFor="booking-modal-player-id">
-                                        Player
-                                    </label>
-                                    <PlayerAutocomplete
-                                        inputId="booking-modal-player-id"
-                                        label="Player"
-                                        clubId={clubId}
-                                        value={playerId}
-                                        disabled={isInviting}
-                                        onChange={setPlayerId}
-                                    />
-                                </div>
-                                <button
-                                    type="button"
-                                    disabled={isInviting || !playerId.trim()}
-                                    className="btn-cta sm:w-auto"
-                                    onClick={() => onInvitePlayer(playerId)}
-                                >
-                                    {isInviting ? "Inviting…" : "Invite"}
-                                </button>
-                            </div>
-                        </div>
+            <main className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3">
+                {apiError ? (
+                    <AlertToast title={apiError} variant="error" onClose={onDismissError} />
+                ) : null}
+                {updateSuccess ? (
+                    <AlertToast
+                        title="Booking updated successfully."
+                        variant="success"
+                        onClose={onDismissSuccess}
+                    />
+                ) : null}
+
+                <ul
+                    className={`grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 ${
+                        booking.is_open_game ? "sm:grid-cols-4" : "sm:grid-cols-3"
+                    }`}
+                >
+                    <DetailItem
+                        label="Type"
+                        value={BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type}
+                    />
+                    <DetailItem
+                        label="Players"
+                        value={
+                            String(booking.players.length) +
+                            (booking.max_players != null ? ` / ${booking.max_players}` : "")
+                        }
+                    />
+                    <DetailItem label="Total" value={formatCurrency(booking.total_price)} />
+                    {booking.is_open_game ? (
+                        <DetailItem
+                            label="Open Game"
+                            value={
+                                booking.min_skill_level != null || booking.max_skill_level != null
+                                    ? `Skill ${booking.min_skill_level ?? "—"} – ${booking.max_skill_level ?? "—"}`
+                                    : "Open"
+                            }
+                        />
                     ) : null}
+                </ul>
 
-                    {/* Edit form — only when editable */}
-                    {isEditable ? (
-                        <>
-                            {/* Core Details */}
-                            <div>
-                                <div className="space-y-3">
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className={labelCls}>Court</label>
-                                            <SelectInput
-                                                value={form.courtId}
-                                                onValueChange={(v) =>
-                                                    onFormChange({ courtId: v, startTime: "" })
-                                                }
-                                                options={courts.map((c) => ({
-                                                    value: c.id,
-                                                    label: c.name,
-                                                }))}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label className={labelCls}>Price</label>
-                                            <div
-                                                className={`${fieldCls} cursor-default select-none bg-muted/30 opacity-80`}
-                                            >
-                                                {form.startTime
-                                                    ? formatCurrency(selectedPrice)
-                                                    : "—"}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div>
-                                            <label className={labelCls}>Date</label>
-                                            <DatePicker
-                                                value={form.bookingDate}
-                                                onChange={(v) =>
-                                                    onFormChange({ bookingDate: v, startTime: "" })
-                                                }
-                                                minDate={todayStr}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div className="mb-1 flex items-center justify-between">
-                                                <label className="text-sm font-medium text-foreground">
-                                                    Start Time
-                                                </label>
-                                                {form.bookingDate ? (
-                                                    <button
-                                                        type="button"
-                                                        onClick={onRefreshSlots}
-                                                        disabled={slotsLoading}
-                                                        title="Refresh slots"
-                                                        className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
-                                                    >
-                                                        <RefreshCw
-                                                            size={12}
-                                                            className={
-                                                                slotsLoading ? "animate-spin" : ""
-                                                            }
-                                                        />
-                                                    </button>
-                                                ) : null}
-                                            </div>
-                                            {!form.bookingDate ? (
-                                                <div
-                                                    className={`${fieldCls} cursor-not-allowed opacity-50`}
-                                                >
-                                                    <span className="text-muted-foreground">—</span>
-                                                </div>
-                                            ) : slotsLoading ? (
-                                                <div className={`${fieldCls} opacity-60`}>
-                                                    <span className="text-muted-foreground">
-                                                        Loading…
-                                                    </span>
-                                                </div>
-                                            ) : slots.length === 0 ? (
-                                                <div className={`${fieldCls} opacity-60`}>
-                                                    <span className="text-muted-foreground">
-                                                        No slots
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <SelectInput
-                                                    value={form.startTime}
-                                                    onValueChange={(v) =>
-                                                        onFormChange({ startTime: v })
-                                                    }
-                                                    placeholder="Select time"
-                                                    options={slots.map((slot) => ({
-                                                        value: slot.start_time,
-                                                        label:
-                                                            formatSlotTime(slot.start_time) +
-                                                            (!slot.is_available ? " — Booked" : ""),
-                                                        disabled: !slot.is_available,
-                                                    }))}
-                                                />
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Notes */}
-                            <div>
-                                <label className="flex cursor-pointer items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        className="h-4 w-4 rounded border-border accent-cta"
-                                        checked={notesOpen}
-                                        onChange={(e) => setNotesOpen(e.target.checked)}
-                                    />
-                                    <span className="text-sm font-medium text-foreground">
-                                        Notes
-                                    </span>
+                {/* Invite Player — only for pending open games */}
+                {booking.is_open_game && booking.status === "pending" ? (
+                    <div>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="min-w-0 sm:w-[70%]">
+                                <label className={labelCls} htmlFor="booking-modal-player-id">
+                                    Player
                                 </label>
-                                {notesOpen ? (
-                                    <div className="mt-2">
-                                        <label htmlFor="mb-notes" className="sr-only">
-                                            Booking notes
-                                        </label>
-                                        <textarea
-                                            id="mb-notes"
-                                            rows={3}
-                                            className={fieldCls}
-                                            placeholder="Internal notes visible to staff only…"
-                                            value={form.notes}
-                                            onChange={(e) =>
-                                                onFormChange({ notes: e.target.value })
-                                            }
-                                        />
-                                    </div>
-                                ) : null}
+                                <PlayerAutocomplete
+                                    inputId="booking-modal-player-id"
+                                    label="Player"
+                                    clubId={clubId}
+                                    value={playerId}
+                                    disabled={isInviting}
+                                    onChange={setPlayerId}
+                                />
                             </div>
-
-                            {/* Players — collapsible */}
-                            {booking.players.length > 0 ? (
-                                <div className="overflow-hidden rounded-lg border border-border">
-                                    <button
-                                        type="button"
-                                        className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                                        onClick={() => setPlayersExpanded((v) => !v)}
-                                        aria-expanded={playersExpanded}
-                                    >
-                                        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                            Players ({booking.players.length})
-                                        </span>
-                                        {playersExpanded ? (
-                                            <ChevronUp
-                                                size={13}
-                                                className="text-muted-foreground"
-                                            />
-                                        ) : (
-                                            <ChevronDown
-                                                size={13}
-                                                className="text-muted-foreground"
-                                            />
-                                        )}
-                                    </button>
-                                    {playersExpanded ? (
-                                        <div className="overflow-x-auto border-t border-border">
-                                            <table className="w-full min-w-[380px] border-collapse text-sm">
-                                                <thead>
-                                                    <tr className="bg-muted/10">
-                                                        <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                            Name
-                                                        </th>
-                                                        <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                            Role
-                                                        </th>
-                                                        <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                            Invite
-                                                        </th>
-                                                        <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                            Payment
-                                                        </th>
-                                                        <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                            Amount
-                                                        </th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-border">
-                                                    {booking.players.map((p) => (
-                                                        <tr
-                                                            key={p.id}
-                                                            className="hover:bg-muted/20"
-                                                        >
-                                                            <td className="px-3 py-2 font-medium text-foreground">
-                                                                {p.full_name}
-                                                            </td>
-                                                            <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                                {p.role}
-                                                            </td>
-                                                            <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                                {p.invite_status}
-                                                            </td>
-                                                            <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                                {p.payment_status}
-                                                            </td>
-                                                            <td className="px-3 py-2 text-right text-foreground">
-                                                                {formatCurrency(p.amount_due)}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    ) : null}
-                                </div>
-                            ) : null}
-
-                            {/* Event & Contact — collapsible */}
-                            <div className="overflow-hidden rounded-lg border border-border">
-                                <button
-                                    type="button"
-                                    className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                                    onClick={() => setEventExpanded((v) => !v)}
-                                    aria-expanded={eventExpanded}
-                                >
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Event &amp; Contact{" "}
-                                        <span className="text-[10px] font-normal normal-case opacity-70">
-                                            (optional)
-                                        </span>
-                                    </span>
-                                    {eventExpanded ? (
-                                        <ChevronUp size={13} className="text-muted-foreground" />
-                                    ) : (
-                                        <ChevronDown size={13} className="text-muted-foreground" />
-                                    )}
-                                </button>
-                                {eventExpanded ? (
-                                    <div className="space-y-3 border-t border-border p-4">
-                                        <div>
-                                            <label className={labelCls}>Event name</label>
-                                            <input
-                                                type="text"
-                                                className={fieldCls}
-                                                placeholder="e.g. Friday Corporate Cup"
-                                                value={form.eventName}
-                                                onChange={(e) =>
-                                                    onFormChange({ eventName: e.target.value })
-                                                }
-                                            />
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className={labelCls}>Contact name</label>
-                                                <input
-                                                    type="text"
-                                                    className={fieldCls}
-                                                    value={form.contactName}
-                                                    onChange={(e) =>
-                                                        onFormChange({
-                                                            contactName: e.target.value,
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className={labelCls}>Contact email</label>
-                                                <input
-                                                    type="email"
-                                                    className={fieldCls}
-                                                    value={form.contactEmail}
-                                                    onChange={(e) =>
-                                                        onFormChange({
-                                                            contactEmail: e.target.value,
-                                                        })
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className={labelCls}>Contact phone</label>
-                                            <input
-                                                type="tel"
-                                                className={fieldCls}
-                                                value={form.contactPhone}
-                                                onChange={(e) =>
-                                                    onFormChange({ contactPhone: e.target.value })
-                                                }
-                                            />
-                                        </div>
-                                    </div>
-                                ) : null}
-                            </div>
-                        </>
-                    ) : null}
-
-                    {/* Read-only court details when not editable */}
-                    {!isEditable ? (
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <p className={labelCls}>Court</p>
-                                <div
-                                    className={`${fieldCls} cursor-default select-none opacity-80`}
-                                >
-                                    {booking.court_name}
-                                </div>
-                            </div>
-                            <div>
-                                <p className={labelCls}>Price</p>
-                                <div
-                                    className={`${fieldCls} cursor-default select-none opacity-80`}
-                                >
-                                    {formatCurrency(booking.total_price)}
-                                </div>
-                            </div>
-                            <div>
-                                <p className={labelCls}>Date</p>
-                                <div
-                                    className={`${fieldCls} cursor-default select-none opacity-80`}
-                                >
-                                    {formatUTCDateTime(booking.start_datetime)}
-                                </div>
-                            </div>
-                            <div>
-                                <p className={labelCls}>End Time</p>
-                                <div
-                                    className={`${fieldCls} cursor-default select-none opacity-80`}
-                                >
-                                    {formatUTCDateTime(booking.end_datetime)}
-                                </div>
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {/* Players — always shown (read-only when not editable) */}
-                    {!isEditable && booking.players.length > 0 ? (
-                        <div className="overflow-hidden rounded-lg border border-border">
                             <button
                                 type="button"
-                                className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                                onClick={() => setPlayersExpanded((v) => !v)}
-                                aria-expanded={playersExpanded}
+                                disabled={isInviting || !playerId.trim()}
+                                className="btn-cta sm:w-auto"
+                                onClick={() => onInvitePlayer(playerId)}
                             >
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Players ({booking.players.length})
-                                </span>
-                                {playersExpanded ? (
-                                    <ChevronUp size={13} className="text-muted-foreground" />
-                                ) : (
-                                    <ChevronDown size={13} className="text-muted-foreground" />
-                                )}
+                                {isInviting ? "Inviting…" : "Invite"}
                             </button>
-                            {playersExpanded ? (
-                                <div className="overflow-x-auto border-t border-border">
-                                    <table className="w-full min-w-[380px] border-collapse text-sm">
-                                        <thead>
-                                            <tr className="bg-muted/10">
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Name
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Role
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Invite
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Payment
-                                                </th>
-                                                <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Amount
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {booking.players.map((p) => (
-                                                <tr key={p.id} className="hover:bg-muted/20">
-                                                    <td className="px-3 py-2 font-medium text-foreground">
-                                                        {p.full_name}
-                                                    </td>
-                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                        {p.role}
-                                                    </td>
-                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                        {p.invite_status}
-                                                    </td>
-                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                        {p.payment_status}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-right text-foreground">
-                                                        {formatCurrency(p.amount_due)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : null}
                         </div>
-                    ) : null}
-                </div>
-            </div>
+                    </div>
+                ) : null}
 
-            {/* ── Sticky footer ── */}
-            <div className="shrink-0 flex items-center justify-between border-t border-border px-6 py-4">
+                {/* Edit form — only when editable */}
+                {isEditable ? (
+                    <>
+                        {/* Core Details */}
+                        <section className={dividerCls}>
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className={labelCls}>Court</label>
+                                        <SelectInput
+                                            value={form.courtId}
+                                            onValueChange={(v) =>
+                                                onFormChange({ courtId: v, startTime: "" })
+                                            }
+                                            options={courts.map((c) => ({
+                                                value: c.id,
+                                                label: c.name,
+                                            }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className={labelCls}>Price</label>
+                                        <div
+                                            className={`${fieldCls} cursor-default select-none bg-muted/30 opacity-80`}
+                                        >
+                                            {form.startTime ? formatCurrency(selectedPrice) : "—"}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className={labelCls}>Date</label>
+                                        <DatePicker
+                                            value={form.bookingDate}
+                                            onChange={(v) =>
+                                                onFormChange({ bookingDate: v, startTime: "" })
+                                            }
+                                            minDate={todayStr}
+                                        />
+                                    </div>
+                                    <div>
+                                        <div className="mb-1 flex items-center justify-between">
+                                            <label className="text-xs font-medium text-foreground">
+                                                Start Time
+                                            </label>
+                                            {form.bookingDate ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={onRefreshSlots}
+                                                    disabled={slotsLoading}
+                                                    title="Refresh slots"
+                                                    className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
+                                                >
+                                                    <RefreshCw
+                                                        size={12}
+                                                        className={
+                                                            slotsLoading ? "animate-spin" : ""
+                                                        }
+                                                    />
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                        {!form.bookingDate ? (
+                                            <div
+                                                className={`${fieldCls} cursor-not-allowed opacity-50`}
+                                            >
+                                                <span className="text-muted-foreground">—</span>
+                                            </div>
+                                        ) : slotsLoading ? (
+                                            <div className={`${fieldCls} opacity-60`}>
+                                                <span className="text-muted-foreground">
+                                                    Loading…
+                                                </span>
+                                            </div>
+                                        ) : slots.length === 0 ? (
+                                            <div className={`${fieldCls} opacity-60`}>
+                                                <span className="text-muted-foreground">
+                                                    No slots
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <SelectInput
+                                                value={form.startTime}
+                                                onValueChange={(v) =>
+                                                    onFormChange({ startTime: v })
+                                                }
+                                                placeholder="Select time"
+                                                options={slots.map((slot) => ({
+                                                    value: slot.start_time,
+                                                    label:
+                                                        formatSlotTime(slot.start_time) +
+                                                        (!slot.is_available ? " — Booked" : ""),
+                                                    disabled: !slot.is_available,
+                                                }))}
+                                            />
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        {/* Players */}
+                        {booking.players.length > 0 ? (
+                            <section className={sectionCls}>
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className={labelCls}>Players</p>
+                                    <span className="text-[11px] text-muted-foreground">
+                                        {booking.players.length}
+                                    </span>
+                                </div>
+                                <PlayersTable players={booking.players} />
+                            </section>
+                        ) : null}
+
+                        {/* Event & Contact */}
+                        <section className={`space-y-3 ${dividerCls}`}>
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
+                                    <label htmlFor="mb-event-name" className={labelCls}>
+                                        Event name
+                                    </label>
+                                    <input
+                                        id="mb-event-name"
+                                        type="text"
+                                        className={fieldCls}
+                                        placeholder="e.g. Friday Corporate Cup"
+                                        value={form.eventName}
+                                        onChange={(e) =>
+                                            onFormChange({ eventName: e.target.value })
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="mb-contact-name" className={labelCls}>
+                                        Contact name
+                                    </label>
+                                    <input
+                                        id="mb-contact-name"
+                                        type="text"
+                                        className={fieldCls}
+                                        value={form.contactName}
+                                        onChange={(e) =>
+                                            onFormChange({ contactName: e.target.value })
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="mb-contact-email" className={labelCls}>
+                                        Contact email
+                                    </label>
+                                    <input
+                                        id="mb-contact-email"
+                                        type="email"
+                                        className={fieldCls}
+                                        value={form.contactEmail}
+                                        onChange={(e) =>
+                                            onFormChange({ contactEmail: e.target.value })
+                                        }
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="mb-contact-phone" className={labelCls}>
+                                    Contact phone
+                                </label>
+                                <input
+                                    id="mb-contact-phone"
+                                    type="tel"
+                                    className={fieldCls}
+                                    value={form.contactPhone}
+                                    onChange={(e) => onFormChange({ contactPhone: e.target.value })}
+                                />
+                            </div>
+                        </section>
+
+                        {/* Notes */}
+                        <section className={sectionCls}>
+                            <label htmlFor="mb-notes" className={labelCls}>
+                                Notes{" "}
+                                <span className="font-normal text-muted-foreground">
+                                    (optional)
+                                </span>
+                            </label>
+                            <textarea
+                                id="mb-notes"
+                                rows={2}
+                                className={fieldCls}
+                                placeholder="Internal notes visible to staff only..."
+                                value={form.notes}
+                                onChange={(e) => onFormChange({ notes: e.target.value })}
+                            />
+                        </section>
+                    </>
+                ) : null}
+
+                {/* Read-only court details when not editable */}
+                {!isEditable ? (
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <p className={labelCls}>Court</p>
+                            <div className={`${fieldCls} cursor-default select-none opacity-80`}>
+                                {booking.court_name}
+                            </div>
+                        </div>
+                        <div>
+                            <p className={labelCls}>Price</p>
+                            <div className={`${fieldCls} cursor-default select-none opacity-80`}>
+                                {formatCurrency(booking.total_price)}
+                            </div>
+                        </div>
+                        <div>
+                            <p className={labelCls}>Date</p>
+                            <div className={`${fieldCls} cursor-default select-none opacity-80`}>
+                                {formatUTCDateTime(booking.start_datetime)}
+                            </div>
+                        </div>
+                        <div>
+                            <p className={labelCls}>End Time</p>
+                            <div className={`${fieldCls} cursor-default select-none opacity-80`}>
+                                {formatUTCDateTime(booking.end_datetime)}
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+
+                {/* Players — always shown (read-only when not editable) */}
+                {!isEditable && booking.players.length > 0 ? (
+                    <section className={sectionCls}>
+                        <div className="flex items-center justify-between gap-2">
+                            <p className={labelCls}>Players</p>
+                            <span className="inline-flex h-6 items-center rounded-full bg-cta/10 px-2.5 text-[11px] font-semibold text-cta ring-1 ring-cta/20">
+                                {booking.players.length}
+                            </span>
+                        </div>
+                        <PlayersTable players={booking.players} />
+                    </section>
+                ) : null}
+            </main>
+
+            <footer className="flex shrink-0 items-center justify-between border-t border-border px-5 py-2.5">
                 {isCancellable && isEditable ? (
                     <button
                         type="button"
@@ -649,7 +532,7 @@ export function ManageBookingModalView({
                         </button>
                     ) : null}
                 </div>
-            </div>
+            </footer>
 
             {showCancelConfirm ? (
                 <ConfirmDeleteModal

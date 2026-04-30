@@ -3,23 +3,38 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { NewBookingModalView } from "./NewBookingModalView";
 import type { NewBookingFormState } from "./NewBookingView";
+import { DEFAULT_RECURRENCE_RULE } from "./newBookingRules";
 
 vi.mock("../../components/PlayerAutocomplete", () => ({
     PlayerAutocomplete: ({
         label,
         value,
         onChange,
+        onSelect,
     }: {
         label: string;
         value: string;
         onChange: (value: string) => void;
+        onSelect?: (player: { id: string; full_name: string }) => void;
     }) => (
-        <input
-            type="text"
-            aria-label={label}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-        />
+        <div>
+            <input
+                type="text"
+                aria-label={label}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+            />
+            {onSelect ? (
+                <button
+                    type="button"
+                    onClick={() =>
+                        onSelect({ id: value || "uid-selected", full_name: "Selected Player" })
+                    }
+                >
+                    Select player
+                </button>
+            ) : null}
+        </div>
     ),
 }));
 
@@ -100,6 +115,7 @@ const defaultProps = {
     form: defaultForm,
     apiError: "",
     onBehalfOfError: "",
+    staffProfileError: "",
     isPending: false,
     selectedPrice: 20,
     onFormChange: vi.fn(),
@@ -171,24 +187,27 @@ describe("NewBookingModalView", () => {
         expect(onDismissError).toHaveBeenCalled();
     });
 
-    it("renders Open Game directly and Skill Level collapsed by default for regular bookings", () => {
+    it("renders Open Game and Skill Level fields for regular bookings", () => {
         render(<NewBookingModalView {...defaultProps} />);
 
         expect(screen.getByLabelText("Mark as open game")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: /Skill Level/i })).toBeInTheDocument();
-        expect(screen.queryByLabelText("Anchor")).not.toBeInTheDocument();
+        expect(screen.getByLabelText(/Anchor/i)).toBeInTheDocument();
     });
 
-    it("expands Skill Level section and keeps open game checkbox available", () => {
+    it("keeps open game checkbox available with skill level fields", () => {
         const onFormChange = vi.fn();
         render(<NewBookingModalView {...defaultProps} onFormChange={onFormChange} />);
 
-        fireEvent.click(screen.getByRole("button", { name: /Skill Level/i }));
         expect(screen.getByLabelText("Mark as open game")).toBeInTheDocument();
-        expect(screen.getByLabelText("Anchor")).toBeInTheDocument();
+        expect(screen.getByLabelText(/Anchor/i)).toBeInTheDocument();
 
         fireEvent.click(screen.getByLabelText("Mark as open game"));
-        expect(onFormChange).toHaveBeenCalledWith({ isOpenGame: true });
+        expect(onFormChange).toHaveBeenCalledWith({
+            isOpenGame: true,
+            anchorSkill: "4",
+            skillMin: "1",
+            skillMax: "7",
+        });
     });
 
     it("does not render Open Game or Skill Level section for non-regular booking types", () => {
@@ -200,38 +219,69 @@ describe("NewBookingModalView", () => {
         );
 
         expect(screen.queryByLabelText("Mark as open game")).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /Skill Level/i })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/Anchor/i)).not.toBeInTheDocument();
     });
 
-    it("renders Event & Contact section collapsed by default for regular booking type", () => {
+    it("sets the default recurrence rule when recurring is enabled", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "lesson_individual" }}
+                onFormChange={onFormChange}
+            />
+        );
+
+        fireEvent.click(screen.getByLabelText("Repeat this booking"));
+
+        expect(onFormChange).toHaveBeenCalledWith({
+            isRecurring: true,
+            recurrenceRule: DEFAULT_RECURRENCE_RULE,
+        });
+    });
+
+    it("locks max players to one for individual lessons", () => {
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "lesson_individual", maxPlayers: "4" }}
+            />
+        );
+
+        const maxPlayersInput = screen.getByLabelText(/max players/i);
+        expect(maxPlayersInput).toHaveValue(1);
+        expect(maxPlayersInput).toBeDisabled();
+    });
+
+    it("renders Event & Contact fields for regular booking type", () => {
         render(<NewBookingModalView {...defaultProps} />);
 
-        expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
-        expect(screen.queryByLabelText("Event name")).not.toBeInTheDocument();
-    });
-
-    it("renders Event & Contact section collapsed by default for corporate_event", () => {
-        render(
-            <NewBookingModalView
-                {...defaultProps}
-                form={{ ...defaultForm, bookingType: "corporate_event" }}
-            />
-        );
-
-        expect(screen.getByRole("button", { name: /Event.*Contact/i })).toBeInTheDocument();
-        expect(screen.queryByLabelText("Event name")).not.toBeInTheDocument();
-    });
-
-    it("expands Event & Contact section on toggle for corporate_event", () => {
-        render(
-            <NewBookingModalView
-                {...defaultProps}
-                form={{ ...defaultForm, bookingType: "corporate_event" }}
-            />
-        );
-
-        fireEvent.click(screen.getByRole("button", { name: /Event.*Contact/i }));
         expect(screen.getByLabelText("Event name")).toBeInTheDocument();
+    });
+
+    it("renders Event & Contact fields for corporate_event", () => {
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "corporate_event" }}
+            />
+        );
+
+        expect(screen.getByLabelText("Event name")).toBeInTheDocument();
+    });
+
+    it("updates Event & Contact fields for corporate_event", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "corporate_event" }}
+                onFormChange={onFormChange}
+            />
+        );
+
+        fireEvent.change(screen.getByLabelText("Event name"), { target: { value: "Cup" } });
+        expect(onFormChange).toHaveBeenCalledWith({ eventName: "Cup" });
     });
 
     it("renders On behalf of field outside Event & Contact", () => {
@@ -240,16 +290,15 @@ describe("NewBookingModalView", () => {
         expect(screen.getByLabelText(/on behalf of/i)).toBeInTheDocument();
     });
 
-    it("renders notes collapsed by default", () => {
+    it("renders notes field by default", () => {
         render(<NewBookingModalView {...defaultProps} />);
 
-        expect(screen.getByRole("checkbox", { name: "Notes" })).not.toBeChecked();
-        expect(screen.queryByPlaceholderText(/Internal notes/i)).not.toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Internal notes/i)).toBeInTheDocument();
     });
 
-    it("renders '+ Invite Player' button", () => {
+    it("renders invite player autocomplete", () => {
         render(<NewBookingModalView {...defaultProps} />);
-        expect(screen.getByRole("button", { name: "+ Invite Player" })).toBeInTheDocument();
+        expect(screen.getByLabelText("Invite player")).toBeInTheDocument();
     });
 
     it("hides On behalf and Add Players when booking is an open game", () => {
@@ -259,18 +308,21 @@ describe("NewBookingModalView", () => {
 
         expect(screen.queryByLabelText(/on behalf of/i)).not.toBeInTheDocument();
         expect(screen.queryByText("Add Players (user IDs)")).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "+ Invite Player" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Invite player")).not.toBeInTheDocument();
     });
 
-    it("calls onFormChange with a new empty entry when '+ Invite Player' is clicked", () => {
+    it("calls onFormChange with selected player when an invite player is selected", () => {
         const onFormChange = vi.fn();
         render(<NewBookingModalView {...defaultProps} onFormChange={onFormChange} />);
 
-        fireEvent.click(screen.getByRole("button", { name: "+ Invite Player" }));
-        expect(onFormChange).toHaveBeenCalledWith({ playerUserIds: [""] });
+        fireEvent.change(screen.getByLabelText("Invite player"), {
+            target: { value: "uid-selected" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Select player" }));
+        expect(onFormChange).toHaveBeenCalledWith({ playerUserIds: ["uid-selected"] });
     });
 
-    it("renders existing invited player inputs", () => {
+    it("renders existing invited player chips", () => {
         render(
             <NewBookingModalView
                 {...defaultProps}
@@ -278,11 +330,11 @@ describe("NewBookingModalView", () => {
             />
         );
 
-        expect(screen.getByLabelText("Invited player 1")).toHaveValue("uid-1");
-        expect(screen.getByLabelText("Invited player 2")).toHaveValue("uid-2");
+        expect(screen.getByText("Player 1")).toBeInTheDocument();
+        expect(screen.getByText("Player 2")).toBeInTheDocument();
     });
 
-    it("calls onFormChange with updated list when an invited player input changes", () => {
+    it("does not add a duplicate invited player", () => {
         const onFormChange = vi.fn();
         render(
             <NewBookingModalView
@@ -292,10 +344,11 @@ describe("NewBookingModalView", () => {
             />
         );
 
-        fireEvent.change(screen.getByLabelText("Invited player 1"), {
-            target: { value: "uid-new" },
+        fireEvent.change(screen.getByLabelText("Invite player"), {
+            target: { value: "uid-1" },
         });
-        expect(onFormChange).toHaveBeenCalledWith({ playerUserIds: ["uid-new"] });
+        fireEvent.click(screen.getByRole("button", { name: "Select player" }));
+        expect(onFormChange).not.toHaveBeenCalled();
     });
 
     it("calls onFormChange with entry removed when remove button is clicked", () => {
@@ -308,7 +361,7 @@ describe("NewBookingModalView", () => {
             />
         );
 
-        fireEvent.click(screen.getByRole("button", { name: "Remove invited player 1" }));
+        fireEvent.click(screen.getByRole("button", { name: "Remove player 1" }));
         expect(onFormChange).toHaveBeenCalledWith({ playerUserIds: ["uid-2"] });
     });
 
@@ -316,14 +369,13 @@ describe("NewBookingModalView", () => {
         const onFormChange = vi.fn();
         render(<NewBookingModalView {...defaultProps} onFormChange={onFormChange} />);
 
-        fireEvent.click(screen.getByRole("checkbox", { name: "Notes" }));
         fireEvent.change(screen.getByPlaceholderText(/Internal notes/i), {
             target: { value: "Staff only note" },
         });
         expect(onFormChange).toHaveBeenCalledWith({ notes: "Staff only note" });
     });
 
-    it("expands notes by default when notes already have a value", () => {
+    it("shows existing notes value", () => {
         render(
             <NewBookingModalView
                 {...defaultProps}
@@ -331,7 +383,6 @@ describe("NewBookingModalView", () => {
             />
         );
 
-        expect(screen.getByRole("checkbox", { name: "Notes" })).toBeChecked();
         expect(screen.getByPlaceholderText(/Internal notes/i)).toHaveValue("Existing note");
     });
 

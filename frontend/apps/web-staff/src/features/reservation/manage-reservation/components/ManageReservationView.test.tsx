@@ -89,6 +89,17 @@ vi.mock("@repo/ui", () => ({
             min={minDate}
         />
     ),
+    RecurrencePicker: ({
+        value,
+        onChange,
+    }: {
+        value?: string;
+        onChange: (v: string) => void;
+    }) => (
+        <button type="button" onClick={() => onChange("FREQ=WEEKLY;BYDAY=MO;COUNT=12")}>
+            RecurrencePicker {value}
+        </button>
+    ),
     TimeInput: ({
         className,
         ...props
@@ -127,13 +138,16 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
-    formatUTCDateTime: (value: string) => value,
+    formatUTCDate: (value: string) => `date:${value}`,
+    formatUTCTime: (value: string) => `time:${value}`,
 }));
 
 vi.mock("lucide-react", () => ({
     X: () => <span data-testid="x-icon">X</span>,
     Calendar: () => <span />,
+    CalendarDays: () => <span />,
     Clock: () => <span />,
+    Clock3: () => <span />,
     Repeat: () => <span />,
     ShieldCheck: () => <span />,
     Trash2: () => <span />,
@@ -265,6 +279,19 @@ describe("ManageReservationView — page mode", () => {
 
         expect(screen.getByText("Reservations")).toBeInTheDocument();
         expect(screen.getAllByText("Morning Block").length).toBeGreaterThan(0);
+    });
+
+    it("renders overview schedule as date and time range", () => {
+        render(<ManageReservationView {...defaultProps} canEdit={false} />);
+
+        expect(screen.getByText("Date")).toBeInTheDocument();
+        expect(screen.getByText("date:2026-04-20T09:00:00Z")).toBeInTheDocument();
+        expect(screen.getByText("Time")).toBeInTheDocument();
+        expect(
+            screen.getByText("time:2026-04-20T09:00:00Z - time:2026-04-20T10:00:00Z")
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Start")).not.toBeInTheDocument();
+        expect(screen.queryByText("End")).not.toBeInTheDocument();
     });
 });
 

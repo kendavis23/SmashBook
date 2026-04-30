@@ -292,7 +292,7 @@ describe("ManageBookingModalView", () => {
             />
         );
 
-        expect(screen.getByText("accepted")).toBeInTheDocument();
+        expect(screen.getAllByText("Accepted").length).toBeGreaterThan(0);
     });
 
     it("shows no action section for player with no invite record", () => {
@@ -302,7 +302,7 @@ describe("ManageBookingModalView", () => {
         expect(screen.queryByRole("button", { name: "Invite" })).not.toBeInTheDocument();
     });
 
-    it("expands players table when Players section is clicked", () => {
+    it("renders players table when booking has players", () => {
         const bookingWithPlayers = {
             ...booking,
             players: [
@@ -318,7 +318,7 @@ describe("ManageBookingModalView", () => {
         };
         render(<ManageBookingModalView {...defaultProps} booking={bookingWithPlayers as never} />);
 
-        fireEvent.click(screen.getByRole("button", { name: /Players/i }));
+        expect(screen.getByText("Player details")).toBeInTheDocument();
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
     });
 

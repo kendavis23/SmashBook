@@ -12,6 +12,7 @@ import { useClubAccess } from "../../store";
 import type { BookingInput, BookingType, RecurringBookingInput } from "../../types";
 import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
+import { isIndividualLessonBookingType, resolveMaxPlayers } from "./newBookingRules";
 
 type Props = {
     courtId: string;
@@ -64,6 +65,8 @@ export default function NewBookingModalContainer({
 
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
+    const [onBehalfOfError, setOnBehalfOfError] = useState("");
+    const [staffProfileError, setStaffProfileError] = useState("");
 
     const {
         data: availabilityData,
@@ -99,7 +102,10 @@ export default function NewBookingModalContainer({
     useEffect(() => {
         if (trainerData === prevTrainerDataRef.current) return;
         prevTrainerDataRef.current = trainerData;
-        if (form.staffProfileId && !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)) {
+        if (
+            form.staffProfileId &&
+            !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)
+        ) {
             setForm((prev) => ({ ...prev, staffProfileId: "" }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -117,6 +123,9 @@ export default function NewBookingModalContainer({
                 if (patch.bookingType !== undefined) {
                     next.isOpenGame = false;
                 }
+                if (isIndividualLessonBookingType(next.bookingType)) {
+                    next.maxPlayers = resolveMaxPlayers(next.bookingType, next.maxPlayers);
+                }
                 if (patch.courtId !== undefined && courtError) setCourtError("");
                 if (
                     (patch.bookingDate !== undefined || patch.startTime !== undefined) &&
@@ -128,13 +137,16 @@ export default function NewBookingModalContainer({
                     onBehalfOfError
                 )
                     setOnBehalfOfError("");
+                if (
+                    (patch.staffProfileId !== undefined || patch.bookingType !== undefined) &&
+                    staffProfileError
+                )
+                    setStaffProfileError("");
                 return next;
             });
         },
-        [courtError, startError]
+        [courtError, startError, onBehalfOfError, staffProfileError]
     );
-
-    const [onBehalfOfError, setOnBehalfOfError] = useState("");
 
     const validate = (): boolean => {
         let valid = true;
@@ -150,6 +162,10 @@ export default function NewBookingModalContainer({
             setOnBehalfOfError("Player user ID is required.");
             valid = false;
         }
+        if (isLessonType && !form.staffProfileId.trim()) {
+            setStaffProfileError("Staff (Trainer) is required.");
+            valid = false;
+        }
         return valid;
     };
 
@@ -161,18 +177,22 @@ export default function NewBookingModalContainer({
             const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
 
             if (form.isRecurring) {
+                const maxPlayers = parseOptionalNumber(
+                    resolveMaxPlayers(form.bookingType, form.maxPlayers)
+                );
                 const payload: RecurringBookingInput = {
                     club_id: clubId ?? "",
                     court_id: form.courtId,
                     booking_type: form.bookingType as BookingType,
                     first_start: startDatetime,
                     recurrence_rule: form.recurrenceRule,
-                    max_players: parseOptionalNumber(form.maxPlayers) ?? undefined,
+                    max_players: maxPlayers ?? undefined,
                     notes: form.notes.trim() || null,
                     event_name: form.eventName.trim() || null,
                     contact_name: form.contactName.trim() || null,
                     contact_email: form.contactEmail.trim() || null,
                     contact_phone: form.contactPhone.trim() || null,
+                    staff_profile_id: form.staffProfileId.trim() || null,
                     skip_conflicts: form.skipConflicts,
                 };
                 createRecurringMutation.mutate(payload, {
@@ -187,13 +207,16 @@ export default function NewBookingModalContainer({
             const invitedPlayerIds = form.isOpenGame
                 ? []
                 : form.playerUserIds.map((id) => id.trim()).filter(Boolean);
+            const maxPlayers = parseOptionalNumber(
+                resolveMaxPlayers(form.bookingType, form.maxPlayers)
+            );
             const payload: BookingInput = {
                 club_id: clubId ?? "",
                 court_id: form.courtId,
                 booking_type: form.bookingType as BookingType,
                 start_datetime: startDatetime,
                 is_open_game: form.isOpenGame,
-                max_players: parseOptionalNumber(form.maxPlayers) ?? undefined,
+                max_players: maxPlayers ?? undefined,
                 notes: form.notes.trim() || null,
                 anchor_skill_level: parseOptionalNumber(form.anchorSkill),
                 skill_level_override_min: parseOptionalNumber(form.skillMin),
@@ -232,6 +255,7 @@ export default function NewBookingModalContainer({
             courtError={courtError}
             startError={startError}
             onBehalfOfError={onBehalfOfError}
+            staffProfileError={staffProfileError}
             apiError={apiError}
             isPending={activeMutation.isPending}
             onFormChange={handleFormChange}

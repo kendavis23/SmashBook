@@ -1,7 +1,17 @@
 import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { Breadcrumb, DatePicker, formatCurrency, formatUTCDateTime, SelectInput } from "@repo/ui";
 import {
+    Breadcrumb,
+    DatePicker,
+    formatCurrency,
+    formatUTCDate,
+    formatUTCTime,
+    SelectInput,
+} from "@repo/ui";
+import {
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
     CalendarDays,
     ChevronLeft,
     ChevronRight,
@@ -37,9 +47,52 @@ type Props = {
 
 const PAGE_SIZE = 10;
 
+type SortKey = "court" | "status" | "date" | "time";
+type SortDirection = "asc" | "desc";
+
 const thCls =
     "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
 const tdCls = "px-3 py-3 text-sm text-foreground align-top";
+
+function compareText(a: string, b: string): number {
+    return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+}
+
+function getTimeValue(iso: string): string {
+    return iso.slice(11, 16);
+}
+
+type SortHeaderProps = {
+    label: string;
+    sortKey: SortKey;
+    activeSortKey: SortKey | null;
+    direction: SortDirection;
+    onSort: (sortKey: SortKey) => void;
+};
+
+function SortHeader({
+    label,
+    sortKey,
+    activeSortKey,
+    direction,
+    onSort,
+}: SortHeaderProps): JSX.Element {
+    const isActive = activeSortKey === sortKey;
+    const Icon = isActive ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+    return (
+        <button
+            type="button"
+            onClick={() => onSort(sortKey)}
+            className="-ml-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            aria-label={`Sort by ${label} ${isActive && direction === "asc" ? "descending" : "ascending"}`}
+            aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
+        >
+            <span>{label}</span>
+            <Icon size={12} className={isActive ? "text-foreground" : "text-muted-foreground/60"} />
+        </button>
+    );
+}
 
 export default function BookingsView({
     bookings,
@@ -56,20 +109,86 @@ export default function BookingsView({
     onManageClick,
 }: Props): JSX.Element {
     const [page, setPage] = useState(0);
+    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-    const totalPages = Math.ceil(bookings.length / PAGE_SIZE);
+    const sortedBookings = useMemo(() => {
+        if (sortKey == null) {
+            return bookings;
+        }
+
+        const direction = sortDirection === "asc" ? 1 : -1;
+
+        return [...bookings].sort((a, b) => {
+            const courtA = courtNameMap[a.court_id] ?? a.court_name;
+            const courtB = courtNameMap[b.court_id] ?? b.court_name;
+            let result = 0;
+
+            if (sortKey === "court") {
+                result = compareText(courtA, courtB);
+            } else if (sortKey === "status") {
+                result = compareText(
+                    BOOKING_STATUS_LABELS[a.status] ?? a.status,
+                    BOOKING_STATUS_LABELS[b.status] ?? b.status
+                );
+            } else if (sortKey === "date") {
+                result = compareText(a.start_datetime.slice(0, 10), b.start_datetime.slice(0, 10));
+            } else {
+                result = compareText(
+                    getTimeValue(a.start_datetime),
+                    getTimeValue(b.start_datetime)
+                );
+            }
+
+            if (result === 0) {
+                result = compareText(a.start_datetime, b.start_datetime);
+            }
+
+            return result * direction;
+        });
+    }, [bookings, courtNameMap, sortDirection, sortKey]);
+
+    const totalPages = Math.ceil(sortedBookings.length / PAGE_SIZE);
 
     // Render at most 20 rows (current page + next page) for DOM efficiency;
     // display only the current 10.
     const pageBookings = useMemo(
-        () => bookings.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-        [bookings, page]
+        () => sortedBookings.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [page, sortedBookings]
     );
 
-    // Reset to first page when the bookings list changes (new search)
+    // Reset to backend response order when the bookings list changes (search/refresh)
     useEffect(() => {
         setPage(0);
+        setSortKey(null);
+        setSortDirection("asc");
     }, [bookings]);
+
+    const handleSort = (nextSortKey: SortKey) => {
+        if (nextSortKey === sortKey) {
+            setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+        } else {
+            setSortKey(nextSortKey);
+            setSortDirection("asc");
+        }
+        setPage(0);
+    };
+
+    const resetToBackendOrder = () => {
+        setPage(0);
+        setSortKey(null);
+        setSortDirection("asc");
+    };
+
+    const handleSearchClick = () => {
+        resetToBackendOrder();
+        onSearch();
+    };
+
+    const handleRefreshClick = () => {
+        resetToBackendOrder();
+        onRefresh();
+    };
 
     return (
         <div className="w-full space-y-5">
@@ -102,7 +221,7 @@ export default function BookingsView({
                     </div>
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                         <button
-                            onClick={onRefresh}
+                            onClick={handleRefreshClick}
                             className="btn-outline min-h-10 px-4"
                             aria-label="Refresh bookings"
                         >
@@ -226,7 +345,7 @@ export default function BookingsView({
                         {/* Search button — col 4, row 2 */}
                         <div className="flex flex-col justify-end">
                             <button
-                                onClick={onSearch}
+                                onClick={handleSearchClick}
                                 className="btn-cta h-[38px] w-full whitespace-nowrap px-2"
                                 aria-label="Apply filters"
                             >
@@ -267,11 +386,43 @@ export default function BookingsView({
                         <table className="w-full min-w-[960px] border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-muted/30">
-                                    <th className={thCls}>Court</th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Court"
+                                            sortKey="court"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
                                     <th className={thCls}>Type</th>
-                                    <th className={thCls}>Status</th>
-                                    <th className={thCls}>Start</th>
-                                    <th className={thCls}>End</th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Status"
+                                            sortKey="status"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Date"
+                                            sortKey="date"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Time"
+                                            sortKey="time"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
                                     <th className={thCls}>Players</th>
                                     <th className={thCls}>Slots left</th>
                                     <th className={thCls}>Total</th>
@@ -327,13 +478,14 @@ export default function BookingsView({
 
                                             <td className={tdCls}>
                                                 <span className="whitespace-nowrap text-muted-foreground">
-                                                    {formatUTCDateTime(booking.start_datetime)}
+                                                    {formatUTCDate(booking.start_datetime)}
                                                 </span>
                                             </td>
 
                                             <td className={tdCls}>
                                                 <span className="whitespace-nowrap text-muted-foreground">
-                                                    {formatUTCDateTime(booking.end_datetime)}
+                                                    {formatUTCTime(booking.start_datetime)} -{" "}
+                                                    {formatUTCTime(booking.end_datetime)}
                                                 </span>
                                             </td>
 
@@ -388,7 +540,8 @@ export default function BookingsView({
                     <div className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
                         <span className="text-xs text-muted-foreground">
                             {page * PAGE_SIZE + 1}–
-                            {Math.min((page + 1) * PAGE_SIZE, bookings.length)} of {bookings.length}
+                            {Math.min((page + 1) * PAGE_SIZE, sortedBookings.length)} of{" "}
+                            {sortedBookings.length}
                         </span>
                         <div className="flex items-center gap-1">
                             <button

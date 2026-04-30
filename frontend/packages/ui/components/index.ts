@@ -22,3 +22,5 @@ export { StatPill } from "./StatPill";
 export type { StatPillProps } from "./StatPill";
 export { RecurrencePicker } from "./RecurrencePicker";
 export type { RecurrencePickerProps } from "./RecurrencePicker";
+export { SkillLineChart } from "./SkillLineChart";
+export type { SkillDataPoint } from "./SkillLineChart";

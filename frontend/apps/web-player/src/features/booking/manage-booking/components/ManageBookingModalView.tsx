@@ -1,15 +1,8 @@
 import type { JSX } from "react";
 import { useState } from "react";
-import { CalendarCheck, Check, ChevronDown, ChevronUp, RotateCcw, UserPlus, X } from "lucide-react";
-import {
-    AlertToast,
-    StatPill,
-    formatUTCDate,
-    formatUTCTime,
-    formatUTCDateTime,
-    formatCurrency,
-} from "@repo/ui";
-import type { Booking, PlayerRole, InviteStatus, PaymentStatus } from "../../types";
+import { Check, CreditCard, RotateCcw, UserPlus, UserRound, X } from "lucide-react";
+import { AlertToast, formatCurrency } from "@repo/ui";
+import type { Booking, InviteStatus, PaymentStatus, PlayerRole } from "../../types";
 import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
 type MyInfo = {
@@ -26,10 +19,129 @@ const BOOKING_STATUS_CLASSES: Record<string, string> = {
     completed: "bg-secondary text-secondary-foreground",
 };
 
+const BOOKING_TYPE_LABELS: Record<string, string> = {
+    regular: "Regular",
+    lesson_individual: "Individual Lesson",
+    lesson_group: "Group Lesson",
+    corporate_event: "Corporate Event",
+    tournament: "Tournament",
+};
+
+const labelCls = "mb-1 block text-xs font-medium text-foreground";
+const dividerCls = "border-t-2 border-border/20 pt-3";
+const sectionCls = `space-y-2 ${dividerCls}`;
+
+function formatDateRange(start: string, end: string): { date: string; time: string } {
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    const date = startDate.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+    });
+    const startTime = startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const endTime = endDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    return { date, time: `${startTime} - ${endTime}` };
+}
+
+function formatStatus(value?: string | null): string {
+    return value
+        ? value
+              .split("_")
+              .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+              .join(" ")
+        : "-";
+}
+
+function DetailItem({ label, value }: { label: string; value: string }): JSX.Element {
+    return (
+        <li className="min-w-0 bg-muted/15 px-3 py-2">
+            <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
+                {label}
+            </span>
+            <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
+                {value}
+            </span>
+        </li>
+    );
+}
+
+function PlayersTable({
+    players,
+    myUserId,
+}: {
+    players: Booking["players"];
+    myUserId?: string;
+}): JSX.Element {
+    const getInitials = (name: string): string =>
+        name
+            .split(" ")
+            .map((part) => part[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase() || "P";
+
+    return (
+        <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
+            <div className="flex items-center gap-2 border-b border-border/70 bg-muted/15 px-3 py-2">
+                <UserRound size={14} className="text-muted-foreground" />
+                <span className="text-xs font-semibold text-foreground">Player details</span>
+            </div>
+            <div className="divide-y divide-border">
+                {players.map((p) => {
+                    const isMe = myUserId != null && p.user_id === myUserId;
+                    return (
+                        <div
+                            key={p.id}
+                            className={`relative flex items-center gap-3 px-3 py-2.5 ${isMe ? "bg-cta/10" : ""}`}
+                        >
+                            {isMe ? (
+                                <span className="absolute inset-y-0 left-0 w-0.5 rounded-r bg-cta" />
+                            ) : null}
+                            <span
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                                    isMe
+                                        ? "bg-cta/20 text-cta ring-1 ring-cta/40"
+                                        : "bg-muted text-muted-foreground"
+                                }`}
+                            >
+                                {getInitials(p.full_name)}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-foreground">
+                                    {p.full_name}
+                                    {isMe ? (
+                                        <span className="ml-1.5 rounded-full bg-cta/15 px-1.5 py-0.5 text-[10px] font-semibold text-cta">
+                                            You
+                                        </span>
+                                    ) : null}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                    <span className="capitalize">{formatStatus(p.role)}</span>
+                                    <span className="mx-1.5 opacity-40">&middot;</span>
+                                    <span className="text-muted-foreground/60">Invite:</span>{" "}
+                                    <span className="capitalize">{formatStatus(p.invite_status)}</span>
+                                    <span className="mx-1.5 opacity-40">&middot;</span>
+                                    <span className="text-muted-foreground/60">Payment:</span>{" "}
+                                    <span className="capitalize">{formatStatus(p.payment_status)}</span>
+                                </p>
+                            </div>
+                            <span className="shrink-0 text-sm font-medium text-foreground">
+                                {formatCurrency(p.amount_due)}
+                            </span>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
 type Props = {
     booking: Booking;
     playerRole: PlayerRole;
     myInfo?: MyInfo;
+    myUserId?: string;
     apiError: string;
     isInvitePending: boolean;
     isRespondPending: boolean;
@@ -45,6 +157,7 @@ export function ManageBookingModalView({
     booking,
     playerRole,
     myInfo,
+    myUserId,
     apiError,
     isInvitePending,
     isRespondPending,
@@ -55,176 +168,154 @@ export function ManageBookingModalView({
     clubId,
     onClose,
 }: Props): JSX.Element {
-    const [playersExpanded, setPlayersExpanded] = useState(false);
     const [inviteId, setInviteId] = useState("");
 
     const statusCls =
         BOOKING_STATUS_CLASSES[booking.status] ?? "bg-secondary text-secondary-foreground";
-
     const myInviteStatus = myInfo?.inviteStatus ?? null;
     const myPaymentStatus = myInfo?.paymentStatus ?? null;
     const showPayCta = myInviteStatus === "accepted" && myPaymentStatus === "pending";
+    const bookingTypeLabel =
+        BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type.replace(/_/g, " ");
 
     return (
-        <div className="flex h-full flex-col">
-            {/* ── Sticky header ── */}
-            <div className="shrink-0 border-b border-border px-6 pb-5 pt-6">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                            <CalendarCheck size={18} />
-                        </div>
-                        <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <h2 className="text-lg font-semibold text-foreground">
-                                    {booking.court_name}
-                                </h2>
-                                <span
-                                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ${statusCls}`}
-                                >
-                                    {booking.status}
-                                </span>
-                            </div>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                {formatUTCDate(booking.start_datetime)} &middot;{" "}
-                                {formatUTCTime(booking.start_datetime)} &ndash;{" "}
-                                {formatUTCTime(booking.end_datetime)}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                        <button
-                            type="button"
-                            onClick={onRefresh}
-                            aria-label="Refresh booking"
-                            className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+        <div className="flex h-full w-full flex-col bg-card">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-2.5">
+                <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="text-base font-semibold tracking-tight text-foreground">
+                            {booking.court_name}
+                        </h2>
+                        <span
+                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium capitalize ${statusCls}`}
                         >
-                            <RotateCcw size={15} />
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            aria-label="Close modal"
-                            className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                        >
-                            <X size={16} />
-                        </button>
+                            {booking.status}
+                        </span>
                     </div>
                 </div>
-            </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={onRefresh}
+                        aria-label="Refresh booking"
+                        className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                        <RotateCcw size={15} />
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        aria-label="Close modal"
+                        className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    >
+                        <X size={16} />
+                    </button>
+                </div>
+            </header>
 
-            {/* ── Scrollable body ── */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-                <div className="space-y-5">
-                    {apiError ? (
-                        <div className="mb-4">
-                            <AlertToast title={apiError} variant="error" onClose={onDismissError} />
-                        </div>
-                    ) : null}
+            <main className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3">
+                {apiError ? (
+                    <AlertToast title={apiError} variant="error" onClose={onDismissError} />
+                ) : null}
 
-                    {/* Context pills */}
-                    <div className="grid grid-cols-3 gap-2">
-                        <StatPill label="Type" value={booking.booking_type.replace(/_/g, " ")} />
-                        <StatPill label="Start" value={formatUTCDateTime(booking.start_datetime)} />
-                        <StatPill
-                            label="Players"
+                <ul
+                    className={`grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 ${
+                        booking.is_open_game ? "sm:grid-cols-4" : "sm:grid-cols-3"
+                    }`}
+                >
+                    <DetailItem label="Type" value={bookingTypeLabel} />
+                    <DetailItem
+                        label="Players"
+                        value={
+                            String(booking.players.length) +
+                            (booking.max_players != null ? ` / ${booking.max_players}` : "")
+                        }
+                    />
+                    <DetailItem label="Total" value={formatCurrency(booking.total_price)} />
+                    {booking.is_open_game ? (
+                        <DetailItem
+                            label="Open Game"
                             value={
-                                String(booking.players.length) +
-                                (booking.max_players != null ? ` / ${booking.max_players}` : "")
+                                booking.min_skill_level != null || booking.max_skill_level != null
+                                    ? `Skill ${booking.min_skill_level ?? "-"} - ${booking.max_skill_level ?? "-"}`
+                                    : "Open"
                             }
                         />
-                        <StatPill label="Total" value={formatCurrency(booking.total_price)} />
-                        <StatPill label="Open game" value={booking.is_open_game ? "Yes" : "No"} />
-                        {booking.min_skill_level != null || booking.max_skill_level != null ? (
-                            <StatPill
-                                label="Skill level"
-                                value={`${booking.min_skill_level ?? "—"} – ${booking.max_skill_level ?? "—"}`}
-                            />
-                        ) : null}
-                    </div>
+                    ) : null}
+                </ul>
 
-                    {/* My Details */}
-                    {myInfo ? (
-                        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
-                            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                My Details
-                            </p>
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 sm:grid-cols-4">
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Role</p>
-                                    <p className="text-sm capitalize text-foreground">
-                                        {myInfo.role}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Invite</p>
-                                    <p className="text-sm capitalize text-foreground">
-                                        {myInfo.inviteStatus}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Payment</p>
-                                    <p className="text-sm capitalize text-foreground">
-                                        {myInfo.paymentStatus}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p className="text-[10px] text-muted-foreground">Amount due</p>
-                                    <p className="text-sm text-foreground">
-                                        {formatCurrency(myInfo.amountDue)}
-                                    </p>
+                <section className={dividerCls}>
+                    {(() => {
+                        const { date, time } = formatDateRange(
+                            booking.start_datetime,
+                            booking.end_datetime,
+                        );
+                        return (
+                            <div>
+                                <p className={labelCls}>Date &amp; Time</p>
+                                <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                                    <span className="text-sm font-medium text-foreground">
+                                        {date}
+                                    </span>
+                                    <span className="text-muted-foreground/40">&rarr;</span>
+                                    <span className="text-sm text-muted-foreground">{time}</span>
                                 </div>
                             </div>
-                        </div>
-                    ) : null}
+                        );
+                    })()}
+                </section>
 
-                    {/* Invite Player (organiser only) */}
-                    {playerRole === "organiser" ? (
-                        <div>
-                            <p className="mb-2 text-sm font-medium text-foreground">
-                                Invite Player
-                            </p>
-                            <div className="flex gap-2">
-                                <div className="min-w-0 flex-1">
-                                    <PlayerAutocomplete
-                                        inputId="modal-player-invite-id"
-                                        label="Player"
-                                        clubId={clubId ?? booking.club_id}
-                                        value={inviteId}
-                                        onChange={setInviteId}
-                                        disabled={isInvitePending}
-                                    />
-                                </div>
-                                <button
-                                    type="button"
-                                    disabled={isInvitePending || !inviteId.trim()}
-                                    onClick={() => {
-                                        if (inviteId.trim()) {
-                                            onInvitePlayer(inviteId.trim());
-                                            setInviteId("");
-                                        }
-                                    }}
-                                    className="btn-cta min-h-10 px-4"
-                                >
-                                    <UserPlus size={14} />
-                                    {isInvitePending ? "Inviting…" : "Invite"}
-                                </button>
+
+                {playerRole === "organiser" && booking.slots_available !== 0 ? (
+                    <section className={sectionCls}>
+                        <p className={labelCls}>Invite Player</p>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="min-w-0 sm:w-[70%]">
+                                <label className={labelCls} htmlFor="modal-player-invite-id">
+                                    Player
+                                </label>
+                                <PlayerAutocomplete
+                                    inputId="modal-player-invite-id"
+                                    label="Player"
+                                    clubId={clubId ?? booking.club_id}
+                                    value={inviteId}
+                                    onChange={setInviteId}
+                                    disabled={isInvitePending}
+                                />
                             </div>
+                            <button
+                                type="button"
+                                disabled={isInvitePending || !inviteId.trim()}
+                                onClick={() => {
+                                    if (inviteId.trim()) {
+                                        onInvitePlayer(inviteId.trim());
+                                        setInviteId("");
+                                    }
+                                }}
+                                className="btn-cta min-h-10 sm:w-auto disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <UserPlus size={14} />
+                                {isInvitePending ? "Inviting..." : "Invite"}
+                            </button>
                         </div>
-                    ) : null}
+                    </section>
+                ) : null}
 
-                    {/* Respond to Invite (player with pending invite only) */}
-                    {playerRole === "player" && myInviteStatus === "pending" ? (
-                        <div>
-                            <p className="mb-3 text-sm font-medium text-foreground">
-                                You have been invited to this booking.
+                {playerRole === "player" && myInviteStatus === "pending" ? (
+                    <section className={sectionCls}>
+                        <div className="rounded-lg border border-warning/30 bg-warning/8 px-4 py-3">
+                            <p className="mb-0.5 text-sm font-semibold text-foreground">
+                                You&apos;ve been invited
+                            </p>
+                            <p className="mb-3 text-xs text-muted-foreground">
+                                Accept to confirm your spot in this booking.
                             </p>
                             <div className="flex gap-2">
                                 <button
                                     type="button"
                                     disabled={isRespondPending}
                                     onClick={() => onRespondInvite("accepted")}
-                                    className="btn-cta inline-flex min-h-9 items-center gap-1.5 px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="btn-cta inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     <Check size={14} />
                                     Accept
@@ -233,97 +324,63 @@ export function ManageBookingModalView({
                                     type="button"
                                     disabled={isRespondPending}
                                     onClick={() => onRespondInvite("declined")}
-                                    className="btn-outline inline-flex min-h-9 items-center gap-1.5 px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+                                    className="btn-outline inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 px-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     <X size={14} />
                                     Decline
                                 </button>
                             </div>
                         </div>
-                    ) : null}
+                    </section>
+                ) : null}
 
-                    {/* Pay Here (any role, accepted invite + pending payment) */}
-                    {showPayCta ? (
-                        <div>
-                            <p className="mb-1 text-sm font-medium text-foreground">Payment</p>
-                            <p className="mb-3 text-xs text-muted-foreground">
-                                Your payment is pending. Complete it to confirm your spot.
-                            </p>
-                            <button type="button" className="btn-cta min-h-9 px-4 text-sm">
-                                Pay here
-                            </button>
-                        </div>
-                    ) : null}
-
-                    {/* Players — collapsible */}
-                    {booking.players.length > 0 ? (
-                        <div className="overflow-hidden rounded-lg border border-border">
+                {showPayCta ? (
+                    <section className={sectionCls}>
+                        <div className="rounded-lg border border-cta/30 bg-cta/8 px-4 py-3">
+                            <div className="mb-3 flex items-start justify-between gap-3">
+                                <div className="min-w-0">
+                                    <p className="mb-0.5 text-sm font-semibold text-foreground">
+                                        Payment due
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Complete payment to confirm your spot.
+                                    </p>
+                                </div>
+                                {myInfo?.amountDue != null && myInfo.amountDue > 0 ? (
+                                    <span className="shrink-0 text-base font-bold text-foreground">
+                                        {formatCurrency(myInfo.amountDue)}
+                                    </span>
+                                ) : null}
+                            </div>
                             <button
                                 type="button"
-                                className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                                onClick={() => setPlayersExpanded((v) => !v)}
-                                aria-expanded={playersExpanded}
+                                className="btn-cta inline-flex w-full min-h-9 items-center justify-center gap-1.5 text-sm"
                             >
-                                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Players ({booking.players.length})
-                                </span>
-                                {playersExpanded ? (
-                                    <ChevronUp size={13} className="text-muted-foreground" />
-                                ) : (
-                                    <ChevronDown size={13} className="text-muted-foreground" />
-                                )}
+                                <CreditCard size={14} />
+                                Pay now
                             </button>
-                            {playersExpanded ? (
-                                <div className="overflow-x-auto border-t border-border">
-                                    <table className="w-full min-w-[340px] border-collapse text-sm">
-                                        <thead>
-                                            <tr className="bg-muted/10">
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Name
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Role
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Invite
-                                                </th>
-                                                <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Amount
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {booking.players.map((p) => (
-                                                <tr key={p.id} className="hover:bg-muted/20">
-                                                    <td className="px-3 py-2 font-medium text-foreground">
-                                                        {p.full_name}
-                                                    </td>
-                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                        {p.role}
-                                                    </td>
-                                                    <td className="px-3 py-2 capitalize text-muted-foreground">
-                                                        {p.invite_status}
-                                                    </td>
-                                                    <td className="px-3 py-2 text-right text-foreground">
-                                                        {formatCurrency(p.amount_due)}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            ) : null}
                         </div>
-                    ) : null}
-                </div>
-            </div>
+                    </section>
+                ) : null}
 
-            {/* ── Sticky footer ── */}
-            <div className="shrink-0 flex items-center justify-end border-t border-border px-6 py-4">
+                {booking.players.length > 0 ? (
+                    <section className={sectionCls}>
+                        <div className="flex items-center justify-between gap-2">
+                            <p className={labelCls}>Players</p>
+                            <span className="text-[11px] text-muted-foreground">
+                                {booking.players.length}
+                            </span>
+                        </div>
+                        <PlayersTable players={booking.players} myUserId={myUserId} />
+                    </section>
+                ) : null}
+            </main>
+
+            <footer className="flex shrink-0 items-center justify-end border-t border-border px-5 py-2.5">
                 <button type="button" onClick={onClose} className="btn-outline">
                     Close
                 </button>
-            </div>
+            </footer>
         </div>
     );
 }

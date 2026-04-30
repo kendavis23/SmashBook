@@ -64,7 +64,7 @@ function CalendarBookingBlock({
     const statusLabel = BOOKING_STATUS_LABELS[booking.status] ?? booking.status;
     const ariaLabel = `${typeLabel}${booking.is_open_game ? " • Open Game" : ""} • ${timeLabel} • ${statusLabel}`;
 
-    const showStatus = height >= 56;
+    const showStatus = height >= 54;
 
     return (
         <button
@@ -72,31 +72,31 @@ function CalendarBookingBlock({
             aria-label={ariaLabel}
             title={ariaLabel}
             onClick={() => onManageClick(booking.id)}
-            className={`absolute left-1.5 right-1.5 z-10 cursor-pointer overflow-hidden rounded-lg border px-2 py-1.5 shadow-sm transition-all duration-150 hover:z-20 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta focus-visible:ring-offset-1 ${typeColors.border} text-left`}
+            className={`absolute left-1.5 right-1.5 z-10 cursor-pointer overflow-hidden rounded-md border px-2.5 py-1.5 text-left shadow-xs transition-colors duration-150 hover:z-20 hover:border-cta/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta/70 focus-visible:ring-offset-1 ${typeColors.border}`}
             style={{ top: `${top}px`, height: `${height}px` }}
         >
             {/* Opaque background — covers grid lines beneath the block */}
             <span className={`pointer-events-none absolute inset-0 bg-card`} />
             <span className={`pointer-events-none absolute inset-0 ${typeColors.bg}`} />
-            <span className="relative flex h-full flex-col items-start justify-center gap-1">
-                <span className="flex w-full items-center gap-1">
+            <span className="relative flex h-full flex-col items-start justify-center gap-0.5">
+                <span className="flex w-full items-center gap-1.5">
                     <p
-                        className={`truncate text-[11px] font-semibold leading-tight ${typeColors.text}`}
+                        className={`truncate text-xs font-medium leading-tight ${typeColors.text}`}
                     >
                         {typeLabel}
                     </p>
                     {booking.is_open_game ? (
-                        <span className="shrink-0 rounded-full bg-cta px-1.5 py-px text-[8px] font-bold uppercase leading-tight tracking-wide text-white">
+                        <span className="shrink-0 rounded-full border border-cta/40 bg-cta/10 px-1.5 py-px text-[8px] font-semibold uppercase leading-tight tracking-wide text-cta">
                             Open
                         </span>
                     ) : null}
                 </span>
-                <p className="shrink-0 text-[10px] font-medium leading-none text-foreground/70">
+                <p className="shrink-0 text-[11px] font-medium leading-none tabular-nums text-foreground/70">
                     {timeLabel}
                 </p>
                 {showStatus ? (
                     <span
-                        className={`mt-1.5 inline-block shrink-0 rounded-full py-px text-[9px] font-medium leading-tight ${statusColors.bg} ${statusColors.text}`}
+                        className={`mt-1 inline-block shrink-0 rounded-full border border-current/10 px-1.5 py-px text-[9px] font-medium leading-tight ${statusColors.bg} ${statusColors.text}`}
                     >
                         {statusLabel}
                     </span>

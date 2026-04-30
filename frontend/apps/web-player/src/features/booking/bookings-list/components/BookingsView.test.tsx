@@ -135,7 +135,7 @@ describe("BookingsView — data state", () => {
         const past = [makeBooking({ role: "organiser", invite_status: "accepted" })];
         render(<BookingsView {...defaultProps} activeTab="past" past={past} />);
         expect(screen.queryByRole("button", { name: /invite a player/i })).not.toBeInTheDocument();
-        expect(screen.getByText("accepted")).toBeInTheDocument();
+        expect(screen.getByText("Accepted")).toBeInTheDocument();
     });
 });
 
