@@ -13,7 +13,7 @@ function createDefaultForm(): RegisterPlayerFormState {
 
 export default function PlayersContainer(): JSX.Element {
     const { tenantSubdomain } = useAuth();
-    const { role } = useClubAccess();
+    const { clubId, role } = useClubAccess();
     const canRegister = canRegisterPlayer(role);
 
     const [showModal, setShowModal] = useState(false);
@@ -24,10 +24,6 @@ export default function PlayersContainer(): JSX.Element {
     const [successMsg, setSuccessMsg] = useState("");
 
     const registerPlayer = useRegisterPlayer();
-
-    const handleRefresh = useCallback((): void => {
-        // No list to refresh yet — placeholder for when list endpoint is added.
-    }, []);
 
     const handleRegisterClick = useCallback((): void => {
         setForm(createDefaultForm());
@@ -101,8 +97,8 @@ export default function PlayersContainer(): JSX.Element {
     return (
         <>
             <PlayersView
+                clubId={clubId}
                 canRegister={canRegister}
-                onRefresh={handleRefresh}
                 onRegisterClick={handleRegisterClick}
                 registerSuccessMsg={successMsg}
                 onDismissSuccess={() => setSuccessMsg("")}

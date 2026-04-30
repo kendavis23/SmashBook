@@ -8,7 +8,17 @@ import {
     formatUTCDateTime,
     formatUTCTime,
 } from "@repo/ui";
-import { ChevronLeft, ChevronRight, RefreshCw, Search, Settings2, Swords } from "lucide-react";
+import {
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    ChevronLeft,
+    ChevronRight,
+    RefreshCw,
+    Search,
+    Settings2,
+    Swords,
+} from "lucide-react";
 import type { OpenGame, OpenMatchListFilters } from "../../types";
 
 type Props = {
@@ -20,13 +30,47 @@ type Props = {
     onSearch: () => void;
     onRefresh: () => void;
     onManageClick: (gameId: string) => void;
+    refreshKey: number;
 };
 
 const PAGE_SIZE = 10;
 
+type SortKey = "court" | "date" | "start" | "end";
+type SortDirection = "asc" | "desc";
+
 const thCls =
     "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
 const tdCls = "px-3 py-3 text-sm text-foreground align-top";
+
+function compareText(a: string, b: string): number {
+    return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+}
+
+type SortHeaderProps = {
+    label: string;
+    sortKey: SortKey;
+    activeSortKey: SortKey | null;
+    direction: SortDirection;
+    onSort: (sortKey: SortKey) => void;
+};
+
+function SortHeader({ label, sortKey, activeSortKey, direction, onSort }: SortHeaderProps): JSX.Element {
+    const isActive = activeSortKey === sortKey;
+    const Icon = isActive ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+    return (
+        <button
+            type="button"
+            onClick={() => onSort(sortKey)}
+            className="-ml-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            aria-label={`Sort by ${label} ${isActive && direction === "asc" ? "descending" : "ascending"}`}
+            aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
+        >
+            <span>{label}</span>
+            <Icon size={12} className={isActive ? "text-foreground" : "text-muted-foreground/60"} />
+        </button>
+    );
+}
 
 export default function OpenMatchesView({
     openGames,
@@ -37,19 +81,62 @@ export default function OpenMatchesView({
     onSearch,
     onRefresh,
     onManageClick,
+    refreshKey,
 }: Props): JSX.Element {
     const [page, setPage] = useState(0);
+    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-    const totalPages = Math.ceil(openGames.length / PAGE_SIZE);
+    const sortedGames = useMemo(() => {
+        if (sortKey == null) return openGames;
+
+        const direction = sortDirection === "asc" ? 1 : -1;
+
+        return [...openGames].sort((a, b) => {
+            let result = 0;
+
+            if (sortKey === "court") {
+                result = compareText(a.court_name, b.court_name);
+            } else if (sortKey === "date") {
+                result = compareText(a.start_datetime.slice(0, 10), b.start_datetime.slice(0, 10));
+            } else if (sortKey === "start") {
+                result = compareText(a.start_datetime, b.start_datetime);
+            } else {
+                result = compareText(a.end_datetime, b.end_datetime);
+            }
+
+            return result * direction;
+        });
+    }, [openGames, sortKey, sortDirection]);
+
+    const totalPages = Math.ceil(sortedGames.length / PAGE_SIZE);
 
     const pageGames = useMemo(
-        () => openGames.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-        [openGames, page]
+        () => sortedGames.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [sortedGames, page]
     );
 
+    // Reset sort to backend order on refresh
+    useEffect(() => {
+        setPage(0);
+        setSortKey(null);
+        setSortDirection("asc");
+    }, [refreshKey]);
+
+    // Reset page on new search results
     useEffect(() => {
         setPage(0);
     }, [openGames]);
+
+    const handleSort = (nextSortKey: SortKey) => {
+        if (nextSortKey === sortKey) {
+            setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+        } else {
+            setSortKey(nextSortKey);
+            setSortDirection("asc");
+        }
+        setPage(0);
+    };
 
     return (
         <div className="w-full space-y-5">
@@ -191,10 +278,42 @@ export default function OpenMatchesView({
                         <table className="w-full min-w-[760px] border-collapse">
                             <thead>
                                 <tr className="border-b border-border bg-muted/30">
-                                    <th className={thCls}>Court</th>
-                                    <th className={thCls}>Date</th>
-                                    <th className={thCls}>Start</th>
-                                    <th className={thCls}>End</th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Court"
+                                            sortKey="court"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Date"
+                                            sortKey="date"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Start"
+                                            sortKey="start"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="End"
+                                            sortKey="end"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
                                     <th className={thCls}>Skill Range</th>
                                     <th className={thCls}>Slots Available</th>
                                     <th className={thCls}>Price</th>
@@ -290,8 +409,8 @@ export default function OpenMatchesView({
                     <div className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
                         <span className="text-xs text-muted-foreground">
                             {page * PAGE_SIZE + 1}–
-                            {Math.min((page + 1) * PAGE_SIZE, openGames.length)} of{" "}
-                            {openGames.length}
+                            {Math.min((page + 1) * PAGE_SIZE, sortedGames.length)} of{" "}
+                            {sortedGames.length}
                         </span>
                         <div className="flex items-center gap-1">
                             <button

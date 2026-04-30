@@ -26,22 +26,19 @@ function buildOpenMatchSearch(filters: OpenMatchListFilters): OpenMatchRouteSear
     };
 }
 
-function todayIso(): string {
-    return new Date().toISOString().slice(0, 10);
-}
-
 export default function OpenMatchesContainer(): JSX.Element {
     const navigate = useNavigate();
     const search = useSearch({ strict: false }) as OpenMatchSearch;
 
     const filtersFromUrl: OpenMatchListFilters = {
-        date: search.date ?? todayIso(),
-        minSkill: search.minSkill ?? "",
-        maxSkill: search.maxSkill ?? "",
+        date: search.date ?? "",
+        minSkill: search.minSkill ?? "1",
+        maxSkill: search.maxSkill ?? "7",
     };
 
     const [filters, setFilters] = useState<OpenMatchListFilters>(filtersFromUrl);
     const [appliedFilters, setAppliedFilters] = useState<OpenMatchListFilters>(filtersFromUrl);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const { clubId } = useClubAccess();
 
@@ -66,6 +63,7 @@ export default function OpenMatchesContainer(): JSX.Element {
     }, [filters, navigate]);
 
     const handleRefresh = useCallback((): void => {
+        setRefreshKey((k) => k + 1);
         void refetch();
     }, [refetch]);
 
@@ -90,6 +88,7 @@ export default function OpenMatchesContainer(): JSX.Element {
             onSearch={handleSearch}
             onRefresh={handleRefresh}
             onManageClick={handleManageClick}
+            refreshKey={refreshKey}
         />
     );
 }

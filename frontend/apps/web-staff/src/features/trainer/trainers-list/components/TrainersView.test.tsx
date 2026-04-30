@@ -17,6 +17,7 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onClose}>Dismiss</button>
         </div>
     ),
+    formatUTCDate: (value: string) => value,
 }));
 
 const mockTrainers: Trainer[] = [
@@ -40,14 +41,32 @@ const mockTrainers: Trainer[] = [
     },
 ];
 
-const firstTrainer = mockTrainers[0]!;
+const [aaravTrainer, miraTrainer] = mockTrainers as [Trainer, Trainer];
+
+function makeTrainer(index: number): Trainer {
+    return {
+        id: `trainer-${index}`,
+        club_id: "club-1",
+        user_id: `user-${index}`,
+        full_name: `Trainer ${String(index).padStart(2, "0")}`,
+        bio: null,
+        is_active: true,
+        availability: [],
+    };
+}
 
 const defaultProps = {
     trainers: [],
     isLoading: false,
     error: null,
     canManage: true,
+    selectedTrainer: null,
+    availability: [],
+    availabilityLoading: false,
+    availabilityError: null,
     onRefresh: vi.fn(),
+    onRefreshAvailability: vi.fn(),
+    onSelectTrainer: vi.fn(),
     onViewTrainer: vi.fn(),
 };
 
@@ -161,21 +180,70 @@ describe("TrainersView — trainers list", () => {
         expect(screen.getByText("Inactive")).toBeInTheDocument();
     });
 
-    it("renders correct availability slot count", () => {
-        render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getByText("2 slots")).toBeInTheDocument();
-        expect(screen.getByText("0 slots")).toBeInTheDocument();
+    it("renders selected trainer availability slot count", () => {
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={mockTrainers}
+                selectedTrainer={aaravTrainer}
+                availability={[
+                    {
+                        id: "avail-1",
+                        staff_profile_id: "trainer-001-abcd",
+                        day_of_week: 0,
+                        start_time: "14:00:00",
+                        end_time: "15:00:00",
+                        set_by_user_id: "user-1",
+                        effective_from: "2026-04-01",
+                        effective_until: null,
+                        notes: null,
+                        created_at: "2026-04-01T00:00:00Z",
+                        updated_at: "2026-04-01T00:00:00Z",
+                    },
+                    {
+                        id: "avail-2",
+                        staff_profile_id: "trainer-001-abcd",
+                        day_of_week: 0,
+                        start_time: "16:00:00",
+                        end_time: "17:00:00",
+                        set_by_user_id: "user-1",
+                        effective_from: "2026-04-01",
+                        effective_until: null,
+                        notes: null,
+                        created_at: "2026-04-01T00:00:00Z",
+                        updated_at: "2026-04-01T00:00:00Z",
+                    },
+                ]}
+            />
+        );
+        expect(screen.getByText("Weekly slots")).toBeInTheDocument();
+        expect(screen.getAllByText("2 slots").length).toBeGreaterThan(0);
     });
 
     it("uses singular 'slot' when count is 1", () => {
-        const singleSlotTrainer: Trainer[] = [
-            {
-                ...firstTrainer,
-                availability: [{ id: "avail-1" } as never],
-            },
-        ];
-        render(<TrainersView {...defaultProps} trainers={singleSlotTrainer} />);
-        expect(screen.getByText("1 slot")).toBeInTheDocument();
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={[aaravTrainer]}
+                selectedTrainer={aaravTrainer}
+                availability={[
+                    {
+                        id: "avail-1",
+                        staff_profile_id: "trainer-001-abcd",
+                        day_of_week: 0,
+                        start_time: "14:00:00",
+                        end_time: "15:00:00",
+                        set_by_user_id: "user-1",
+                        effective_from: "2026-04-01",
+                        effective_until: null,
+                        notes: null,
+                        created_at: "2026-04-01T00:00:00Z",
+                        updated_at: "2026-04-01T00:00:00Z",
+                    },
+                ]}
+            />
+        );
+        expect(screen.getAllByText("1 slot").length).toBeGreaterThan(0);
     });
 
     it("renders View button for each trainer", () => {
@@ -188,15 +256,94 @@ describe("TrainersView — trainers list", () => {
         render(
             <TrainersView {...defaultProps} trainers={mockTrainers} onViewTrainer={handleView} />
         );
-        fireEvent.click(screen.getAllByRole("button", { name: "View" })[0]!);
-        expect(handleView).toHaveBeenCalledWith(firstTrainer);
+        const [viewButton] = screen.getAllByRole("button", { name: "View" });
+
+        if (viewButton == null) {
+            throw new Error("Expected a trainer view button");
+        }
+        fireEvent.click(viewButton);
+        expect(handleView).toHaveBeenCalledWith(aaravTrainer);
     });
 
-    it("renders table column headers", () => {
+    it("renders list and profile headings", () => {
         render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
         expect(screen.getByText("Trainer")).toBeInTheDocument();
-        expect(screen.getByText("Availability Slots")).toBeInTheDocument();
+        expect(screen.getByText("Trainer list")).toBeInTheDocument();
         expect(screen.getByText("Status")).toBeInTheDocument();
-        expect(screen.getByText("Actions")).toBeInTheDocument();
+        expect(screen.getByText("Select a trainer")).toBeInTheDocument();
+    });
+
+    it("sorts trainers by name from sortable header", () => {
+        render(<TrainersView {...defaultProps} trainers={[miraTrainer, aaravTrainer]} />);
+
+        fireEvent.click(screen.getByRole("button", { name: "Sort by Trainer ascending" }));
+        expect(
+            screen.getAllByText(/Aarav Shah|Mira Kapoor/).map((node) => node.textContent)
+        ).toEqual(["Aarav Shah", "Mira Kapoor"]);
+
+        fireEvent.click(screen.getByRole("button", { name: "Sort by Trainer descending" }));
+        expect(
+            screen.getAllByText(/Aarav Shah|Mira Kapoor/).map((node) => node.textContent)
+        ).toEqual(["Mira Kapoor", "Aarav Shah"]);
+    });
+
+    it("paginates trainer rows", () => {
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={Array.from({ length: 11 }, (_, index) => makeTrainer(index + 1))}
+            />
+        );
+
+        expect(screen.getByText("1-10 of 11")).toBeInTheDocument();
+        expect(screen.getByText("Trainer 01")).toBeInTheDocument();
+        expect(screen.queryByText("Trainer 11")).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Page 2" }));
+        expect(screen.getByText("11-11 of 11")).toBeInTheDocument();
+        expect(screen.getByText("Trainer 11")).toBeInTheDocument();
+        expect(screen.queryByText("Trainer 01")).not.toBeInTheDocument();
+    });
+
+    it("selects a trainer from the list", () => {
+        const handleSelect = vi.fn();
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={mockTrainers}
+                onSelectTrainer={handleSelect}
+            />
+        );
+        fireEvent.click(screen.getByRole("button", { name: "Select trainer Aarav Shah" }));
+        expect(handleSelect).toHaveBeenCalledWith(aaravTrainer);
+    });
+
+    it("groups availability by day and formats times in 12-hour display", () => {
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={mockTrainers}
+                selectedTrainer={aaravTrainer}
+                availability={[
+                    {
+                        id: "avail-1",
+                        staff_profile_id: "trainer-001-abcd",
+                        day_of_week: 0,
+                        start_time: "14:00:00",
+                        end_time: "15:30:00",
+                        set_by_user_id: "user-1",
+                        effective_from: "2026-04-01",
+                        effective_until: null,
+                        notes: "Afternoon coaching",
+                        created_at: "2026-04-01T00:00:00Z",
+                        updated_at: "2026-04-01T00:00:00Z",
+                    },
+                ]}
+            />
+        );
+
+        expect(screen.getByText("Monday")).toBeInTheDocument();
+        expect(screen.getByText("2:00 PM - 3:30 PM")).toBeInTheDocument();
+        expect(screen.getByText("Afternoon coaching")).toBeInTheDocument();
     });
 });

@@ -323,6 +323,15 @@ describe("ManageBookingView — page mode", () => {
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
     });
 
+    it("labels participant invite and payment statuses", () => {
+        render(<ManageBookingView {...defaultProps} />);
+
+        expect(screen.getByText("Invite:")).toBeInTheDocument();
+        expect(screen.getByText("Payment:")).toBeInTheDocument();
+        expect(screen.getByText("accepted")).toBeInTheDocument();
+        expect(screen.getByText("paid")).toBeInTheDocument();
+    });
+
     it("does not render players section when booking has no players", () => {
         const bookingNoPlayers = { ...booking, players: [] };
         render(<ManageBookingView {...defaultProps} booking={bookingNoPlayers as never} />);

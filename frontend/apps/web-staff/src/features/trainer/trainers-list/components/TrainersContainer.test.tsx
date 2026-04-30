@@ -4,6 +4,7 @@ import TrainersContainer from "./TrainersContainer";
 
 const mockNavigate = vi.fn();
 const mockRefetch = vi.fn();
+const mockRefetchAvailability = vi.fn();
 let mockSearchResult: Record<string, unknown> = {};
 
 vi.mock("@tanstack/react-router", () => ({
@@ -13,6 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("../../hooks", () => ({
     useListTrainers: vi.fn(),
+    useGetTrainerAvailability: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
@@ -37,9 +39,11 @@ vi.mock("@repo/ui", () => ({
 }));
 
 import { useListTrainers } from "../../hooks";
+import { useGetTrainerAvailability } from "../../hooks";
 import { useClubAccess, canManageTrainers } from "../../store";
 
 const mockUseListTrainers = useListTrainers as ReturnType<typeof vi.fn>;
+const mockUseGetTrainerAvailability = useGetTrainerAvailability as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 const mockCanManageTrainers = canManageTrainers as ReturnType<typeof vi.fn>;
 
@@ -48,6 +52,7 @@ const mockTrainers = [
         id: "trainer-001-abcd",
         club_id: "club-1",
         user_id: "user-1",
+        full_name: "Aarav Shah",
         bio: "Expert padel coach",
         is_active: true,
         availability: [],
@@ -66,6 +71,12 @@ function setupMocks(overrides: Record<string, unknown> = {}) {
     });
     mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
     mockCanManageTrainers.mockReturnValue(true);
+    mockUseGetTrainerAvailability.mockReturnValue({
+        data: [],
+        isLoading: false,
+        error: null,
+        refetch: mockRefetchAvailability,
+    });
 }
 
 describe("TrainersContainer — loading state", () => {
@@ -78,6 +89,12 @@ describe("TrainersContainer — loading state", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);
+        mockUseGetTrainerAvailability.mockReturnValue({
+            data: [],
+            isLoading: false,
+            error: null,
+            refetch: mockRefetchAvailability,
+        });
         render(<TrainersContainer />);
         expect(screen.getByText("Loading trainers…")).toBeInTheDocument();
     });
@@ -93,6 +110,12 @@ describe("TrainersContainer — error state", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);
+        mockUseGetTrainerAvailability.mockReturnValue({
+            data: [],
+            isLoading: false,
+            error: null,
+            refetch: mockRefetchAvailability,
+        });
         render(<TrainersContainer />);
         expect(screen.getByText("Network error")).toBeInTheDocument();
     });
@@ -102,7 +125,7 @@ describe("TrainersContainer — trainers list", () => {
     it("renders trainers", () => {
         setupMocks();
         render(<TrainersContainer />);
-        expect(screen.getByText("Expert padel coach")).toBeInTheDocument();
+        expect(screen.getAllByText("Expert padel coach").length).toBeGreaterThan(0);
     });
 });
 
@@ -143,6 +166,12 @@ describe("TrainersContainer — success toast", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);
+        mockUseGetTrainerAvailability.mockReturnValue({
+            data: [],
+            isLoading: false,
+            error: null,
+            refetch: mockRefetchAvailability,
+        });
 
         render(<TrainersContainer />);
         expect(screen.getByText("Trainer created.")).toBeInTheDocument();
@@ -169,6 +198,12 @@ describe("TrainersContainer — role access", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "staff" });
         mockCanManageTrainers.mockReturnValue(false);
+        mockUseGetTrainerAvailability.mockReturnValue({
+            data: [],
+            isLoading: false,
+            error: null,
+            refetch: mockRefetchAvailability,
+        });
         render(<TrainersContainer />);
         expect(
             screen.getByText("No trainers are currently assigned to this club.")

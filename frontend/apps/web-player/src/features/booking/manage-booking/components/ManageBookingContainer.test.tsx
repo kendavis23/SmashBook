@@ -48,6 +48,10 @@ vi.mock("../../hooks", () => ({
     useRespondInvite: vi.fn(),
 }));
 
+vi.mock("@repo/player-domain/hooks", () => ({
+    useMyProfile: () => ({ data: { id: "p1" } }),
+}));
+
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
@@ -185,6 +189,7 @@ describe("ManageBookingContainer", () => {
             players: [
                 {
                     id: "p1",
+                    user_id: "p1",
                     full_name: "Alex",
                     role: "organiser",
                     invite_status: "accepted",
@@ -214,6 +219,7 @@ describe("ManageBookingContainer", () => {
             players: [
                 {
                     id: "p1",
+                    user_id: "p1",
                     full_name: "Alex",
                     role: "organiser",
                     invite_status: "accepted",
@@ -262,6 +268,7 @@ describe("ManageBookingContainer", () => {
             players: [
                 {
                     id: "p1",
+                    user_id: "p1",
                     full_name: "Alex",
                     role: "organiser",
                     invite_status: "accepted",
@@ -307,6 +314,7 @@ describe("ManageBookingContainer", () => {
             players: [
                 {
                     id: "p1",
+                    user_id: "p1",
                     full_name: "Alex",
                     role: "player",
                     invite_status: "pending",
@@ -336,6 +344,7 @@ describe("ManageBookingContainer", () => {
             players: [
                 {
                     id: "p1",
+                    user_id: "p1",
                     full_name: "Alex",
                     role: "player",
                     invite_status: "pending",
@@ -374,6 +383,7 @@ describe("ManageBookingContainer", () => {
             players: [
                 {
                     id: "p1",
+                    user_id: "p1",
                     full_name: "Alex",
                     role: "player",
                     invite_status: "pending",
@@ -418,6 +428,7 @@ describe("ManageBookingContainer", () => {
             players: [
                 {
                     id: "p1",
+                    user_id: "p1",
                     full_name: "Alex",
                     role: "organiser",
                     invite_status: "accepted",

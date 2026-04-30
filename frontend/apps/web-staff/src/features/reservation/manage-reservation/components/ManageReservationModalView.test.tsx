@@ -28,6 +28,11 @@ vi.mock("@repo/ui", () => ({
             min={minDate}
         />
     ),
+    RecurrencePicker: ({ value, onChange }: { value?: string; onChange: (v: string) => void }) => (
+        <button type="button" onClick={() => onChange("FREQ=WEEKLY;BYDAY=MO;COUNT=12")}>
+            RecurrencePicker {value}
+        </button>
+    ),
     TimeInput: ({
         className,
         ...props
@@ -63,7 +68,8 @@ vi.mock("@repo/ui", () => ({
             <span>{value}</span>
         </div>
     ),
-    formatUTCDateTime: (v: string) => v,
+    formatUTCDate: (v: string) => `date:${v}`,
+    formatUTCTime: (v: string) => `time:${v}`,
 }));
 
 const reservation = {
@@ -124,8 +130,12 @@ describe("ManageReservationModalView", () => {
 
         expect(screen.getAllByText("Type").length).toBeGreaterThan(0);
         expect(screen.getAllByText("Court").length).toBeGreaterThan(0);
-        expect(screen.getByText("Start")).toBeInTheDocument();
-        expect(screen.getByText("End")).toBeInTheDocument();
+        expect(screen.getAllByText("Date").length).toBeGreaterThan(0);
+        expect(screen.getAllByText("Time").length).toBeGreaterThan(0);
+        expect(screen.getByText("date:2026-04-20T09:00:00Z")).toBeInTheDocument();
+        expect(
+            screen.getByText("time:2026-04-20T09:00:00Z - time:2026-04-20T10:00:00Z")
+        ).toBeInTheDocument();
     });
 
     it("calls onClose when X button is clicked", () => {
@@ -211,24 +221,27 @@ describe("ManageReservationModalView", () => {
         expect(onFormChange).toHaveBeenCalledWith({ title: "Evening Block" });
     });
 
-    it("shows Allowed Booking Types section collapsed by default", () => {
+    it("shows Allowed Booking Types section expanded by default", () => {
         render(<ManageReservationModalView {...defaultProps} />);
 
-        expect(screen.getByRole("button", { name: /Allowed Booking Types/i })).toBeInTheDocument();
+        expect(screen.getByText("Allowed Booking Types")).toBeInTheDocument();
+        expect(screen.getByText("Regular")).toBeInTheDocument();
+        expect(screen.getByText("Training")).toBeInTheDocument();
     });
 
-    it("shows Recurrence section collapsed by default", () => {
+    it("shows recurring checkbox and does not show recurrence picker by default", () => {
         render(<ManageReservationModalView {...defaultProps} />);
 
-        expect(screen.getByRole("button", { name: /Recurrence/i })).toBeInTheDocument();
-        expect(screen.queryByLabelText("Enable recurring schedule")).not.toBeInTheDocument();
-    });
-
-    it("expands Recurrence section on toggle and shows recurring checkbox", () => {
-        render(<ManageReservationModalView {...defaultProps} />);
-
-        fireEvent.click(screen.getByRole("button", { name: /Recurrence/i }));
         expect(screen.getByLabelText("Enable recurring schedule")).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /RecurrencePicker/i })).not.toBeInTheDocument();
+    });
+
+    it("shows recurrence picker when isRecurring is true", () => {
+        render(
+            <ManageReservationModalView {...defaultProps} form={{ ...form, isRecurring: true }} />
+        );
+
+        expect(screen.getByRole("button", { name: /RecurrencePicker/i })).toBeInTheDocument();
     });
 
     it("date picker has min set to today", () => {

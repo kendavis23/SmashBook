@@ -130,6 +130,7 @@ const defaultProps = {
     onCreateClick: vi.fn(),
     onManageClick: vi.fn(),
     onRefresh: vi.fn(),
+    refreshKey: 0,
 };
 
 describe("ReservationsView — loading state", () => {

@@ -84,6 +84,7 @@ const defaultProps = {
     lockedCourtName: "Court 1",
     lockedDate: "2026-04-20",
     lockedStartTime: "09:00",
+    lockedEndTime: "10:00",
     onFormChange: vi.fn(),
     onSubmit: vi.fn((e: React.FormEvent) => e.preventDefault()),
     onCancel: vi.fn(),
@@ -92,11 +93,10 @@ const defaultProps = {
 };
 
 describe("NewReservationModalView", () => {
-    it("renders heading and description", () => {
+    it("renders heading", () => {
         render(<NewReservationModalView {...defaultProps} />);
 
         expect(screen.getByRole("heading", { name: "New Reservation" })).toBeInTheDocument();
-        expect(screen.getByText(/Review the details/i)).toBeInTheDocument();
     });
 
     it("renders context stat pills", () => {
@@ -105,7 +105,8 @@ describe("NewReservationModalView", () => {
         expect(screen.getByText("Court")).toBeInTheDocument();
         expect(screen.getAllByText("Court 1").length).toBeGreaterThan(0);
         expect(screen.getByText("Date")).toBeInTheDocument();
-        expect(screen.getByText("Start")).toBeInTheDocument();
+        expect(screen.getByText("Time")).toBeInTheDocument();
+        expect(screen.getByText("9:00 AM - 10:00 AM")).toBeInTheDocument();
     });
 
     it("calls onClose when X button is clicked", () => {
@@ -215,7 +216,7 @@ describe("NewReservationModalView", () => {
     it("formats locked date for display", () => {
         render(<NewReservationModalView {...defaultProps} lockedDate="2026-05-10" />);
 
-        expect(screen.getByText("10 May 2026")).toBeInTheDocument();
+        expect(screen.getByText("May 10, 2026")).toBeInTheDocument();
     });
 
     it("shows dash for date when no lockedDate provided", () => {

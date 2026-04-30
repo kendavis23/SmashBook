@@ -33,6 +33,7 @@ export function useUpdateSkillLevel(playerId: string) {
         mutationFn: (data: SkillLevelUpdateInput) => updateSkillLevelEndpoint(playerId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: playerKeys.skillHistory(playerId) });
+            queryClient.invalidateQueries({ queryKey: ["players", "search"] });
         },
     });
 }

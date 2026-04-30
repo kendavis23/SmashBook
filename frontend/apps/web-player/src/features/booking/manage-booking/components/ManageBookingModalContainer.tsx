@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { JSX } from "react";
 import { useGetBooking, useInvitePlayer, useRespondInvite } from "../../hooks";
+import { useMyProfile } from "@repo/player-domain/hooks";
 import type { Booking, PlayerRole, InviteStatus, PaymentStatus } from "../../types";
 import ManageBookingView from "./ManageBookingView";
 
@@ -14,7 +15,6 @@ type MyInfo = {
 type Props = {
     bookingId: string;
     clubId: string;
-    myInfo?: MyInfo;
     onClose: () => void;
     onSuccess?: () => void;
 };
@@ -22,11 +22,23 @@ type Props = {
 export default function ManageBookingModalContainer({
     bookingId,
     clubId,
-    myInfo,
     onClose,
     onSuccess,
 }: Props): JSX.Element {
     const { data: booking, isLoading, error, refetch } = useGetBooking(bookingId, clubId);
+    const { data: profile } = useMyProfile();
+
+    const myInfo: MyInfo | undefined = useMemo(() => {
+        if (!booking || !profile) return undefined;
+        const me = booking.players.find((p) => p.user_id === profile.id);
+        if (!me) return undefined;
+        return {
+            role: me.role,
+            inviteStatus: me.invite_status,
+            paymentStatus: me.payment_status,
+            amountDue: me.amount_due,
+        };
+    }, [booking, profile]);
 
     const playerRole: PlayerRole = myInfo?.role ?? "player";
     const [apiError, setApiError] = useState("");
@@ -94,6 +106,7 @@ export default function ManageBookingModalContainer({
             booking={booking as Booking}
             playerRole={playerRole}
             myInfo={myInfo}
+            myUserId={profile?.id}
             apiError={apiError}
             isInvitePending={inviteMutation.isPending}
             isRespondPending={respondMutation.isPending}

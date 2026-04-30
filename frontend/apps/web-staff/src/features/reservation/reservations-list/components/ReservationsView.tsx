@@ -12,6 +12,9 @@ import {
     SelectInput,
 } from "@repo/ui";
 import {
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
     CalendarX2,
     ChevronLeft,
     ChevronRight,
@@ -37,13 +40,47 @@ type Props = {
     onCreateClick: () => void;
     onManageClick: (reservationId: string) => void;
     onRefresh: () => void;
+    refreshKey: number;
 };
 
 const PAGE_SIZE = 10;
 
+type SortKey = "court" | "type" | "start" | "end";
+type SortDirection = "asc" | "desc";
+
 const thCls =
     "px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap";
 const tdCls = "px-3 py-3 text-sm text-foreground align-top";
+
+function compareText(a: string, b: string): number {
+    return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+}
+
+type SortHeaderProps = {
+    label: string;
+    sortKey: SortKey;
+    activeSortKey: SortKey | null;
+    direction: SortDirection;
+    onSort: (sortKey: SortKey) => void;
+};
+
+function SortHeader({ label, sortKey, activeSortKey, direction, onSort }: SortHeaderProps): JSX.Element {
+    const isActive = activeSortKey === sortKey;
+    const Icon = isActive ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+
+    return (
+        <button
+            type="button"
+            onClick={() => onSort(sortKey)}
+            className="-ml-1 inline-flex items-center gap-1 rounded px-1 py-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            aria-label={`Sort by ${label} ${isActive && direction === "asc" ? "descending" : "ascending"}`}
+            aria-sort={isActive ? (direction === "asc" ? "ascending" : "descending") : "none"}
+        >
+            <span>{label}</span>
+            <Icon size={12} className={isActive ? "text-foreground" : "text-muted-foreground/60"} />
+        </button>
+    );
+}
 
 export default function ReservationsView({
     reservations,
@@ -58,20 +95,67 @@ export default function ReservationsView({
     onCreateClick,
     onManageClick,
     onRefresh,
+    refreshKey,
 }: Props): JSX.Element {
     const [page, setPage] = useState(0);
+    const [sortKey, setSortKey] = useState<SortKey | null>(null);
+    const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-    const totalPages = Math.ceil(reservations.length / PAGE_SIZE);
+    const sortedReservations = useMemo(() => {
+        if (sortKey == null) return reservations;
+
+        const direction = sortDirection === "asc" ? 1 : -1;
+
+        return [...reservations].sort((a, b) => {
+            let result = 0;
+
+            if (sortKey === "court") {
+                const courtA = a.court_id ? (courtNameMap[a.court_id] ?? a.court_id) : "All courts";
+                const courtB = b.court_id ? (courtNameMap[b.court_id] ?? b.court_id) : "All courts";
+                result = compareText(courtA, courtB);
+            } else if (sortKey === "type") {
+                result = compareText(
+                    RESERVATION_TYPE_LABELS[a.reservation_type] ?? a.reservation_type,
+                    RESERVATION_TYPE_LABELS[b.reservation_type] ?? b.reservation_type
+                );
+            } else if (sortKey === "start") {
+                result = compareText(a.start_datetime, b.start_datetime);
+            } else {
+                result = compareText(a.end_datetime, b.end_datetime);
+            }
+
+            return result * direction;
+        });
+    }, [reservations, courtNameMap, sortKey, sortDirection]);
+
+    const totalPages = Math.ceil(sortedReservations.length / PAGE_SIZE);
 
     const pageReservations = useMemo(
-        () => reservations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
-        [reservations, page]
+        () => sortedReservations.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [sortedReservations, page]
     );
 
-    // Reset to first page when reservation list changes (new search)
+    // Reset sort to backend order on refresh
+    useEffect(() => {
+        setPage(0);
+        setSortKey(null);
+        setSortDirection("asc");
+    }, [refreshKey]);
+
+    // Reset page on new search results
     useEffect(() => {
         setPage(0);
     }, [reservations]);
+
+    const handleSort = (nextSortKey: SortKey) => {
+        if (nextSortKey === sortKey) {
+            setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+        } else {
+            setSortKey(nextSortKey);
+            setSortDirection("asc");
+        }
+        setPage(0);
+    };
 
     return (
         <div className="w-full space-y-5">
@@ -230,10 +314,42 @@ export default function ReservationsView({
                             <thead>
                                 <tr className="border-b border-border bg-muted/30">
                                     <th className={thCls}>Title</th>
-                                    <th className={thCls}>Court</th>
-                                    <th className={thCls}>Type</th>
-                                    <th className={thCls}>Start</th>
-                                    <th className={thCls}>End</th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Court"
+                                            sortKey="court"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Type"
+                                            sortKey="type"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="Start"
+                                            sortKey="start"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
+                                    <th className={thCls}>
+                                        <SortHeader
+                                            label="End"
+                                            sortKey="end"
+                                            activeSortKey={sortKey}
+                                            direction={sortDirection}
+                                            onSort={handleSort}
+                                        />
+                                    </th>
                                     <th className={thCls}>Booking Types</th>
                                     <th className={thCls}>Recurring</th>
                                     <th className={`${thCls} text-right`}>Actions</th>
@@ -347,8 +463,8 @@ export default function ReservationsView({
                     <div className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
                         <span className="text-xs text-muted-foreground">
                             {page * PAGE_SIZE + 1}–
-                            {Math.min((page + 1) * PAGE_SIZE, reservations.length)} of{" "}
-                            {reservations.length}
+                            {Math.min((page + 1) * PAGE_SIZE, sortedReservations.length)} of{" "}
+                            {sortedReservations.length}
                         </span>
                         <div className="flex items-center gap-1">
                             <button

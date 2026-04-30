@@ -23,7 +23,7 @@ export function ManageBookingModal({ bookingId, clubId, onClose, onSuccess }: Pr
               style={{ height: "90vh" }} keeps the shell fixed so sticky header/footer always show.
             */}
             <div
-                className="flex w-full max-w-2xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
+                className="flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
                 style={{ height: "90vh" }}
             >
                 <ManageBookingModalContainer

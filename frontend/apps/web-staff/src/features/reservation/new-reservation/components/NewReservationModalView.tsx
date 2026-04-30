@@ -1,16 +1,18 @@
 import type { FormEvent, JSX } from "react";
 import { CalendarRange, X } from "lucide-react";
-import { AlertToast, RecurrencePicker, StatPill, TimeInput } from "@repo/ui";
-import { SelectInput } from "@repo/ui";
+import { AlertToast, RecurrencePicker, SelectInput, TimeInput } from "@repo/ui";
 import type { CalendarReservationType } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
 import type { NewReservationFormState } from "./NewReservationView";
 
 const fieldCls =
-    "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
+    "w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground " +
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
-const labelCls = "mb-1 block text-sm font-medium text-foreground";
+const labelCls = "mb-1 block text-xs font-medium text-foreground";
+
+const dividerCls = "border-t-2 border-border/20 pt-3";
+const sectionCls = `space-y-2 ${dividerCls}`;
 
 const BOOKING_TYPE_OPTIONS = [
     { value: "regular", label: "Regular" },
@@ -19,6 +21,19 @@ const BOOKING_TYPE_OPTIONS = [
 ];
 
 const typeOptions = RESERVATION_TYPE_OPTIONS.filter((o) => o.value !== "");
+
+function DetailItem({ label, value }: { label: string; value: string }): JSX.Element {
+    return (
+        <li className="min-w-0 bg-muted/15 px-3 py-2">
+            <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
+                {label}
+            </span>
+            <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
+                {value}
+            </span>
+        </li>
+    );
+}
 
 type Props = {
     form: NewReservationFormState;
@@ -29,6 +44,7 @@ type Props = {
     lockedCourtName?: string;
     lockedDate?: string;
     lockedStartTime?: string;
+    lockedEndTime?: string;
     onFormChange: (patch: Partial<NewReservationFormState>) => void;
     onSubmit: (e: FormEvent) => void;
     onCancel: () => void;
@@ -45,6 +61,11 @@ function formatTime(t?: string): string {
     return `${h12}:${String(min ?? 0).padStart(2, "0")} ${ampm}`;
 }
 
+function formatTimeRange(start?: string, end?: string): string {
+    if (!start && !end) return "—";
+    return `${formatTime(start)} - ${formatTime(end)}`;
+}
+
 export function NewReservationModalView({
     form,
     titleError,
@@ -54,6 +75,7 @@ export function NewReservationModalView({
     lockedCourtName,
     lockedDate,
     lockedStartTime,
+    lockedEndTime,
     onFormChange,
     onSubmit,
     onCancel,
@@ -61,7 +83,7 @@ export function NewReservationModalView({
     onDismissError,
 }: Props): JSX.Element {
     const formattedDate = lockedDate
-        ? new Date(lockedDate + "T00:00:00").toLocaleDateString("en-GB", {
+        ? new Date(lockedDate + "T00:00:00").toLocaleDateString("en-US", {
               day: "numeric",
               month: "short",
               year: "numeric",
@@ -76,52 +98,39 @@ export function NewReservationModalView({
     };
 
     return (
-        <form onSubmit={onSubmit} noValidate className="flex h-full flex-col">
-            {/* ── Sticky header ── */}
-            <div className="shrink-0 border-b border-border px-6 pb-5 pt-6">
-                <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                            <CalendarRange size={18} />
-                        </div>
-                        <div>
-                            <h2 className="text-lg font-semibold text-foreground">
-                                New Reservation
-                            </h2>
-                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                Review the details and fill in the remaining information.
-                            </p>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Close modal"
-                        className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    >
-                        <X size={16} />
-                    </button>
+        <form onSubmit={onSubmit} noValidate className="flex h-full flex-col overflow-hidden rounded-xl bg-card">
+            <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-2.5">
+                <div className="min-w-0">
+                    <h2 className="text-base font-semibold tracking-tight text-foreground">
+                        New Reservation
+                    </h2>
                 </div>
-            </div>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    aria-label="Close modal"
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                    <X size={16} />
+                </button>
+            </header>
 
-            {/* ── Scrollable body ── */}
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <main className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3">
                 {apiError ? (
-                    <div className="mb-4">
-                        <AlertToast title={apiError} variant="error" onClose={onDismissError} />
-                    </div>
+                    <AlertToast title={apiError} variant="error" onClose={onDismissError} />
                 ) : null}
 
-                <div className="space-y-5">
-                    {/* Read-only context pills */}
-                    <div className="grid grid-cols-3 gap-2">
-                        <StatPill label="Court" value={lockedCourtName ?? "—"} />
-                        <StatPill label="Date" value={formattedDate} />
-                        <StatPill label="Start" value={formatTime(lockedStartTime)} />
-                    </div>
+                <ul className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70">
+                    <DetailItem label="Court" value={lockedCourtName ?? "—"} />
+                    <DetailItem label="Date" value={formattedDate} />
+                    <DetailItem
+                        label="Time"
+                        value={formatTimeRange(lockedStartTime, lockedEndTime)}
+                    />
+                </ul>
 
-                    {/* Title */}
-                    <div>
+                <section className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${dividerCls}`}>
+                    <div className="sm:col-span-2">
                         <label htmlFor="res-modal-title" className={labelCls}>
                             Title <span className="text-destructive">*</span>
                         </label>
@@ -138,94 +147,84 @@ export function NewReservationModalView({
                         ) : null}
                     </div>
 
-                    {/* Type + End Time */}
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label htmlFor="res-modal-type" className={labelCls}>
-                                Type <span className="text-destructive">*</span>
-                            </label>
-                            <SelectInput
-                                value={form.reservationType}
-                                onValueChange={(v) =>
-                                    onFormChange({ reservationType: v as CalendarReservationType })
-                                }
-                                options={typeOptions}
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="res-modal-end-time" className={labelCls}>
-                                End Time <span className="text-destructive">*</span>
-                            </label>
-                            <TimeInput
-                                id="res-modal-end-time"
-                                className={`${fieldCls} ${timeError ? "!border-destructive" : ""}`}
-                                value={form.endTime}
-                                onChange={(e) => onFormChange({ endTime: e.target.value })}
-                            />
-                        </div>
+                    <div>
+                        <label htmlFor="res-modal-type" className={labelCls}>
+                            Type <span className="text-destructive">*</span>
+                        </label>
+                        <SelectInput
+                            value={form.reservationType}
+                            onValueChange={(v) =>
+                                onFormChange({ reservationType: v as CalendarReservationType })
+                            }
+                            options={typeOptions}
+                        />
                     </div>
-
-                    {timeError ? <p className="text-xs text-destructive">{timeError}</p> : null}
-
-                    {/* Allowed Booking Types */}
-                    <div className="overflow-hidden rounded-lg border border-border p-4">
-                        <p className="mb-2 text-sm font-semibold text-foreground">
-                            Allowed Booking Types
-                        </p>
-                        <div className="flex flex-wrap gap-2">
-                            {BOOKING_TYPE_OPTIONS.map((opt) => {
-                                const checked = form.allowedBookingTypes.includes(opt.value);
-                                return (
-                                    <label
-                                        key={opt.value}
-                                        className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
-                                            checked
-                                                ? "border-cta bg-cta/10 text-cta"
-                                                : "border-border bg-background text-foreground hover:bg-muted/30"
-                                        }`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only"
-                                            checked={checked}
-                                            onChange={() => toggleBookingType(opt.value)}
-                                        />
-                                        {opt.label}
-                                    </label>
-                                );
-                            })}
-                        </div>
+                    <div>
+                        <label htmlFor="res-modal-end-time" className={labelCls}>
+                            End Time <span className="text-destructive">*</span>
+                        </label>
+                        <TimeInput
+                            id="res-modal-end-time"
+                            className={`${fieldCls} ${timeError ? "!border-destructive" : ""}`}
+                            value={form.endTime}
+                            onChange={(e) => onFormChange({ endTime: e.target.value })}
+                        />
                     </div>
+                    {timeError ? (
+                        <p className="sm:col-span-2 text-xs text-destructive">{timeError}</p>
+                    ) : null}
+                </section>
 
-                    {/* Recurring */}
-                    <div className="overflow-hidden rounded-lg border border-border p-4 space-y-3">
-                        <div className="flex items-center gap-3">
-                            <input
-                                id="res-modal-recurring"
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-border accent-cta"
-                                checked={form.isRecurring}
-                                onChange={(e) => onFormChange({ isRecurring: e.target.checked })}
-                            />
-                            <label
-                                htmlFor="res-modal-recurring"
-                                className="text-sm font-medium text-foreground"
-                            >
-                                Enable recurring schedule
-                            </label>
-                        </div>
-                        {form.isRecurring ? (
-                            <RecurrencePicker
-                                value={form.recurrenceRule}
-                                onChange={(rrule) => onFormChange({ recurrenceRule: rrule })}
-                            />
-                        ) : null}
+                <section className={sectionCls}>
+                    <p className={labelCls}>Allowed Booking Types</p>
+                    <div className="flex flex-wrap gap-2">
+                        {BOOKING_TYPE_OPTIONS.map((opt) => {
+                            const checked = form.allowedBookingTypes.includes(opt.value);
+                            return (
+                                <label
+                                    key={opt.value}
+                                    className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition ${
+                                        checked
+                                            ? "border-cta bg-cta/10 text-cta"
+                                            : "border-border bg-background text-foreground hover:bg-muted/30"
+                                    }`}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only"
+                                        checked={checked}
+                                        onChange={() => toggleBookingType(opt.value)}
+                                    />
+                                    {opt.label}
+                                </label>
+                            );
+                        })}
                     </div>
-                </div>
-            </div>
+                </section>
 
-            {/* ── Sticky footer ── */}
-            <div className="shrink-0 flex items-center justify-end gap-3 border-t border-border px-6 py-4">
+                <section className={sectionCls}>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-border/70 bg-muted/20 px-3 py-2">
+                        <input
+                            id="res-modal-recurring"
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-border accent-cta"
+                            checked={form.isRecurring}
+                            onChange={(e) => onFormChange({ isRecurring: e.target.checked })}
+                        />
+                        <span className="text-sm font-medium text-foreground">
+                            Enable recurring schedule
+                        </span>
+                    </label>
+                    {form.isRecurring ? (
+                        <RecurrencePicker
+                            value={form.recurrenceRule}
+                            onChange={(rrule) => onFormChange({ recurrenceRule: rrule })}
+                        />
+                    ) : null}
+                </section>
+            </main>
+
+            <footer className="flex shrink-0 items-center justify-end gap-3 border-t border-border px-5 py-2.5">
                 <button type="button" onClick={onCancel} className="btn-outline">
                     Cancel
                 </button>
@@ -235,9 +234,9 @@ export function NewReservationModalView({
                     className="btn-cta flex items-center gap-2"
                 >
                     <CalendarRange size={14} />
-                    {isPending ? "Creating…" : "Create Reservation"}
+                    {isPending ? "Creating..." : "Create Reservation"}
                 </button>
-            </div>
+            </footer>
         </form>
     );
 }

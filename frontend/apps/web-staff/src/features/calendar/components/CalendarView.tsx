@@ -59,31 +59,31 @@ function CalendarView({
             : `${formatShortDate(dateFrom)} – ${formatShortDate(dateTo)}`;
 
     return (
-        <div className="flex h-[calc(100vh-var(--nav-height)-var(--page-padding)-var(--page-padding))] flex-col gap-5">
+        <div className="flex h-[calc(100vh-var(--nav-height)-var(--page-padding)-var(--page-padding))] flex-col gap-3">
             <Breadcrumb items={[{ label: "Calendar" }]} />
 
-            <section className="card-surface flex min-h-0 flex-1 flex-col overflow-hidden">
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm">
                 {/* Header */}
-                <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
+                <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0 shrink-0">
                         <div className="flex flex-wrap items-center gap-2.5">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground">
                                 <CalendarDays size={16} />
                             </div>
                             <div className="min-w-0">
-                                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                <h1 className="text-lg font-semibold leading-6 tracking-tight text-foreground">
                                     Calendar
                                 </h1>
-                                <p className="mt-0.5 text-sm text-muted-foreground">{rangeLabel}</p>
+                                <p className="text-sm text-muted-foreground">{rangeLabel}</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {/* Court picker — week view only */}
                         {viewMode === "week" && courts.length > 0 ? (
                             <>
-                                <div className="w-[250px]">
+                                <div className="w-[220px]">
                                     <SelectInput
                                         value={selectedCourtId}
                                         onValueChange={(v) => onCourtChange(v)}
@@ -94,19 +94,19 @@ function CalendarView({
                                         aria-label="Select court"
                                     />
                                 </div>
-                                <span className="h-5 w-px bg-border" />
+                                <span className="hidden h-5 w-px bg-border sm:block" />
                             </>
                         ) : null}
 
                         {/* View mode toggle */}
-                        <div className="flex rounded-lg border border-border bg-muted/30 p-0.5">
+                        <div className="flex rounded-lg border border-border bg-muted/20 p-0.5">
                             {CALENDAR_VIEW_MODES.map((mode) => (
                                 <button
                                     key={mode.id}
                                     onClick={() => onViewModeChange(mode.id)}
-                                    className={`rounded-md px-3 py-2 text-xs font-medium transition ${
+                                    className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                                         viewMode === mode.id
-                                            ? "bg-card text-foreground shadow-sm"
+                                            ? "bg-card text-foreground shadow-xs"
                                             : "text-muted-foreground hover:text-foreground"
                                     }`}
                                     aria-pressed={viewMode === mode.id}
@@ -117,32 +117,32 @@ function CalendarView({
                         </div>
 
                         {/* Navigation + Refresh */}
-                        <div className="flex items-center">
+                        <div className="flex items-center rounded-lg border border-border bg-card">
                             <button
                                 onClick={onPrev}
                                 aria-label="Previous"
-                                className="flex h-9 w-9 items-center justify-center rounded-l-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-8 w-8 items-center justify-center rounded-l-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <ChevronLeft size={14} />
                             </button>
                             <button
                                 onClick={onToday}
-                                className="-mx-px h-9 border border-border bg-card px-3 text-xs font-medium text-foreground transition hover:bg-muted"
+                                className="h-8 border-x border-border px-3 text-xs font-medium text-foreground transition hover:bg-muted"
                             >
                                 Today
                             </button>
                             <button
                                 onClick={onNext}
                                 aria-label="Next"
-                                className="flex h-9 w-9 items-center justify-center border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-8 w-8 items-center justify-center text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <ChevronRight size={14} />
                             </button>
-                            <span className="-mx-px h-9 w-px bg-border" />
+                            <span className="h-5 w-px bg-border" />
                             <button
                                 onClick={onRefresh}
                                 aria-label="Refresh calendar"
-                                className="flex h-9 w-9 items-center justify-center rounded-r-lg border border-border bg-card text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-8 w-8 items-center justify-center rounded-r-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                             >
                                 <RefreshCw size={14} />
                             </button>

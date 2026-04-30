@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { JSX, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { PlayerSearchResult } from "@repo/player-domain/models";
 import { useSearchPlayers } from "../hooks";
@@ -16,6 +16,7 @@ type Props = {
     placeholder?: string;
     error?: boolean;
     disabled?: boolean;
+    onSelect?: (player: PlayerSearchResult) => void;
 };
 
 function useDebouncedValue(value: string, delayMs: number): string {
@@ -38,6 +39,7 @@ export function PlayerAutocomplete({
     placeholder = "Search player name",
     error = false,
     disabled = false,
+    onSelect,
 }: Props): JSX.Element {
     const generatedInputId = useId();
     const resolvedInputId = inputId ?? generatedInputId;
@@ -45,7 +47,9 @@ export function PlayerAutocomplete({
     const [inputValue, setInputValue] = useState("");
     const [selectedPlayer, setSelectedPlayer] = useState<PlayerSearchResult | null>(null);
     const [isOpen, setIsOpen] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(-1);
     const closeTimerRef = useRef<number | null>(null);
+    const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     const trimmedInput = inputValue.trim();
     const debouncedSearch = useDebouncedValue(trimmedInput, 300);
@@ -64,6 +68,7 @@ export function PlayerAutocomplete({
     } = useSearchPlayers(params, {
         enabled: canSearch && !disabled,
     });
+    const playerIds = useMemo(() => players.map((player) => player.id).join("\n"), [players]);
 
     useEffect(() => {
         if (!value) {
@@ -71,6 +76,10 @@ export function PlayerAutocomplete({
             setInputValue("");
         }
     }, [value]);
+
+    useEffect(() => {
+        setActiveIndex(-1);
+    }, [playerIds]);
 
     const handleInputChange = (nextValue: string): void => {
         setInputValue(nextValue);
@@ -89,10 +98,43 @@ export function PlayerAutocomplete({
     };
 
     const handleSelect = (player: PlayerSearchResult): void => {
-        setSelectedPlayer(player);
-        setInputValue(player.full_name);
         setIsOpen(false);
-        onChange(player.id);
+        setActiveIndex(-1);
+        if (onSelect) {
+            setSelectedPlayer(null);
+            setInputValue("");
+            onSelect(player);
+            onChange(player.id);
+        } else {
+            setSelectedPlayer(player);
+            setInputValue(player.full_name);
+            onChange(player.id);
+        }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
+        if (!showDropdown || !showResults) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            const next = activeIndex < players.length - 1 ? activeIndex + 1 : 0;
+            setActiveIndex(next);
+            optionRefs.current[next]?.scrollIntoView?.({ block: "nearest" });
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            const next = activeIndex > 0 ? activeIndex - 1 : players.length - 1;
+            setActiveIndex(next);
+            optionRefs.current[next]?.scrollIntoView?.({ block: "nearest" });
+        } else if (e.key === "Enter" && activeIndex >= 0) {
+            e.preventDefault();
+            const player = players[activeIndex];
+            if (player) {
+                handleSelect(player);
+            }
+        } else if (e.key === "Escape") {
+            setIsOpen(false);
+            setActiveIndex(-1);
+        }
     };
 
     const cancelClose = (): void => {
@@ -121,6 +163,7 @@ export function PlayerAutocomplete({
                 aria-expanded={showDropdown}
                 aria-controls={listId}
                 aria-autocomplete="list"
+                aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
                 className={fieldCls + (error ? " !border-destructive" : "")}
                 placeholder={placeholder}
                 value={inputValue}
@@ -128,6 +171,7 @@ export function PlayerAutocomplete({
                 onChange={(e) => handleInputChange(e.target.value)}
                 onFocus={() => setIsOpen(true)}
                 onBlur={scheduleClose}
+                onKeyDown={handleKeyDown}
             />
 
             {showDropdown ? (
@@ -152,13 +196,17 @@ export function PlayerAutocomplete({
                         <div className="px-3 py-2 text-muted-foreground">No players found</div>
                     ) : null}
                     {showResults
-                        ? players.map((player) => (
+                        ? players.map((player, i) => (
                               <button
                                   key={player.id}
+                                  id={`${listId}-${i}`}
+                                  ref={(el) => {
+                                      optionRefs.current[i] = el;
+                                  }}
                                   type="button"
                                   role="option"
-                                  aria-selected={value === player.id}
-                                  className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-foreground transition hover:bg-muted"
+                                  aria-selected={i === activeIndex}
+                                  className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-foreground transition hover:bg-muted ${i === activeIndex ? "bg-muted" : ""}`}
                                   onClick={() => handleSelect(player)}
                               >
                                   <span>{player.full_name}</span>

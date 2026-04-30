@@ -4,11 +4,13 @@ import {
     Breadcrumb,
     AlertToast,
     DatePicker,
+    RecurrencePicker,
     TimeInput,
-    formatUTCDateTime,
+    formatUTCDate,
+    formatUTCTime,
     SelectInput,
 } from "@repo/ui";
-import { Calendar, Clock, Repeat, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarDays, Clock3, Repeat, ShieldCheck, Trash2 } from "lucide-react";
 import type { CalendarReservation, CalendarReservationType } from "../../types";
 import {
     RESERVATION_TYPE_LABELS,
@@ -22,6 +24,14 @@ const fieldCls =
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
 const labelCls = "mb-1 block text-sm font-medium text-foreground";
+
+const sectionShellCls =
+    "rounded-xl border border-border/80 bg-card/95 p-4 shadow-sm shadow-black/5 sm:p-5";
+
+const sectionHeaderCls =
+    "mb-4 flex items-start justify-between gap-3 border-b border-border/60 pb-3";
+
+const sectionKickerCls = "text-[11px] font-semibold uppercase tracking-wide text-cta";
 
 const BOOKING_TYPE_OPTIONS = [
     { value: "regular", label: "Regular" },
@@ -84,6 +94,11 @@ export default function ManageReservationView({
     const colors =
         RESERVATION_TYPE_COLORS[reservation.reservation_type] ??
         RESERVATION_TYPE_COLORS["private_hire"]!;
+
+    const courtName = useMemo(
+        () => courts.find((court) => court.id === reservation.court_id)?.name ?? "—",
+        [courts, reservation.court_id]
+    );
 
     const todayStr = useMemo(() => {
         const d = new Date();
@@ -244,93 +259,64 @@ export default function ManageReservationView({
             </div>
 
             {form.isRecurring ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label htmlFor="mr-rrule" className={labelCls}>
-                            Recurrence Rule
-                            <span className="ml-1 text-xs font-normal text-muted-foreground">
-                                (RRULE)
-                            </span>
-                        </label>
-                        <input
-                            id="mr-rrule"
-                            type="text"
-                            className={fieldCls}
-                            placeholder="FREQ=WEEKLY;BYDAY=MO;COUNT=12"
-                            value={form.recurrenceRule}
-                            onChange={(e) => onFormChange({ recurrenceRule: e.target.value })}
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="mr-rrule-end" className={labelCls}>
-                            End Date
-                        </label>
-                        <DatePicker
-                            value={form.recurrenceEndDate}
-                            onChange={(v) => onFormChange({ recurrenceEndDate: v })}
-                        />
-                    </div>
-                </div>
+                <RecurrencePicker
+                    value={form.recurrenceRule || undefined}
+                    onChange={(rrule) => onFormChange({ recurrenceRule: rrule })}
+                />
             ) : null}
         </div>
     );
 
-    // ── Page mode ────────────────────────────────────────────────────────────
     return (
         <div className="w-full space-y-5">
             <Breadcrumb
                 items={[{ label: "Reservations", onClick: onBack }, { label: reservation.title }]}
             />
 
-            {/* Page header card */}
-            <div className="card-surface overflow-hidden">
-                <div className="flex flex-col gap-4 border-b border-border bg-muted/10 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                    <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                                {reservation.title}
-                            </h1>
-                            <span
-                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${colors.bg} ${colors.text}`}
-                            >
-                                {RESERVATION_TYPE_LABELS[reservation.reservation_type] ??
-                                    reservation.reservation_type}
-                            </span>
-                            {reservation.is_recurring ? (
-                                <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                                    <Repeat size={10} />
-                                    Recurring
+            <section className="w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg shadow-black/5">
+                <header className="relative overflow-hidden border-b border-border bg-muted/15 px-4 py-4 sm:px-6">
+                    <div className="absolute inset-y-0 right-0 hidden w-1/3 bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,0.14),transparent_42%)] sm:block" />
+                    <div className="relative flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                        <div className="min-w-0">
+                            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-border bg-background/80 px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+                                <CalendarDays size={13} className="text-cta" />
+                                Manage reservation
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                                    {reservation.title}
+                                </h1>
+                                <span
+                                    className={`rounded-full px-3 py-1 text-xs font-medium ${colors.bg} ${colors.text}`}
+                                >
+                                    {RESERVATION_TYPE_LABELS[reservation.reservation_type] ??
+                                        reservation.reservation_type}
                                 </span>
-                            ) : null}
+                                {reservation.is_recurring ? (
+                                    <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                                        <Repeat size={12} />
+                                        Recurring
+                                    </span>
+                                ) : null}
+                            </div>
                         </div>
-                        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                                <Calendar size={12} />
-                                {formatUTCDateTime(reservation.start_datetime)}
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Clock size={12} />
-                                {formatUTCDateTime(reservation.end_datetime)}
-                            </span>
-                        </div>
+
+                        {canEdit ? (
+                            <button
+                                type="button"
+                                onClick={onDelete}
+                                disabled={isDeleting}
+                                className="btn-destructive whitespace-nowrap"
+                            >
+                                <Trash2 size={14} />
+                                {isDeleting ? "Deleting…" : "Delete Reservation"}
+                            </button>
+                        ) : null}
                     </div>
+                </header>
 
-                    {canEdit ? (
-                        <button
-                            type="button"
-                            onClick={onDelete}
-                            disabled={isDeleting}
-                            className="btn-destructive flex shrink-0 items-center gap-1.5"
-                        >
-                            <Trash2 size={14} />
-                            {isDeleting ? "Deleting…" : "Delete Reservation"}
-                        </button>
-                    ) : null}
-                </div>
-
-                {/* Alerts */}
-                {apiError || updateSuccess ? (
-                    <div className="px-5 pt-4 sm:px-6">
+                <div className="bg-background/40 px-4 py-5 sm:px-6">
+                    <div className="space-y-4">
                         {apiError ? (
                             <AlertToast title={apiError} variant="error" onClose={onDismissError} />
                         ) : null}
@@ -341,99 +327,184 @@ export default function ManageReservationView({
                                 onClose={() => {}}
                             />
                         ) : null}
-                    </div>
-                ) : null}
 
-                {/* Form body */}
-                <div className="px-5 py-6 sm:px-6">
-                    {canEdit ? (
-                        <form onSubmit={onSubmit} noValidate>
-                            <div className="space-y-4">
-                                {/* Core Details */}
-                                <section className="form-section">
-                                    <div className="mb-4 flex items-start gap-2.5">
-                                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cta/10">
-                                            <Calendar size={14} className="text-cta" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-foreground">
-                                                Core Details
-                                            </h3>
-                                            <p className="mt-0.5 text-sm text-muted-foreground">
-                                                Update the title, type, court, and schedule.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {coreDetailsSection}
-                                </section>
+                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]">
+                            <div>
+                                {canEdit ? (
+                                    <form onSubmit={onSubmit} noValidate>
+                                        <div className="space-y-4">
+                                            <section className={sectionShellCls}>
+                                                <div className={sectionHeaderCls}>
+                                                    <div>
+                                                        <p className={sectionKickerCls}>Details</p>
+                                                        <h3 className="mt-1 text-base font-semibold text-foreground">
+                                                            Core Details
+                                                        </h3>
+                                                        <p className="mt-1 text-sm text-muted-foreground">
+                                                            Update the title, type, court, and
+                                                            schedule.
+                                                        </p>
+                                                    </div>
+                                                    <Clock3
+                                                        size={18}
+                                                        className="mt-1 text-muted-foreground"
+                                                    />
+                                                </div>
+                                                {coreDetailsSection}
+                                            </section>
 
-                                {/* Allowed Booking Types */}
-                                <section className="form-section">
-                                    <div className="mb-4 flex items-start gap-2.5">
-                                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cta/10">
-                                            <ShieldCheck size={14} className="text-cta" />
-                                        </div>
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-foreground">
-                                                Allowed Booking Types{" "}
-                                                <span className="text-xs font-normal text-muted-foreground">
-                                                    (optional)
-                                                </span>
-                                            </h3>
-                                            <p className="mt-0.5 text-sm text-muted-foreground">
-                                                Restrict which booking types are permitted during
-                                                this reservation.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {allowedTypesSection}
-                                </section>
+                                            <section className={sectionShellCls}>
+                                                <div className={sectionHeaderCls}>
+                                                    <div>
+                                                        <p className={sectionKickerCls}>
+                                                            Booking rules
+                                                        </p>
+                                                        <h3 className="mt-1 text-base font-semibold text-foreground">
+                                                            Allowed Booking Types{" "}
+                                                            <span className="text-xs font-normal text-muted-foreground">
+                                                                (optional)
+                                                            </span>
+                                                        </h3>
+                                                        <p className="mt-1 text-sm text-muted-foreground">
+                                                            Restrict which booking types are
+                                                            permitted during this reservation.
+                                                        </p>
+                                                    </div>
+                                                    <ShieldCheck
+                                                        size={18}
+                                                        className="mt-1 text-muted-foreground"
+                                                    />
+                                                </div>
+                                                {allowedTypesSection}
+                                            </section>
 
-                                {/* Recurrence */}
-                                <section className="form-section">
-                                    <div className="mb-4 flex items-start gap-2.5">
-                                        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-cta/10">
-                                            <Repeat size={14} className="text-cta" />
+                                            <section className={sectionShellCls}>
+                                                <div className={sectionHeaderCls}>
+                                                    <div>
+                                                        <p className={sectionKickerCls}>
+                                                            Schedule
+                                                        </p>
+                                                        <h3 className="mt-1 text-base font-semibold text-foreground">
+                                                            Recurring{" "}
+                                                            <span className="text-xs font-normal text-muted-foreground">
+                                                                (optional)
+                                                            </span>
+                                                        </h3>
+                                                        <p className="mt-1 text-sm text-muted-foreground">
+                                                            Configure whether this reservation
+                                                            repeats on a schedule.
+                                                        </p>
+                                                    </div>
+                                                    <Repeat
+                                                        size={18}
+                                                        className="mt-1 text-muted-foreground"
+                                                    />
+                                                </div>
+                                                {recurrenceSection}
+                                            </section>
                                         </div>
-                                        <div>
-                                            <h3 className="text-sm font-semibold text-foreground">
-                                                Recurring{" "}
-                                                <span className="text-xs font-normal text-muted-foreground">
-                                                    (optional)
-                                                </span>
-                                            </h3>
-                                            <p className="mt-0.5 text-sm text-muted-foreground">
-                                                Configure whether this reservation repeats on a
-                                                schedule.
-                                            </p>
+
+                                        <div className="mt-5 flex items-center justify-end gap-3 border-t border-border/70 pt-5">
+                                            <button
+                                                type="button"
+                                                onClick={onBack}
+                                                className="btn-outline"
+                                            >
+                                                Back
+                                            </button>
+                                            <button
+                                                type="submit"
+                                                disabled={!isDirty || isUpdating}
+                                                className="btn-cta disabled:opacity-50"
+                                            >
+                                                {isUpdating ? "Saving…" : "Save Changes"}
+                                            </button>
                                         </div>
+                                    </form>
+                                ) : (
+                                    <div className="flex justify-start pt-2">
+                                        <button
+                                            type="button"
+                                            onClick={onBack}
+                                            className="btn-outline"
+                                        >
+                                            Back
+                                        </button>
                                     </div>
-                                    {recurrenceSection}
-                                </section>
+                                )}
                             </div>
 
-                            <div className="mt-8 flex items-center justify-end gap-3 border-t border-border pt-5">
-                                <button type="button" onClick={onBack} className="btn-outline">
-                                    Back
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={!isDirty || isUpdating}
-                                    className="btn-cta disabled:opacity-50"
-                                >
-                                    {isUpdating ? "Saving…" : "Save Changes"}
-                                </button>
+                            <div className="space-y-5">
+                                <section className={sectionShellCls}>
+                                    <div className={sectionHeaderCls}>
+                                        <div>
+                                            <p className={sectionKickerCls}>Details</p>
+                                            <h3 className="mt-1 text-base font-semibold text-foreground">
+                                                Overview
+                                            </h3>
+                                        </div>
+                                    </div>
+                                    <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                                            <dt className="text-xs font-medium text-muted-foreground">
+                                                Type
+                                            </dt>
+                                            <dd className="mt-0.5 text-sm text-foreground">
+                                                {RESERVATION_TYPE_LABELS[
+                                                    reservation.reservation_type
+                                                ] ?? reservation.reservation_type}
+                                            </dd>
+                                        </div>
+                                        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                                            <dt className="text-xs font-medium text-muted-foreground">
+                                                Court
+                                            </dt>
+                                            <dd className="mt-0.5 text-sm text-foreground">
+                                                {courtName}
+                                            </dd>
+                                        </div>
+                                        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                                            <dt className="text-xs font-medium text-muted-foreground">
+                                                Date
+                                            </dt>
+                                            <dd className="mt-0.5 text-sm text-foreground">
+                                                {formatUTCDate(reservation.start_datetime)}
+                                            </dd>
+                                        </div>
+                                        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                                            <dt className="text-xs font-medium text-muted-foreground">
+                                                Time
+                                            </dt>
+                                            <dd className="mt-0.5 text-sm text-foreground">
+                                                {formatUTCTime(reservation.start_datetime)} -{" "}
+                                                {formatUTCTime(reservation.end_datetime)}
+                                            </dd>
+                                        </div>
+                                        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                                            <dt className="text-xs font-medium text-muted-foreground">
+                                                Recurring
+                                            </dt>
+                                            <dd className="mt-0.5 text-sm text-foreground">
+                                                {reservation.is_recurring ? "Yes" : "No"}
+                                            </dd>
+                                        </div>
+                                        <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                                            <dt className="text-xs font-medium text-muted-foreground">
+                                                Allowed types
+                                            </dt>
+                                            <dd className="mt-0.5 text-sm text-foreground">
+                                                {reservation.allowed_booking_types?.length
+                                                    ? reservation.allowed_booking_types.join(", ")
+                                                    : "Any"}
+                                            </dd>
+                                        </div>
+                                    </dl>
+                                </section>
                             </div>
-                        </form>
-                    ) : (
-                        <div className="flex justify-start pt-2">
-                            <button type="button" onClick={onBack} className="btn-outline">
-                                Back
-                            </button>
                         </div>
-                    )}
+                    </div>
                 </div>
-            </div>
+            </section>
         </div>
     );
 }

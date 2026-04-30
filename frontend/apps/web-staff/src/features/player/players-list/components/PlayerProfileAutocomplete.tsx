@@ -1,22 +1,18 @@
 import type { JSX, KeyboardEvent } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { PlayerSearchResult } from "@repo/staff-domain/models";
-import { useSearchPlayers } from "../hooks";
+import { Search } from "lucide-react";
+import type { PlayerSearchResult } from "../../hooks";
+import { useSearchPlayers } from "../../hooks";
 
 const fieldCls =
-    "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
+    "w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm text-foreground " +
     "placeholder:text-muted-foreground transition focus:border-cta focus:outline-none focus:ring-2 focus:ring-cta-ring/30";
 
 type Props = {
-    value: string;
-    onChange: (playerId: string) => void;
     clubId?: string | null;
-    label: string;
-    inputId?: string;
-    placeholder?: string;
-    error?: boolean;
-    disabled?: boolean;
-    onSelect?: (player: PlayerSearchResult) => void;
+    selectedPlayer: PlayerSearchResult | null;
+    onSelect: (player: PlayerSearchResult) => void;
+    onClear: () => void;
 };
 
 function useDebouncedValue(value: string, delayMs: number): string {
@@ -30,30 +26,27 @@ function useDebouncedValue(value: string, delayMs: number): string {
     return debounced;
 }
 
-export function PlayerAutocomplete({
-    value,
-    onChange,
+export default function PlayerProfileAutocomplete({
     clubId,
-    label,
-    inputId,
-    placeholder = "Search player name",
-    error = false,
-    disabled = false,
+    selectedPlayer,
     onSelect,
+    onClear,
 }: Props): JSX.Element {
-    const generatedInputId = useId();
-    const resolvedInputId = inputId ?? generatedInputId;
-    const listId = `${resolvedInputId}-listbox`;
-    const [inputValue, setInputValue] = useState("");
-    const [selectedPlayer, setSelectedPlayer] = useState<PlayerSearchResult | null>(null);
+    const inputId = useId();
+    const listId = `${inputId}-listbox`;
+    const [inputValue, setInputValue] = useState(selectedPlayer?.full_name ?? "");
     const [isOpen, setIsOpen] = useState(false);
     const [activeIndex, setActiveIndex] = useState(-1);
     const closeTimerRef = useRef<number | null>(null);
     const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
+    useEffect(() => {
+        setInputValue(selectedPlayer?.full_name ?? "");
+    }, [selectedPlayer]);
+
     const trimmedInput = inputValue.trim();
     const debouncedSearch = useDebouncedValue(trimmedInput, 300);
-    const canSearch = debouncedSearch.length >= 2;
+    const canSearch = debouncedSearch.length >= 1;
     const params = useMemo(
         () => ({
             q: debouncedSearch,
@@ -66,17 +59,9 @@ export function PlayerAutocomplete({
         isFetching,
         isError,
     } = useSearchPlayers(params, {
-        enabled: canSearch && !disabled,
+        enabled: canSearch && Boolean(clubId),
     });
 
-    useEffect(() => {
-        if (!value) {
-            setSelectedPlayer(null);
-            setInputValue("");
-        }
-    }, [value]);
-
-    // Reset active index when results change
     useEffect(() => {
         setActiveIndex(-1);
     }, [players]);
@@ -86,30 +71,20 @@ export function PlayerAutocomplete({
         setIsOpen(true);
 
         if (!nextValue.trim()) {
-            setSelectedPlayer(null);
-            onChange("");
+            onClear();
             return;
         }
 
         if (selectedPlayer && nextValue !== selectedPlayer.full_name) {
-            setSelectedPlayer(null);
-            onChange("");
+            onClear();
         }
     };
 
     const handleSelect = (player: PlayerSearchResult): void => {
+        setInputValue(player.full_name);
         setIsOpen(false);
         setActiveIndex(-1);
-        if (onSelect) {
-            setSelectedPlayer(null);
-            setInputValue("");
-            onSelect(player);
-            onChange(player.id);
-        } else {
-            setSelectedPlayer(player);
-            setInputValue(player.full_name);
-            onChange(player.id);
-        }
+        onSelect(player);
     };
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
@@ -149,25 +124,28 @@ export function PlayerAutocomplete({
     };
 
     const showDropdown = isOpen && trimmedInput.length > 0;
-    const showHint = trimmedInput.length > 0 && trimmedInput.length < 2;
+    const showHint = false;
     const showResults = canSearch && !isFetching && !isError && players.length > 0;
     const showEmpty = canSearch && !isFetching && !isError && players.length === 0;
 
     return (
         <div className="relative">
+            <Search
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-muted-foreground"
+            />
             <input
-                id={resolvedInputId}
+                id={inputId}
                 type="text"
                 role="combobox"
-                aria-label={label}
+                aria-label="Player"
                 aria-expanded={showDropdown}
                 aria-controls={listId}
                 aria-autocomplete="list"
                 aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
-                className={fieldCls + (error ? " !border-destructive" : "")}
-                placeholder={placeholder}
+                className={fieldCls}
+                placeholder="Search player name"
                 value={inputValue}
-                disabled={disabled}
                 onChange={(e) => handleInputChange(e.target.value)}
                 onFocus={() => setIsOpen(true)}
                 onBlur={scheduleClose}
@@ -187,7 +165,7 @@ export function PlayerAutocomplete({
                         </div>
                     ) : null}
                     {canSearch && isFetching ? (
-                        <div className="px-3 py-2 text-muted-foreground">Searching players…</div>
+                        <div className="px-3 py-2 text-muted-foreground">Searching players...</div>
                     ) : null}
                     {canSearch && isError ? (
                         <div className="px-3 py-2 text-destructive">Failed to load players</div>
@@ -200,16 +178,20 @@ export function PlayerAutocomplete({
                               <button
                                   key={player.id}
                                   id={`${listId}-${i}`}
-                                  ref={(el) => { optionRefs.current[i] = el; }}
+                                  ref={(el) => {
+                                      optionRefs.current[i] = el;
+                                  }}
                                   type="button"
                                   role="option"
                                   aria-selected={i === activeIndex}
-                                  className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-foreground transition hover:bg-muted ${i === activeIndex ? "bg-muted" : ""}`}
+                                  className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-foreground transition hover:bg-muted ${
+                                      i === activeIndex ? "bg-muted" : ""
+                                  }`}
                                   onClick={() => handleSelect(player)}
                               >
-                                  <span>{player.full_name}</span>
-                                  {player.skill_level ? (
-                                      <span className="text-xs text-muted-foreground">
+                                  <span className="min-w-0 truncate">{player.full_name}</span>
+                                  {player.skill_level != null ? (
+                                      <span className="shrink-0 text-xs text-muted-foreground">
                                           {player.skill_level}
                                       </span>
                                   ) : null}

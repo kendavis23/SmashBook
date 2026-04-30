@@ -85,6 +85,7 @@ function renderView(overrides: Partial<Parameters<typeof OpenMatchesView>[0]> = 
         onSearch: vi.fn(),
         onRefresh: vi.fn(),
         onManageClick: vi.fn(),
+        refreshKey: 0,
         ...overrides,
     };
 

@@ -40,7 +40,7 @@ export default function ManageOpenMatchContainer(): JSX.Element {
         (playerId: string): void => {
             const userId = playerId.trim();
             if (!userId) {
-                setApiError("Player ID is required.");
+                setApiError("Player is required.");
                 return;
             }
 
@@ -103,6 +103,7 @@ export default function ManageOpenMatchContainer(): JSX.Element {
             onInvitePlayer={handleInvitePlayer}
             onDismissError={() => setApiError("")}
             onBack={handleBack}
+            clubId={clubId}
         />
     );
 }

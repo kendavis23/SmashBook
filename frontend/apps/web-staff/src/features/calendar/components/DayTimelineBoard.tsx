@@ -7,9 +7,6 @@ import type {
     CalendarTimeSlot,
 } from "../types";
 import {
-    CALENDAR_COURT_LANE_MIN_WIDTH,
-    CALENDAR_SLOT_ROW_HEIGHT,
-    CALENDAR_TIME_RAIL_WIDTH,
     CALENDAR_TIME_SLOTS,
     formatShortDate,
     formatSlotTime,
@@ -35,6 +32,11 @@ const MONTHS_SHORT = [
     "Nov",
     "Dec",
 ] as const;
+
+const TIMELINE_SLOT_ROW_HEIGHT = 48;
+const TIMELINE_TIME_RAIL_WIDTH = 80;
+const TIMELINE_COURT_LANE_MIN_WIDTH = 168;
+const CURRENT_TIME_SCROLL_OFFSET = 104;
 
 function formatShortWeekday(dateStr: string): string {
     return formatShortDate(dateStr).split(",")[0] ?? "";
@@ -90,8 +92,8 @@ function DayTimelineBoard({
 
     const startOfDayMinutes = firstSlot ? getMinutesFromTime(firstSlot.start_time) : 0;
     const endOfDayMinutes = lastSlot ? getMinutesFromTime(lastSlot.end_time) : 0;
-    const boardHeight = CALENDAR_TIME_SLOTS.length * CALENDAR_SLOT_ROW_HEIGHT;
-    const gridTemplateColumns = `${CALENDAR_TIME_RAIL_WIDTH}px repeat(${Math.max(day.courts.length, 1)}, minmax(${CALENDAR_COURT_LANE_MIN_WIDTH}px, 1fr))`;
+    const boardHeight = CALENDAR_TIME_SLOTS.length * TIMELINE_SLOT_ROW_HEIGHT;
+    const gridTemplateColumns = `${TIMELINE_TIME_RAIL_WIDTH}px repeat(${Math.max(day.courts.length, 1)}, minmax(${TIMELINE_COURT_LANE_MIN_WIDTH}px, 1fr))`;
 
     const currentTimePct =
         firstSlot &&
@@ -105,7 +107,7 @@ function DayTimelineBoard({
     useEffect(() => {
         if (isToday && currentTimePct !== null && scrollRef.current) {
             const targetPx = (currentTimePct / 100) * boardHeight;
-            scrollRef.current.scrollTop = Math.max(0, targetPx - 120);
+            scrollRef.current.scrollTop = Math.max(0, targetPx - CURRENT_TIME_SCROLL_OFFSET);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -119,7 +121,7 @@ function DayTimelineBoard({
     }
 
     return (
-        <section ref={scrollRef} className="isolate min-h-0 flex-1 overflow-auto">
+        <section ref={scrollRef} className="isolate min-h-0 flex-1 overflow-auto bg-background">
             {day.courts.length === 0 ? (
                 <div className="px-5 py-10 text-center text-sm text-muted-foreground">
                     No courts found for this day.
@@ -127,23 +129,23 @@ function DayTimelineBoard({
             ) : (
                 <div className="min-w-fit">
                     {/* Sticky header block — both rows together so sticky works reliably */}
-                    <div className="sticky top-0 z-40 bg-card">
+                    <div className="sticky top-0 z-40 border-b border-border bg-card">
                         {/* Date headline row */}
                         <div
-                            className={`border-b border-border px-4 py-1 text-center ${
-                                isToday ? "bg-cta/10" : ""
+                            className={`border-b border-border px-4 py-1.5 text-center ${
+                                isToday ? "bg-cta/5" : ""
                             }`}
                         >
                             <div className="flex items-baseline justify-center gap-1">
                                 <p
-                                    className={`text-[11px] font-semibold uppercase tracking-widest ${
+                                    className={`text-[11px] font-semibold uppercase tracking-wide ${
                                         isToday ? "text-cta" : "text-muted-foreground"
                                     }`}
                                 >
                                     {formatShortWeekday(day.date)}
                                 </p>
                                 <p
-                                    className={`text-base font-bold leading-none ${
+                                    className={`text-base font-semibold leading-none ${
                                         isToday ? "text-cta" : "text-foreground"
                                     }`}
                                 >
@@ -160,23 +162,20 @@ function DayTimelineBoard({
                         </div>
 
                         {/* Court name cells row */}
-                        <div
-                            className="grid border-b border-border bg-card"
-                            style={{ gridTemplateColumns }}
-                        >
+                        <div className="grid bg-card" style={{ gridTemplateColumns }}>
                             {/* Empty time-rail spacer */}
-                            <div className="border-r border-border" />
+                            <div className="border-r border-border bg-muted/10" />
 
                             {/* Court name cells */}
                             {day.courts.map((court: CalendarCourtColumn) => (
                                 <div
                                     key={court.court_id}
-                                    className="border-r border-border/70 px-3 py-1.5 text-center last:border-r-0"
+                                    className="border-r border-border/70 px-3 py-2 text-center last:border-r-0"
                                 >
-                                    <p className="truncate text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+                                    <p className="truncate text-xs font-semibold text-foreground">
                                         {court.court_name}
                                     </p>
-                                    <p className="text-[10px] text-muted-foreground">
+                                    <p className="text-[11px] text-muted-foreground">
                                         {(() => {
                                             const n = court.slots.filter(
                                                 (s) => s.kind === "booking"
@@ -192,7 +191,7 @@ function DayTimelineBoard({
                     </div>
 
                     {/* Time rail + court lanes */}
-                    <div className="relative grid" style={{ gridTemplateColumns }}>
+                    <div className="relative grid bg-background" style={{ gridTemplateColumns }}>
                         {/* Current time indicator */}
                         {isToday && currentTimePct !== null ? (
                             <div
@@ -201,10 +200,10 @@ function DayTimelineBoard({
                             >
                                 <div
                                     className="flex-shrink-0"
-                                    style={{ width: `${CALENDAR_TIME_RAIL_WIDTH}px` }}
+                                    style={{ width: `${TIMELINE_TIME_RAIL_WIDTH}px` }}
                                 />
                                 <div className="h-2 w-2 flex-shrink-0 rounded-full bg-destructive" />
-                                <div className="h-px flex-1 bg-destructive" />
+                                <div className="h-px flex-1 bg-destructive/80" />
                             </div>
                         ) : null}
 
@@ -213,10 +212,10 @@ function DayTimelineBoard({
                             {CALENDAR_TIME_SLOTS.map((slot) => (
                                 <div
                                     key={`${slot.start_time}-${slot.end_time}`}
-                                    className="flex items-start border-b border-border/50 px-3 pt-1.5 last:border-b-0"
-                                    style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
+                                    className="flex items-start border-b border-border/40 px-3 pt-2 last:border-b-0"
+                                    style={{ height: `${TIMELINE_SLOT_ROW_HEIGHT}px` }}
                                 >
-                                    <p className="w-full whitespace-nowrap text-right text-xs font-medium text-muted-foreground">
+                                    <p className="w-full whitespace-nowrap text-right text-xs font-medium tabular-nums text-muted-foreground">
                                         {formatSlotTime(slot.start_time)}
                                     </p>
                                 </div>
@@ -227,14 +226,14 @@ function DayTimelineBoard({
                         {day.courts.map((court: CalendarCourtColumn) => (
                             <div
                                 key={court.court_id}
-                                className="relative border-r border-border/70 last:border-r-0"
+                                className="relative border-r border-border/60 last:border-r-0"
                                 style={{ height: `${boardHeight}px` }}
                             >
                                 {CALENDAR_TIME_SLOTS.map((slot) => (
                                     <div
                                         key={`${court.court_id}-${slot.start_time}`}
-                                        className="border-b border-border/40 bg-background/60 last:border-b-0"
-                                        style={{ height: `${CALENDAR_SLOT_ROW_HEIGHT}px` }}
+                                        className="border-b border-border/35 bg-card/40 last:border-b-0"
+                                        style={{ height: `${TIMELINE_SLOT_ROW_HEIGHT}px` }}
                                     />
                                 ))}
 
@@ -263,7 +262,7 @@ function DayTimelineBoard({
                                                 key={ts.start_datetime}
                                                 type="button"
                                                 aria-label={`New booking at ${startTime}`}
-                                                className="absolute inset-x-1 z-10 cursor-pointer rounded border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/50 hover:bg-cta/5 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta"
+                                                className="absolute inset-x-1.5 z-10 cursor-pointer rounded-md border border-dashed border-border/60 bg-transparent opacity-0 transition-opacity hover:border-cta/45 hover:bg-cta/[0.04] hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta/70"
                                                 style={{
                                                     top: `${topPct}%`,
                                                     height: `${heightPct}%`,
