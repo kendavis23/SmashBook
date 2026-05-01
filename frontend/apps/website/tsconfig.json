@@ -1,0 +1,9 @@
+{
+    "extends": "@repo/tsconfig/react.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "types": ["vitest/globals", "vite/client"]
+    },
+    "include": ["src"],
+    "exclude": ["node_modules", "dist"]
+}
