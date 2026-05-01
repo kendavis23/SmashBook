@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { CalendarRange, X } from "lucide-react";
-import { AlertToast, RecurrencePicker, SelectInput, TimeInput } from "@repo/ui";
+import { AlertToast, RecurrencePicker, SelectInput, TimeInput, formatUTCDate } from "@repo/ui";
 import type { CalendarReservationType } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
 import type { NewReservationFormState } from "./NewReservationView";
@@ -82,13 +82,7 @@ export function NewReservationModalView({
     onClose,
     onDismissError,
 }: Props): JSX.Element {
-    const formattedDate = lockedDate
-        ? new Date(lockedDate + "T00:00:00").toLocaleDateString("en-US", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-          })
-        : "—";
+    const formattedDate = lockedDate ? formatUTCDate(lockedDate + "T00:00:00Z") : "—";
 
     const toggleBookingType = (val: string): void => {
         const next = form.allowedBookingTypes.includes(val)

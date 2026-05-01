@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import TrainerDetailView from "./TrainerDetailView";
 import type { Trainer, TrainerAvailability, TrainerBookingItem } from "../../types";
@@ -15,6 +15,36 @@ vi.mock("@repo/ui", () => ({
         <div role="alert">
             {title}
             <button onClick={onClose}>Dismiss</button>
+        </div>
+    ),
+    DatePicker: ({
+        value,
+        onChange,
+        placeholder,
+    }: {
+        value: string;
+        onChange: (value: string) => void;
+        placeholder?: string;
+    }) => (
+        <input
+            aria-label={placeholder}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+        />
+    ),
+    ConfirmDeleteModal: ({
+        title,
+        onConfirm,
+        onCancel,
+    }: {
+        title: string;
+        onConfirm: () => void;
+        onCancel: () => void;
+    }) => (
+        <div role="dialog">
+            <p>{title}</p>
+            <button onClick={onConfirm}>Confirm delete</button>
+            <button onClick={onCancel}>Cancel</button>
         </div>
     ),
     formatUTCDate: (v: string) => `date:${v}`,
@@ -57,7 +87,17 @@ const mockBookings: TrainerBookingItem[] = [
         start_datetime: "2026-05-01T10:00:00Z",
         end_datetime: "2026-05-01T11:00:00Z",
         status: "confirmed",
-        participants: [{ id: "p1" } as never],
+        participants: [
+            {
+                id: "p1",
+                user_id: "user-1",
+                full_name: "Riya Mehta",
+                email: "riya@example.com",
+                role: "player",
+                invite_status: "accepted",
+                payment_status: "paid",
+            } as never,
+        ],
     },
 ];
 
@@ -75,6 +115,8 @@ const defaultProps = {
     onRefreshAvailability: vi.fn(),
     onRefreshBookings: vi.fn(),
     onCreateAvailability: vi.fn(),
+    deletingAvailabilityId: null,
+    onDeleteAvailability: vi.fn().mockResolvedValue(undefined),
 };
 
 describe("TrainerDetailView — header", () => {
@@ -179,8 +221,8 @@ describe("TrainerDetailView — availability tab", () => {
 
     it("renders availability row for each slot", () => {
         render(<TrainerDetailView {...defaultProps} availability={mockAvailability} />);
-        expect(screen.getByText("Tuesday")).toBeInTheDocument();
-        expect(screen.getByText("09:00 – 12:00")).toBeInTheDocument();
+        expect(screen.getByText("Tue")).toBeInTheDocument();
+        expect(screen.getByText("9:00 AM – 12:00 PM")).toBeInTheDocument();
     });
 
     it("shows Refresh button for availability", () => {
@@ -195,18 +237,28 @@ describe("TrainerDetailView — availability tab", () => {
         expect(handleRefresh).toHaveBeenCalled();
     });
 
-    it("expands availability row on click to show details", () => {
+    it("shows effective date details for availability slots", () => {
         render(<TrainerDetailView {...defaultProps} availability={mockAvailability} />);
-        const row = screen.getByRole("button", { expanded: false });
-        fireEvent.click(row);
-        expect(screen.getByText("Morning slots only")).toBeInTheDocument();
-        expect(screen.getByText(/Effective from:/)).toBeInTheDocument();
+        expect(screen.getByText("From date:2026-01-01")).toBeInTheDocument();
     });
 
     it("shows effective_until when set", () => {
         render(<TrainerDetailView {...defaultProps} availability={mockAvailability} />);
-        fireEvent.click(screen.getByRole("button", { expanded: false }));
-        expect(screen.getByText(/Effective until:/)).toBeInTheDocument();
+        expect(screen.getByText("Until date:2026-12-31")).toBeInTheDocument();
+    });
+
+    it("calls onDeleteAvailability after confirming delete", async () => {
+        const handleDelete = vi.fn().mockResolvedValue(undefined);
+        render(
+            <TrainerDetailView
+                {...defaultProps}
+                availability={mockAvailability}
+                onDeleteAvailability={handleDelete}
+            />
+        );
+        fireEvent.click(screen.getByRole("button", { name: "Delete availability slot" }));
+        fireEvent.click(screen.getByText("Confirm delete"));
+        await waitFor(() => expect(handleDelete).toHaveBeenCalledWith("avail-1"));
     });
 });
 
@@ -251,7 +303,7 @@ describe("TrainerDetailView — bookings tab", () => {
 
     it("renders booking status badge", () => {
         render(<TrainerDetailView {...bookingsProps} bookings={mockBookings} />);
-        expect(screen.getByText("Confirmed")).toBeInTheDocument();
+        expect(screen.getAllByText("Confirmed").length).toBeGreaterThan(0);
     });
 
     it("renders participant count", () => {
@@ -275,9 +327,72 @@ describe("TrainerDetailView — bookings tab", () => {
         render(<TrainerDetailView {...bookingsProps} bookings={mockBookings} />);
         expect(screen.getByText("Court")).toBeInTheDocument();
         expect(screen.getByText("Type")).toBeInTheDocument();
-        expect(screen.getByText("Date")).toBeInTheDocument();
+        expect(screen.getAllByText("Date").length).toBeGreaterThan(0);
         expect(screen.getByText("Time")).toBeInTheDocument();
         expect(screen.getByText("Players")).toBeInTheDocument();
-        expect(screen.getByText("Status")).toBeInTheDocument();
+        expect(screen.getAllByText("Status").length).toBeGreaterThan(0);
+        expect(screen.getByText("Action")).toBeInTheDocument();
+    });
+
+    it("filters bookings by date and status when Search is clicked", () => {
+        const baseBooking = mockBookings[0]!;
+        const bookings: TrainerBookingItem[] = [
+            ...mockBookings,
+            {
+                ...baseBooking,
+                booking_id: "booking-2",
+                court_name: "Court B",
+                start_datetime: "2026-05-02T10:00:00Z",
+                end_datetime: "2026-05-02T11:00:00Z",
+                status: "pending",
+            },
+        ];
+
+        render(<TrainerDetailView {...bookingsProps} bookings={bookings} />);
+        fireEvent.change(screen.getByLabelText("Booking date"), {
+            target: { value: "2026-05-02" },
+        });
+        fireEvent.change(screen.getByLabelText("Booking status"), {
+            target: { value: "pending" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Search bookings" }));
+
+        expect(screen.getByText("Court B")).toBeInTheDocument();
+        expect(screen.queryByText("Court A")).not.toBeInTheDocument();
+    });
+
+    it("shows empty search state when filters match no bookings", () => {
+        render(<TrainerDetailView {...bookingsProps} bookings={mockBookings} />);
+        fireEvent.change(screen.getByLabelText("Booking date"), {
+            target: { value: "2026-06-01" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Search bookings" }));
+        expect(screen.getByText("No bookings match your search")).toBeInTheDocument();
+    });
+
+    it("paginates bookings", () => {
+        const baseBooking = mockBookings[0]!;
+        const bookings: TrainerBookingItem[] = Array.from({ length: 11 }, (_, index) => ({
+            ...baseBooking,
+            booking_id: `booking-${index + 1}`,
+            court_name: `Court ${index + 1}`,
+        }));
+
+        render(<TrainerDetailView {...bookingsProps} bookings={bookings} />);
+        expect(screen.getByText("Court 1")).toBeInTheDocument();
+        expect(screen.queryByText("Court 11")).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: "Next bookings page" }));
+
+        expect(screen.getByText("Court 11")).toBeInTheDocument();
+        expect(screen.queryByText("Court 1")).not.toBeInTheDocument();
+    });
+
+    it("opens booking detail modal from the action button", () => {
+        render(<TrainerDetailView {...bookingsProps} bookings={mockBookings} />);
+        fireEvent.click(screen.getByRole("button", { name: "View booking Court A" }));
+        expect(screen.getByRole("dialog", { name: "Booking details" })).toBeInTheDocument();
+        expect(screen.getByText("Participant details")).toBeInTheDocument();
+        expect(screen.getByText("Riya Mehta")).toBeInTheDocument();
     });
 });

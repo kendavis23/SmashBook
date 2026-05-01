@@ -8,6 +8,7 @@ import {
     TimeInput,
     SelectInput,
     RecurrencePicker,
+    formatUTCDate,
 } from "@repo/ui";
 import type { CalendarReservationType, Court } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
@@ -100,13 +101,7 @@ export default function NewReservationView({
     const selectedCourtName =
         courts.find((court) => court.id === form.courtId)?.name ?? "Not selected";
 
-    const formattedDate = form.date
-        ? new Date(form.date + "T00:00:00").toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-          })
-        : "Not selected";
+    const formattedDate = form.date ? formatUTCDate(form.date + "T00:00:00Z") : "Not selected";
 
     const coreDetailsSection = (
         <div className="space-y-4">

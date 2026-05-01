@@ -42,6 +42,13 @@ vi.mock("../../store", () => ({
 vi.mock("@repo/ui", () => ({
     formatCurrency: (amount: number | null | undefined) =>
         amount == null ? "—" : `£${amount.toFixed(2)}`,
+    formatUTCDate: (value: string) =>
+        new Date(value).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "UTC",
+        }),
     AlertToast: ({ title, onClose }: { title: string; onClose: () => void }) => (
         <div role="alert">
             <span>{title}</span>

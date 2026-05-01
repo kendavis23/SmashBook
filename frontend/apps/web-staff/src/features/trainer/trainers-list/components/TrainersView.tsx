@@ -4,7 +4,6 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
-    CalendarDays,
     CheckCircle,
     ChevronLeft,
     ChevronRight,
@@ -18,6 +17,7 @@ import {
 import { AlertToast, Breadcrumb, formatUTCDate } from "@repo/ui";
 import type { Trainer, TrainerAvailability } from "../../types";
 import { DAY_LABELS } from "../../types";
+import { formatTime } from "../../utils";
 
 type Props = {
     trainers: Trainer[];
@@ -41,21 +41,6 @@ type SortDirection = "asc" | "desc";
 
 function compareText(a: string, b: string): number {
     return a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
-}
-
-function formatTime(time: string): string {
-    const [hourPart = "0", minutePart = "0"] = time.split(":");
-    const hour = Number(hourPart);
-    const minute = Number(minutePart);
-
-    if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
-        return time;
-    }
-
-    const period = hour >= 12 ? "PM" : "AM";
-    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-
-    return `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
 }
 
 function StatusBadge({ isActive }: { isActive: boolean }): JSX.Element {
@@ -94,11 +79,10 @@ function SortButton({
         <button
             type="button"
             onClick={() => onSort(sortKey)}
-            className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium transition ${
-                isActive
-                    ? "border-cta bg-cta/10 text-cta"
-                    : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-            }`}
+            className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium transition ${isActive
+                ? "border-cta bg-cta/10 text-cta"
+                : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
             aria-label={`Sort by ${label} ${isActive && direction === "asc" ? "descending" : "ascending"}`}
         >
             <span>{label}</span>
@@ -117,7 +101,7 @@ function groupAvailabilityByDay(availability: TrainerAvailability[]): TrainerAva
     });
 
     return grouped.map((slots) =>
-        [...slots].sort((a, b) => compareText(a.start_time, b.start_time))
+        [...slots].sort((a, b) => compareText(a.effective_from, b.effective_from))
     );
 }
 
@@ -136,11 +120,7 @@ function TrainerProfilePanel({
     onRefreshAvailability: () => void;
     onViewTrainer: (trainer: Trainer) => void;
 }): JSX.Element {
-    const groupedAvailability = useMemo(
-        () => groupAvailabilityByDay(availability),
-        [availability]
-    );
-    const availabilityCount = availability.length;
+    const groupedAvailability = useMemo(() => groupAvailabilityByDay(availability), [availability]);
 
     if (trainer == null) {
         return (
@@ -149,9 +129,7 @@ function TrainerProfilePanel({
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                         <User size={22} />
                     </div>
-                    <h2 className="mt-4 text-sm font-semibold text-foreground">
-                        Select a trainer
-                    </h2>
+                    <h2 className="mt-4 text-sm font-semibold text-foreground">Select a trainer</h2>
                     <p className="mt-1.5 text-sm text-muted-foreground">
                         Choose a trainer from the list to view their profile and weekly
                         availability.
@@ -162,74 +140,50 @@ function TrainerProfilePanel({
     }
 
     return (
-        <aside className="flex h-full min-h-[34rem] flex-col bg-background">
-            <div className="border-b border-border px-5 py-5 sm:px-6">
-                <div className="flex items-start justify-between gap-4">
+        <aside className="flex h-full flex-col bg-background">
+            {/* Trainer header */}
+            <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2 sm:px-5">
+                <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                        <User size={13} />
+                    </div>
                     <div className="min-w-0">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground">
-                                <User size={20} />
-                            </div>
-                            <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h2 className="truncate text-lg font-semibold tracking-tight text-foreground">
-                                        {trainer.full_name}
-                                    </h2>
-                                    <StatusBadge isActive={trainer.is_active} />
-                                </div>
-                                <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                                    {trainer.bio ?? "No bio provided."}
-                                </p>
-                            </div>
+                        <div className="flex items-center gap-1.5">
+                            <h2 className="text-xs font-semibold text-foreground">
+                                {trainer.full_name}
+                            </h2>
+                            <StatusBadge isActive={trainer.is_active} />
                         </div>
-                    </div>
-                    <button
-                        onClick={() => onViewTrainer(trainer)}
-                        className="btn-outline min-h-9 shrink-0 px-3 text-xs"
-                        aria-label={`Open profile for ${trainer.full_name}`}
-                    >
-                        <Settings2 size={13} />
-                        Profile
-                    </button>
-                </div>
-
-                <div className="mt-5 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            Status
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">
-                            {trainer.is_active ? "Taking bookings" : "Inactive"}
+                        <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                            {trainer.bio ?? "No bio provided."}
                         </p>
                     </div>
-                    <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                            Weekly slots
-                        </p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">
-                            {availabilityCount} {availabilityCount === 1 ? "slot" : "slots"}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 px-5 py-3 sm:px-6">
-                <div>
-                    <h3 className="text-sm font-semibold text-foreground">Availability</h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                        Weekly schedule grouped by day.
-                    </p>
                 </div>
                 <button
-                    onClick={onRefreshAvailability}
-                    className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    aria-label="Refresh availability"
+                    onClick={() => onViewTrainer(trainer)}
+                    className="btn-outline min-h-7 shrink-0 gap-1 px-2 text-[11px]"
+                    aria-label={`Open profile for ${trainer.full_name}`}
                 >
-                    <RefreshCw size={14} />
+                    <Settings2 size={11} />
+                    Profile
                 </button>
             </div>
 
-            <div className="max-h-[42rem] flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+            {/* Availability header */}
+            <div className="flex items-center justify-between border-b border-border px-4 py-1.5 sm:px-5">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Availability
+                </h3>
+                <button
+                    onClick={onRefreshAvailability}
+                    className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                    aria-label="Refresh availability"
+                >
+                    <RefreshCw size={11} />
+                </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-2 sm:px-4">
                 {availabilityError ? (
                     <AlertToast
                         title={availabilityError.message ?? "Failed to load availability."}
@@ -239,84 +193,63 @@ function TrainerProfilePanel({
                 ) : null}
 
                 {availabilityLoading ? (
-                    <div className="flex items-center justify-center gap-3 py-16">
-                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
-                        <span className="text-sm text-muted-foreground">
-                            Loading availability…
-                        </span>
+                    <div className="flex items-center gap-2 py-4">
+                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-cta" />
+                        <span className="text-[11px] text-muted-foreground">Loading…</span>
                     </div>
                 ) : availability.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                            <Clock size={20} />
-                        </div>
-                        <p className="text-sm font-medium text-foreground">
-                            No availability set
-                        </p>
-                        <p className="max-w-xs text-sm text-muted-foreground">
-                            This trainer does not have weekly availability configured yet.
-                        </p>
+                    <div className="flex items-center gap-1.5 py-4 text-[11px] text-muted-foreground">
+                        <Clock size={12} />
+                        No availability configured.
                     </div>
                 ) : (
-                    <div className="space-y-4">
-                        {groupedAvailability.map((slots, dayIndex) => (
-                            <section
-                                key={dayIndex}
-                                className="rounded-lg border border-border bg-card"
-                            >
-                                <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
-                                    <div className="flex items-center gap-2">
-                                        <CalendarDays size={14} className="text-muted-foreground" />
-                                        <h4 className="text-sm font-semibold text-foreground">
+                    <div className="space-y-1.5">
+                        {groupedAvailability.map((slots, dayIndex) => {
+                            if (slots.length === 0) return null;
+                            return (
+                                <div
+                                    key={dayIndex}
+                                    className="overflow-hidden rounded-lg border border-border"
+                                >
+                                    {/* Day header */}
+                                    <div className="flex items-center justify-between border-b border-border bg-muted/20 px-2.5 py-1.5">
+                                        <span className="text-xs text-foreground bg-muted/80">
                                             {DAY_LABELS[dayIndex]}
-                                        </h4>
+                                        </span>
+                                        <span className="text-[11px] text-muted-foreground">
+                                            {slots.length} {slots.length === 1 ? "slot" : "slots"}
+                                        </span>
                                     </div>
-                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                                        {slots.length} {slots.length === 1 ? "slot" : "slots"}
-                                    </span>
-                                </div>
-                                {slots.length === 0 ? (
-                                    <div className="px-4 py-3 text-xs text-muted-foreground">
-                                        No time added
-                                    </div>
-                                ) : (
-                                    <div className="divide-y divide-border">
+                                    {/* Slot rows */}
+                                    <div className="divide-y divide-border/50">
                                         {slots.map((slot) => (
-                                            <div key={slot.id} className="px-4 py-3">
-                                                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="h-4 w-0.5 rounded-full bg-cta" />
-                                                        <span className="text-sm font-semibold text-foreground">
-                                                            {formatTime(slot.start_time)} -{" "}
-                                                            {formatTime(slot.end_time)}
+                                            <div
+                                                key={slot.id}
+                                                className="flex items-center justify-between gap-2 px-2.5 py-1.5"
+                                            >
+                                                <div className="flex min-w-0 items-center gap-2">
+                                                    <span className="text-[11px] font-medium text-foreground tabular-nums">
+                                                        {formatTime(slot.start_time)} -{" "}
+                                                        {formatTime(slot.end_time)}
+                                                    </span>
+                                                    {slot.notes ? (
+                                                        <span className="truncate text-[10px] text-muted-foreground">
+                                                            {slot.notes}
                                                         </span>
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground sm:text-right">
-                                                        <p>
-                                                            From{" "}
-                                                            {formatUTCDate(slot.effective_from)}
-                                                        </p>
-                                                        {slot.effective_until ? (
-                                                            <p>
-                                                                Until{" "}
-                                                                {formatUTCDate(
-                                                                    slot.effective_until
-                                                                )}
-                                                            </p>
-                                                        ) : null}
-                                                    </div>
+                                                    ) : null}
                                                 </div>
-                                                {slot.notes ? (
-                                                    <p className="mt-2 text-xs text-muted-foreground">
-                                                        {slot.notes}
-                                                    </p>
-                                                ) : null}
+                                                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                                                    {formatUTCDate(slot.effective_from)}
+                                                    {slot.effective_until
+                                                        ? ` – ${formatUTCDate(slot.effective_until)}`
+                                                        : null}
+                                                </span>
                                             </div>
                                         ))}
                                     </div>
-                                )}
-                            </section>
-                        ))}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -341,15 +274,22 @@ export default function TrainersView({
     const [page, setPage] = useState(0);
     const [sortKey, setSortKey] = useState<SortKey | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+    const [search, setSearch] = useState("");
+
+    const filteredTrainers = useMemo(() => {
+        if (!search.trim()) return trainers;
+        const q = search.trim().toLowerCase();
+        return trainers.filter((t) => t.full_name.toLowerCase().includes(q));
+    }, [trainers, search]);
 
     const sortedTrainers = useMemo(() => {
         if (sortKey == null) {
-            return trainers;
+            return filteredTrainers;
         }
 
         const direction = sortDirection === "asc" ? 1 : -1;
 
-        return [...trainers].sort((a, b) => {
+        return [...filteredTrainers].sort((a, b) => {
             let result = 0;
 
             if (sortKey === "name") {
@@ -367,7 +307,7 @@ export default function TrainersView({
 
             return result * direction;
         });
-    }, [sortDirection, sortKey, trainers]);
+    }, [sortDirection, sortKey, filteredTrainers]);
 
     const totalPages = Math.ceil(sortedTrainers.length / PAGE_SIZE);
 
@@ -396,6 +336,7 @@ export default function TrainersView({
         setPage(0);
         setSortKey(null);
         setSortDirection("asc");
+        setSearch("");
         onRefresh();
     };
 
@@ -404,39 +345,32 @@ export default function TrainersView({
             <Breadcrumb items={[{ label: "Trainers" }]} />
 
             <section className="card-surface overflow-hidden">
-                <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2.5">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
-                                <Users size={16} />
-                            </div>
-                            <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                                        Trainers
-                                    </h1>
-                                    {trainers.length > 0 ? (
-                                        <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
-                                            {trainers.length} total
-                                        </span>
-                                    ) : null}
-                                </div>
-                                <p className="mt-0.5 text-sm text-muted-foreground">
-                                    View trainer profiles and weekly availability.
-                                </p>
-                            </div>
+                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <div className="flex items-center gap-2.5">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                            <Users size={16} />
                         </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                Trainers
+                            </h1>
+                            {trainers.length > 0 ? (
+                                <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
+                                    {trainers.length} total
+                                </span>
+                            ) : null}
+                        </div>
                         <button
                             onClick={handleRefreshClick}
-                            className="btn-outline min-h-10 px-4"
+                            className="btn-outline shrink-0 min-h-10 px-4"
                             aria-label="Refresh trainers"
                         >
                             <RefreshCw size={14} /> Refresh
                         </button>
                     </div>
+                    <p className="mt-1 pl-[2.875rem] text-sm text-muted-foreground">
+                        View trainer profiles and weekly availability.
+                    </p>
                 </header>
 
                 {error ? (
@@ -475,11 +409,18 @@ export default function TrainersView({
                                         <h2 className="text-sm font-semibold text-foreground">
                                             Trainer list
                                         </h2>
-                                        <p className="mt-0.5 text-xs text-muted-foreground">
-                                            Select a trainer to inspect profile and schedule.
-                                        </p>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-2">
+                                        <input
+                                            type="search"
+                                            value={search}
+                                            onChange={(e) => {
+                                                setSearch(e.target.value);
+                                                setPage(0);
+                                            }}
+                                            placeholder="Search trainers…"
+                                            className="h-8 rounded-lg border border-border bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta"
+                                        />
                                         <SortButton
                                             label="Trainer"
                                             sortKey="name"
@@ -487,81 +428,78 @@ export default function TrainersView({
                                             direction={sortDirection}
                                             onSort={handleSort}
                                         />
-                                        <SortButton
-                                            label="Status"
-                                            sortKey="status"
-                                            activeSortKey={sortKey}
-                                            direction={sortDirection}
-                                            onSort={handleSort}
-                                        />
                                     </div>
                                 </div>
 
-                                <div className="max-h-[42rem] overflow-y-auto px-4 py-4 sm:px-6">
-                                    <div className="grid gap-3">
-                                        {pageTrainers.map((trainer) => {
-                                            const isSelected = selectedTrainer?.id === trainer.id;
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm">
+                                        <thead>
+                                            <tr className="border-b border-border bg-muted/20 text-left text-xs font-medium text-muted-foreground">
+                                                <th className="px-4 py-2 sm:px-6">Name</th>
+                                                <th className="px-2 py-2">Status</th>
+                                                <th className="px-2 py-2 text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                            {pageTrainers.map((trainer) => {
+                                                const isSelected =
+                                                    selectedTrainer?.id === trainer.id;
 
-                                            return (
-                                                <article
-                                                    key={trainer.id}
-                                                    className={`rounded-xl border p-4 shadow-xs transition-colors ${
-                                                        isSelected
-                                                            ? "border-cta bg-cta/5"
-                                                            : "border-border bg-background hover:bg-muted/30"
-                                                    }`}
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onSelectTrainer(trainer)}
-                                                        className="block w-full text-left"
+                                                return (
+                                                    <tr
+                                                        key={trainer.id}
+                                                        role="button"
+                                                        tabIndex={0}
                                                         aria-label={`Select trainer ${trainer.full_name}`}
+                                                        className={`cursor-pointer transition-colors ${isSelected
+                                                            ? "bg-cta/5"
+                                                            : "hover:bg-muted/30"
+                                                            }`}
+                                                        onClick={() => onSelectTrainer(trainer)}
                                                     >
-                                                        <div className="flex items-start justify-between gap-4">
-                                                            <div className="flex min-w-0 items-start gap-3">
-                                                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
-                                                                    <User size={16} />
-                                                                </div>
+                                                        <td className="px-4 py-2.5 sm:px-6">
+                                                            <div className="flex items-center gap-2">
                                                                 <div className="min-w-0">
-                                                                    <div className="flex flex-wrap items-center gap-2">
-                                                                        <h3 className="truncate text-sm font-semibold text-foreground sm:text-base">
-                                                                            {trainer.full_name}
-                                                                        </h3>
-                                                                        <StatusBadge
-                                                                            isActive={
-                                                                                trainer.is_active
-                                                                            }
-                                                                        />
-                                                                    </div>
-                                                                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                                                                        {trainer.bio ??
-                                                                            "No bio provided"}
-                                                                    </p>
+                                                                    <span
+                                                                        className={`block truncate font-medium ${isSelected ? "text-cta" : "text-foreground"}`}
+                                                                    >
+                                                                        {trainer.full_name}
+                                                                    </span>
+                                                                    {trainer.bio ? (
+                                                                        <span className="block truncate text-xs text-muted-foreground">
+                                                                            {trainer.bio}
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="block truncate text-xs text-muted-foreground">
+                                                                            No bio provided
+                                                                        </span>
+                                                                    )}
                                                                 </div>
                                                             </div>
-                                                            {isSelected ? (
-                                                                <span className="shrink-0 rounded-full bg-cta px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-cta-foreground">
-                                                                    Selected
-                                                                </span>
-                                                            ) : null}
-                                                        </div>
-                                                    </button>
-                                                    <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
-                                                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                            <Clock size={13} />
-                                                            Select to view availability
-                                                        </span>
-                                                        <button
-                                                            onClick={() => onViewTrainer(trainer)}
-                                                            className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
-                                                        >
-                                                            <Settings2 size={13} /> View
-                                                        </button>
-                                                    </div>
-                                                </article>
-                                            );
-                                        })}
-                                    </div>
+                                                        </td>
+                                                        <td className="px-2 py-2.5">
+                                                            <StatusBadge
+                                                                isActive={trainer.is_active}
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2.5 text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick={(event) => {
+                                                                    event.stopPropagation();
+                                                                    onViewTrainer(trainer);
+                                                                }}
+                                                                className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
+                                                            >
+                                                                <Settings2 size={13} />
+                                                                View
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
 
@@ -595,11 +533,10 @@ export default function TrainersView({
                                         <button
                                             key={i}
                                             onClick={() => setPage(i)}
-                                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
-                                                i === page
-                                                    ? "border-cta bg-cta text-cta-foreground"
-                                                    : "border-border bg-card text-foreground hover:bg-muted"
-                                            }`}
+                                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${i === page
+                                                ? "border-cta bg-cta text-cta-foreground"
+                                                : "border-border bg-card text-foreground hover:bg-muted"
+                                                }`}
                                             aria-label={`Page ${i + 1}`}
                                             aria-current={i === page ? "page" : undefined}
                                         >

@@ -4,6 +4,7 @@ import TrainerDetailContainer from "./TrainerDetailContainer";
 
 const mockRefetchAvailability = vi.fn();
 const mockRefetchBookings = vi.fn();
+const mockDeleteAvailabilityMutateAsync = vi.fn();
 
 vi.mock("@tanstack/react-router", () => ({
     useParams: vi.fn(() => ({ trainerId: "trainer-001-abcd" })),
@@ -13,6 +14,7 @@ vi.mock("../../hooks", () => ({
     useListTrainers: vi.fn(),
     useGetTrainerAvailability: vi.fn(),
     useGetTrainerBookings: vi.fn(),
+    useDeleteTrainerAvailability: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
@@ -34,16 +36,52 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onClose}>Dismiss</button>
         </div>
     ),
+    ConfirmDeleteModal: ({
+        title,
+        onConfirm,
+        onCancel,
+    }: {
+        title: string;
+        onConfirm: () => void;
+        onCancel: () => void;
+    }) => (
+        <div role="dialog">
+            <p>{title}</p>
+            <button onClick={onConfirm}>Confirm delete</button>
+            <button onClick={onCancel}>Cancel</button>
+        </div>
+    ),
+    DatePicker: ({
+        value,
+        onChange,
+        placeholder,
+    }: {
+        value: string;
+        onChange: (value: string) => void;
+        placeholder?: string;
+    }) => (
+        <input
+            aria-label={placeholder}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+        />
+    ),
     formatUTCDate: (v: string) => `date:${v}`,
     formatUTCTime: (v: string) => `time:${v}`,
 }));
 
-import { useListTrainers, useGetTrainerAvailability, useGetTrainerBookings } from "../../hooks";
+import {
+    useDeleteTrainerAvailability,
+    useListTrainers,
+    useGetTrainerAvailability,
+    useGetTrainerBookings,
+} from "../../hooks";
 import { useClubAccess, canManageTrainers } from "../../store";
 
 const mockUseListTrainers = useListTrainers as ReturnType<typeof vi.fn>;
 const mockUseGetTrainerAvailability = useGetTrainerAvailability as ReturnType<typeof vi.fn>;
 const mockUseGetTrainerBookings = useGetTrainerBookings as ReturnType<typeof vi.fn>;
+const mockUseDeleteTrainerAvailability = useDeleteTrainerAvailability as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 const mockCanManageTrainers = canManageTrainers as ReturnType<typeof vi.fn>;
 
@@ -77,6 +115,11 @@ function setupMocks(overrides: Record<string, unknown> = {}) {
         error: null,
         refetch: mockRefetchBookings,
     });
+    mockUseDeleteTrainerAvailability.mockReturnValue({
+        mutateAsync: mockDeleteAvailabilityMutateAsync,
+        isPending: false,
+        variables: undefined,
+    });
     mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
     mockCanManageTrainers.mockReturnValue(true);
 }
@@ -95,6 +138,11 @@ describe("TrainerDetailContainer — loading state", () => {
             isLoading: false,
             error: null,
             refetch: mockRefetchBookings,
+        });
+        mockUseDeleteTrainerAvailability.mockReturnValue({
+            mutateAsync: mockDeleteAvailabilityMutateAsync,
+            isPending: false,
+            variables: undefined,
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);
@@ -117,6 +165,11 @@ describe("TrainerDetailContainer — not found state", () => {
             isLoading: false,
             error: null,
             refetch: mockRefetchBookings,
+        });
+        mockUseDeleteTrainerAvailability.mockReturnValue({
+            mutateAsync: mockDeleteAvailabilityMutateAsync,
+            isPending: false,
+            variables: undefined,
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);

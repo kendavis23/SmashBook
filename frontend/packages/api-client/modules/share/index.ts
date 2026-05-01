@@ -6,5 +6,7 @@ export * from "./court/court.api";
 export * from "./court/court.types";
 export * from "./trainer/trainer.api";
 export * from "./trainer/trainer.types";
+export * from "./equipment/equipment.api";
+export * from "./equipment/equipment.types";
 export * from "./player/player.api";
 export type { PlayerSearchParams, PlayerSearchResult } from "./player/player.types";

@@ -7,10 +7,6 @@ import type {
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-export function listEquipmentEndpoint(clubId: string): Promise<EquipmentInventoryItemResponse[]> {
-    return fetcher<EquipmentInventoryItemResponse[]>(`/api/v1/equipment?club_id=${clubId}`);
-}
-
 export function createEquipmentEndpoint(
     clubId: string,
     data: EquipmentCreate

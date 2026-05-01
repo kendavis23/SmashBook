@@ -14,6 +14,21 @@ const DAY_NAMES_FULL = [
     "Sunday",
 ];
 
+export function formatTime(time: string): string {
+    const [hourPart = "0", minutePart = "0"] = time.split(":");
+    const hour = Number(hourPart);
+    const minute = Number(minutePart);
+
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
+        return time;
+    }
+
+    const period = hour >= 12 ? "PM" : "AM";
+    const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+
+    return `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
+}
+
 type Props = {
     club: Club;
     hours: OperatingHours[];
@@ -35,10 +50,10 @@ function InfoRow({
         value === null || value === undefined || value === ""
             ? "—"
             : typeof value === "boolean"
-              ? value
-                  ? "Yes"
-                  : "No"
-              : String(value);
+                ? value
+                    ? "Yes"
+                    : "No"
+                : String(value);
     return (
         <div className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/40 px-3 py-2">
             <span className="text-xs text-muted-foreground">{label}</span>
@@ -123,18 +138,17 @@ export default function ClubDetailView({
                             return (
                                 <div
                                     key={i}
-                                    className={`rounded-lg border px-2 py-2 text-center ${
-                                        entry
-                                            ? "border-cta/20 bg-cta/5"
-                                            : "border-border/50 bg-muted/30"
-                                    }`}
+                                    className={`rounded-lg border px-2 py-2 text-center ${entry
+                                        ? "border-cta/20 bg-cta/5"
+                                        : "border-border/50 bg-muted/30"
+                                        }`}
                                 >
                                     <p className="text-xs font-semibold text-muted-foreground">
                                         {DAY_NAMES_SHORT[i]}
                                     </p>
                                     {entry ? (
                                         <p className="mt-0.5 text-xs font-medium text-cta">
-                                            {entry.open_time}–{entry.close_time}
+                                            {formatTime(entry.open_time)} – {formatTime(entry.close_time)}
                                         </p>
                                     ) : (
                                         <p className="mt-0.5 text-xs text-muted-foreground/50">
@@ -199,11 +213,10 @@ export default function ClubDetailView({
                                             </td>
                                             <td className="px-3 py-2">
                                                 <span
-                                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                        r.is_active
-                                                            ? "bg-success/15 text-success"
-                                                            : "bg-muted text-muted-foreground"
-                                                    }`}
+                                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${r.is_active
+                                                        ? "bg-success/15 text-success"
+                                                        : "bg-muted text-muted-foreground"
+                                                        }`}
                                                 >
                                                     {r.is_active ? "Active" : "Inactive"}
                                                 </span>

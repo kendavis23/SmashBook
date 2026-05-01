@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { listEquipmentEndpoint } from "@repo/api-client/modules/share";
 import {
-    listEquipmentEndpoint,
     createEquipmentEndpoint,
     updateEquipmentEndpoint,
     retireEquipmentEndpoint,
