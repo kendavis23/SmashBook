@@ -109,6 +109,13 @@ vi.mock("@repo/ui", () => ({
         </select>
     ),
     datetimeLocalToUTC: (value: string) => value,
+    formatUTCDate: (value: string) =>
+        new Date(value).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "UTC",
+        }),
 }));
 
 import { useCreateCalendarReservation, useListCourts } from "../../hooks";

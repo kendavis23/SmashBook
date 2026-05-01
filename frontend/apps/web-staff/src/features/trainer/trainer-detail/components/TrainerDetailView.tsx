@@ -1,10 +1,17 @@
 import type { JSX } from "react";
-import { Users, Calendar, Clock, BookOpen, ChevronDown, ChevronRight, Plus } from "lucide-react";
-import { Breadcrumb, AlertToast } from "@repo/ui";
+import { useEffect, useMemo, useState } from "react";
+import { BookOpen, ChevronLeft, ChevronRight, Clock, Eye, Search, Users } from "lucide-react";
+import { AlertToast, Breadcrumb, DatePicker } from "@repo/ui";
 import { formatUTCDate, formatUTCTime } from "@repo/ui";
 import type { Trainer, TrainerAvailability, TrainerBookingItem, TrainerTab } from "../../types";
-import { TRAINER_TABS, DAY_LABELS, BOOKING_TYPE_LABELS, BOOKING_STATUS_LABELS } from "../../types";
-import { useState } from "react";
+import { TRAINER_TABS, BOOKING_TYPE_LABELS, BOOKING_STATUS_LABELS } from "../../types";
+import { TrainerAvailabilityTab } from "./TrainerAvailabilityTab";
+import {
+    TrainerBookingDetailModal,
+    useBookingDetailModal,
+} from "./TrainerBookingDetailModal";
+
+const BOOKING_PAGE_SIZE = 10;
 
 type Props = {
     trainer: Trainer;
@@ -20,6 +27,8 @@ type Props = {
     onRefreshAvailability: () => void;
     onRefreshBookings: () => void;
     onCreateAvailability: () => void;
+    deletingAvailabilityId: string | null;
+    onDeleteAvailability: (availabilityId: string) => Promise<void>;
 };
 
 function BookingStatusBadge({ status }: { status: string }): JSX.Element {
@@ -38,60 +47,6 @@ function BookingStatusBadge({ status }: { status: string }): JSX.Element {
     );
 }
 
-function AvailabilityRow({ slot }: { slot: TrainerAvailability }): JSX.Element {
-    const [open, setOpen] = useState(false);
-
-    return (
-        <div className="overflow-hidden rounded-lg border border-border">
-            <button
-                type="button"
-                onClick={() => setOpen((o) => !o)}
-                className="flex w-full items-center justify-between bg-muted/20 px-4 py-3 text-left transition hover:bg-muted/40"
-                aria-expanded={open}
-            >
-                <div className="flex items-center gap-3">
-                    <Calendar size={14} className="text-muted-foreground" />
-                    <span className="text-sm font-medium text-foreground">
-                        {DAY_LABELS[slot.day_of_week]}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                        {slot.start_time} – {slot.end_time}
-                    </span>
-                </div>
-                {open ? (
-                    <ChevronDown size={13} className="text-muted-foreground" />
-                ) : (
-                    <ChevronRight size={13} className="text-muted-foreground" />
-                )}
-            </button>
-            {open ? (
-                <div className="space-y-2 border-t border-border p-4 text-sm">
-                    <div className="flex gap-2">
-                        <span className="text-muted-foreground">Effective from:</span>
-                        <span className="text-foreground">
-                            {formatUTCDate(slot.effective_from)}
-                        </span>
-                    </div>
-                    {slot.effective_until ? (
-                        <div className="flex gap-2">
-                            <span className="text-muted-foreground">Effective until:</span>
-                            <span className="text-foreground">
-                                {formatUTCDate(slot.effective_until)}
-                            </span>
-                        </div>
-                    ) : null}
-                    {slot.notes ? (
-                        <div className="flex gap-2">
-                            <span className="text-muted-foreground">Notes:</span>
-                            <span className="text-foreground">{slot.notes}</span>
-                        </div>
-                    ) : null}
-                </div>
-            ) : null}
-        </div>
-    );
-}
-
 export default function TrainerDetailView({
     trainer,
     availability,
@@ -106,7 +61,51 @@ export default function TrainerDetailView({
     onRefreshAvailability,
     onRefreshBookings,
     onCreateAvailability,
+    deletingAvailabilityId,
+    onDeleteAvailability,
 }: Props): JSX.Element {
+    const [bookingDateFilter, setBookingDateFilter] = useState("");
+    const [bookingStatusFilter, setBookingStatusFilter] = useState("");
+    const [appliedBookingDateFilter, setAppliedBookingDateFilter] = useState("");
+    const [appliedBookingStatusFilter, setAppliedBookingStatusFilter] = useState("");
+    const [bookingPage, setBookingPage] = useState(0);
+    const { selectedBooking, openBooking, closeBooking } = useBookingDetailModal();
+
+    const filteredBookings = useMemo(
+        () =>
+            bookings.filter((booking) => {
+                const matchesDate =
+                    appliedBookingDateFilter.length === 0 ||
+                    booking.start_datetime.slice(0, 10) === appliedBookingDateFilter;
+                const matchesStatus =
+                    appliedBookingStatusFilter.length === 0 ||
+                    booking.status === appliedBookingStatusFilter;
+
+                return matchesDate && matchesStatus;
+            }),
+        [appliedBookingDateFilter, appliedBookingStatusFilter, bookings]
+    );
+
+    const bookingTotalPages = Math.ceil(filteredBookings.length / BOOKING_PAGE_SIZE);
+    const pageBookings = useMemo(
+        () =>
+            filteredBookings.slice(
+                bookingPage * BOOKING_PAGE_SIZE,
+                (bookingPage + 1) * BOOKING_PAGE_SIZE
+            ),
+        [bookingPage, filteredBookings]
+    );
+
+    useEffect(() => {
+        setBookingPage(0);
+    }, [appliedBookingDateFilter, appliedBookingStatusFilter, bookings]);
+
+    const handleApplyBookingFilters = (): void => {
+        setAppliedBookingDateFilter(bookingDateFilter);
+        setAppliedBookingStatusFilter(bookingStatusFilter);
+        setBookingPage(0);
+    };
+
     return (
         <div className="w-full space-y-5">
             <Breadcrumb
@@ -172,80 +171,22 @@ export default function TrainerDetailView({
                 <div className="px-5 py-5 sm:px-6">
                     {/* ── Availability Tab ── */}
                     {activeTab === "availability" ? (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Weekly Availability
-                                    </h3>
-                                    <p className="mt-1 text-sm text-muted-foreground">
-                                        Recurring time slots when this trainer is available.
-                                    </p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        onClick={onRefreshAvailability}
-                                        className="btn-outline px-3 py-1.5 text-xs"
-                                        aria-label="Refresh availability"
-                                    >
-                                        Refresh
-                                    </button>
-                                    {canManage ? (
-                                        <button
-                                            onClick={onCreateAvailability}
-                                            className="btn-cta flex items-center gap-1 px-3 py-1.5 text-xs"
-                                            aria-label="Create availability"
-                                        >
-                                            <Plus size={12} />
-                                            Create Availability
-                                        </button>
-                                    ) : null}
-                                </div>
-                            </div>
-
-                            {availabilityError ? (
-                                <AlertToast
-                                    title={
-                                        availabilityError.message ?? "Failed to load availability."
-                                    }
-                                    variant="error"
-                                    onClose={onRefreshAvailability}
-                                />
-                            ) : null}
-
-                            {availabilityLoading ? (
-                                <div className="flex items-center justify-center gap-3 py-12">
-                                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
-                                    <span className="text-sm text-muted-foreground">
-                                        Loading availability…
-                                    </span>
-                                </div>
-                            ) : availability.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                                        <Clock size={18} />
-                                    </div>
-                                    <p className="text-sm font-medium text-foreground">
-                                        No availability set
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        This trainer has no availability slots configured.
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {availability.map((slot) => (
-                                        <AvailabilityRow key={slot.id} slot={slot} />
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                        <TrainerAvailabilityTab
+                            availability={availability}
+                            availabilityLoading={availabilityLoading}
+                            availabilityError={availabilityError}
+                            canManage={canManage}
+                            deletingAvailabilityId={deletingAvailabilityId}
+                            onRefresh={onRefreshAvailability}
+                            onCreate={onCreateAvailability}
+                            onDelete={onDeleteAvailability}
+                        />
                     ) : null}
 
                     {/* ── Bookings Tab ── */}
                     {activeTab === "bookings" ? (
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h3 className="text-sm font-semibold text-foreground">
                                         Assigned Bookings
@@ -261,6 +202,57 @@ export default function TrainerDetailView({
                                 >
                                     Refresh
                                 </button>
+                            </div>
+
+                            <div className="rounded-lg border border-border bg-muted/10 p-3">
+                                <div className="mb-3 flex items-center gap-2">
+                                    <Search size={13} className="text-muted-foreground" />
+                                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Search
+                                    </span>
+                                </div>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[11px] font-medium text-muted-foreground">
+                                            Date
+                                        </span>
+                                        <DatePicker
+                                            value={bookingDateFilter}
+                                            onChange={setBookingDateFilter}
+                                            placeholder="Booking date"
+                                        />
+                                    </div>
+                                    <label className="flex flex-col gap-1">
+                                        <span className="text-[11px] font-medium text-muted-foreground">
+                                            Status
+                                        </span>
+                                        <select
+                                            value={bookingStatusFilter}
+                                            onChange={(event) =>
+                                                setBookingStatusFilter(event.target.value)
+                                            }
+                                            className="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-cta focus:ring-2 focus:ring-cta/20"
+                                            aria-label="Booking status"
+                                        >
+                                            <option value="">All statuses</option>
+                                            {Object.entries(BOOKING_STATUS_LABELS).map(
+                                                ([value, label]) => (
+                                                    <option key={value} value={value}>
+                                                        {label}
+                                                    </option>
+                                                )
+                                            )}
+                                        </select>
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleApplyBookingFilters}
+                                        className="btn-cta h-10 px-4"
+                                        aria-label="Search bookings"
+                                    >
+                                        <Search size={14} /> Search
+                                    </button>
+                                </div>
                             </div>
 
                             {bookingsError ? (
@@ -290,70 +282,165 @@ export default function TrainerDetailView({
                                         No upcoming bookings are assigned to this trainer.
                                     </p>
                                 </div>
+                            ) : filteredBookings.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                                        <BookOpen size={18} />
+                                    </div>
+                                    <p className="text-sm font-medium text-foreground">
+                                        No bookings match your search
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        Try a different date or status.
+                                    </p>
+                                </div>
                             ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="bg-muted/10">
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Court
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Type
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Date
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Time
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Players
-                                                </th>
-                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                    Status
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {bookings.map((booking) => (
-                                                <tr
-                                                    key={booking.booking_id}
-                                                    className="border-t border-border hover:bg-muted/20"
-                                                >
-                                                    <td className="px-3 py-3 font-medium text-foreground">
-                                                        {booking.court_name}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-foreground">
-                                                        {BOOKING_TYPE_LABELS[
-                                                            booking.booking_type
-                                                        ] ?? booking.booking_type}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-foreground">
-                                                        {formatUTCDate(booking.start_datetime)}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-foreground">
-                                                        {formatUTCTime(booking.start_datetime)} –{" "}
-                                                        {formatUTCTime(booking.end_datetime)}
-                                                    </td>
-                                                    <td className="px-3 py-3 text-foreground">
-                                                        {booking.participants.length}
-                                                    </td>
-                                                    <td className="px-3 py-3">
-                                                        <BookingStatusBadge
-                                                            status={booking.status}
-                                                        />
-                                                    </td>
+                                <div className="space-y-3">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[760px] text-sm">
+                                            <thead>
+                                                <tr className="bg-muted/10">
+                                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Court
+                                                    </th>
+                                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Type
+                                                    </th>
+                                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Date
+                                                    </th>
+                                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Time
+                                                    </th>
+                                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Players
+                                                    </th>
+                                                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Status
+                                                    </th>
+                                                    <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                        Action
+                                                    </th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+                                            </thead>
+                                            <tbody>
+                                                {pageBookings.map((booking) => (
+                                                    <tr
+                                                        key={booking.booking_id}
+                                                        className="border-t border-border hover:bg-muted/20"
+                                                    >
+                                                        <td className="px-3 py-3 font-medium text-foreground">
+                                                            {booking.court_name}
+                                                        </td>
+                                                        <td className="px-3 py-3 text-foreground">
+                                                            {BOOKING_TYPE_LABELS[
+                                                                booking.booking_type
+                                                            ] ?? booking.booking_type}
+                                                        </td>
+                                                        <td className="px-3 py-3 text-foreground">
+                                                            {formatUTCDate(
+                                                                booking.start_datetime
+                                                            )}
+                                                        </td>
+                                                        <td className="px-3 py-3 text-foreground">
+                                                            {formatUTCTime(
+                                                                booking.start_datetime
+                                                            )}{" "}
+                                                            – {formatUTCTime(booking.end_datetime)}
+                                                        </td>
+                                                        <td className="px-3 py-3 text-foreground">
+                                                            {booking.participants.length}
+                                                        </td>
+                                                        <td className="px-3 py-3">
+                                                            <BookingStatusBadge
+                                                                status={booking.status}
+                                                            />
+                                                        </td>
+                                                        <td className="px-3 py-3 text-right">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    openBooking(booking)
+                                                                }
+                                                                className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
+                                                                aria-label={`View booking ${booking.court_name}`}
+                                                            >
+                                                                <Eye size={13} /> View
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    {bookingTotalPages > 1 ? (
+                                        <div className="flex items-center justify-between border-t border-border pt-3">
+                                            <span className="text-xs text-muted-foreground">
+                                                {bookingPage * BOOKING_PAGE_SIZE + 1}–
+                                                {Math.min(
+                                                    (bookingPage + 1) * BOOKING_PAGE_SIZE,
+                                                    filteredBookings.length
+                                                )}{" "}
+                                                of {filteredBookings.length}
+                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBookingPage((p) => p - 1)}
+                                                    disabled={bookingPage === 0}
+                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                                    aria-label="Previous bookings page"
+                                                >
+                                                    <ChevronLeft size={14} />
+                                                </button>
+                                                {Array.from(
+                                                    { length: bookingTotalPages },
+                                                    (_, index) => (
+                                                        <button
+                                                            key={index}
+                                                            type="button"
+                                                            onClick={() => setBookingPage(index)}
+                                                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
+                                                                index === bookingPage
+                                                                    ? "border-cta bg-cta text-cta-foreground"
+                                                                    : "border-border bg-card text-foreground hover:bg-muted"
+                                                            }`}
+                                                            aria-label={`Bookings page ${index + 1}`}
+                                                            aria-current={
+                                                                index === bookingPage
+                                                                    ? "page"
+                                                                    : undefined
+                                                            }
+                                                        >
+                                                            {index + 1}
+                                                        </button>
+                                                    )
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setBookingPage((p) => p + 1)}
+                                                    disabled={
+                                                        bookingPage === bookingTotalPages - 1
+                                                    }
+                                                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+                                                    aria-label="Next bookings page"
+                                                >
+                                                    <ChevronRight size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : null}
                                 </div>
                             )}
                         </div>
                     ) : null}
                 </div>
             </section>
+
+            {selectedBooking ? (
+                <TrainerBookingDetailModal booking={selectedBooking} onClose={closeBooking} />
+            ) : null}
         </div>
     );
 }

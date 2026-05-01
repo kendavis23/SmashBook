@@ -24,6 +24,13 @@ vi.mock("../../store", () => ({
 
 vi.mock("@repo/ui", () => ({
     datetimeLocalToUTC: (v: string) => v + ":00Z",
+    formatUTCDate: (value: string) =>
+        new Date(value).toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+            timeZone: "UTC",
+        }),
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
             {items.map((i) => (

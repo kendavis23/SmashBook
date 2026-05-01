@@ -16,3 +16,4 @@ export {
     useRespondInvite,
 } from "./booking.hooks";
 export { useListTrainers, useListAvailableTrainers } from "./trainer.hooks";
+export { useListEquipment } from "./equipment.hooks";

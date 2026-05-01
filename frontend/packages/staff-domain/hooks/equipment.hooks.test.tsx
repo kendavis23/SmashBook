@@ -7,6 +7,10 @@ import React from "react";
 // Mock the entire staff api-client module
 // ---------------------------------------------------------------------------
 
+vi.mock("@repo/api-client/modules/share", () => ({
+    listEquipmentEndpoint: vi.fn(),
+}));
+
 vi.mock("@repo/api-client/modules/staff", () => ({
     // club endpoints
     listClubsEndpoint: vi.fn(),
@@ -44,12 +48,12 @@ vi.mock("@repo/api-client/modules/staff", () => ({
     getMembershipPlanEndpoint: vi.fn(),
     updateMembershipPlanEndpoint: vi.fn(),
     // equipment endpoints
-    listEquipmentEndpoint: vi.fn(),
     createEquipmentEndpoint: vi.fn(),
     updateEquipmentEndpoint: vi.fn(),
     retireEquipmentEndpoint: vi.fn(),
 }));
 
+import * as shareApi from "@repo/api-client/modules/share";
 import * as staffApi from "@repo/api-client/modules/staff";
 
 import {
@@ -101,18 +105,18 @@ const mockItem = {
 
 describe("useListEquipment", () => {
     it("returns equipment items for a club", async () => {
-        vi.mocked(staffApi.listEquipmentEndpoint).mockResolvedValue([mockItem]);
+        vi.mocked(shareApi.listEquipmentEndpoint).mockResolvedValue([mockItem]);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useListEquipment(CLUB_ID), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual([mockItem]);
-        expect(staffApi.listEquipmentEndpoint).toHaveBeenCalledWith(CLUB_ID);
+        expect(shareApi.listEquipmentEndpoint).toHaveBeenCalledWith(CLUB_ID);
     });
 
     it("does not fetch when clubId is empty", () => {
         const { Wrapper } = makeWrapper();
         renderHook(() => useListEquipment(""), { wrapper: Wrapper });
-        expect(staffApi.listEquipmentEndpoint).not.toHaveBeenCalled();
+        expect(shareApi.listEquipmentEndpoint).not.toHaveBeenCalled();
     });
 });
 

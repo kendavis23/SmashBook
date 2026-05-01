@@ -1,7 +1,7 @@
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
 import { CalendarDays, UsersRound, X } from "lucide-react";
-import { AlertToast, NumberInput, RecurrencePicker, SelectInput, formatCurrency } from "@repo/ui";
+import { AlertToast, NumberInput, RecurrencePicker, SelectInput, formatCurrency, formatUTCDate } from "@repo/ui";
 import type { BookingType } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -95,13 +95,7 @@ export function NewBookingModalView({
     const showRecurringSettings = shouldShowRecurringSettings(form.bookingType);
     const invitedCount = form.playerUserIds.filter(Boolean).length;
 
-    const formattedDate = form.bookingDate
-        ? new Date(form.bookingDate + "T00:00:00").toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-          })
-        : "—";
+    const formattedDate = form.bookingDate ? formatUTCDate(form.bookingDate + "T00:00:00Z") : "—";
 
     const formattedTime = form.startTime ? formatSlotTime(form.startTime) : "—";
     const formattedPrice = form.startTime ? (formatCurrency(selectedPrice) ?? "—") : "—";

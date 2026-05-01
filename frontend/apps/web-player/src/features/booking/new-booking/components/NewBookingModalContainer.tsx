@@ -108,6 +108,9 @@ export default function NewBookingModalContainer({
                 const next = { ...prev, ...patch };
                 if (patch.bookingType !== undefined) {
                     next.isOpenGame = false;
+                    if (patch.bookingType === "lesson_individual") {
+                        next.maxPlayers = "1";
+                    }
                 }
                 if (patch.courtId !== undefined && courtError) setCourtError("");
                 if (

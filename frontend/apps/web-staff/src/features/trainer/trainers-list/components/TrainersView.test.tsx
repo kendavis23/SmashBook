@@ -216,7 +216,7 @@ describe("TrainersView — trainers list", () => {
                 ]}
             />
         );
-        expect(screen.getByText("Weekly slots")).toBeInTheDocument();
+        expect(screen.getByText("Availability")).toBeInTheDocument();
         expect(screen.getAllByText("2 slots").length).toBeGreaterThan(0);
     });
 

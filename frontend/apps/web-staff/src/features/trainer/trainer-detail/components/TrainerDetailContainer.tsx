@@ -1,7 +1,12 @@
 import type { JSX } from "react";
 import { useCallback, useState } from "react";
 import { useParams } from "@tanstack/react-router";
-import { useGetTrainerAvailability, useGetTrainerBookings, useListTrainers } from "../../hooks";
+import {
+    useDeleteTrainerAvailability,
+    useGetTrainerAvailability,
+    useGetTrainerBookings,
+    useListTrainers,
+} from "../../hooks";
 import { useClubAccess, canManageTrainers } from "../../store";
 import type { Trainer, TrainerTab } from "../../types";
 import TrainerDetailView from "./TrainerDetailView";
@@ -33,6 +38,8 @@ export default function TrainerDetailContainer(): JSX.Element {
         refetch: refetchBookings,
     } = useGetTrainerBookings(trainerId, true);
 
+    const deleteAvailability = useDeleteTrainerAvailability(trainerId);
+
     const handleRefreshAvailability = useCallback((): void => {
         void refetchAvailability();
     }, [refetchAvailability]);
@@ -48,6 +55,13 @@ export default function TrainerDetailContainer(): JSX.Element {
     const handleAvailabilityCreated = useCallback((): void => {
         void refetchAvailability();
     }, [refetchAvailability]);
+
+    const handleDeleteAvailability = useCallback(
+        async (availabilityId: string): Promise<void> => {
+            await deleteAvailability.mutateAsync(availabilityId);
+        },
+        [deleteAvailability]
+    );
 
     if (trainersLoading) {
         return (
@@ -82,6 +96,10 @@ export default function TrainerDetailContainer(): JSX.Element {
                 onRefreshAvailability={handleRefreshAvailability}
                 onRefreshBookings={handleRefreshBookings}
                 onCreateAvailability={handleCreateAvailability}
+                deletingAvailabilityId={
+                    deleteAvailability.isPending ? (deleteAvailability.variables ?? null) : null
+                }
+                onDeleteAvailability={handleDeleteAvailability}
             />
             {showCreateAvailability && clubId ? (
                 <CreateAvailabilityModal

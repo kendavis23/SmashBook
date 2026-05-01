@@ -1,7 +1,7 @@
 import type { JSX } from "react";
 import { useState } from "react";
 import { Check, CreditCard, RotateCcw, UserPlus, UserRound, X } from "lucide-react";
-import { AlertToast, formatCurrency } from "@repo/ui";
+import { AlertToast, formatCurrency, formatUTCDate, formatUTCTime } from "@repo/ui";
 import type { Booking, InviteStatus, PaymentStatus, PlayerRole } from "../../types";
 import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
@@ -32,16 +32,10 @@ const dividerCls = "border-t-2 border-border/20 pt-3";
 const sectionCls = `space-y-2 ${dividerCls}`;
 
 function formatDateRange(start: string, end: string): { date: string; time: string } {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const date = startDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-    });
-    const startTime = startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    const endTime = endDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    return { date, time: `${startTime} - ${endTime}` };
+    return {
+        date: formatUTCDate(start),
+        time: `${formatUTCTime(start)} - ${formatUTCTime(end)}`,
+    };
 }
 
 function formatStatus(value?: string | null): string {

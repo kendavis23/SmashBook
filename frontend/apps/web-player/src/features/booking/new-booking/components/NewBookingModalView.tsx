@@ -1,7 +1,7 @@
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
 import { CalendarDays, UsersRound, X } from "lucide-react";
-import { AlertToast, NumberInput, SelectInput, formatCurrency } from "@repo/ui";
+import { AlertToast, NumberInput, SelectInput, formatCurrency, formatUTCDate } from "@repo/ui";
 import type { BookingType } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -74,13 +74,7 @@ export function NewBookingModalView({
     const isRegular = form.bookingType === "regular";
     const invitedCount = form.playerUserIds.filter(Boolean).length;
 
-    const formattedDate = form.bookingDate
-        ? new Date(form.bookingDate + "T00:00:00").toLocaleDateString("en-GB", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-          })
-        : "—";
+    const formattedDate = form.bookingDate ? formatUTCDate(form.bookingDate + "T00:00:00Z") : "—";
 
     const formattedTime = form.startTime ? formatSlotTime(form.startTime) : "—";
     const formattedPrice = form.startTime ? (formatCurrency(selectedPrice) ?? "—") : "—";
@@ -134,8 +128,9 @@ export function NewBookingModalView({
                             id="bk-max-players"
                             min={1}
                             max={10}
-                            className={fieldCls}
-                            value={form.maxPlayers}
+                            className={`${fieldCls} ${form.bookingType === "lesson_individual" ? "cursor-not-allowed opacity-80" : ""}`}
+                            value={form.bookingType === "lesson_individual" ? "1" : form.maxPlayers}
+                            readOnly={form.bookingType === "lesson_individual"}
                             onChange={(e) => onFormChange({ maxPlayers: e.target.value })}
                         />
                     </div>

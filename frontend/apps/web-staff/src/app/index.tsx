@@ -47,6 +47,7 @@ const ManageOpenMatchPage = lazy(
     () => import("../features/open-match/manage-open-match/pages/ManageOpenMatchPage")
 );
 const PlayersPage = lazy(() => import("../features/player/pages/PlayersPage"));
+const EquipmentPage = lazy(() => import("../features/equipment/pages/EquipmentPage"));
 
 function requireRole(roles: UserRole[]) {
     return () => {
@@ -84,10 +85,6 @@ function ReportPage() {
 
 function SupportPage() {
     return <div className="p-8 text-gray-700">Support — coming soon</div>;
-}
-
-function EquipmentPage() {
-    return <div className="p-8 text-gray-700">Equipment — coming soon</div>;
 }
 
 const rootRoute = createRootRoute({

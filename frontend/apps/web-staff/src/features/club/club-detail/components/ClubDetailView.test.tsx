@@ -99,7 +99,7 @@ describe("ClubDetailView — operating hours section", () => {
                 onRulesPageChange={vi.fn()}
             />
         );
-        expect(screen.getByText("09:00–21:00")).toBeInTheDocument();
+        expect(screen.getByText("9:00 AM – 9:00 PM")).toBeInTheDocument();
     });
 
     it("renders Closed for days with no hours", () => {

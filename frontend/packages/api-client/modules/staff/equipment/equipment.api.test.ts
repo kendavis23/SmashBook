@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-    listEquipmentEndpoint,
     createEquipmentEndpoint,
     updateEquipmentEndpoint,
     retireEquipmentEndpoint,
@@ -30,14 +29,6 @@ const mockItem = {
     condition: "good" as const,
     notes: null,
 };
-
-describe("listEquipmentEndpoint", () => {
-    it("calls GET /api/v1/equipment with club_id", async () => {
-        mockFetcher.mockResolvedValue([mockItem]);
-        await listEquipmentEndpoint(CLUB_ID);
-        expect(mockFetcher).toHaveBeenCalledWith(`/api/v1/equipment?club_id=${CLUB_ID}`);
-    });
-});
 
 describe("createEquipmentEndpoint", () => {
     it("calls POST /api/v1/equipment with club_id and body", async () => {
