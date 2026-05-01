@@ -128,8 +128,9 @@ export function NewBookingModalView({
                             id="bk-max-players"
                             min={1}
                             max={10}
-                            className={fieldCls}
-                            value={form.maxPlayers}
+                            className={`${fieldCls} ${form.bookingType === "lesson_individual" ? "cursor-not-allowed opacity-80" : ""}`}
+                            value={form.bookingType === "lesson_individual" ? "1" : form.maxPlayers}
+                            readOnly={form.bookingType === "lesson_individual"}
                             onChange={(e) => onFormChange({ maxPlayers: e.target.value })}
                         />
                     </div>
