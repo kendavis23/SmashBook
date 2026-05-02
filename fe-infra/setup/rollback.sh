@@ -4,20 +4,23 @@
 #
 # Rolls back a GCS-hosted frontend app to a previously deployed version.
 # Version folders (<sha>/) are preserved in the bucket alongside the bucket
-# root, which always serves the active build via the CDN.
+# root, which always serves the active build via Cloudflare CDN.
 #
 # USAGE
 #   bash rollback.sh --bucket <bucket-name> --sha <git-sha>
 #
 # OPTIONS
-#   --bucket   GCS bucket name (e.g. smashbook-staff-frontend)
-#   --sha      Full or short Git SHA of the version to roll back to
-#   --list     List all available versions in the bucket, then exit
-#   --dry-run  Show what would happen without making any changes
+#   --bucket       GCS bucket name (e.g. smashbook-staff-frontend)
+#   --sha          Full or short Git SHA of the version to roll back to
+#   --list         List all available versions in the bucket, then exit
+#   --dry-run      Show what would happen without making any changes
+#   --cf-zone-id   Cloudflare Zone ID (or set CF_ZONE_ID env var)
+#   --cf-token     Cloudflare API token (or set CF_API_TOKEN env var)
 #
 # EXAMPLES
-#   # Roll back staff app to a specific SHA
-#   bash rollback.sh --bucket smashbook-staff-frontend --sha a1b2c3d4
+#   # Roll back staff app to a specific SHA (also purges Cloudflare cache)
+#   bash rollback.sh --bucket smashbook-staff-frontend --sha a1b2c3d4 \
+#     --cf-zone-id <zone-id> --cf-token <api-token>
 #
 #   # List all available versions first
 #   bash rollback.sh --bucket smashbook-staff-frontend --list
@@ -28,6 +31,7 @@
 # PREREQUISITES
 #   - gcloud installed and in PATH
 #   - gcloud auth application-default login (or GOOGLE_APPLICATION_CREDENTIALS set)
+#   - curl installed and in PATH
 #   - The target SHA must exist as a versioned folder in the bucket
 # =============================================================================
 set -euo pipefail
@@ -42,13 +46,17 @@ BUCKET=""
 SHA=""
 LIST_ONLY=false
 DRY_RUN=false
+CF_ZONE_ID="${CF_ZONE_ID:-}"
+CF_API_TOKEN="${CF_API_TOKEN:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --bucket)   BUCKET="$2"; shift 2 ;;
-    --sha)      SHA="$2";    shift 2 ;;
-    --list)     LIST_ONLY=true; shift ;;
-    --dry-run)  DRY_RUN=true;   shift ;;
+    --bucket)      BUCKET="$2";        shift 2 ;;
+    --sha)         SHA="$2";           shift 2 ;;
+    --list)        LIST_ONLY=true;     shift ;;
+    --dry-run)     DRY_RUN=true;       shift ;;
+    --cf-zone-id)  CF_ZONE_ID="$2";   shift 2 ;;
+    --cf-token)    CF_API_TOKEN="$2"; shift 2 ;;
     --help|-h)
       sed -n '/^# USAGE/,/^# PREREQUISITES/p' "$0" | sed 's/^# \?//'
       exit 0
@@ -61,6 +69,7 @@ done
 check_tools() {
   command -v gcloud &>/dev/null || die "'gcloud' is not installed or not in PATH"
   command -v gsutil &>/dev/null || die "'gsutil' is not installed or not in PATH"
+  command -v curl   &>/dev/null || die "'curl' is not installed or not in PATH"
 }
 
 check_args() {
@@ -122,6 +131,33 @@ resolve_sha() {
   echo "$matches" | head -1
 }
 
+# ─── Purge Cloudflare cache ───────────────────────────────────────────────────
+purge_cloudflare_cache() {
+  if [[ -z "$CF_ZONE_ID" || -z "$CF_API_TOKEN" ]]; then
+    log "CF_ZONE_ID / CF_API_TOKEN not set — skipping Cloudflare cache purge."
+    log "Cloudflare may serve stale content for up to its TTL. Purge manually:"
+    log "  curl -X POST https://api.cloudflare.com/client/v4/zones/<zone-id>/purge_cache \\"
+    log "    -H 'Authorization: Bearer <token>' \\"
+    log "    -H 'Content-Type: application/json' \\"
+    log "    --data '{\"purge_everything\":true}'"
+    return
+  fi
+
+  log "Purging Cloudflare cache..."
+  local response
+  response=$(curl -s -X POST \
+    "https://api.cloudflare.com/client/v4/zones/${CF_ZONE_ID}/purge_cache" \
+    -H "Authorization: Bearer ${CF_API_TOKEN}" \
+    -H "Content-Type: application/json" \
+    --data '{"purge_everything":true}')
+
+  if echo "$response" | grep -q '"success":true'; then
+    success "Cloudflare cache purged. Users will receive updated content immediately."
+  else
+    log "WARNING: Cloudflare cache purge may have failed. Response: ${response}"
+  fi
+}
+
 # ─── Rollback ────────────────────────────────────────────────────────────────
 run_rollback() {
   local versioned_prefix
@@ -132,6 +168,7 @@ run_rollback() {
   if [[ "$DRY_RUN" == true ]]; then
     log "[DRY RUN] Would copy: ${versioned_prefix}. → gs://${BUCKET}/"
     log "[DRY RUN] Would set cache headers on assets/** and index.html"
+    log "[DRY RUN] Would purge Cloudflare cache"
     log "[DRY RUN] No changes made."
     return
   fi
@@ -149,8 +186,8 @@ run_rollback() {
     "gs://${BUCKET}/index.html"
 
   success "Rollback complete. Active version: ${SHA}"
-  log "CDN cache may serve stale content for up to 1h. To invalidate immediately:"
-  log "  gcloud compute url-maps invalidate-cdn-cache <url-map-name> --path '/*'"
+
+  purge_cloudflare_cache
 }
 
 # ─── Main ─────────────────────────────────────────────────────────────────────

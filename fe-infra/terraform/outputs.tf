@@ -9,23 +9,14 @@ output "staff_static_ip_address" {
   value       = module.networking_staff.static_ip_address
 }
 
-output "staff_frontend_url" {
-  description = "Public URL of the staff portal (HTTPS in prod, HTTP IP in staging)"
-  value = var.dns_config ? (
-    "https://${var.staff_domain}"
-  ) : (
-    "http://${module.networking_staff.static_ip_address}"
-  )
-}
-
 output "staff_cdn_backend_bucket_name" {
-  description = "CDN backend bucket resource name for staff portal"
+  description = "Backend bucket resource name for staff portal"
   value       = module.cdn_staff.backend_bucket_name
 }
 
 output "staff_ssl_certificate_name" {
-  description = "Managed SSL certificate resource name for staff portal (null in staging)"
-  value       = module.ssl_staff.ssl_cert_name
+  description = "Cloudflare Origin SSL certificate resource name for staff portal"
+  value       = module.origin_ssl_staff.ssl_cert_name
 }
 
 # ─── Player portal ────────────────────────────────────────────────────────────
@@ -39,27 +30,28 @@ output "player_static_ip_address" {
   value       = module.networking_player.static_ip_address
 }
 
-output "player_frontend_url" {
-  description = "Public URL of the player portal (HTTPS in prod, HTTP IP in staging)"
-  value = var.dns_config ? (
-    "https://${var.player_domain}"
-  ) : (
-    "http://${module.networking_player.static_ip_address}"
-  )
-}
-
 output "player_cdn_backend_bucket_name" {
-  description = "CDN backend bucket resource name for player portal"
+  description = "Backend bucket resource name for player portal"
   value       = module.cdn_player.backend_bucket_name
 }
 
 output "player_ssl_certificate_name" {
-  description = "Managed SSL certificate resource name for player portal (null in staging)"
-  value       = module.ssl_player.ssl_cert_name
+  description = "Cloudflare Origin SSL certificate resource name for player portal"
+  value       = module.origin_ssl_player.ssl_cert_name
 }
 
 # ─── Shared ───────────────────────────────────────────────────────────────────
-output "dns_zone_name_servers" {
-  description = "Name servers to delegate to at your domain registrar (only when dns_config = true and create_zone = true)"
-  value       = module.dns_staff.name_servers
+output "lb_static_ip_staff" {
+  description = "Staff portal LB static IP — consumed by clients/production Cloudflare DNS layer"
+  value       = module.networking_staff.static_ip_address
+}
+
+output "lb_static_ip_player" {
+  description = "Player portal LB static IP — consumed by clients/production Cloudflare DNS layer"
+  value       = module.networking_player.static_ip_address
+}
+
+output "armor_policy_name" {
+  description = "Cloud Armor security policy name (Cloudflare-only allowlist)"
+  value       = module.armor.policy_name
 }
