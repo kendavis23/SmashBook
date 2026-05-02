@@ -1,4 +1,5 @@
 import uuid
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -34,8 +35,21 @@ async def update_my_profile(
     return current_user
 
 
+def _date_or_none(v: Optional[str]) -> Optional[date]:
+    """Coerce empty-string query params to None so ?past_from= doesn't 422."""
+    if not v:
+        return None
+    try:
+        return date.fromisoformat(v)
+    except ValueError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail=f"Invalid date format: {v!r}. Expected YYYY-MM-DD.")
+
+
 @router.get("/me/bookings", response_model=PlayerBookingsResponse)
 async def get_my_bookings(
+    past_from: Optional[str] = Query(None, description="Inclusive start date for past bookings (YYYY-MM-DD)"),
+    past_to: Optional[str] = Query(None, description="Inclusive end date for past bookings (YYYY-MM-DD)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_read_db),
 ):
@@ -44,10 +58,18 @@ async def get_my_bookings(
 
     Returns two lists:
     - upcoming: pending/confirmed bookings with start time in the future, soonest first
-    - past: cancelled/completed bookings and anything in the past, most recent first
+    - past: bookings within the given date range, most recent first.
+            Returns empty when no date range is supplied.
+
+    past_from and past_to are inclusive calendar dates (UTC). Either or both may be provided.
     """
-    from datetime import datetime, timezone
     from app.db.models.booking import BookingStatus
+
+    pf = _date_or_none(past_from)
+    pt = _date_or_none(past_to)
+
+    if pf and pt and pf > pt:
+        raise HTTPException(status_code=422, detail="past_from must not be after past_to")
 
     svc = PlayerService(db)
     all_bookings = await svc.get_booking_history(current_user.id)
@@ -58,11 +80,19 @@ async def get_my_bookings(
         if b.start_datetime >= now
         and b.status in (BookingStatus.pending, BookingStatus.confirmed)
     ]
-    past = [
-        b for b in all_bookings
-        if b not in upcoming
-    ]
-    # upcoming sorted soonest first; past already sorted most recent first (desc)
+
+    if not pf and not pt:
+        past = []
+    else:
+        past = [b for b in all_bookings if b not in upcoming]
+        if pf:
+            past_from_dt = datetime(pf.year, pf.month, pf.day, tzinfo=timezone.utc)
+            past = [b for b in past if b.start_datetime >= past_from_dt]
+        if pt:
+            # inclusive: include bookings that start on pt, so use start of next day
+            past_to_dt = datetime.combine(pt + timedelta(days=1), datetime.min.time(), tzinfo=timezone.utc)
+            past = [b for b in past if b.start_datetime < past_to_dt]
+
     upcoming.sort(key=lambda b: b.start_datetime)
     return PlayerBookingsResponse(upcoming=upcoming, past=past)
 

@@ -6,7 +6,7 @@ Coverage
 GET  /players                 — happy path, name filter, club_id no-op, exclusions, tenant isolation
 GET  /players/me              — success, unauthenticated, wrong tenant
 PATCH /players/me             — success (partial update), unauthenticated, wrong tenant
-GET  /players/me/bookings     — upcoming/past split, isolation, unauthenticated
+GET  /players/me/bookings     — upcoming/past split, date range filter, isolation, unauthenticated
 GET  /players/me/match-history — completed only, isolation, unauthenticated
 """
 
@@ -274,10 +274,10 @@ class TestUpdateMyProfile:
 
 
 class TestGetMyBookings:
-    async def test_returns_upcoming_and_past_lists(
+    async def test_upcoming_populated_without_date_params(
         self, client, player, player_headers, club, court, test_session_factory
     ):
-        """Both upcoming and past lists populated from the player's bookings."""
+        """Without date params, upcoming is populated and past is empty."""
         future_booking = await _insert_booking(
             test_session_factory,
             club_id=club.id,
@@ -315,11 +315,56 @@ class TestGetMyBookings:
         assert "past" in body
 
         upcoming_ids = {b["booking_id"] for b in body["upcoming"]}
+        assert str(future_booking.id) in upcoming_ids
+        assert body["past"] == []
+
+    async def test_past_returned_when_date_range_provided(
+        self, client, player, player_headers, club, court, test_session_factory
+    ):
+        """With a date range, past bookings within the range are returned."""
+        future_booking = await _insert_booking(
+            test_session_factory,
+            club_id=club.id,
+            court_id=court.id,
+            created_by_user_id=player.id,
+            status=BookingStatus.confirmed,
+            start=_future(48),
+        )
+        past_booking = await _insert_booking(
+            test_session_factory,
+            club_id=club.id,
+            court_id=court.id,
+            created_by_user_id=player.id,
+            status=BookingStatus.completed,
+            start=_past(72),
+        )
+        await _insert_booking_player(
+            test_session_factory,
+            booking_id=future_booking.id,
+            user_id=player.id,
+            role=PlayerRole.organiser,
+        )
+        await _insert_booking_player(
+            test_session_factory,
+            booking_id=past_booking.id,
+            user_id=player.id,
+            role=PlayerRole.organiser,
+        )
+
+        past_from = (datetime.now(tz=timezone.utc) - timedelta(days=7)).date().isoformat()
+        resp = await client.get(
+            "/api/v1/players/me/bookings",
+            headers=player_headers,
+            params={"past_from": past_from},
+        )
+        assert resp.status_code == 200
+
+        body = resp.json()
+        upcoming_ids = {b["booking_id"] for b in body["upcoming"]}
         past_ids = {b["booking_id"] for b in body["past"]}
 
         assert str(future_booking.id) in upcoming_ids
         assert str(past_booking.id) in past_ids
-        # Cross-check: each booking appears in exactly one list
         assert str(future_booking.id) not in past_ids
         assert str(past_booking.id) not in upcoming_ids
 
@@ -440,6 +485,132 @@ class TestGetMyBookings:
                 if obj:
                     await session.delete(obj)
                     await session.commit()
+
+    async def test_past_from_filters_out_older_bookings(
+        self, client, player, player_headers, club, court, test_session_factory
+    ):
+        """past_from excludes past bookings before the given date."""
+        old_booking = await _insert_booking(
+            test_session_factory,
+            club_id=club.id,
+            court_id=court.id,
+            created_by_user_id=player.id,
+            status=BookingStatus.completed,
+            start=_past(hours=30 * 24),  # 30 days ago
+        )
+        recent_booking = await _insert_booking(
+            test_session_factory,
+            club_id=club.id,
+            court_id=court.id,
+            created_by_user_id=player.id,
+            status=BookingStatus.completed,
+            start=_past(hours=3 * 24),  # 3 days ago
+        )
+        for bid in (old_booking.id, recent_booking.id):
+            await _insert_booking_player(
+                test_session_factory,
+                booking_id=bid,
+                user_id=player.id,
+                role=PlayerRole.organiser,
+            )
+
+        # Filter to only the last 7 days
+        past_from = (datetime.now(tz=timezone.utc) - timedelta(days=7)).date().isoformat()
+        resp = await client.get(
+            "/api/v1/players/me/bookings",
+            headers=player_headers,
+            params={"past_from": past_from},
+        )
+        assert resp.status_code == 200
+        past_ids = {b["booking_id"] for b in resp.json()["past"]}
+        assert str(recent_booking.id) in past_ids
+        assert str(old_booking.id) not in past_ids
+
+    async def test_past_to_filters_out_newer_bookings(
+        self, client, player, player_headers, club, court, test_session_factory
+    ):
+        """past_to excludes past bookings after the given date."""
+        old_booking = await _insert_booking(
+            test_session_factory,
+            club_id=club.id,
+            court_id=court.id,
+            created_by_user_id=player.id,
+            status=BookingStatus.completed,
+            start=_past(hours=30 * 24),  # 30 days ago
+        )
+        recent_booking = await _insert_booking(
+            test_session_factory,
+            club_id=club.id,
+            court_id=court.id,
+            created_by_user_id=player.id,
+            status=BookingStatus.completed,
+            start=_past(hours=2 * 24),  # 2 days ago
+        )
+        for bid in (old_booking.id, recent_booking.id):
+            await _insert_booking_player(
+                test_session_factory,
+                booking_id=bid,
+                user_id=player.id,
+                role=PlayerRole.organiser,
+            )
+
+        # Cap at 7 days ago — only old_booking should appear
+        past_to = (datetime.now(tz=timezone.utc) - timedelta(days=7)).date().isoformat()
+        resp = await client.get(
+            "/api/v1/players/me/bookings",
+            headers=player_headers,
+            params={"past_to": past_to},
+        )
+        assert resp.status_code == 200
+        past_ids = {b["booking_id"] for b in resp.json()["past"]}
+        assert str(old_booking.id) in past_ids
+        assert str(recent_booking.id) not in past_ids
+
+    async def test_empty_string_date_params_treated_as_absent(self, client, player_headers):
+        """Empty strings for date params should not raise 422 — treated as None, past is empty."""
+        resp = await client.get(
+            "/api/v1/players/me/bookings",
+            headers=player_headers,
+            params={"past_from": "", "past_to": ""},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["past"] == []
+
+    async def test_past_from_after_past_to_returns_422(self, client, player_headers):
+        resp = await client.get(
+            "/api/v1/players/me/bookings",
+            headers=player_headers,
+            params={"past_from": "2026-05-10", "past_to": "2026-05-01"},
+        )
+        assert resp.status_code == 422
+
+    async def test_upcoming_unaffected_by_past_date_params(
+        self, client, player, player_headers, club, court, test_session_factory
+    ):
+        """past_from/past_to must not filter the upcoming list."""
+        booking = await _insert_booking(
+            test_session_factory,
+            club_id=club.id,
+            court_id=court.id,
+            created_by_user_id=player.id,
+            status=BookingStatus.confirmed,
+            start=_future(48),
+        )
+        await _insert_booking_player(
+            test_session_factory,
+            booking_id=booking.id,
+            user_id=player.id,
+            role=PlayerRole.organiser,
+        )
+
+        resp = await client.get(
+            "/api/v1/players/me/bookings",
+            headers=player_headers,
+            params={"past_from": "2020-01-01", "past_to": "2020-12-31"},
+        )
+        assert resp.status_code == 200
+        upcoming_ids = {b["booking_id"] for b in resp.json()["upcoming"]}
+        assert str(booking.id) in upcoming_ids
 
 
 # ---------------------------------------------------------------------------
