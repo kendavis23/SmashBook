@@ -115,6 +115,27 @@ tf_init() {
   terraform validate
 }
 
+# ─── Import pre-existing resources that may have been created outside Terraform ─
+import_existing() {
+  cd "${TERRAFORM_DIR}"
+
+  # Cloud Armor policy — shared resource, created once; may already exist if a
+  # previous apply partially succeeded before state was initialised.
+  local armor_tf_addr="module.armor.google_compute_security_policy.cloudflare_only"
+  local armor_gcp_id="projects/${TF_VAR_project_id}/global/securityPolicies/cloudflare-only"
+
+  if terraform state show "${armor_tf_addr}" &>/dev/null; then
+    log "Cloud Armor policy already in state — skipping import."
+  elif gcloud compute security-policies describe cloudflare-only \
+        --project="${TF_VAR_project_id}" --global &>/dev/null 2>&1; then
+    log "Cloud Armor policy exists in GCP but not in state — importing..."
+    terraform import "${armor_tf_addr}" "${armor_gcp_id}"
+    success "Imported Cloud Armor policy."
+  else
+    log "Cloud Armor policy not found in GCP — will be created by apply."
+  fi
+}
+
 # ─── Store terraform outputs as GCP secrets ───────────────────────────────────
 store_secrets() {
   log "Storing terraform outputs as GCP secrets..."
@@ -128,9 +149,9 @@ store_secrets() {
   )
   local SECRET_VALUES=(
     "$(terraform output -raw staff_bucket_name)"
-    "https://staff.smashbook.app"
+    "${TF_VAR_staff_site_url:-https://staff.smashbook.app}"
     "$(terraform output -raw player_bucket_name)"
-    "https://app.smashbook.app"
+    "${TF_VAR_player_site_url:-https://player.smashbook.app}"
   )
 
   for i in "${!SECRET_NAMES[@]}"; do
@@ -222,6 +243,7 @@ main() {
   bootstrap_state_bucket
   enable_apis
   tf_init
+  import_existing
 
   case "$ACTION" in
     apply)   run_apply ;;

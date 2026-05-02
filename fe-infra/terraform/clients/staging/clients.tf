@@ -59,7 +59,7 @@ resource "cloudflare_record" "staff_a" {
   zone_id = var.cloudflare_zone_id
   name    = split(".", var.staff_domain)[0]
   type    = "A"
-  value   = data.terraform_remote_state.gcp_staging.outputs.lb_static_ip_staff
+  content = data.terraform_remote_state.gcp_staging.outputs.lb_static_ip_staff
   proxied = true
 }
 
@@ -68,7 +68,7 @@ resource "cloudflare_record" "staff_www" {
   zone_id = var.cloudflare_zone_id
   name    = "www.${split(".", var.staff_domain)[0]}"
   type    = "CNAME"
-  value   = var.staff_domain
+  content = var.staff_domain
   proxied = true
 }
 
@@ -79,7 +79,7 @@ resource "cloudflare_record" "player_a" {
   zone_id = var.cloudflare_zone_id
   name    = split(".", var.player_domain)[0]
   type    = "A"
-  value   = data.terraform_remote_state.gcp_staging.outputs.lb_static_ip_player
+  content = data.terraform_remote_state.gcp_staging.outputs.lb_static_ip_player
   proxied = true
 }
 
@@ -88,6 +88,6 @@ resource "cloudflare_record" "player_www" {
   zone_id = var.cloudflare_zone_id
   name    = "www.${split(".", var.player_domain)[0]}"
   type    = "CNAME"
-  value   = var.player_domain
+  content = var.player_domain
   proxied = true
 }

@@ -68,7 +68,7 @@ module "networking_staff" {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PLAYER PORTAL  (app.smashbook.app)
+# PLAYER PORTAL  (player.smashbook.app)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 module "storage_player" {
