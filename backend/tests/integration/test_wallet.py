@@ -1,22 +1,60 @@
 """
-Integration tests for GET /payments/wallet.
+Integration tests for wallet endpoints.
 
 Coverage
 --------
-GET /payments/wallet  — happy path with balance + transactions
-                      — empty transaction history
-                      — no wallet → 404
-                      — unauthenticated → 403
-                      — wrong tenant → 401
+GET  /payments/wallet     — happy path with balance + transactions
+                          — empty transaction history
+                          — no wallet → 404
+                          — unauthenticated → 403
+                          — wrong tenant → 401
+POST /payments/wallet/top-up
+                          — success with explicit payment_method_id
+                          — success with default payment method (no pm_id in body)
+                          — auto-creates wallet when player has none
+                          — amount_pence < 100 → 400
+                          — no saved card and no pm_id → 400
+                          — unauthenticated → 403
+                          — wrong tenant → 401
 """
 import uuid
 from decimal import Decimal
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy import delete as sql_delete
 
 from app.core.security import create_access_token
 from app.db.models.tenant import Tenant as TenantModel
+from app.db.models.user import User
 from app.db.models.wallet import Wallet, WalletTransaction, WalletTransactionType
+
+STRIPE_CUSTOMER_ID = "cus_testWALLETTOPUP"
+STRIPE_PM_ID = "pm_testWALLETTOPUP"
+STRIPE_PI_ID = "pi_testWALLETTOPUP"
+STRIPE_PI_SECRET = "pi_testWALLETTOPUP_secret_ZZZ"
+
+
+def _mock_customer():
+    c = MagicMock()
+    c.id = STRIPE_CUSTOMER_ID
+    return c
+
+
+def _mock_pi(amount=2000):
+    pi = MagicMock()
+    pi.id = STRIPE_PI_ID
+    pi.client_secret = STRIPE_PI_SECRET
+    pi.amount = amount
+    return pi
+
+
+async def _set_stripe_fields(session_factory, user_id, *, customer_id=STRIPE_CUSTOMER_ID, default_pm_id=None):
+    async with session_factory() as session:
+        u = await session.get(User, user_id)
+        u.stripe_customer_id = customer_id
+        if default_pm_id is not None:
+            u.default_payment_method_id = default_pm_id
+        await session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +220,122 @@ class TestGetWalletErrors:
             token = create_access_token({"sub": str(player.id), "tid": str(tenant.id)})
             resp = await client.get(
                 "/api/v1/payments/wallet",
+                headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2.id)},
+            )
+            assert resp.status_code == 401
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(TenantModel, t2.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /payments/wallet/top-up
+# ---------------------------------------------------------------------------
+
+class TestWalletTopUp:
+
+    async def test_success_with_explicit_payment_method(self, client, player, player_headers, test_session_factory):
+        """Returns client_secret and payment_intent_id when an explicit pm is supplied."""
+        await _set_stripe_fields(test_session_factory, player.id)
+        wallet = await _create_wallet(test_session_factory, player.id, balance="10.00")
+        try:
+            with patch("stripe.PaymentIntent.create", return_value=_mock_pi(2000)):
+                resp = await client.post(
+                    "/api/v1/payments/wallet/top-up",
+                    json={"amount_pence": 2000, "payment_method_id": STRIPE_PM_ID},
+                    headers=player_headers,
+                )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["client_secret"] == STRIPE_PI_SECRET
+            assert body["payment_intent_id"] == STRIPE_PI_ID
+            assert body["amount"] == 2000
+            assert body["currency"] == "gbp"
+        finally:
+            await _delete_wallet(test_session_factory, wallet.id)
+
+    async def test_success_with_default_payment_method(self, client, player, player_headers, test_session_factory):
+        """Falls back to user.default_payment_method_id when no pm_id is in the request body."""
+        await _set_stripe_fields(test_session_factory, player.id, default_pm_id=STRIPE_PM_ID)
+        wallet = await _create_wallet(test_session_factory, player.id, balance="5.00")
+        try:
+            with patch("stripe.PaymentIntent.create", return_value=_mock_pi(1500)) as mock_create:
+                resp = await client.post(
+                    "/api/v1/payments/wallet/top-up",
+                    json={"amount_pence": 1500},
+                    headers=player_headers,
+                )
+            assert resp.status_code == 200
+            call_kwargs = mock_create.call_args[1]
+            assert call_kwargs["payment_method"] == STRIPE_PM_ID
+        finally:
+            await _delete_wallet(test_session_factory, wallet.id)
+
+    async def test_auto_creates_wallet_when_none_exists(self, client, player, player_headers, test_session_factory):
+        """If the player has no wallet, one is created during the top-up call."""
+        await _set_stripe_fields(test_session_factory, player.id, default_pm_id=STRIPE_PM_ID)
+        with patch("stripe.PaymentIntent.create", return_value=_mock_pi(1000)):
+            resp = await client.post(
+                "/api/v1/payments/wallet/top-up",
+                json={"amount_pence": 1000},
+                headers=player_headers,
+            )
+        assert resp.status_code == 200
+        # Verify wallet row was created
+        async with test_session_factory() as session:
+            from sqlalchemy import select as sa_select
+            result = await session.execute(sa_select(Wallet).where(Wallet.user_id == player.id))
+            new_wallet = result.scalar_one_or_none()
+            assert new_wallet is not None
+        await _delete_wallet(test_session_factory, new_wallet.id)
+
+    async def test_amount_below_minimum_returns_400(self, client, player_headers, test_session_factory, player):
+        await _set_stripe_fields(test_session_factory, player.id, default_pm_id=STRIPE_PM_ID)
+        resp = await client.post(
+            "/api/v1/payments/wallet/top-up",
+            json={"amount_pence": 99},
+            headers=player_headers,
+        )
+        assert resp.status_code == 400
+
+    async def test_no_payment_method_returns_400(self, client, player, player_headers, test_session_factory):
+        """Player with no saved card and no pm_id in request gets 400."""
+        await _set_stripe_fields(test_session_factory, player.id, customer_id=STRIPE_CUSTOMER_ID, default_pm_id=None)
+        wallet = await _create_wallet(test_session_factory, player.id)
+        try:
+            resp = await client.post(
+                "/api/v1/payments/wallet/top-up",
+                json={"amount_pence": 1000},
+                headers=player_headers,
+            )
+            assert resp.status_code == 400
+        finally:
+            await _delete_wallet(test_session_factory, wallet.id)
+
+    async def test_unauthenticated_returns_403(self, client):
+        resp = await client.post("/api/v1/payments/wallet/top-up", json={"amount_pence": 1000})
+        assert resp.status_code == 403
+
+    async def test_wrong_tenant_returns_401(self, client, player, tenant, plan, test_session_factory):
+        subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(
+                name="Other Tenant",
+                subdomain=subdomain_b,
+                plan_id=plan.id,
+                is_active=True,
+            )
+            session.add(t2)
+            await session.commit()
+            await session.refresh(t2)
+        try:
+            token = create_access_token({"sub": str(player.id), "tid": str(tenant.id)})
+            resp = await client.post(
+                "/api/v1/payments/wallet/top-up",
+                json={"amount_pence": 1000, "payment_method_id": STRIPE_PM_ID},
                 headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2.id)},
             )
             assert resp.status_code == 401

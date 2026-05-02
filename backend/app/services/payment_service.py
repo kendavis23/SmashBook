@@ -27,7 +27,7 @@ from app.db.models.payment import PaymentMethod as PaymentMethodEnum
 from app.db.models.payment import PaymentState
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import User
-from app.db.models.wallet import Wallet, WalletTransaction
+from app.db.models.wallet import Wallet, WalletTransaction, WalletTransactionType
 
 settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -312,6 +312,45 @@ class PaymentService:
             "currency": currency.lower(),
         }
 
+    async def _handle_wallet_top_up_succeeded(self, pi: dict) -> None:
+        """Credit wallet after a wallet_top_up PaymentIntent succeeds."""
+        metadata = pi.get("metadata") or {}
+        wallet_id_str = metadata.get("wallet_id")
+        user_id_str = metadata.get("user_id")
+        if not wallet_id_str:
+            return
+
+        result = await self.db.execute(
+            sa_select(Wallet).where(Wallet.id == uuid.UUID(wallet_id_str))
+        )
+        wallet = result.scalar_one_or_none()
+        if not wallet:
+            return
+
+        amount = Decimal(str(pi["amount"])) / 100
+        new_balance = wallet.balance + amount
+        wallet.balance = new_balance
+        self.db.add(wallet)
+        self.db.add(WalletTransaction(
+            wallet_id=wallet.id,
+            transaction_type=WalletTransactionType.top_up,
+            amount=amount,
+            balance_after=new_balance,
+            reference=pi["id"],
+        ))
+        await self.db.commit()
+
+        if user_id_str:
+            try:
+                publish_notification_event("wallet_topped_up", {
+                    "user_id": user_id_str,
+                    "amount": str(amount),
+                    "balance": str(new_balance),
+                    "currency": wallet.currency,
+                })
+            except Exception:
+                pass
+
     async def confirm_payment(self, stripe_event: dict) -> None:
         """
         Called on payment_intent.succeeded.
@@ -323,6 +362,10 @@ class PaymentService:
         """
         pi = stripe_event["data"]["object"]
         pi_id = pi["id"]
+
+        if (pi.get("metadata") or {}).get("purpose") == "wallet_top_up":
+            await self._handle_wallet_top_up_succeeded(pi)
+            return
 
         result = await self.db.execute(
             sa_select(Payment).where(Payment.stripe_payment_intent_id == pi_id)
@@ -490,16 +533,61 @@ class PaymentService:
             ],
         }
 
-    async def top_up_wallet(self, user_id: str, amount_pence: int,
-                             payment_method_id: str) -> dict:
+    async def top_up_wallet(self, user: User, amount_pence: int,
+                             payment_method_id: str = None) -> dict:
         """
-        Top up player wallet via Stripe.
-          1. Create PaymentIntent for top-up amount
-          2. On success (webhook) → create WalletTransaction(type=top_up)
-          3. Update Wallet.balance
-          4. Return updated balance
+        Create a Stripe PaymentIntent for a wallet top-up.
+        Returns {client_secret, payment_intent_id, amount, currency} for frontend confirmation.
+        The webhook (payment_intent.succeeded) credits the wallet once payment confirms.
         """
-        pass
+        if amount_pence < 100:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Minimum top-up amount is 100 pence (£1.00)",
+            )
+
+        result = await self.db.execute(sa_select(Wallet).where(Wallet.user_id == user.id))
+        wallet = result.scalar_one_or_none()
+        if not wallet:
+            wallet = Wallet(user_id=user.id, balance=Decimal("0.00"), currency="GBP")
+            self.db.add(wallet)
+            await self.db.flush()
+
+        customer_id = await self._ensure_stripe_customer(user)
+        pm_id = payment_method_id or user.default_payment_method_id
+        if not pm_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No payment method available — save a card first",
+            )
+
+        try:
+            pi = stripe.PaymentIntent.create(
+                amount=amount_pence,
+                currency=wallet.currency.lower(),
+                customer=customer_id,
+                payment_method=pm_id,
+                confirm=False,
+                automatic_payment_methods={"enabled": True, "allow_redirects": "never"},
+                metadata={
+                    "purpose": "wallet_top_up",
+                    "user_id": str(user.id),
+                    "wallet_id": str(wallet.id),
+                },
+            )
+        except stripe.StripeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc.user_message or exc),
+            )
+
+        await self.db.commit()
+        return {
+            "client_secret": pi.client_secret,
+            "payment_intent_id": pi.id,
+            "amount": amount_pence,
+            "currency": wallet.currency.lower(),
+        }
 
     async def deduct_wallet(self, user_id: str, amount: float,
                              reference: str) -> dict:

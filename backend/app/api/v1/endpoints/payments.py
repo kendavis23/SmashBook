@@ -14,6 +14,8 @@ from app.schemas.payment_method import (
     SavePaymentMethodRequest,
     SetupIntentResponse,
     WalletResponse,
+    WalletTopUpRequest,
+    WalletTopUpResponse,
 )
 from app.services.payment_service import PaymentService
 
@@ -143,10 +145,15 @@ async def get_wallet(current_user=Depends(get_current_user), db=Depends(get_read
     return await svc.get_wallet(current_user.id)
 
 
-@router.post("/wallet/top-up")
-async def top_up_wallet(current_user=Depends(get_current_user), db=Depends(get_db)):
-    """Top up wallet via Stripe."""
-    pass
+@router.post("/wallet/top-up", response_model=WalletTopUpResponse)
+async def top_up_wallet(
+    body: WalletTopUpRequest,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Create a Stripe PaymentIntent to top up the player's wallet. Returns client_secret for frontend confirmation."""
+    svc = PaymentService(db)
+    return await svc.top_up_wallet(current_user, body.amount_pence, body.payment_method_id)
 
 
 @router.get("/invoices")

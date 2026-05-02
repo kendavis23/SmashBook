@@ -60,3 +60,15 @@ class WalletResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class WalletTopUpRequest(BaseModel):
+    amount_pence: int  # minimum 100 (£1.00)
+    payment_method_id: Optional[str] = None  # falls back to user's default if omitted
+
+
+class WalletTopUpResponse(BaseModel):
+    client_secret: str
+    payment_intent_id: str
+    amount: int   # pence
+    currency: str
