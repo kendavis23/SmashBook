@@ -9,16 +9,16 @@ output "static_ip_name" {
 }
 
 output "https_proxy_name" {
-  description = "Name of the HTTPS target proxy (null when dns_config = false)"
-  value       = var.dns_config ? google_compute_target_https_proxy.frontend[0].name : null
+  description = "Name of the HTTPS target proxy"
+  value       = google_compute_target_https_proxy.frontend.name
 }
 
 output "https_forwarding_rule_name" {
-  description = "Name of the HTTPS forwarding rule (null when dns_config = false)"
-  value       = var.dns_config ? google_compute_global_forwarding_rule.https[0].name : null
+  description = "Name of the HTTPS forwarding rule"
+  value       = google_compute_global_forwarding_rule.https.name
 }
 
 output "http_forwarding_rule_name" {
-  description = "Name of the HTTP forwarding rule"
+  description = "Name of the HTTP → HTTPS redirect forwarding rule"
   value       = google_compute_global_forwarding_rule.http.name
 }

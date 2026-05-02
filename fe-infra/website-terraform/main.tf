@@ -22,84 +22,70 @@ provider "cloudflare" {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SHARED — Cloud Armor (one policy, referenced by both backend buckets)
+# SHARED — Cloud Armor (Cloudflare-only allowlist)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 module "armor" {
-  source     = "./modules/armor"
+  source     = "../terraform/modules/armor"
   project_id = var.project_id
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# STAFF PORTAL  (staff.smashbook.app)
+# WEBSITE  (smashbook.app)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-module "storage_staff" {
-  source      = "./modules/storage"
+module "storage_website" {
+  source      = "../terraform/modules/storage"
   project_id  = var.project_id
-  bucket_name = var.staff_bucket_name
+  bucket_name = var.website_bucket_name
   region      = var.region
   environment = var.environment
 }
 
-module "origin_ssl_staff" {
-  source          = "./modules/origin_ssl"
+module "origin_ssl_website" {
+  source          = "../terraform/modules/origin_ssl"
   project_id      = var.project_id
-  name_prefix     = "staff"
+  name_prefix     = "website"
   origin_cert_pem = var.origin_cert_pem
   origin_key_pem  = var.origin_key_pem
 }
 
-module "cdn_staff" {
-  source                 = "./modules/cdn"
+module "cdn_website" {
+  source                 = "../terraform/modules/cdn"
   project_id             = var.project_id
-  bucket_name            = module.storage_staff.bucket_name
-  bucket_self_link       = module.storage_staff.bucket_self_link
+  bucket_name            = module.storage_website.bucket_name
+  bucket_self_link       = module.storage_website.bucket_self_link
   armor_policy_self_link = module.armor.policy_self_link
 }
 
-module "networking_staff" {
-  source                 = "./modules/networking"
+module "networking_website" {
+  source                 = "../terraform/modules/networking"
   project_id             = var.project_id
-  url_map_self_link      = module.cdn_staff.url_map_self_link
-  http_url_map_self_link = module.cdn_staff.http_redirect_url_map_self_link
-  ssl_cert_self_link     = module.origin_ssl_staff.ssl_cert_self_link
-  name_prefix            = "staff"
+  url_map_self_link      = module.cdn_website.url_map_self_link
+  http_url_map_self_link = module.cdn_website.http_redirect_url_map_self_link
+  ssl_cert_self_link     = module.origin_ssl_website.ssl_cert_self_link
+  name_prefix            = "website"
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# PLAYER PORTAL  (player.smashbook.app)
+# CLOUDFLARE DNS  (smashbook.app)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-module "storage_player" {
-  source      = "./modules/storage"
-  project_id  = var.project_id
-  bucket_name = var.player_bucket_name
-  region      = var.region
-  environment = var.environment
+# smashbook.app → website LB static IP (always created — the apex record is mandatory)
+resource "cloudflare_record" "website_apex" {
+  zone_id = var.cloudflare_zone_id
+  name    = "@"
+  type    = "A"
+  content = module.networking_website.static_ip_address
+  proxied = true
 }
 
-module "origin_ssl_player" {
-  source          = "./modules/origin_ssl"
-  project_id      = var.project_id
-  name_prefix     = "player"
-  origin_cert_pem = var.origin_cert_pem
-  origin_key_pem  = var.origin_key_pem
-}
-
-module "cdn_player" {
-  source                 = "./modules/cdn"
-  project_id             = var.project_id
-  bucket_name            = module.storage_player.bucket_name
-  bucket_self_link       = module.storage_player.bucket_self_link
-  armor_policy_self_link = module.armor.policy_self_link
-}
-
-module "networking_player" {
-  source                 = "./modules/networking"
-  project_id             = var.project_id
-  url_map_self_link      = module.cdn_player.url_map_self_link
-  http_url_map_self_link = module.cdn_player.http_redirect_url_map_self_link
-  ssl_cert_self_link     = module.origin_ssl_player.ssl_cert_self_link
-  name_prefix            = "player"
+# www.smashbook.app → var.website_domain (only created when TF_VAR_website_domain is set)
+resource "cloudflare_record" "website_www" {
+  count   = var.website_domain != "" ? 1 : 0
+  zone_id = var.cloudflare_zone_id
+  name    = "www"
+  type    = "CNAME"
+  content = var.website_domain
+  proxied = true
 }

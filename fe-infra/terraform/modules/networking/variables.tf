@@ -23,9 +23,3 @@ variable "name_prefix" {
   type        = string
   default     = "frontend"
 }
-
-variable "dns_config" {
-  description = "When true (production): create HTTPS proxy + SSL + HTTP→HTTPS redirect. When false (staging): create HTTP-only forwarding rule pointing at the main url_map."
-  type        = bool
-  default     = true
-}

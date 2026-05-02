@@ -13,14 +13,7 @@ variable "bucket_self_link" {
   type        = string
 }
 
-variable "cdn_cache_mode" {
-  description = "CDN cache mode"
+variable "armor_policy_self_link" {
+  description = "Self-link of the Cloud Armor security policy (Cloudflare-only allowlist)"
   type        = string
-  default     = "CACHE_ALL_STATIC"
-}
-
-variable "dns_config" {
-  description = "When true, create the HTTP → HTTPS redirect URL map (production). When false, create a plain HTTP URL map (staging)."
-  type        = bool
-  default     = true
 }

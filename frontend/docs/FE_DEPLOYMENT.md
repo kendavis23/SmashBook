@@ -1,233 +1,284 @@
-_Last updated: 2026-04-12 00:00 UTC_
+_Last updated: 2026-05-02 21:30 UTC_
 
 # Frontend Deployment
 
 ## Infrastructure Architecture
 
-Each web app has its own independent GCP stack:
-
 ```
 Internet
   │
-  ├─ staff.smashbook.io ──▶ Global LB (static IP) ──▶ HTTPS proxy ──▶ CDN backend bucket ──▶ GCS (web-staff build)
-  │
-  └─ app.smashbook.io   ──▶ Global LB (static IP) ──▶ HTTPS proxy ──▶ CDN backend bucket ──▶ GCS (web-player build)
+  └─ <subdomain>.smashbook.app ──▶ Cloudflare (DNS + Proxy + CDN + SSL)
+                                        ↓
+                                 GCP Load Balancer (Cloud Armor — Cloudflare IPs only)
+                                        ↓
+                                 GCS Bucket (app build)
 ```
 
-Per stack:
+**Cloud CDN is NOT used.** Cloudflare handles all CDN. Cloud Armor enforces that only Cloudflare edge IPs can reach the origin — direct LB IP access returns 403.
 
-- **GCS bucket** — hosts the Vite build output, configured as a static website with SPA fallback (`index.html`)
-- **CDN backend bucket** — Cloud CDN with `CACHE_ALL_STATIC`, 1h client/default TTL, 24h max TTL, stale-while-revalidate
-- **URL maps** — HTTPS serving + HTTP → HTTPS permanent redirect
-- **Google-managed SSL certificate** — provisioned and auto-renewed once DNS resolves
-- **Global forwarding rules** — ports 80 and 443 on a dedicated global static IP
-- **Cloud DNS** — A record → load balancer static IP; `www` CNAME → apex
-
-## Domain Mapping
-
-| App          | Domain               | GCS bucket variable  | Terraform module prefix |
-| ------------ | -------------------- | -------------------- | ----------------------- |
-| `web-staff`  | `staff.smashbook.io` | `staff_bucket_name`  | `staff`                 |
-| `web-player` | `app.smashbook.io`   | `player_bucket_name` | `player`                |
-
-## GCP Project Setup (One-time)
-
-Before deploying, bootstrap the GCP project with the service account that GitHub Actions uses for all frontend deployments.
-
-### Run the bootstrap script
-
-```bash
-bash ../fe-infra/setup/create-ci-service-account.sh <PROJECT_ID>
-```
-
-This script (idempotent — safe to re-run):
-
-1. Enables the required GCP APIs: `storage`, `run`, `secretmanager`
-2. Creates the `gh-actions-fe-deployer` service account
-3. Grants only the three roles the deploy workflows actually need:
-    - `roles/storage.objectAdmin` — `gsutil rsync` and `gsutil setmeta` on GCS
-    - `roles/run.viewer` — read the `padel-api` Cloud Run service URL
-    - `roles/secretmanager.secretAccessor` — read bucket name and site URL from Secret Manager
-4. Exports a key to `./gcp-sa-key.json`
-
-### Add the GitHub Secrets
-
-After running the script:
-
-1. Copy the full contents of `gcp-sa-key.json`
-2. Go to **GitHub → Settings → Secrets and variables → Actions → New secret**
-3. Add two secrets:
-    - `GCP_SA_FE_KEY` — paste the JSON key contents
-    - `GCP_PROJECT_ID` — your GCP project ID (e.g. `smashbook-XXXXXX`)
-4. Delete the key file from your machine immediately:
-    ```bash
-    rm ./gcp-sa-key.json
-    ```
-
-> **Security:** Never commit `gcp-sa-key.json` to version control.
+SSL is always enabled. All environments use HTTPS with a Cloudflare Origin Certificate (Full Strict mode).
 
 ---
 
-## Terraform Infra (`fe-infra/terraform/`)
+## Two Independent Terraform Layers
 
 ```
-fe-infra/
-  setup/
-    provision-infra.sh          — run Terraform + store outputs as Secret Manager secrets
-    create-ci-service-account.sh — one-time: create GitHub Actions SA + grant IAM roles
-  terraform/
-    main.tf               — root: instantiates staff + player module stacks
-    variables.tf          — all input vars (project_id, domains, buckets, dns)
-    outputs.tf            — IPs, bucket names, URLs per stack
-    backend.tf            — GCS remote state backend (written by provision-infra.sh on first run)
-    modules/
-      storage/            — GCS bucket + allUsers objectViewer IAM
-      cdn/                — backend bucket + URL map + HTTP redirect map
-      networking/         — static IP, HTTPS/HTTP proxies, forwarding rules
-      ssl/                — Google-managed SSL certificate
-      dns/                — Cloud DNS A record + www CNAME
-      secret_manager/     — Secret Manager secrets for bucket names + site URLs
+fe-infra/terraform/
+  main.tf / variables.tf / outputs.tf / backend.tf  # Layer 1 — GCP (created once)
+  modules/
+    storage/          # GCS bucket
+    networking/       # Static IP, HTTPS proxies, forwarding rules
+    origin_ssl/       # Cloudflare Origin Certificate (GCP SSL resource)
+    cloudflare_dns/   # Proxied A record
+    armor/            # Cloud Armor — Cloudflare IP allowlist
+    cdn/              # Backend bucket + URL maps
+    secret_manager/   # GCP Secret Manager secrets
+  clients/
+    staging/          # Layer 2 — Cloudflare DNS records (staging)
+    production/       # Layer 2 — Cloudflare DNS records (production)
 ```
 
-### Required Terraform variables
+**Layer 1 (GCP)** is created once and never touched when adding clients.
+**Layer 2 (clients/)** is the only thing that changes when onboarding a client. Staging and production follow the same structure.
 
-| Variable             | Description                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `project_id`         | GCP project ID                                                                                                     |
-| `staff_domain`       | e.g. `staff.smashbook.io`                                                                                          |
-| `staff_bucket_name`  | Globally unique GCS bucket name                                                                                    |
-| `player_domain`      | e.g. `app.smashbook.io`                                                                                            |
-| `player_bucket_name` | Globally unique GCS bucket name                                                                                    |
-| `dns_zone_name`      | Cloud DNS managed zone resource name                                                                               |
-| `dns_zone_dns_name`  | DNS name with trailing dot, e.g. `smashbook.io.`                                                                   |
-| `create_zone`        | `true` to create the DNS zone; `false` if it exists                                                                |
-| `region`             | GCP region (default: `europe-west2`)                                                                               |
-| `environment`        | Deployment environment (default: `staging`)                                                                        |
-| `dns_config`         | `true` (prod): DNS + SSL + HTTPS. `false` (staging): HTTP only via static IP, no DNS/SSL/redirect. Default: `true` |
+---
 
-### Step 1 — Export variables
+## Domain Convention
 
-Always required:
+| Environment | Staff subdomain              | Player subdomain                  |
+| ----------- | ---------------------------- | --------------------------------- |
+| Staging     | `<slug>-staging.smashbook.app` | `<slug>-player-staging.smashbook.app` |
+| Production  | `<slug>.smashbook.app`        | `<slug>-player.smashbook.app`     |
+
+A client is onboarded to staging first, then promoted to production under the same slug without the `-staging` suffix.
+
+---
+
+## GCP Project Setup (One-time)
+
+```bash
+bash fe-infra/setup/create-ci-service-account.sh <PROJECT_ID>
+```
+
+This script (idempotent):
+1. Enables required GCP APIs: `storage`, `run`, `secretmanager`
+2. Creates the `gh-actions-fe-deployer` service account with:
+   - `roles/storage.objectAdmin` — deploy builds to GCS
+   - `roles/run.viewer` — read `padel-api` Cloud Run URL
+   - `roles/secretmanager.secretAccessor` — read secrets at deploy time
+3. Exports a key to `./gcp-sa-key.json`
+
+Then add two GitHub secrets:
+
+| Secret           | Value                             |
+| ---------------- | --------------------------------- |
+| `GCP_SA_FE_KEY`  | Contents of `gcp-sa-key.json`     |
+| `GCP_PROJECT_ID` | GCP project ID (e.g. `smashbook-XXXXXX`) |
+
+Delete the key file immediately after:
+```bash
+rm ./gcp-sa-key.json
+```
+
+---
+
+## Cloudflare One-Time Manual Setup
+
+### 1. Create API Token
+
+Cloudflare Dashboard → Profile → API Tokens → Create Token → **Edit Zone DNS** template.
+
+Permissions:
+```
+Zone → DNS → Edit
+Zone → Cache Purge → Purge
+Zone → Zone Settings → Edit
+```
+Scope: `Zone → smashbook.app`
+
+### 2. Get Zone ID
+
+Cloudflare → `smashbook.app` → Overview → Zone ID
+
+Store both in GCP Secret Manager:
+```bash
+echo -n "<CF_ZONE_ID>" | gcloud secrets create CF_ZONE_ID \
+  --data-file=- --project=<PROJECT_ID> --replication-policy=automatic
+
+echo -n "<CF_API_TOKEN>" | gcloud secrets create CF_API_TOKEN \
+  --data-file=- --project=<PROJECT_ID> --replication-policy=automatic
+```
+
+### 3. Create Origin Certificate
+
+Cloudflare → `smashbook.app` → SSL/TLS → Origin Server → Create Certificate
+
+Hostnames:
+```
+smashbook.app
+*.smashbook.app
+```
+
+Validity: 15 years. The wildcard covers all client subdomains — no new cert per client.
+
+Store in GCP Secret Manager:
+```bash
+echo -n "<CERT_PEM>" | gcloud secrets create CERTIFICATE \
+  --data-file=- --project=<PROJECT_ID> --replication-policy=automatic
+
+echo -n "<KEY_PEM>" | gcloud secrets create PRIVATE_KEY \
+  --data-file=- --project=<PROJECT_ID> --replication-policy=automatic
+```
+
+### 4. Set SSL Mode
+
+Cloudflare → `smashbook.app` → SSL/TLS → Overview → **Full (Strict)**
+
+---
+
+## Layer 1 — Provision GCP Infrastructure
+
+Run once per environment. Never re-run when adding clients.
 
 ```bash
 export TF_VAR_project_id=<PROJECT_ID>
 export TF_VAR_staff_bucket_name=smashbook-staff-frontend
 export TF_VAR_player_bucket_name=smashbook-player-frontend
 
-# Optional overrides
-export TF_VAR_region=europe-west2
-export TF_VAR_environment=staging
+# Optional — override the site URLs stored as GCP secrets (default: staff/player.smashbook.app)
+export TF_VAR_staff_site_url=https://ace-staging.smashbook.app
+export TF_VAR_player_site_url=https://ace-player-staging.smashbook.app
+
+export TF_VAR_cloudflare_zone_id=$(gcloud secrets versions access latest \
+  --secret=CF_ZONE_ID --project=$TF_VAR_project_id)
+export TF_VAR_cloudflare_api_token=$(gcloud secrets versions access latest \
+  --secret=CF_API_TOKEN --project=$TF_VAR_project_id)
+export TF_VAR_origin_cert_pem=$(gcloud secrets versions access latest \
+  --secret=CERTIFICATE --project=$TF_VAR_project_id)
+export TF_VAR_origin_key_pem=$(gcloud secrets versions access latest \
+  --secret=PRIVATE_KEY --project=$TF_VAR_project_id)
+
+bash fe-infra/setup/provision-infra.sh apply   # apply
+bash fe-infra/setup/provision-infra.sh plan    # dry-run
+bash fe-infra/setup/provision-infra.sh destroy # tear down
 ```
 
-Required only when using `--dns` (production):
-
-```bash
-export TF_VAR_staff_domain=staff.smashbook.io
-export TF_VAR_player_domain=app.smashbook.io
-export TF_VAR_dns_zone_name=smashbook-zone
-export TF_VAR_dns_zone_dns_name=smashbook.io.
-```
-
-### Step 2 — Provision / destroy infrastructure
-
-All infrastructure is managed through `provision-infra.sh`. Use `--dns` for production (HTTPS + SSL + DNS) or `--no-dns` for staging (HTTP only via static IP).
-
-```bash
-# ── STAGING (HTTP only, no DNS/SSL) ──────────────────────────────────────────
-
-# Apply
-bash fe-infra/setup/provision-infra.sh apply --no-dns
-
-# Plan (dry-run)
-bash fe-infra/setup/provision-infra.sh plan --no-dns
-
-# Destroy
-bash fe-infra/setup/provision-infra.sh destroy --no-dns
-
-
-# ── PRODUCTION (HTTPS + DNS + SSL) ───────────────────────────────────────────
-
-# First run only — creates the Cloud DNS managed zone
-bash fe-infra/setup/provision-infra.sh apply --dns --create-zone
-
-# All subsequent runs
-bash fe-infra/setup/provision-infra.sh apply --dns
-
-# Plan (dry-run)
-bash fe-infra/setup/provision-infra.sh plan --dns
-
-# Destroy (handles DNS zone cleanup, bucket emptying, and state sync automatically)
-bash fe-infra/setup/provision-infra.sh destroy --dns
-```
-
-> **`--create-zone` note:** Only pass this flag on the very first production apply — it creates the `smashbook-zone` Cloud DNS managed zone. On all subsequent runs omit it to avoid a Terraform conflict with the already-existing zone.
-
-> **Destroy note:** `destroy` does **not** remove the Secret Manager secrets (`FRONTEND_WEB_STAFF_BUCKET`, `FRONTEND_WEB_STAFF_SITE_URL`, `FRONTEND_WEB_PLAYER_BUCKET`, `FRONTEND_WEB_PLAYER_SITE_URL`). These are created by `gcloud` and are invisible to Terraform. Delete them manually if needed:
->
+> **Note:** `destroy` does not remove Secret Manager secrets. Delete manually if needed:
 > ```bash
-> for secret in FRONTEND_WEB_STAFF_BUCKET FRONTEND_WEB_STAFF_SITE_URL FRONTEND_WEB_PLAYER_BUCKET FRONTEND_WEB_PLAYER_SITE_URL; do
->   gcloud secrets delete "$secret" --project=$TF_VAR_project_id
+> for s in FRONTEND_WEB_STAFF_BUCKET FRONTEND_WEB_STAFF_SITE_URL \
+>           FRONTEND_WEB_PLAYER_BUCKET FRONTEND_WEB_PLAYER_SITE_URL; do
+>   gcloud secrets delete "$s" --project=$TF_VAR_project_id
 > done
 > ```
 
 ---
 
-## Known Issues & Fixes
+## Layer 2 — Client DNS
 
-### 1. Missing Application Default Credentials
+Each client gets its own folder under `clients/<env>/<slug>/` with isolated GCS state. Adding, updating, or removing one client never affects any other.
 
-**Error:**
+### Directory structure
 
 ```
-storage.NewClient() failed: dialing: google: could not find default credentials
+fe-infra/terraform/clients/
+  _template/         ← shared module — never apply directly
+  staging/
+    ace/             ← ace-staging.smashbook.app
+  production/
+    staff/           ← staff.smashbook.app
+    player/          ← player.smashbook.app
+    ace/             ← ace.smashbook.app  (after go-live)
 ```
 
-**Cause:** Terraform uses ADC (Application Default Credentials), not the `gcloud` CLI session.
+### Onboard a client
 
-**Fix:**
+**Step 1 — Export required variable**
 
 ```bash
-gcloud auth application-default login
+export TF_VAR_project_id=<PROJECT_ID>
 ```
 
-Run this once locally before any `terraform` or `provision-infra.sh` command.
-
----
-
-### 2. DNS zone does not exist on first run
-
-**Error:**
-
-```
-Error retrieving record sets for "smashbook-zone": googleapi: Error 404:
-The 'parameters.managedZone' resource named 'smashbook-zone' does not exist.
-```
-
-**Cause:** Terraform tries to refresh DNS record sets before the zone has been created.
-
-**Fix — two-run workflow:**
-
-**Run 1** — create the zone only:
+**Step 2 — Run the script** (from repo root)
 
 ```bash
-export TF_VAR_create_zone=true
-bash fe-infra/setup/provision-infra.sh apply
+bash fe-infra/setup/add-client.sh <slug> <environment> [staff-domain] [player-domain]
 ```
 
-**Run 2** — create DNS records and all remaining resources:
+Examples:
+```bash
+# Both portals — staging
+bash fe-infra/setup/add-client.sh ace staging ace-staging.smashbook.app ace-player-staging.smashbook.app
+
+# Both portals — production (after client goes live)
+bash fe-infra/setup/add-client.sh ace production ace.smashbook.app ace-player.smashbook.app
+
+# Staff portal only
+bash fe-infra/setup/add-client.sh beta production beta.smashbook.app
+
+# Player portal only
+bash fe-infra/setup/add-client.sh gamma staging "" gamma-player-staging.smashbook.app
+```
+
+**Step 3 — Go to the generated folder**
 
 ```bash
-export TF_VAR_create_zone=false
-bash fe-infra/setup/provision-infra.sh apply
+cd fe-infra/terraform/clients/<env>/<slug>
 ```
 
-> On all future runs keep `TF_VAR_create_zone=false` (or omit it — default is `false`).
+**Step 4 — Export Cloudflare credentials**
+
+```bash
+export TF_VAR_cloudflare_zone_id=$(gcloud secrets versions access latest \
+  --secret=CF_ZONE_ID --project=$TF_VAR_project_id)
+
+export TF_VAR_cloudflare_api_token=$(gcloud secrets versions access latest \
+  --secret=CF_API_TOKEN --project=$TF_VAR_project_id)
+```
+
+**Step 5 — Apply**
+
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+**Step 6 — Commit the generated folder**
+
+```bash
+git add fe-infra/terraform/clients/<env>/<slug>
+git commit -m "chore(infra): onboard <slug> to <env>"
+```
+
+### Update a client (e.g. add player portal later)
+
+```bash
+cd fe-infra/terraform/clients/<env>/<slug>
+# edit terraform.tfvars — add player_domain line
+terraform apply
+```
+
+### Offboard a client
+
+```bash
+export TF_VAR_project_id=<PROJECT_ID>
+export TF_VAR_cloudflare_zone_id=$(gcloud secrets versions access latest --secret=CF_ZONE_ID --project=$TF_VAR_project_id)
+export TF_VAR_cloudflare_api_token=$(gcloud secrets versions access latest --secret=CF_API_TOKEN --project=$TF_VAR_project_id)
+
+cd fe-infra/terraform/clients/<env>/<slug>
+terraform init
+terraform destroy
+
+cd -
+rm -rf fe-infra/terraform/clients/<env>/<slug>
+git add -A && git commit -m "chore(infra): offboard <slug> from <env>"
+```
 
 ---
 
 ## CI/CD Pipelines
 
-Two independent workflows — one per app. No cross-triggering.
+Two workflows — one per app (`web-staff`, `web-player`). No cross-triggering.
 
 ### Trigger rules
 
@@ -248,123 +299,153 @@ Two independent workflows — one per app. No cross-triggering.
 secrets → lint → test → build → deploy → smoke
 ```
 
-| Stage   | Detail                                                                                      |
-| ------- | ------------------------------------------------------------------------------------------- |
-| secrets | Auth to GCP, fetch `VITE_API_BASE_URL` from Cloud Run + bucket/site_url from Secret Manager |
-| lint    | `pnpm --filter @repo/<app> lint`                                                            |
-| test    | `pnpm --filter @repo/<app> test`                                                            |
-| build   | `pnpm --filter @repo/<app> build` with `VITE_API_BASE_URL` + `VITE_APP_ENV` injected        |
-| deploy  | Upload versioned build to `gs://<bucket>/<sha>/`, copy to bucket root, set cache headers    |
-| smoke   | HTTP 200 + `<!doctype html` check with 10 retries                                           |
+| Stage   | Detail |
+| ------- | ------ |
+| secrets | Auth to GCP, fetch `VITE_API_BASE_URL` from Cloud Run + bucket/CF credentials from Secret Manager |
+| lint    | `pnpm --filter @repo/<app> lint` |
+| test    | `pnpm --filter @repo/<app> test` |
+| build   | `pnpm --filter @repo/<app> build` with `VITE_API_BASE_URL` + `VITE_APP_ENV` injected |
+| deploy  | Upload versioned build to `gs://<bucket>/<sha>/`, promote to bucket root, set cache headers, purge Cloudflare cache |
+| smoke   | HTTP 200 + `<!doctype html` check with 10 retries |
+
+### Smoke test URL
+
+The smoke test URL is derived from the workflow inputs — no Secret Manager entry needed:
+
+```
+<slug> + staging   → https://<slug>-staging.smashbook.app
+<slug> + production → https://<slug>.smashbook.app
+```
+
+---
 
 ## Build & Deploy Strategy
 
-### Vite build
+### Versioned deployments
 
-Each app builds to `frontend/apps/<app>/dist/`. The build is uploaded as a GitHub Actions artifact and downloaded in the deploy job (build and deploy are separate jobs, enabling re-deploy without rebuild if needed).
-
-### Versioned deployments (GitHub SHA)
-
-Every deployment is stored under a versioned prefix using the full Git SHA before being promoted to serve live traffic:
+Every deploy is stored under the full Git SHA before being promoted to serve live traffic:
 
 ```
 gs://<bucket>/
-  <sha1>/          ← versioned snapshot (preserved for rollback)
+  <sha1>/        ← versioned snapshot (preserved for rollback)
     index.html
     assets/
-  <sha2>/          ← another versioned snapshot
-    ...
-  index.html       ← active (bucket root — served by CDN)
+  index.html     ← active (bucket root — served via Cloudflare)
   assets/
 ```
 
-**Why bucket root?** The Terraform CDN backend bucket (`modules/cdn/main.tf`) points its `default_service` directly at the bucket with no path prefix. The GCS `website` block serves `index.html` from the bucket root. The active serving path is therefore always `gs://<bucket>/` (the root).
-
-**Deploy steps (in workflow):**
-
-1. Upload build to `gs://<bucket>/<sha>/` — never overwrites existing files
-2. `cp -r` the build files to the bucket root — this is the promotion step (does **not** delete version folders)
-3. Set cache headers on the root copies
-
-> **Why `cp`, not `rsync -d`:** `gsutil rsync -r -d` deletes any destination object not present in the source. Since the source is only `dist/`, version folders at the bucket root (e.g. `<sha>/`) would be treated as "extra" and soft-deleted. Using `gsutil -m cp -r dist/. gs://<bucket>/` overwrites only the files that exist locally, leaving version folders untouched.
+Deploy steps:
+1. Upload build to `gs://<bucket>/<sha>/`
+2. Copy to bucket root (promotion — version folders are never deleted)
+3. Set cache headers
+4. Purge Cloudflare cache
 
 ### Cache headers
 
-| Path pattern                   | `Cache-Control`                       |
-| ------------------------------ | ------------------------------------- |
-| `assets/**` (hashed filenames) | `public, max-age=31536000, immutable` |
-| `index.html`                   | `no-cache, no-store, must-revalidate` |
+| Path              | `Cache-Control`                       |
+| ----------------- | ------------------------------------- |
+| `assets/**`       | `public, max-age=31536000, immutable` |
+| `index.html`      | `no-cache, no-store, must-revalidate` |
 
 ### SPA routing
 
 GCS `not_found_page` is set to `index.html` — handles client-side routing.
 
+---
+
 ## Rollback
 
-Use the rollback script in `fe-infra/setup/rollback.sh`. It promotes a versioned snapshot back to the bucket root without deleting any other version folders.
-
-### List available versions
-
 ```bash
+# List available versions
 bash fe-infra/setup/rollback.sh --bucket <bucket-name> --list
-```
 
-Or look up the SHA from git:
-
-```bash
-git log --oneline frontend/apps/web-staff/
-```
-
-### Roll back to a specific SHA
-
-```bash
-# Preview first (no changes made)
+# Dry-run
 bash fe-infra/setup/rollback.sh --bucket <bucket-name> --sha <git-sha> --dry-run
 
-# Apply rollback
-bash fe-infra/setup/rollback.sh --bucket <bucket-name> --sha <git-sha>
+# Apply rollback + purge Cloudflare cache
+bash fe-infra/setup/rollback.sh --bucket <bucket-name> --sha <git-sha> \
+  --cf-zone-id <CF_ZONE_ID> --cf-token <CF_API_TOKEN>
 ```
 
-Short SHAs are supported (e.g. `a1b2c3d`). No infrastructure change or re-build required — rollback takes seconds.
+Short SHAs are supported. No rebuild required — rollback takes seconds.
 
-> **CDN cache:** After rollback, the CDN may continue serving stale content for up to 1h. To invalidate immediately:
->
-> ```bash
-> gcloud compute url-maps invalidate-cdn-cache <url-map-name> --path '/*'
-> ```
+---
 
 ## Environment Variables
 
-All environment variables are Zod-validated at app startup in `packages/config/env.ts`.
+All env vars are Zod-validated at app startup in `packages/config/env.ts`.
 
-| Variable            | Required | Source in CI                                                |
-| ------------------- | -------- | ----------------------------------------------------------- |
-| `VITE_API_BASE_URL` | Yes      | Fetched at runtime from Cloud Run (`padel-api` service URL) |
-| `VITE_APP_ENV`      | Yes      | `staging` (auto) or `production` (manual dispatch)          |
+| Variable            | Required | Source in CI |
+| ------------------- | -------- | ------------ |
+| `VITE_API_BASE_URL` | Yes      | Fetched from Cloud Run (`padel-api` service URL) |
+| `VITE_APP_ENV`      | Yes      | `staging` (auto) or `production` (manual dispatch) |
 
 `VITE_APP_ENV` accepts: `development`, `staging`, `production`.
 
-## GitHub Secrets Required
+---
 
-Only **2 secrets** must be added manually to GitHub. Everything else is fetched from GCP Secret Manager at runtime.
+## Secrets Reference
 
-| Secret           | Value                                               |
-| ---------------- | --------------------------------------------------- |
-| `GCP_SA_FE_KEY`  | JSON key exported by `create-ci-service-account.sh` |
-| `GCP_PROJECT_ID` | Your GCP project ID (e.g. `smashbook-XXXXXX`)       |
+### GitHub Secrets
 
-### Secrets managed by Terraform (do NOT add to GitHub)
+| Secret           | Value |
+| ---------------- | ----- |
+| `GCP_SA_FE_KEY`  | JSON key from `create-ci-service-account.sh` |
+| `GCP_PROJECT_ID` | GCP project ID |
 
-These are stored in GCP Secret Manager by `provision-infra.sh` after `terraform apply` and fetched dynamically by the `secrets` job in each workflow:
+### GCP Secret Manager
 
-| GCP Secret                     | Used for                             |
-| ------------------------------ | ------------------------------------ |
-| `FRONTEND_WEB_STAFF_BUCKET`    | staff deploy — GCS bucket name       |
-| `FRONTEND_WEB_STAFF_SITE_URL`  | staff smoke test — public HTTPS URL  |
-| `FRONTEND_WEB_PLAYER_BUCKET`   | player deploy — GCS bucket name      |
-| `FRONTEND_WEB_PLAYER_SITE_URL` | player smoke test — public HTTPS URL |
+| Secret                         | Used for |
+| ------------------------------ | -------- |
+| `FRONTEND_WEB_STAFF_BUCKET`    | staff deploy — GCS bucket name |
+| `FRONTEND_WEB_PLAYER_BUCKET`   | player deploy — GCS bucket name |
+| `CF_ZONE_ID`                   | Cloudflare cache purge (all workflows) |
+| `CF_API_TOKEN`                 | Cloudflare cache purge (all workflows) |
+| `CERTIFICATE`                  | Cloudflare Origin Certificate PEM |
+| `PRIVATE_KEY`                  | Cloudflare Origin Certificate key PEM |
 
-`VITE_API_BASE_URL` (for both apps) is fetched directly from the `padel-api` Cloud Run service URL — same pattern as `deploy-staging.yml`.
+`VITE_API_BASE_URL` is fetched directly from the `padel-api` Cloud Run service URL — not stored as a secret.
+
+---
+
+## Website Deployment
+
+The marketing website (`smashbook.app`) uses the same architecture but has its own isolated Terraform root — no client-layer separation.
+
+```
+fe-infra/website-terraform/
+  main.tf / variables.tf / outputs.tf / backend.tf
+```
+
+```bash
+export TF_VAR_project_id=<PROJECT_ID>
+export TF_VAR_website_bucket_name=smashbook-website-frontend
+export TF_VAR_website_domain=smashbook.app
+
+export TF_VAR_cloudflare_zone_id=$(gcloud secrets versions access latest \
+  --secret=CF_ZONE_ID --project=$TF_VAR_project_id)
+export TF_VAR_cloudflare_api_token=$(gcloud secrets versions access latest \
+  --secret=CF_API_TOKEN --project=$TF_VAR_project_id)
+export TF_VAR_origin_cert_pem=$(gcloud secrets versions access latest \
+  --secret=CERTIFICATE --project=$TF_VAR_project_id)
+export TF_VAR_origin_key_pem=$(gcloud secrets versions access latest \
+  --secret=PRIVATE_KEY --project=$TF_VAR_project_id)
+
+bash fe-infra/setup/website-provision-infra.sh apply
+```
+
+CI/CD pipeline: `secrets → build → deploy → smoke` (no lint/test — website has no domain logic).
+
+To roll back: trigger `workflow_dispatch` on `deploy-frontend-website` with a known-good SHA.
+
+### GCP Secrets
+
+| Secret                      | Used for |
+| --------------------------- | -------- |
+| `FRONTEND_WEBSITE_BUCKET`   | deploy — GCS bucket name |
+| `FRONTEND_WEBSITE_SITE_URL` | smoke test — `https://smashbook.app` |
+
+---
 
 ## Package Names (Turborepo filter)
 
@@ -372,3 +453,4 @@ These are stored in GCP Secret Manager by `provision-infra.sh` after `terraform 
 | ------------ | ------------------ |
 | `web-staff`  | `@repo/web-staff`  |
 | `web-player` | `@repo/web-player` |
+| `website`    | `@repo/website`    |

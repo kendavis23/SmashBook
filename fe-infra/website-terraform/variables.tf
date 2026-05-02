@@ -9,15 +9,8 @@ variable "region" {
   default     = "europe-west2"
 }
 
-# ─── Staff portal ─────────────────────────────────────────────────────────────
-variable "staff_bucket_name" {
-  description = "GCS bucket name for staff portal build artefacts (must be globally unique)"
-  type        = string
-}
-
-# ─── Player portal ────────────────────────────────────────────────────────────
-variable "player_bucket_name" {
-  description = "GCS bucket name for player portal build artefacts (must be globally unique)"
+variable "website_bucket_name" {
+  description = "GCS bucket name for website build artefacts (must be globally unique)"
   type        = string
 }
 
@@ -47,9 +40,14 @@ variable "origin_key_pem" {
   sensitive   = true
 }
 
-# ─── Shared ───────────────────────────────────────────────────────────────────
 variable "environment" {
   description = "Deployment environment tag (staging / production)"
   type        = string
-  default     = "staging"
+  default     = "production"
+}
+
+variable "website_domain" {
+  description = "Full domain for the website CNAME target (e.g. smashbook.app). Leave empty to skip creating the www CNAME record."
+  type        = string
+  default     = ""
 }

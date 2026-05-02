@@ -40,6 +40,8 @@ jobs:
       api_base_url: ${{ steps.fetch.outputs.api_base_url }}
       bucket: ${{ steps.fetch.outputs.bucket }}
       site_url: ${{ steps.fetch.outputs.site_url }}
+      cf_zone_id: ${{ steps.fetch.outputs.cf_zone_id }}
+      cf_api_token: ${{ steps.fetch.outputs.cf_api_token }}
     steps:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -62,9 +64,17 @@ jobs:
           SITE_URL=$(gcloud secrets versions access latest \
             --secret=FRONTEND_WEB_PLAYER_SITE_URL \
             --project=${{ secrets.GCP_PROJECT_ID }})
+          CF_ZONE_ID=$(gcloud secrets versions access latest \
+            --secret=CF_ZONE_ID \
+            --project=${{ secrets.GCP_PROJECT_ID }})
+          CF_API_TOKEN=$(gcloud secrets versions access latest \
+            --secret=CF_API_TOKEN \
+            --project=${{ secrets.GCP_PROJECT_ID }})
           echo "api_base_url=$API_BASE_URL" >> $GITHUB_OUTPUT
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "site_url=$SITE_URL" >> $GITHUB_OUTPUT
+          echo "cf_zone_id=$CF_ZONE_ID" >> $GITHUB_OUTPUT
+          echo "cf_api_token=$CF_API_TOKEN" >> $GITHUB_OUTPUT
 
   lint:
     name: Lint
@@ -189,6 +199,17 @@ jobs:
             "gs://${{ needs.secrets.outputs.bucket }}/assets/**"
           gsutil setmeta -h "Cache-Control:no-cache,no-store,must-revalidate" \
             "gs://${{ needs.secrets.outputs.bucket }}/index.html"
+
+      - name: Purge Cloudflare cache
+        run: |
+          curl -s -X POST \
+            "https://api.cloudflare.com/client/v4/zones/${{ needs.secrets.outputs.cf_zone_id }}/purge_cache" \
+            -H "Authorization: Bearer ${{ needs.secrets.outputs.cf_api_token }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}' \
+            | grep -q '"success":true' \
+            && echo "Cloudflare cache purged." \
+            || { echo "ERROR: Cloudflare cache purge failed"; exit 1; }
 
   smoke:
     name: Smoke Test

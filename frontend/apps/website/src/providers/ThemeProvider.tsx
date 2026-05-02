@@ -1,7 +1,9 @@
-import type { Theme } from "@repo/design-system";
-import { darkTheme, lightTheme } from "@repo/design-system";
 import { createContext, useContext, useLayoutEffect } from "react";
 import type { ReactNode } from "react";
+
+const lightTheme = "light" as const;
+const darkTheme = "dark" as const;
+type Theme = typeof lightTheme | typeof darkTheme;
 
 interface ThemeContextValue {
     theme: Theme;

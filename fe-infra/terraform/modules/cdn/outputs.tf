@@ -9,11 +9,11 @@ output "backend_bucket_self_link" {
 }
 
 output "url_map_self_link" {
-  description = "Self-link of the main URL map (HTTPS in prod, HTTP in staging)"
+  description = "Self-link of the HTTPS URL map"
   value       = google_compute_url_map.frontend_https.self_link
 }
 
 output "http_redirect_url_map_self_link" {
-  description = "Self-link of the HTTP → HTTPS redirect URL map (null when dns_config = false)"
-  value       = var.dns_config ? google_compute_url_map.http_redirect[0].self_link : null
+  description = "Self-link of the HTTP → HTTPS redirect URL map"
+  value       = google_compute_url_map.http_redirect.self_link
 }

@@ -290,12 +290,6 @@ importers:
 
   apps/website:
     dependencies:
-      '@repo/design-system':
-        specifier: workspace:*
-        version: link:../../packages/design-system
-      '@repo/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       lucide-react:
         specifier: 0.446.0
         version: 0.446.0(react@18.3.1)
