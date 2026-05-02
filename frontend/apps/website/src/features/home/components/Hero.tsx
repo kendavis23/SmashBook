@@ -1,3 +1,6 @@
+const staffDemoUrl = import.meta.env.VITE_API_STAFF_SITE_URL ?? "https://ace-staging.smashbook.app";
+const playerDemoUrl = import.meta.env.VITE_API_PLAYER_SITE_URL ?? "https://ace-player-staging.smashbook.app";
+
 export function Hero() {
     return (
         <section className="relative min-h-[calc(100vh-64px)] overflow-hidden border-b border-border bg-foreground text-white">
@@ -24,13 +27,23 @@ export function Hero() {
                         SmashBook is a multi-tenant SaaS platform for padel club management, handling courts, payments, and the full player journey in one place.
                     </p>
 
-                    <div className="mt-10">
-                        <button
-                            type="button"
+                    <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+                        <a
+                            href={playerDemoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center rounded-md border border-white bg-white px-7 py-3.5 text-base font-medium text-foreground shadow-sm transition-all duration-150 hover:bg-white/90 active:scale-[0.98]"
+                        >
+                            Player Demo
+                        </a>
+                        <a
+                            href={staffDemoUrl}
+                            target="_blank"
+                            rel="noreferrer"
                             className="inline-flex items-center justify-center rounded-md border border-white/30 bg-white/10 px-7 py-3.5 text-base font-medium text-white shadow-sm backdrop-blur-sm transition-all duration-150 hover:bg-white/18 active:scale-[0.98]"
                         >
-                            View Demo
-                        </button>
+                            Staff Demo
+                        </a>
                     </div>
                 </div>
             </div>

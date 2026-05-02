@@ -30,6 +30,8 @@ jobs:
     outputs:
       bucket: ${{ steps.fetch.outputs.bucket }}
       site_url: ${{ steps.fetch.outputs.site_url }}
+      player_site_url: ${{ steps.fetch.outputs.player_site_url }}
+      staff_site_url: ${{ steps.fetch.outputs.staff_site_url }}
       cf_zone_id: ${{ steps.fetch.outputs.cf_zone_id }}
       cf_api_token: ${{ steps.fetch.outputs.cf_api_token }}
     steps:
@@ -50,6 +52,12 @@ jobs:
           SITE_URL=$(gcloud secrets versions access latest \
             --secret=FRONTEND_WEBSITE_SITE_URL \
             --project=${{ secrets.GCP_PROJECT_ID }})
+          PLAYER_SITE_URL=$(gcloud secrets versions access latest \
+            --secret=FRONTEND_WEB_PLAYER_SITE_URL \
+            --project=${{ secrets.GCP_PROJECT_ID }})
+          STAFF_SITE_URL=$(gcloud secrets versions access latest \
+            --secret=FRONTEND_WEB_STAFF_SITE_URL \
+            --project=${{ secrets.GCP_PROJECT_ID }})
           CF_ZONE_ID=$(gcloud secrets versions access latest \
             --secret=CF_ZONE_ID \
             --project=${{ secrets.GCP_PROJECT_ID }})
@@ -58,6 +66,8 @@ jobs:
             --project=${{ secrets.GCP_PROJECT_ID }})
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "site_url=$SITE_URL" >> $GITHUB_OUTPUT
+          echo "player_site_url=$PLAYER_SITE_URL" >> $GITHUB_OUTPUT
+          echo "staff_site_url=$STAFF_SITE_URL" >> $GITHUB_OUTPUT
           echo "cf_zone_id=$CF_ZONE_ID" >> $GITHUB_OUTPUT
           echo "cf_api_token=$CF_API_TOKEN" >> $GITHUB_OUTPUT
 
@@ -86,6 +96,8 @@ jobs:
         working-directory: frontend
         env:
           VITE_APP_ENV: ${{ env.DEPLOY_ENV }}
+          VITE_API_PLAYER_SITE_URL: ${{ needs.secrets.outputs.player_site_url }}
+          VITE_API_STAFF_SITE_URL: ${{ needs.secrets.outputs.staff_site_url }}
         run: pnpm --filter @repo/website build
 
       - name: Upload dist artifact

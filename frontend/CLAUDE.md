@@ -20,6 +20,11 @@ pnpm --filter mobile-player start # mobile app
 pnpm build
 pnpm --filter web-staff build
 
+# Website
+pnpm --filter @repo/website dev
+pnpm --filter @repo/website build
+VITE_API_PLAYER_SITE_URL=https://ace-player-staging.smashbook.app VITE_API_STAFF_SITE_URL=https://ace-staging.smashbook.app pnpm --filter @repo/website build
+
 # Test (maxForks=2 is enforced in vitest.config.ts — do NOT pass --reporter=verbose --pool=vmThreads or raise forks above 2; it overloads CPU on Mac)
 pnpm test
 pnpm --filter web-staff test
