@@ -3,7 +3,7 @@ name: Deploy website
 on:
   push:
     branches:
-      - frontend
+      - main
     paths:
       - frontend/apps/website/**
       - .github/workflows/deploy-frontend-website.yml
