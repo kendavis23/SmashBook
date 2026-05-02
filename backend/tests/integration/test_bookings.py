@@ -23,7 +23,7 @@ import pytest_asyncio
 from sqlalchemy import delete as sql_delete, select
 
 from app.core.security import create_access_token
-from app.db.models.booking import Booking, BookingPlayer
+from app.db.models.booking import Booking, BookingPlayer, InviteStatus, PaymentStatus, PlayerRole
 from app.db.models.club import OperatingHours, PricingRule
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
@@ -1005,13 +1005,13 @@ class TestCancelBooking:
 
 class TestBugFixes:
 
-    # Fix #1 — invite_player overbooking: pending invites must hold slots
-    async def test_cannot_invite_beyond_max_players_via_pending(
+    # Fix #1 — invite_player: pending invites beyond capacity are allowed; cap is on acceptances
+    async def test_can_invite_beyond_max_players_via_pending(
         self, client, player_headers, staff_headers, player2, player_with_skill,
         club, court_with_hours, test_session_factory, tenant
     ):
-        """Fill 3 of 4 slots with pending invites; a 4th invite should succeed
-        but a 5th must be rejected with 409 (booking full)."""
+        """Organiser can send more invitations than available slots.
+        Only acceptances are capped at max_players; a 5th invite (max_players=4) must succeed."""
         from app.core.security import get_password_hash
         # Create two more users to invite
         extra_ids = []
@@ -1045,7 +1045,7 @@ class TestBugFixes:
         assert r.status_code == 201
         booking_id = r.json()["id"]
 
-        # Invite player2 → slot 2 (pending)
+        # Invite player2 → invite 2 (pending)
         r2 = await client.post(
             f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
             json={"user_id": str(player2.id)},
@@ -1053,7 +1053,7 @@ class TestBugFixes:
         )
         assert r2.status_code == 200
 
-        # Invite player_with_skill → slot 3 (pending)
+        # Invite player_with_skill → invite 3 (pending)
         r3 = await client.post(
             f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
             json={"user_id": str(player_with_skill.id)},
@@ -1061,7 +1061,7 @@ class TestBugFixes:
         )
         assert r3.status_code == 200
 
-        # Invite extra_ids[0] → slot 4 (pending) — should succeed
+        # Invite extra_ids[0] → invite 4 (pending)
         r4 = await client.post(
             f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
             json={"user_id": str(extra_ids[0])},
@@ -1069,13 +1069,16 @@ class TestBugFixes:
         )
         assert r4.status_code == 200
 
-        # Invite extra_ids[1] → slot 5 — must be rejected (booking full)
+        # Invite extra_ids[1] → invite 5 — must SUCCEED (pending invites exceed slots, that's ok)
         r5 = await client.post(
             f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
             json={"user_id": str(extra_ids[1])},
             headers=player_headers,
         )
-        assert r5.status_code == 409
+        assert r5.status_code == 200
+        body = r5.json()
+        pending_count = sum(1 for p in body["players"] if p["invite_status"] == "pending")
+        assert pending_count == 4  # organiser accepted + 4 pending invitees
 
         async with test_session_factory() as session:
             await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.user_id.in_(extra_ids)))
@@ -1087,11 +1090,12 @@ class TestBugFixes:
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 
-    # Fix #2 — create_booking: too many named players must be rejected
-    async def test_too_many_named_players_rejected(
+    # Fix #2 — create_booking: named invitees beyond capacity are pending, not accepted
+    async def test_named_players_beyond_capacity_allowed_at_creation(
         self, client, staff_headers, player2, player_with_skill, club, court_with_hours, test_session_factory, tenant
     ):
-        """Providing organiser + 4 named players (5 total) for max_players=4 must return 422."""
+        """Providing more named invitees than remaining slots at creation is allowed —
+        they are all pending invitations, not accepted slots."""
         from app.core.security import get_password_hash
         async with test_session_factory() as session:
             extra = User(
@@ -1106,19 +1110,23 @@ class TestBugFixes:
             await session.commit()
             await session.refresh(extra)
 
-        # Staff is organiser (slot 1) + 3 named = 4 total, but max_players=3 → rejected
+        # Staff organiser + 3 named invitees, max_players=3 — invitees exceed remaining slots
         start = _future()
         resp = await client.post(
             "/api/v1/bookings",
             json=_booking_payload(
                 club.id, court_with_hours.id, start,
                 player_user_ids=[str(player2.id), str(player_with_skill.id), str(extra.id)],
-                max_players=3,  # organiser + 3 named = 4 > 3
+                max_players=3,
             ),
             headers=staff_headers,
         )
-        assert resp.status_code == 422
+        assert resp.status_code == 201
+        body = resp.json()
+        pending = [p for p in body["players"] if p["invite_status"] == "pending"]
+        assert len(pending) == 3
 
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
         async with test_session_factory() as session:
             obj = await session.get(User, extra.id)
             if obj:
@@ -2364,6 +2372,145 @@ class TestRespondToInvite:
             if obj2:
                 await session.delete(obj2)
             await session.commit()
+
+    async def test_accept_rejected_when_booking_already_full(
+        self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory, tenant
+    ):
+        """A player cannot accept an invitation once all slots are already taken."""
+        from app.core.security import get_password_hash
+        # Create extra users so we can fill the booking before player2 responds
+        extra_ids = []
+        async with test_session_factory() as session:
+            for i in range(2):
+                u = User(
+                    tenant_id=tenant.id,
+                    email=f"filler-full-{i}-{uuid.uuid4().hex[:6]}@test.com",
+                    full_name=f"Filler Full {i}",
+                    hashed_password=get_password_hash("Test1234!"),
+                    is_active=True,
+                    role=TenantUserRole.player,
+                )
+                session.add(u)
+            await session.commit()
+
+        async with test_session_factory() as session:
+            result = await session.execute(
+                select(User).where(User.tenant_id == tenant.id, User.full_name.like("Filler Full %"))
+            )
+            fillers = result.scalars().all()
+            extra_ids = [u.id for u in fillers]
+
+        # max_players=2: organiser + 1 other
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, max_players=2),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        # Invite player2 and a filler — both pending, only 1 slot available
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+        # Manually set filler as accepted via DB to fill the last slot
+        async with test_session_factory() as session:
+            filler_bp = BookingPlayer(
+                booking_id=booking_id,
+                user_id=extra_ids[0],
+                role=PlayerRole.player,
+                invite_status=InviteStatus.accepted,
+                payment_status=PaymentStatus.pending,
+                amount_due=Decimal("0.00"),
+            )
+            session.add(filler_bp)
+            await session.commit()
+
+        # player2 tries to accept — booking already full
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 409
+
+        async with test_session_factory() as session:
+            for uid in extra_ids:
+                await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.user_id == uid))
+                obj = await session.get(User, uid)
+                if obj:
+                    await session.delete(obj)
+            await session.commit()
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_last_acceptance_discards_remaining_pending_invites(
+        self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory, tenant
+    ):
+        """When the last slot is filled, all other pending invitations are auto-discarded."""
+        from app.core.security import get_password_hash
+        # Create a third invitee
+        extra_id = None
+        async with test_session_factory() as session:
+            extra = User(
+                tenant_id=tenant.id,
+                email=f"extra-discard-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Extra Discard",
+                hashed_password=get_password_hash("Test1234!"),
+                is_active=True,
+                role=TenantUserRole.player,
+            )
+            session.add(extra)
+            await session.commit()
+            await session.refresh(extra)
+            extra_id = extra.id
+
+        # max_players=2: organiser + 1 other
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, max_players=2),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        # Invite both player2 and extra — 2 pending invites, only 1 slot
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(extra_id)},
+            headers=player_headers,
+        )
+
+        # player2 accepts the last slot — extra's invite should be auto-discarded
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+
+        extra_entry = next((p for p in body["players"] if p["user_id"] == str(extra_id)), None)
+        assert extra_entry is not None
+        assert extra_entry["invite_status"] == "declined"
+
+        async with test_session_factory() as session:
+            await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.user_id == extra_id))
+            obj = await session.get(User, extra_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 
 
 # ---------------------------------------------------------------------------

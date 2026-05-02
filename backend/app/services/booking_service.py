@@ -405,14 +405,6 @@ class BookingService:
                 self._check_player_skill(named_user, min_skill, max_skill)
             named_players.append(named_user)
 
-        # 13. Capacity check: organiser (if any) + named players must not exceed max_players
-        organiser_slot = 0 if is_empty_admin_game else 1
-        if organiser_slot + len(named_players) > max_players:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Too many players: {organiser_slot + len(named_players)} exceeds max_players={max_players}",
-            )
-
         # 14. Price
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
@@ -836,11 +828,6 @@ class BookingService:
         if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot invite to a cancelled or completed booking")
 
-        # Count active slots (accepted + pending). Declined entries free their slot.
-        active_players = sum(1 for p in booking.players if p.invite_status != InviteStatus.declined)
-        if active_players >= booking.max_players:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Booking is full")
-
         # Block re-invite only if they have an active (pending/accepted) entry
         if any(p.user_id == invited_user_id and p.invite_status != InviteStatus.declined for p in booking.players):
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Player is already part of this booking")
@@ -900,9 +887,18 @@ class BookingService:
         if bp.invite_status != InviteStatus.pending:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=f"Invite already {bp.invite_status.value}")
 
+        if action == InviteStatus.accepted:
+            if _accepted_count(booking.players) >= booking.max_players:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Booking is already full")
+
         bp.invite_status = action
 
         if action == InviteStatus.accepted:
+            # If the last slot just filled, discard all remaining pending invitations.
+            if _accepted_count(booking.players) >= booking.max_players:
+                for other in booking.players:
+                    if other.user_id != requesting_user.id and other.invite_status == InviteStatus.pending:
+                        other.invite_status = InviteStatus.declined
             # bp.invite_status is already updated in memory so booking.players reflects the new state
             if booking.status == BookingStatus.pending and _should_confirm(booking, booking.players):
                 booking.status = BookingStatus.confirmed
