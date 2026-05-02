@@ -479,7 +479,7 @@ class BookingService:
                 booking=booking,
                 user=named_user,
                 role=PlayerRole.player,
-                invite_status=InviteStatus.accepted,
+                invite_status=InviteStatus.pending,
                 payment_status=PaymentStatus.pending,
                 amount_due=amount_due,
             )
