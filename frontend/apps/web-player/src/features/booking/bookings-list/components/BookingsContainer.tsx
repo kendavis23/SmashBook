@@ -136,11 +136,26 @@ function BookingModal({
 }
 
 export default function BookingsContainer(): JSX.Element {
-    const { data, isLoading, error, refetch } = useMyBookings();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
     const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
+
+    const defaultFrom = new Date();
+    defaultFrom.setMonth(defaultFrom.getMonth() - 3);
+    const defaultFromIso = defaultFrom.toISOString().slice(0, 10);
+    const defaultToIso = new Date().toISOString().slice(0, 10);
+
+    const [pastFrom, setPastFrom] = useState(defaultFromIso);
+    const [pastTo, setPastTo] = useState(defaultToIso);
+    const [appliedFrom, setAppliedFrom] = useState(defaultFromIso);
+    const [appliedTo, setAppliedTo] = useState(defaultToIso);
+
+    const { data, isLoading, error, refetch } = useMyBookings(
+        appliedFrom || appliedTo
+            ? { past_from: appliedFrom || undefined, past_to: appliedTo || undefined }
+            : undefined
+    );
 
     const handleRefresh = useCallback(() => void refetch(), [refetch]);
     const handleTabChange = useCallback((tab: BookingTab) => setActiveTab(tab), []);
@@ -203,6 +218,26 @@ export default function BookingsContainer(): JSX.Element {
         setSelectedBooking(null);
     }, []);
 
+    const handlePastFilterChange = useCallback(
+        (patch: { pastFrom?: string; pastTo?: string }): void => {
+            if (patch.pastFrom !== undefined) setPastFrom(patch.pastFrom);
+            if (patch.pastTo !== undefined) setPastTo(patch.pastTo);
+        },
+        []
+    );
+
+    const handlePastFilterApply = useCallback((): void => {
+        setAppliedFrom(pastFrom);
+        setAppliedTo(pastTo);
+    }, [pastFrom, pastTo]);
+
+    const handlePastFilterClear = useCallback((): void => {
+        setPastFrom("");
+        setPastTo("");
+        setAppliedFrom("");
+        setAppliedTo("");
+    }, []);
+
     return (
         <>
             <BookingsView
@@ -211,12 +246,17 @@ export default function BookingsContainer(): JSX.Element {
                 activeTab={activeTab}
                 isLoading={isLoading}
                 error={error}
+                pastFrom={pastFrom}
+                pastTo={pastTo}
                 onTabChange={handleTabChange}
                 onRefresh={handleRefresh}
                 onCreateClick={handleCreateClick}
                 onManageClick={handleManageClick}
                 onInvitePlayer={handleInvitePlayer}
                 onRespondInvite={handleRespondInvite}
+                onPastFilterChange={handlePastFilterChange}
+                onPastFilterApply={handlePastFilterApply}
+                onPastFilterClear={handlePastFilterClear}
             />
             {selectedBooking ? (
                 <BookingModal selected={selectedBooking} onClose={handleCloseModal} />

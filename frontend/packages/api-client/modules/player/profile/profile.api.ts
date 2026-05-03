@@ -20,8 +20,15 @@ export function updateMyProfileEndpoint(data: UserProfileUpdate): Promise<UserRe
     });
 }
 
-export function getMyBookingsEndpoint(): Promise<PlayerBookingsResponse> {
-    return fetcher<PlayerBookingsResponse>("/api/v1/players/me/bookings");
+export function getMyBookingsEndpoint(params?: {
+    past_from?: string;
+    past_to?: string;
+}): Promise<PlayerBookingsResponse> {
+    const query = new URLSearchParams();
+    if (params?.past_from) query.set("past_from", params.past_from);
+    if (params?.past_to) query.set("past_to", params.past_to);
+    const qs = query.toString();
+    return fetcher<PlayerBookingsResponse>(`/api/v1/players/me/bookings${qs ? `?${qs}` : ""}`);
 }
 
 export function getMyMatchHistoryEndpoint(): Promise<PlayerBookingItem[]> {

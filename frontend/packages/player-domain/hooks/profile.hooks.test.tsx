@@ -113,12 +113,27 @@ describe("useUpdateMyProfile", () => {
 });
 
 describe("useMyBookings", () => {
-    it("returns upcoming and past bookings", async () => {
+    it("returns upcoming and past bookings with no params", async () => {
         vi.mocked(playerApi.getMyBookingsEndpoint).mockResolvedValue(mockBookings);
         const { Wrapper } = makeWrapper();
         const { result } = renderHook(() => useMyBookings(), { wrapper: Wrapper });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual(mockBookings);
+        expect(playerApi.getMyBookingsEndpoint).toHaveBeenCalledWith(undefined);
+    });
+
+    it("forwards past_from and past_to to the endpoint", async () => {
+        vi.mocked(playerApi.getMyBookingsEndpoint).mockResolvedValue(mockBookings);
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(
+            () => useMyBookings({ past_from: "2026-04-01", past_to: "2026-04-30" }),
+            { wrapper: Wrapper }
+        );
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(playerApi.getMyBookingsEndpoint).toHaveBeenCalledWith({
+            past_from: "2026-04-01",
+            past_to: "2026-04-30",
+        });
     });
 });
 
