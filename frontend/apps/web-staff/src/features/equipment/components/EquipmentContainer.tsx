@@ -207,10 +207,13 @@ export default function EquipmentContainer(): JSX.Element {
         ]
     );
 
-    const handleDeleteClick = useCallback((item: EquipmentItem): void => {
-        retireEquipment.reset();
-        setDeletingItem(item);
-    }, [retireEquipment]);
+    const handleDeleteClick = useCallback(
+        (item: EquipmentItem): void => {
+            retireEquipment.reset();
+            setDeletingItem(item);
+        },
+        [retireEquipment]
+    );
 
     const handleConfirmDelete = useCallback((): void => {
         if (!canManage || !deletingItem) return;

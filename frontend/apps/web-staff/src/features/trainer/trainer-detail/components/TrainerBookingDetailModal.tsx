@@ -144,33 +144,45 @@ export function TrainerBookingDetailModal({ booking, onClose }: Props): JSX.Elem
                     <main className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-3">
                         <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
                             <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
-                                <span className="text-xs font-medium text-muted-foreground">Court</span>
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Court
+                                </span>
                                 <span className="text-sm font-medium text-foreground">
                                     {booking.court_name}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
-                                <span className="text-xs font-medium text-muted-foreground">Type</span>
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Type
+                                </span>
                                 <span className="text-sm font-medium text-foreground">
-                                    {BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type}
+                                    {BOOKING_TYPE_LABELS[booking.booking_type] ??
+                                        booking.booking_type}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
-                                <span className="text-xs font-medium text-muted-foreground">Participants</span>
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Participants
+                                </span>
                                 <span className="text-sm font-medium text-foreground">
                                     {booking.participants.length}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
-                                <span className="text-xs font-medium text-muted-foreground">Date</span>
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Date
+                                </span>
                                 <span className="text-sm font-medium text-foreground">
                                     {formatUTCDate(booking.start_datetime)}
                                 </span>
                             </div>
                             <div className="flex items-center justify-between px-4 py-2.5">
-                                <span className="text-xs font-medium text-muted-foreground">Time</span>
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Time
+                                </span>
                                 <span className="text-sm font-medium text-foreground">
-                                    {formatUTCTime(booking.start_datetime)} – {formatUTCTime(booking.end_datetime)}
+                                    {formatUTCTime(booking.start_datetime)} –{" "}
+                                    {formatUTCTime(booking.end_datetime)}
                                 </span>
                             </div>
                         </div>

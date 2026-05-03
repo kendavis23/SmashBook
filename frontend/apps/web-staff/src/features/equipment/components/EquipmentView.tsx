@@ -218,9 +218,7 @@ export default function EquipmentView({
             {deletingItemName ? (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4 py-6 backdrop-blur-sm">
                     <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl">
-                        <h2 className="text-lg font-semibold text-foreground">
-                            Delete Equipment
-                        </h2>
+                        <h2 className="text-lg font-semibold text-foreground">Delete Equipment</h2>
                         <p className="mt-2 text-sm text-muted-foreground">
                             Delete {deletingItemName}? This removes it from the active inventory.
                         </p>
@@ -234,11 +232,7 @@ export default function EquipmentView({
                             </div>
                         ) : null}
                         <div className="mt-6 flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={onCancelDelete}
-                                className="btn-outline"
-                            >
+                            <button type="button" onClick={onCancelDelete} className="btn-outline">
                                 Cancel
                             </button>
                             <button

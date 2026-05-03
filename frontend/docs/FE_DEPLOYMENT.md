@@ -45,10 +45,10 @@ fe-infra/terraform/
 
 ## Domain Convention
 
-| Environment | Staff subdomain              | Player subdomain                  |
-| ----------- | ---------------------------- | --------------------------------- |
+| Environment | Staff subdomain                | Player subdomain                      |
+| ----------- | ------------------------------ | ------------------------------------- |
 | Staging     | `<slug>-staging.smashbook.app` | `<slug>-player-staging.smashbook.app` |
-| Production  | `<slug>.smashbook.app`        | `<slug>-player.smashbook.app`     |
+| Production  | `<slug>.smashbook.app`         | `<slug>-player.smashbook.app`         |
 
 A client is onboarded to staging first, then promoted to production under the same slug without the `-staging` suffix.
 
@@ -61,21 +61,23 @@ bash fe-infra/setup/create-ci-service-account.sh <PROJECT_ID>
 ```
 
 This script (idempotent):
+
 1. Enables required GCP APIs: `storage`, `run`, `secretmanager`
 2. Creates the `gh-actions-fe-deployer` service account with:
-   - `roles/storage.objectAdmin` — deploy builds to GCS
-   - `roles/run.viewer` — read `padel-api` Cloud Run URL
-   - `roles/secretmanager.secretAccessor` — read secrets at deploy time
+    - `roles/storage.objectAdmin` — deploy builds to GCS
+    - `roles/run.viewer` — read `padel-api` Cloud Run URL
+    - `roles/secretmanager.secretAccessor` — read secrets at deploy time
 3. Exports a key to `./gcp-sa-key.json`
 
 Then add two GitHub secrets:
 
-| Secret           | Value                             |
-| ---------------- | --------------------------------- |
-| `GCP_SA_FE_KEY`  | Contents of `gcp-sa-key.json`     |
+| Secret           | Value                                    |
+| ---------------- | ---------------------------------------- |
+| `GCP_SA_FE_KEY`  | Contents of `gcp-sa-key.json`            |
 | `GCP_PROJECT_ID` | GCP project ID (e.g. `smashbook-XXXXXX`) |
 
 Delete the key file immediately after:
+
 ```bash
 rm ./gcp-sa-key.json
 ```
@@ -89,11 +91,13 @@ rm ./gcp-sa-key.json
 Cloudflare Dashboard → Profile → API Tokens → Create Token → **Edit Zone DNS** template.
 
 Permissions:
+
 ```
 Zone → DNS → Edit
 Zone → Cache Purge → Purge
 Zone → Zone Settings → Edit
 ```
+
 Scope: `Zone → smashbook.app`
 
 ### 2. Get Zone ID
@@ -101,6 +105,7 @@ Scope: `Zone → smashbook.app`
 Cloudflare → `smashbook.app` → Overview → Zone ID
 
 Store both in GCP Secret Manager:
+
 ```bash
 echo -n "<CF_ZONE_ID>" | gcloud secrets create CF_ZONE_ID \
   --data-file=- --project=<PROJECT_ID> --replication-policy=automatic
@@ -114,6 +119,7 @@ echo -n "<CF_API_TOKEN>" | gcloud secrets create CF_API_TOKEN \
 Cloudflare → `smashbook.app` → SSL/TLS → Origin Server → Create Certificate
 
 Hostnames:
+
 ```
 smashbook.app
 *.smashbook.app
@@ -122,6 +128,7 @@ smashbook.app
 Validity: 15 years. The wildcard covers all client subdomains — no new cert per client.
 
 Store in GCP Secret Manager:
+
 ```bash
 echo -n "<CERT_PEM>" | gcloud secrets create CERTIFICATE \
   --data-file=- --project=<PROJECT_ID> --replication-policy=automatic
@@ -164,6 +171,7 @@ bash fe-infra/setup/provision-infra.sh destroy # tear down
 ```
 
 > **Note:** `destroy` does not remove Secret Manager secrets. Delete manually if needed:
+>
 > ```bash
 > for s in FRONTEND_WEB_STAFF_BUCKET FRONTEND_WEB_STAFF_SITE_URL \
 >           FRONTEND_WEB_PLAYER_BUCKET FRONTEND_WEB_PLAYER_SITE_URL; do
@@ -205,6 +213,7 @@ bash fe-infra/setup/add-client.sh <slug> <environment> [staff-domain] [player-do
 ```
 
 Examples:
+
 ```bash
 # Both portals — staging
 bash fe-infra/setup/add-client.sh ace staging ace-staging.smashbook.app ace-player-staging.smashbook.app
@@ -299,14 +308,14 @@ Two workflows — one per app (`web-staff`, `web-player`). No cross-triggering.
 secrets → lint → test → build → deploy → smoke
 ```
 
-| Stage   | Detail |
-| ------- | ------ |
-| secrets | Auth to GCP, fetch `VITE_API_BASE_URL` from Cloud Run + bucket/CF credentials from Secret Manager |
-| lint    | `pnpm --filter @repo/<app> lint` |
-| test    | `pnpm --filter @repo/<app> test` |
-| build   | `pnpm --filter @repo/<app> build` with `VITE_API_BASE_URL` + `VITE_APP_ENV` injected |
+| Stage   | Detail                                                                                                              |
+| ------- | ------------------------------------------------------------------------------------------------------------------- |
+| secrets | Auth to GCP, fetch `VITE_API_BASE_URL` from Cloud Run + bucket/CF credentials from Secret Manager                   |
+| lint    | `pnpm --filter @repo/<app> lint`                                                                                    |
+| test    | `pnpm --filter @repo/<app> test`                                                                                    |
+| build   | `pnpm --filter @repo/<app> build` with `VITE_API_BASE_URL` + `VITE_APP_ENV` injected                                |
 | deploy  | Upload versioned build to `gs://<bucket>/<sha>/`, promote to bucket root, set cache headers, purge Cloudflare cache |
-| smoke   | HTTP 200 + `<!doctype html` check with 10 retries |
+| smoke   | HTTP 200 + `<!doctype html` check with 10 retries                                                                   |
 
 ### Smoke test URL
 
@@ -335,6 +344,7 @@ gs://<bucket>/
 ```
 
 Deploy steps:
+
 1. Upload build to `gs://<bucket>/<sha>/`
 2. Copy to bucket root (promotion — version folders are never deleted)
 3. Set cache headers
@@ -342,10 +352,10 @@ Deploy steps:
 
 ### Cache headers
 
-| Path              | `Cache-Control`                       |
-| ----------------- | ------------------------------------- |
-| `assets/**`       | `public, max-age=31536000, immutable` |
-| `index.html`      | `no-cache, no-store, must-revalidate` |
+| Path         | `Cache-Control`                       |
+| ------------ | ------------------------------------- |
+| `assets/**`  | `public, max-age=31536000, immutable` |
+| `index.html` | `no-cache, no-store, must-revalidate` |
 
 ### SPA routing
 
@@ -375,9 +385,9 @@ Short SHAs are supported. No rebuild required — rollback takes seconds.
 
 All env vars are Zod-validated at app startup in `packages/config/env.ts`.
 
-| Variable            | Required | Source in CI |
-| ------------------- | -------- | ------------ |
-| `VITE_API_BASE_URL` | Yes      | Fetched from Cloud Run (`padel-api` service URL) |
+| Variable            | Required | Source in CI                                       |
+| ------------------- | -------- | -------------------------------------------------- |
+| `VITE_API_BASE_URL` | Yes      | Fetched from Cloud Run (`padel-api` service URL)   |
 | `VITE_APP_ENV`      | Yes      | `staging` (auto) or `production` (manual dispatch) |
 
 `VITE_APP_ENV` accepts: `development`, `staging`, `production`.
@@ -388,21 +398,21 @@ All env vars are Zod-validated at app startup in `packages/config/env.ts`.
 
 ### GitHub Secrets
 
-| Secret           | Value |
-| ---------------- | ----- |
+| Secret           | Value                                        |
+| ---------------- | -------------------------------------------- |
 | `GCP_SA_FE_KEY`  | JSON key from `create-ci-service-account.sh` |
-| `GCP_PROJECT_ID` | GCP project ID |
+| `GCP_PROJECT_ID` | GCP project ID                               |
 
 ### GCP Secret Manager
 
-| Secret                         | Used for |
-| ------------------------------ | -------- |
-| `FRONTEND_WEB_STAFF_BUCKET`    | staff deploy — GCS bucket name |
-| `FRONTEND_WEB_PLAYER_BUCKET`   | player deploy — GCS bucket name |
-| `CF_ZONE_ID`                   | Cloudflare cache purge (all workflows) |
-| `CF_API_TOKEN`                 | Cloudflare cache purge (all workflows) |
-| `CERTIFICATE`                  | Cloudflare Origin Certificate PEM |
-| `PRIVATE_KEY`                  | Cloudflare Origin Certificate key PEM |
+| Secret                       | Used for                               |
+| ---------------------------- | -------------------------------------- |
+| `FRONTEND_WEB_STAFF_BUCKET`  | staff deploy — GCS bucket name         |
+| `FRONTEND_WEB_PLAYER_BUCKET` | player deploy — GCS bucket name        |
+| `CF_ZONE_ID`                 | Cloudflare cache purge (all workflows) |
+| `CF_API_TOKEN`               | Cloudflare cache purge (all workflows) |
+| `CERTIFICATE`                | Cloudflare Origin Certificate PEM      |
+| `PRIVATE_KEY`                | Cloudflare Origin Certificate key PEM  |
 
 `VITE_API_BASE_URL` is fetched directly from the `padel-api` Cloud Run service URL — not stored as a secret.
 
@@ -440,9 +450,9 @@ To roll back: trigger `workflow_dispatch` on `deploy-frontend-website` with a kn
 
 ### GCP Secrets
 
-| Secret                      | Used for |
-| --------------------------- | -------- |
-| `FRONTEND_WEBSITE_BUCKET`   | deploy — GCS bucket name |
+| Secret                      | Used for                             |
+| --------------------------- | ------------------------------------ |
+| `FRONTEND_WEBSITE_BUCKET`   | deploy — GCS bucket name             |
 | `FRONTEND_WEBSITE_SITE_URL` | smoke test — `https://smashbook.app` |
 
 ---

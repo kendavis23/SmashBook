@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { joinBookingEndpoint, respondInviteEndpoint, addEquipmentRentalEndpoint } from "./booking.api";
+import {
+    joinBookingEndpoint,
+    respondInviteEndpoint,
+    addEquipmentRentalEndpoint,
+} from "./booking.api";
 
 vi.mock("../../../core/fetcher", () => ({ fetcher: vi.fn() }));
 

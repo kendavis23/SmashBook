@@ -1,5 +1,9 @@
 import { fetcher } from "../../../core/fetcher";
-import type { ListAvailableTrainersParams, TrainerAvailableSummary, TrainerRead } from "./trainer.types";
+import type {
+    ListAvailableTrainersParams,
+    TrainerAvailableSummary,
+    TrainerRead,
+} from "./trainer.types";
 
 export function listTrainersEndpoint(
     clubId: string,

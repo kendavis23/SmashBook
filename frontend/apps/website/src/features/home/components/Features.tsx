@@ -1,11 +1,4 @@
-import {
-    BarChart3,
-    Bell,
-    CalendarDays,
-    CreditCard,
-    ShieldCheck,
-    Users,
-} from "lucide-react";
+import { BarChart3, Bell, CalendarDays, CreditCard, ShieldCheck, Users } from "lucide-react";
 
 const FEATURES = [
     {
@@ -59,11 +52,14 @@ export function Features() {
                             </p>
                         </div>
                         <h2 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">
-                            One operating layer<br className="hidden sm:block" /> for the entire club.
+                            One operating layer
+                            <br className="hidden sm:block" /> for the entire club.
                         </h2>
                     </div>
                     <p className="max-w-md text-base leading-7 text-muted-foreground lg:pb-1 lg:text-right">
-                        Replace fragmented tools with a single system for front desk teams, owners, coaches, finance, and players. Every team works from the same source of truth.
+                        Replace fragmented tools with a single system for front desk teams, owners,
+                        coaches, finance, and players. Every team works from the same source of
+                        truth.
                     </p>
                 </div>
 

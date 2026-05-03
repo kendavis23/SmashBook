@@ -15,7 +15,12 @@ vi.mock("@repo/api-client/modules/share", () => ({
 
 import * as staffApi from "@repo/api-client/modules/staff";
 import * as shareApi from "@repo/api-client/modules/share";
-import { useRegisterPlayer, useUpdateSkillLevel, useGetSkillHistory, useSearchPlayers } from "./player.hooks";
+import {
+    useRegisterPlayer,
+    useUpdateSkillLevel,
+    useGetSkillHistory,
+    useSearchPlayers,
+} from "./player.hooks";
 
 function makeWrapper() {
     const client = new QueryClient({

@@ -1,5 +1,6 @@
 const staffDemoUrl = import.meta.env.VITE_API_STAFF_SITE_URL ?? "https://ace-staging.smashbook.app";
-const playerDemoUrl = import.meta.env.VITE_API_PLAYER_SITE_URL ?? "https://ace-player-staging.smashbook.app";
+const playerDemoUrl =
+    import.meta.env.VITE_API_PLAYER_SITE_URL ?? "https://ace-player-staging.smashbook.app";
 
 export function Hero() {
     return (
@@ -10,8 +11,14 @@ export function Hero() {
                 aria-hidden="true"
                 className="absolute inset-x-0 top-0 h-full w-full object-cover object-[62%_58%]"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/15" aria-hidden="true" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10" aria-hidden="true" />
+            <div
+                className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/15"
+                aria-hidden="true"
+            />
+            <div
+                className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/10"
+                aria-hidden="true"
+            />
 
             {/* Desktop layout */}
             <div className="relative mx-auto hidden max-w-7xl px-8 pt-20 lg:block">
@@ -27,13 +34,24 @@ export function Hero() {
                         Run your padel club from one system.
                     </h1>
                     <p className="mt-6 max-w-xl text-lg leading-8 text-white/75">
-                        SmashBook is a multi-tenant SaaS platform for padel club management, handling courts, payments, and the full player journey in one place.
+                        SmashBook is a multi-tenant SaaS platform for padel club management,
+                        handling courts, payments, and the full player journey in one place.
                     </p>
                     <div className="mt-10 flex flex-row gap-3">
-                        <a href={playerDemoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-md border border-white bg-white px-7 py-3.5 text-base font-medium text-foreground shadow-sm transition-all duration-150 hover:bg-white/90 active:scale-[0.98]">
+                        <a
+                            href={playerDemoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center rounded-md border border-white bg-white px-7 py-3.5 text-base font-medium text-foreground shadow-sm transition-all duration-150 hover:bg-white/90 active:scale-[0.98]"
+                        >
                             Player Demo
                         </a>
-                        <a href={staffDemoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-md border border-white/30 bg-white/10 px-7 py-3.5 text-base font-medium text-white shadow-sm backdrop-blur-sm transition-all duration-150 hover:bg-white/20 active:scale-[0.98]">
+                        <a
+                            href={staffDemoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center rounded-md border border-white/30 bg-white/10 px-7 py-3.5 text-base font-medium text-white shadow-sm backdrop-blur-sm transition-all duration-150 hover:bg-white/20 active:scale-[0.98]"
+                        >
                             Staff Demo
                         </a>
                     </div>
@@ -57,22 +75,36 @@ export function Hero() {
                         Run your padel club from one system.
                     </h1>
                     <p className="mt-4 text-base leading-7 text-white/75">
-                        SmashBook is a multi-tenant SaaS platform for padel club management, handling courts, payments, and the full player journey in one place.
+                        SmashBook is a multi-tenant SaaS platform for padel club management,
+                        handling courts, payments, and the full player journey in one place.
                     </p>
                 </div>
 
                 {/* Buttons pinned above the h-24 shadow */}
                 <div className="mb-28 flex flex-col gap-3">
-                    <a href={playerDemoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-md border border-white bg-white px-7 py-3.5 text-base font-medium text-foreground shadow-sm transition-all duration-150 hover:bg-white/90 active:scale-[0.98]">
+                    <a
+                        href={playerDemoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-md border border-white bg-white px-7 py-3.5 text-base font-medium text-foreground shadow-sm transition-all duration-150 hover:bg-white/90 active:scale-[0.98]"
+                    >
                         Player Demo
                     </a>
-                    <a href={staffDemoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-md border border-white/30 bg-white/10 px-7 py-3.5 text-base font-medium text-white shadow-sm backdrop-blur-sm transition-all duration-150 hover:bg-white/20 active:scale-[0.98]">
+                    <a
+                        href={staffDemoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center rounded-md border border-white/30 bg-white/10 px-7 py-3.5 text-base font-medium text-white shadow-sm backdrop-blur-sm transition-all duration-150 hover:bg-white/20 active:scale-[0.98]"
+                    >
                         Staff Demo
                     </a>
                 </div>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" aria-hidden="true" />
+            <div
+                className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent"
+                aria-hidden="true"
+            />
         </section>
     );
 }

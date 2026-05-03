@@ -381,9 +381,7 @@ export default function ManageReservationView({
                                             <section className={sectionShellCls}>
                                                 <div className={sectionHeaderCls}>
                                                     <div>
-                                                        <p className={sectionKickerCls}>
-                                                            Schedule
-                                                        </p>
+                                                        <p className={sectionKickerCls}>Schedule</p>
                                                         <h3 className="mt-1 text-base font-semibold text-foreground">
                                                             Recurring{" "}
                                                             <span className="text-xs font-normal text-muted-foreground">

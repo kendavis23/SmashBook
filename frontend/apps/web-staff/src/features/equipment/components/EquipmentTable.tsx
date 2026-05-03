@@ -19,7 +19,7 @@ type Props = {
 };
 
 function getConditionClass(condition: ItemCondition): string {
-    if (condition === "new" || condition === "good") {
+    if (condition === "good") {
         return "bg-success/15 text-success";
     }
 

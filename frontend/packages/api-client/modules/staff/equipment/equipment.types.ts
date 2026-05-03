@@ -2,7 +2,11 @@ import type { UUID } from "../common";
 import type { ItemType, ItemCondition } from "../../share/equipment/equipment.types";
 
 export type { UUID };
-export type { ItemType, ItemCondition, EquipmentInventoryItemResponse } from "../../share/equipment/equipment.types";
+export type {
+    ItemType,
+    ItemCondition,
+    EquipmentInventoryItemResponse,
+} from "../../share/equipment/equipment.types";
 
 export interface EquipmentCreate {
     item_type: ItemType;

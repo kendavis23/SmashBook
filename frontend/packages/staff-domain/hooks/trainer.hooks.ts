@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { listTrainersEndpoint, listAvailableTrainersEndpoint } from "@repo/api-client/modules/share";
+import {
+    listTrainersEndpoint,
+    listAvailableTrainersEndpoint,
+} from "@repo/api-client/modules/share";
 import {
     getTrainerAvailabilityEndpoint,
     setTrainerAvailabilityEndpoint,
@@ -29,7 +32,14 @@ const trainerKeys = {
     availability: (trainerId: string) => ["trainers", trainerId, "availability"] as const,
     bookings: (trainerId: string) => ["trainers", trainerId, "bookings"] as const,
     available: (params: ListAvailableTrainersParams) =>
-        ["trainers", "available", params.clubId, params.date, params.startTime, params.endTime] as const,
+        [
+            "trainers",
+            "available",
+            params.clubId,
+            params.date,
+            params.startTime,
+            params.endTime,
+        ] as const,
 };
 
 // ---------------------------------------------------------------------------

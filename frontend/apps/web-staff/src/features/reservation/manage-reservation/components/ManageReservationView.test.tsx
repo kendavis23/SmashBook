@@ -89,13 +89,7 @@ vi.mock("@repo/ui", () => ({
             min={minDate}
         />
     ),
-    RecurrencePicker: ({
-        value,
-        onChange,
-    }: {
-        value?: string;
-        onChange: (v: string) => void;
-    }) => (
+    RecurrencePicker: ({ value, onChange }: { value?: string; onChange: (v: string) => void }) => (
         <button type="button" onClick={() => onChange("FREQ=WEEKLY;BYDAY=MO;COUNT=12")}>
             RecurrencePicker {value}
         </button>

@@ -13,27 +13,35 @@ export function About() {
                     </div>
                     <div className="grid gap-6 sm:grid-cols-2">
                         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                            <h3 className="text-base font-semibold text-foreground">For ownership</h3>
+                            <h3 className="text-base font-semibold text-foreground">
+                                For ownership
+                            </h3>
                             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                                See revenue, utilisation, payments, churn risk, and staff activity across every location without waiting for manual reports.
+                                See revenue, utilisation, payments, churn risk, and staff activity
+                                across every location without waiting for manual reports.
                             </p>
                         </div>
                         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                            <h3 className="text-base font-semibold text-foreground">For front desk teams</h3>
+                            <h3 className="text-base font-semibold text-foreground">
+                                For front desk teams
+                            </h3>
                             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                                Handle walk-ins, changes, refunds, memberships, and customer questions from a fast operational console.
+                                Handle walk-ins, changes, refunds, memberships, and customer
+                                questions from a fast operational console.
                             </p>
                         </div>
                         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
                             <h3 className="text-base font-semibold text-foreground">For players</h3>
                             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                                Book courts, join waitlists, manage payments, find matches, and receive timely updates without calling the club.
+                                Book courts, join waitlists, manage payments, find matches, and
+                                receive timely updates without calling the club.
                             </p>
                         </div>
                         <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
                             <h3 className="text-base font-semibold text-foreground">For growth</h3>
                             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                                Use AI-assisted campaigns, demand insights, and player segmentation to turn quiet hours into booked courts.
+                                Use AI-assisted campaigns, demand insights, and player segmentation
+                                to turn quiet hours into booked courts.
                             </p>
                         </div>
                     </div>

@@ -6,7 +6,14 @@ import { invitePlayerEndpoint } from "@repo/api-client/modules/share";
 import { respondInviteEndpoint } from "@repo/api-client/modules/player";
 import { useMyBookings, useGetBooking, useInvitePlayer, useRespondInvite } from "../../hooks";
 import { useMyProfile } from "@repo/player-domain/hooks";
-import type { BookingTab, PlayerBookingItem, InviteStatus, Booking, PlayerRole, PaymentStatus } from "../../types";
+import type {
+    BookingTab,
+    PlayerBookingItem,
+    InviteStatus,
+    Booking,
+    PlayerRole,
+    PaymentStatus,
+} from "../../types";
 import BookingsView from "./BookingsView";
 import { ManageBookingModalView } from "../../manage-booking/components/ManageBookingModalView";
 import { X } from "lucide-react";
@@ -27,7 +34,12 @@ function BookingModal({
     selected: SelectedBooking;
     onClose: () => void;
 }): JSX.Element {
-    const { data: booking, isLoading, error, refetch } = useGetBooking(selected.bookingId, selected.clubId);
+    const {
+        data: booking,
+        isLoading,
+        error,
+        refetch,
+    } = useGetBooking(selected.bookingId, selected.clubId);
     const { data: profile } = useMyProfile();
     const [apiError, setApiError] = useState("");
 
@@ -91,7 +103,10 @@ function BookingModal({
                 onClick={onClose}
                 aria-hidden="true"
             />
-            <div className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl" style={{ height: "90vh" }}>
+            <div
+                className="relative z-10 flex w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+                style={{ height: "90vh" }}
+            >
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center gap-3 py-20 px-8">
                         <span className="h-6 w-6 animate-spin rounded-full border-2 border-border border-t-cta" />

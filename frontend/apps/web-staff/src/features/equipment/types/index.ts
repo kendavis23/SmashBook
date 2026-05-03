@@ -34,7 +34,7 @@ export const ITEM_CONDITION_LABELS: Record<ItemCondition, string> = {
     good: "Good",
     fair: "Fair",
     damaged: "damaged",
-    retired: "retired"
+    retired: "retired",
 };
 
 export const ITEM_TYPE_OPTIONS: { value: ItemType; label: string }[] = [

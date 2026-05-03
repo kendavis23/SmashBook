@@ -256,11 +256,10 @@ describe("useAddEquipmentRental", () => {
         });
         result.current.mutate({ equipment_id: "equip-1", quantity: 2 });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(playerApi.addEquipmentRentalEndpoint).toHaveBeenCalledWith(
-            BOOKING_ID,
-            CLUB_ID,
-            { equipment_id: "equip-1", quantity: 2 }
-        );
+        expect(playerApi.addEquipmentRentalEndpoint).toHaveBeenCalledWith(BOOKING_ID, CLUB_ID, {
+            equipment_id: "equip-1",
+            quantity: 2,
+        });
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
         );

@@ -79,10 +79,11 @@ function SortButton({
         <button
             type="button"
             onClick={() => onSort(sortKey)}
-            className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium transition ${isActive
-                ? "border-cta bg-cta/10 text-cta"
-                : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
+            className={`inline-flex h-8 items-center gap-1 rounded-lg border px-2.5 text-xs font-medium transition ${
+                isActive
+                    ? "border-cta bg-cta/10 text-cta"
+                    : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground"
+            }`}
             aria-label={`Sort by ${label} ${isActive && direction === "asc" ? "descending" : "ascending"}`}
         >
             <span>{label}</span>
@@ -451,10 +452,11 @@ export default function TrainersView({
                                                         role="button"
                                                         tabIndex={0}
                                                         aria-label={`Select trainer ${trainer.full_name}`}
-                                                        className={`cursor-pointer transition-colors ${isSelected
-                                                            ? "bg-cta/5"
-                                                            : "hover:bg-muted/30"
-                                                            }`}
+                                                        className={`cursor-pointer transition-colors ${
+                                                            isSelected
+                                                                ? "bg-cta/5"
+                                                                : "hover:bg-muted/30"
+                                                        }`}
                                                         onClick={() => onSelectTrainer(trainer)}
                                                     >
                                                         <td className="px-4 py-2.5 sm:px-6">
@@ -533,10 +535,11 @@ export default function TrainersView({
                                         <button
                                             key={i}
                                             onClick={() => setPage(i)}
-                                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${i === page
-                                                ? "border-cta bg-cta text-cta-foreground"
-                                                : "border-border bg-card text-foreground hover:bg-muted"
-                                                }`}
+                                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
+                                                i === page
+                                                    ? "border-cta bg-cta text-cta-foreground"
+                                                    : "border-border bg-card text-foreground hover:bg-muted"
+                                            }`}
                                             aria-label={`Page ${i + 1}`}
                                             aria-current={i === page ? "page" : undefined}
                                         >
