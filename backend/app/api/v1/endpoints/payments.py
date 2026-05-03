@@ -27,7 +27,7 @@ settings = get_settings()
 async def stripe_webhook(request: Request, db=Depends(get_db)):
     """
     Verify Stripe signature and dispatch to the appropriate service method.
-    Handles: payment_intent.succeeded, payment_intent.payment_failed
+    Handles: payment_intent.succeeded, payment_intent.payment_failed, payout.paid
     """
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -46,6 +46,8 @@ async def stripe_webhook(request: Request, db=Depends(get_db)):
         await svc.confirm_payment(dict(event))
     elif event_type == "payment_intent.payment_failed":
         await svc.handle_payment_failed(dict(event))
+    elif event_type == "payout.paid":
+        await svc.handle_payout_paid(dict(event))
 
     return {"received": True}
 

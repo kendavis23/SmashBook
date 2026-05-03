@@ -52,6 +52,7 @@ class Payment(Base, UUIDMixin, TimestampMixin):
     stripe_invoice_id = Column(String(255), nullable=True)
     stripe_receipt_url = Column(String(500), nullable=True)
     pdf_storage_path = Column(String(500), nullable=True)  # GCS path
+    stripe_payout_id = Column(String(255), nullable=True, index=True)
 
     # G4: payment reliability and fraud detection
     failure_reason = Column(Text, nullable=True)

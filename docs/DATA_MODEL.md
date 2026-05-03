@@ -1,4 +1,4 @@
-_Last updated: 2026-04-20 15:00 UTC_
+_Last updated: 2026-05-03 17:30 UTC_
 
 # SmashBook Data Model
 
@@ -434,6 +434,7 @@ Invoice fields are stored directly on this table (no separate `invoices` table).
 | `anomaly_flagged` | BOOLEAN | Default `false` |
 | `anomaly_reason` | TEXT | Nullable |
 | `dispute_status` | ENUM | Nullable — `open`, `under_review`, `won`, `lost` |
+| `stripe_payout_id` | VARCHAR(255) | Nullable — populated via `payout.paid` webhook; indexed |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 

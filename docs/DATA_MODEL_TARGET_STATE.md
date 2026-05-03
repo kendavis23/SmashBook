@@ -1,4 +1,4 @@
-_Last updated: 2026-04-20 15:00 UTC_
+_Last updated: 2026-05-03 17:30 UTC_
 
 # SmashBook — Data Model Target State
 
@@ -543,6 +543,7 @@ AI-generated predictions for when equipment will need replacement or reorder.
 | `anomaly_flagged` | BOOLEAN | **NEW** Default `false` |
 | `anomaly_reason` | TEXT | **NEW** Nullable |
 | `dispute_status` | ENUM | **NEW** Nullable — `open`, `under_review`, `won`, `lost` |
+| `stripe_payout_id` | VARCHAR(255) | **NEW** Nullable — populated via `payout.paid` webhook; indexed |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 

@@ -627,3 +627,35 @@ class PaymentService:
     async def reconcile_stripe_payouts(self, club_id: str) -> list:
         """Fetch payout records from Stripe API for the club's Connect account."""
         pass
+
+    async def handle_payout_paid(self, event: dict) -> None:
+        """
+        Called when Stripe fires payout.paid on a connected account.
+        Stamps stripe_payout_id onto every Payment whose stripe_charge_id
+        appears in the payout's balance transactions.
+        Raises stripe.StripeError on API failure so the webhook returns 500
+        and Stripe retries automatically.
+        """
+        payout = event["data"]["object"]
+        payout_id: str = payout["id"]
+        connect_account_id: str = event["account"]
+
+        txns = stripe.BalanceTransaction.list(
+            payout=payout_id,
+            type="charge",
+            stripe_account=connect_account_id,
+        )
+        charge_ids = [t["source"] for t in txns.auto_paging_iter() if t.get("source")]
+
+        if not charge_ids:
+            return
+
+        result = await self.db.execute(
+            sa_select(Payment).where(Payment.stripe_charge_id.in_(charge_ids))
+        )
+        payments = result.scalars().all()
+
+        for payment in payments:
+            payment.stripe_payout_id = payout_id
+
+        await self.db.commit()
