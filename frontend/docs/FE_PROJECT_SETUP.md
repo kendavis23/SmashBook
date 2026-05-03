@@ -77,7 +77,7 @@ cd apps/mobile-player && pnpm start
 
 | App                    | Package name          | Framework           | Dev command       | Port                   |
 | ---------------------- | --------------------- | ------------------- | ----------------- | ---------------------- |
-| Player web portal      | `@repo/web-player`    | React + Vite        | `pnpm dev:player` | `3000`                 |
+| Player web portal      | `@repo/web-player`    | React + Vite        | `pnpm dev:player` | `3002`                 |
 | Staff web portal       | `@repo/web-staff`     | React + Vite        | `pnpm dev:staff`  | `3001`                 |
 | Mobile (iOS / Android) | `@repo/mobile-player` | React Native + Expo | `pnpm start`      | `8081` (Metro bundler) |
 

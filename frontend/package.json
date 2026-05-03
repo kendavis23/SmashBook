@@ -6,6 +6,7 @@
         "dev": "turbo dev",
         "dev:staff": "turbo dev --filter=@repo/web-staff",
         "dev:player": "turbo dev --filter=@repo/web-player",
+        "dev:website": "turbo dev --filter=@repo/website",
         "lint": "turbo lint",
         "test": "turbo test",
         "type-check": "turbo type-check",

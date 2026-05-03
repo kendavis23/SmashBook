@@ -13,7 +13,8 @@ pnpm install
 # Development
 pnpm dev                          # all apps
 pnpm --filter web-staff dev       # staff portal only (port 3001)
-pnpm --filter web-player dev      # player portal only (port 3000)
+pnpm --filter web-player dev      # player portal only (port 3002)
+pnpm --filter website dev      # player portal only (port 3003)
 pnpm --filter mobile-player start # mobile app
 
 # Build
@@ -56,7 +57,7 @@ packages/      → all logic, UI, and configuration
 | App             | Description                                          |
 | --------------- | ---------------------------------------------------- |
 | `web-staff`     | Staff/club operator portal (React + Vite, port 3001) |
-| `web-player`    | Player-facing web portal (React + Vite, port 3000)   |
+| `web-player`    | Player-facing web portal (React + Vite, port 3002)   |
 | `mobile-player` | Player mobile app (Expo Router / React Native)       |
 
 ### Package Responsibilities (strict ownership)
