@@ -3,6 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import BookingsContainer from "./BookingsContainer";
 
 const mockRefetch = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock("@tanstack/react-router", () => ({
+    useNavigate: () => mockNavigate,
+}));
 
 vi.mock("../../hooks", () => ({
     useMyBookings: vi.fn(() => ({

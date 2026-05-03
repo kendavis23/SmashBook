@@ -10,6 +10,18 @@ import {
 } from "../../hooks";
 import type { BookingModalState, ClubOption, OpenGameFilters, SurfaceType } from "../../types";
 import DashboardView from "./DashboardView";
+import DashboardViewMobile from "./DashboardViewMobile";
+
+function useIsMobile(): boolean {
+    const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+    useEffect(() => {
+        const mq = window.matchMedia("(max-width: 767px)");
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener("change", handler);
+        return () => mq.removeEventListener("change", handler);
+    }, []);
+    return isMobile;
+}
 
 type JoinFilters = {
     date: string;
@@ -108,6 +120,7 @@ export default function DashboardContainer(): JSX.Element {
         refetch: refetchAvailability,
     } = useGetCourtAvailability(availabilityCourtId, bookFilters.date);
 
+    const isMobile = useIsMobile();
     const joinMutation = useJoinBooking(selectedClubId, joinBookingId);
 
     useEffect(() => {
@@ -155,69 +168,73 @@ export default function DashboardContainer(): JSX.Element {
         [bookFilters.date]
     );
 
-    return (
-        <DashboardView
-            clubs={clubs}
-            selectedClubId={selectedClubId}
-            selectedClubName={selectedClub?.name ?? ""}
-            joinFilterDate={joinFilters.date}
-            bookFilterDate={bookFilters.date}
-            bookFilterSurfaceType={bookFilters.surfaceType}
-            bookFilterTimeFrom={bookFilters.timeFrom}
-            bookFilterTimeTo={bookFilters.timeTo}
-            openGames={openGames}
-            courts={courts}
-            availability={availability ?? null}
-            availabilityCourtId={availabilityCourtId}
-            bookingModal={bookingModal}
-            isOpenGamesLoading={isMyProfileLoading || isOpenGamesLoading}
-            isCourtsLoading={isCourtsLoading}
-            isAvailabilityLoading={isAvailabilityLoading}
-            isJoining={joinMutation.isPending || Boolean(joinBookingId)}
-            joiningBookingId={joinBookingId}
-            openGamesError={myProfileError ?? openGamesError}
-            courtsError={courtsError}
-            availabilityError={availabilityError}
-            joinError={joinError}
-            successMessage={successMessage}
-            onClubChange={handleClubChange}
-            onJoinFilterDateChange={(date) => setJoinFilters((prev) => ({ ...prev, date }))}
-            onBookFilterDateChange={(date) => {
-                setBookFilters((prev) => ({ ...prev, date }));
-                setAvailabilityCourtId("");
-            }}
-            onBookFilterSurfaceTypeChange={(surfaceType) => {
-                setBookFilters((prev) => ({ ...prev, surfaceType }));
-                setAvailabilityCourtId("");
-            }}
-            onBookFilterTimeFromChange={(timeFrom) => {
-                setBookFilters((prev) => ({ ...prev, timeFrom }));
-                setAvailabilityCourtId("");
-            }}
-            onBookFilterTimeToChange={(timeTo) => {
-                setBookFilters((prev) => ({ ...prev, timeTo }));
-                setAvailabilityCourtId("");
-            }}
-            onCheckAvailability={handleCheckAvailability}
-            onRefreshOpenGames={() => {
-                if (playerSkillLevel != null) void refetchOpenGames();
-            }}
-            onRefreshCourts={() => void refetchCourts()}
-            onJoinGame={(bookingId) => {
-                setJoinError("");
-                setJoinBookingId(bookingId);
-            }}
-            onOpenBooking={handleOpenBooking}
-            onCloseBooking={() => setBookingModal(null)}
-            onBookingSuccess={() => {
-                setBookingModal(null);
-                setSuccessMessage("Booking created successfully.");
-                void refetchCourts();
-                if (availabilityCourtId) void refetchAvailability();
-                void refetchOpenGames();
-            }}
-            onDismissJoinError={() => setJoinError("")}
-            onDismissSuccess={() => setSuccessMessage("")}
-        />
-    );
+    const sharedProps = {
+        clubs,
+        selectedClubId,
+        selectedClubName: selectedClub?.name ?? "",
+        joinFilterDate: joinFilters.date,
+        bookFilterDate: bookFilters.date,
+        bookFilterSurfaceType: bookFilters.surfaceType,
+        bookFilterTimeFrom: bookFilters.timeFrom,
+        bookFilterTimeTo: bookFilters.timeTo,
+        openGames,
+        courts,
+        availability: availability ?? null,
+        availabilityCourtId,
+        bookingModal,
+        isOpenGamesLoading: isMyProfileLoading || isOpenGamesLoading,
+        isCourtsLoading,
+        isAvailabilityLoading,
+        isJoining: joinMutation.isPending || Boolean(joinBookingId),
+        joiningBookingId: joinBookingId,
+        openGamesError: myProfileError ?? openGamesError,
+        courtsError,
+        availabilityError,
+        joinError,
+        successMessage,
+        onClubChange: handleClubChange,
+        onJoinFilterDateChange: (date: string) => setJoinFilters((prev) => ({ ...prev, date })),
+        onBookFilterDateChange: (date: string) => {
+            setBookFilters((prev) => ({ ...prev, date }));
+            setAvailabilityCourtId("");
+        },
+        onBookFilterSurfaceTypeChange: (surfaceType: "" | SurfaceType) => {
+            setBookFilters((prev) => ({ ...prev, surfaceType }));
+            setAvailabilityCourtId("");
+        },
+        onBookFilterTimeFromChange: (timeFrom: string) => {
+            setBookFilters((prev) => ({ ...prev, timeFrom }));
+            setAvailabilityCourtId("");
+        },
+        onBookFilterTimeToChange: (timeTo: string) => {
+            setBookFilters((prev) => ({ ...prev, timeTo }));
+            setAvailabilityCourtId("");
+        },
+        onCheckAvailability: handleCheckAvailability,
+        onRefreshOpenGames: () => {
+            if (playerSkillLevel != null) void refetchOpenGames();
+        },
+        onRefreshCourts: () => void refetchCourts(),
+        onJoinGame: (bookingId: string) => {
+            setJoinError("");
+            setJoinBookingId(bookingId);
+        },
+        onOpenBooking: handleOpenBooking,
+        onCloseBooking: () => setBookingModal(null),
+        onBookingSuccess: () => {
+            setBookingModal(null);
+            setSuccessMessage("Booking created successfully.");
+            void refetchCourts();
+            if (availabilityCourtId) void refetchAvailability();
+            void refetchOpenGames();
+        },
+        onDismissJoinError: () => setJoinError(""),
+        onDismissSuccess: () => setSuccessMessage(""),
+    };
+
+    if (isMobile) {
+        return <DashboardViewMobile {...sharedProps} />;
+    }
+
+    return <DashboardView {...sharedProps} />;
 }
