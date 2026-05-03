@@ -1,12 +1,11 @@
 import { Clock } from "lucide-react";
-import { forwardRef, useId, type InputHTMLAttributes } from "react";
+import { useId, type InputHTMLAttributes, type Ref } from "react";
 
-export type TimeInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
+export type TimeInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+    ref?: Ref<HTMLInputElement>;
+};
 
-const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function TimeInput(
-    { className = "", disabled, ...props },
-    ref
-) {
+function TimeInput({ className = "", disabled, ref, ...props }: TimeInputProps) {
     const id = useId().replace(/:/g, "");
     const scopeId = `ti-${id}`;
 
@@ -58,8 +57,6 @@ const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function TimeInpu
             </span>
         </div>
     );
-});
-
-TimeInput.displayName = "TimeInput";
+}
 
 export { TimeInput };

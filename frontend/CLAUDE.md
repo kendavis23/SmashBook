@@ -142,9 +142,10 @@ Always use container/view separation:
 ## Pinned versions (do not upgrade without updating FE_ARCHITECTURE.md)
 
 - Tailwind CSS: **3.4.17** — do NOT upgrade to v4
-- React: 18.3.1 | TypeScript: 5.6.3 | Vite: 5.4.11
+- React: 19.1.0 | TypeScript: 5.6.3 | Vite: 5.4.11
 - TanStack Query: 5.62.9 | Zustand: 4.5.5 | React Hook Form: 7.54.0
-- Expo SDK: ~54.0.0 | React Native: 0.76.1 (ships own types — do NOT add `@types/react-native`)
+- Expo SDK: ~54.0.0 | React Native: 0.81.5 (ships own types — do NOT add `@types/react-native`)
+- Expo Router: ~6.0.23 | NativeWind: 4.2.3
 - shadcn/ui: 2.1.8 | Lucide React: 0.446.0
 
 ## Where code belongs — decision guide

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-01 00:00 UTC_
+_Last updated: 2026-05-03 00:00 UTC_
 
 # Frontend Project Setup
 
@@ -134,15 +134,17 @@ All root-level scripts delegate to Turborepo and run across every app/package in
 
 | Library          | Version   | Used by                              |
 | ---------------- | --------- | ------------------------------------ |
-| React            | `18.3.1`  | web-staff, web-player, mobile-player |
-| React Native     | `0.76.1`  | mobile-player                        |
+| React            | `19.1.0`  | web-staff, web-player, mobile-player |
+| React Native     | `0.81.5`  | mobile-player                        |
 | Expo             | `~54.0.0` | mobile-player                        |
+| Expo Router      | `~6.0.23` | mobile-player                        |
 | Vite             | `5.4.11`  | web-staff, web-player                |
 | React Router DOM | `6.28.0`  | web-staff, web-player                |
 | TanStack Query   | `5.62.9`  | all apps                             |
 | Zustand          | `4.5.5`   | all apps                             |
 | React Hook Form  | `7.54.0`  | all apps                             |
 | Zod              | `3.24.1`  | all apps                             |
+| NativeWind       | `4.2.3`   | mobile-player                        |
 | Tailwind CSS     | `3.4.17`  | all apps                             |
 | TypeScript       | `5.6.3`   | all apps                             |
 | Turborepo        | `2.3.3`   | monorepo orchestration               |

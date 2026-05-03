@@ -1,4 +1,4 @@
-_Last updated: 2026-04-08 12:00 UTC_
+_Last updated: 2026-05-03 00:00 UTC_
 
 # Frontend Architecture
 
@@ -122,16 +122,16 @@ frontend/
 | Monorepo          | Turborepo + pnpm                                     | 2.3.3 / 9.12.3        | Keep                                    |
 | Language          | TypeScript                                           | 5.6.3                 | Enable `composite: true`                |
 | Build             | Vite                                                 | 5.4.11                | Keep                                    |
-| UI Framework      | React                                                | 18.3.1                | Keep                                    |
+| UI Framework      | React                                                | 19.1.0                | Keep                                    |
 | Routing           | React Router                                         | 6.28.0                | Keep                                    |
 | Styling           | Tailwind CSS                                         | 3.4.17                | Keep (do NOT upgrade to v4)             |
 | Component Library | shadcn/ui                                            | 2.1.8                 | Keep                                    |
-| Icons             | Lucide React                                         | ~0.446                | Downgrade                               |
+| Icons             | Lucide React                                         | 0.446.0               | Keep                                    |
 | Server State      | TanStack Query                                       | 5.62.9                | Keep                                    |
 | UI State          | Zustand                                              | 4.5.5                 | Keep                                    |
 | Forms             | React Hook Form                                      | 7.54.0                | Ensure `@hookform/resolvers` ≥ 3.9      |
 | Validation        | Zod                                                  | 3.24.1                | Colocate in domain packages             |
-| HTTP Client       | Fetch API                                            | Native                | Replace Axios                           |
+| HTTP Client       | Fetch API                                            | Native                | Keep                                    |
 | Linting           | ESLint + @typescript-eslint + eslint-plugin-react    | 8.57.x / 8.x / 7.37.x | Shared config via `@repo/eslint-config` |
 | Testing           | Vitest / React Testing Library / Mock Service Worker | Latest                | Pin MSW to ^2.x                         |
 
@@ -141,16 +141,16 @@ frontend/
 
 | Concern    | Tool                                | Current Version         | Action                                                           |
 | ---------- | ----------------------------------- | ----------------------- | ---------------------------------------------------------------- |
-| Framework  | React Native                        | 0.76.x                  | Keep                                                             |
-| Expo SDK   | Expo                                | 54                      | Keep                                                             |
+| Framework  | React Native                        | 0.81.5                  | Keep                                                             |
+| Expo SDK   | Expo                                | ~54.0.0                 | Keep                                                             |
 | TS Types   | Built-in (no `@types/react-native`) | —                       | RN 0.71+ ships own types — do NOT add `@types/react-native`      |
 | Build      | EAS                                 | 14.x                    | Keep                                                             |
-| Navigation | Expo Router                         | 4.x                     | Keep                                                             |
-| State      | Zustand + TanStack Query            | 5.62.9                  | Match web version                                                |
+| Navigation | Expo Router                         | ~6.0.23                 | Keep                                                             |
+| State      | Zustand + TanStack Query            | 4.5.5 / 5.62.9          | Match web version                                                |
 | Forms      | React Hook Form                     | 7.54.0                  | Use `<Controller>` for all inputs                                |
 | Validation | Zod                                 | 3.24.1                  | Colocate in domain packages                                      |
-| Styling    | NativeWind                          | 4.x                     | Configure `withNativeWind`                                       |
-| Storage    | MMKV                                | 3.x                     | Use EAS dev client (not Expo Go)                                 |
+| Styling    | NativeWind                          | 4.2.3                   | Configure `withNativeWind`                                       |
+| Storage    | MMKV                                | ^2.12.2                 | Use EAS dev client (not Expo Go)                                 |
 | Linting    | ESLint + @typescript-eslint         | 8.57.x / 7.x            | Shared config via `@repo/eslint-config`                          |
 | Testing    | Jest + jest-expo + Maestro          | 29.x / 54.0.17 / Latest | `jest-expo` preset required for RN; `--passWithNoTests` flag set |
 
