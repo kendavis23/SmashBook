@@ -7,7 +7,7 @@ Turborepo monorepo for all SmashBook frontend surfaces.
 | App           | Path                 | Port | Description                                 |
 | ------------- | -------------------- | ---- | ------------------------------------------- |
 | web-staff     | `apps/web-staff`     | 3001 | Staff / club operator portal (React + Vite) |
-| web-player    | `apps/web-player`    | 3000 | Player-facing web portal (React + Vite)     |
+| web-player    | `apps/web-player`    | 3002 | Player-facing web portal (React + Vite)     |
 | mobile-player | `apps/mobile-player` | —    | Player mobile app (Expo / React Native)     |
 
 ## Packages

@@ -14,7 +14,8 @@ import type {
 
 const profileKeys = {
     me: () => ["player", "profile"] as const,
-    bookings: () => ["player", "bookings"] as const,
+    bookings: (pastFrom?: string, pastTo?: string) =>
+        ["player", "bookings", pastFrom, pastTo] as const,
     matchHistory: () => ["player", "match-history"] as const,
 };
 
@@ -35,10 +36,10 @@ export function useUpdateMyProfile() {
     });
 }
 
-export function useMyBookings() {
+export function useMyBookings(params?: { past_from?: string; past_to?: string }) {
     return useQuery({
-        queryKey: profileKeys.bookings(),
-        queryFn: (): Promise<PlayerBookings> => getMyBookingsEndpoint(),
+        queryKey: profileKeys.bookings(params?.past_from, params?.past_to),
+        queryFn: (): Promise<PlayerBookings> => getMyBookingsEndpoint(params),
     });
 }
 

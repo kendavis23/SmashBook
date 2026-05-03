@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
-import { CalendarDays, Clock3, RefreshCw, RotateCcw, UsersRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, RefreshCw, RotateCcw, Search, UsersRound } from "lucide-react";
 import {
     Breadcrumb,
     AlertToast,
@@ -72,6 +72,23 @@ type Props = {
     onClose?: () => void;
 };
 
+const PAGE_SIZE = 4;
+
+function statusPillClass(status: string): string {
+    if (status === "accepted" || status === "paid") return "bg-success/15 text-success";
+    if (status === "declined" || status === "unpaid") return "bg-destructive/15 text-destructive";
+    return "bg-warning/15 text-warning";
+}
+
+function initials(name: string): string {
+    return name
+        .split(" ")
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase();
+}
+
 export default function ManageBookingView({
     booking,
     courts,
@@ -102,6 +119,8 @@ export default function ManageBookingView({
     onClose,
 }: Props): JSX.Element {
     const [playerId, setPlayerId] = useState("");
+    const [playerSearch, setPlayerSearch] = useState("");
+    const [playerPage, setPlayerPage] = useState(0);
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
     const isCancellable = booking.status !== "cancelled" && booking.status !== "completed";
     const isEditable = booking.status !== "cancelled" && booking.status !== "completed";
@@ -152,8 +171,9 @@ export default function ManageBookingView({
                 <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
                     <dt className="text-xs font-medium text-muted-foreground">Players</dt>
                     <dd className="mt-0.5 text-sm text-foreground">
-                        {booking.players.length}
-                        {booking.max_players != null ? ` / ${booking.max_players}` : ""}
+                        {booking.max_players != null
+                            ? `${booking.max_players - booking.slots_available} / ${booking.max_players}`
+                            : booking.players.length}
                     </dd>
                 </div>
                 <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
@@ -235,6 +255,21 @@ export default function ManageBookingView({
             </section>
         ) : null;
 
+    const acceptedPlayers = booking.players.filter((p) => p.invite_status === "accepted");
+    const pendingPlayers = booking.players.filter((p) => p.invite_status === "pending");
+
+    const sortedPlayers = [...booking.players].sort((a, b) => {
+        const rankA = a.role === "organiser" ? 0 : a.invite_status === "accepted" ? 1 : 2;
+        const rankB = b.role === "organiser" ? 0 : b.invite_status === "accepted" ? 1 : 2;
+        return rankA - rankB;
+    });
+    const filteredPlayers = playerSearch.trim()
+        ? sortedPlayers.filter((p) => p.full_name.toLowerCase().includes(playerSearch.toLowerCase()))
+        : sortedPlayers;
+    const totalPlayerPages = Math.ceil(filteredPlayers.length / PAGE_SIZE);
+    const clampedPage = filteredPlayers.length === 0 ? 0 : Math.min(playerPage, totalPlayerPages - 1);
+    const pagedPlayers = filteredPlayers.slice(clampedPage * PAGE_SIZE, clampedPage * PAGE_SIZE + PAGE_SIZE);
+
     const playersSection =
         booking.players.length > 0 ? (
             <section className={sectionShellCls}>
@@ -242,50 +277,94 @@ export default function ManageBookingView({
                     <div>
                         <p className={sectionKickerCls}>Participants</p>
                         <h3 className="mt-1 text-base font-semibold text-foreground">Players</h3>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            {acceptedPlayers.length} accepted, {pendingPlayers.length} pending.
+                        </p>
                     </div>
+                    <UsersRound size={18} className="mt-1 text-muted-foreground" />
                 </div>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full border-collapse text-sm">
-                        <thead>
-                            <tr className="border-b border-border bg-muted/30">
-                                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Name
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Role
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Invite
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Payment
-                                </th>
-                                <th className="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Amount due
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                            {booking.players.map((p) => (
-                                <tr key={p.id} className="hover:bg-muted/20">
-                                    <td className="px-3 py-2.5 text-foreground">{p.full_name}</td>
-                                    <td className="px-3 py-2.5 capitalize text-muted-foreground">
-                                        {p.role}
-                                    </td>
-                                    <td className="px-3 py-2.5 capitalize text-muted-foreground">
-                                        {p.invite_status}
-                                    </td>
-                                    <td className="px-3 py-2.5 capitalize text-muted-foreground">
-                                        {p.payment_status}
-                                    </td>
-                                    <td className="px-3 py-2.5 text-right text-foreground">
-                                        {formatCurrency(p.amount_due)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                <div className="relative mb-3">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                        type="text"
+                        placeholder="Search by name…"
+                        value={playerSearch}
+                        onChange={(e) => { setPlayerSearch(e.target.value); setPlayerPage(0); }}
+                        className="w-full rounded-lg border border-border bg-background py-2 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta/50"
+                    />
                 </div>
+                <div className="space-y-2">
+                    {pagedPlayers.length === 0 ? (
+                        <p className="py-4 text-center text-sm text-muted-foreground">No players found.</p>
+                    ) : pagedPlayers.map((player) => {
+                        const isAccepted = player.invite_status === "accepted";
+                        return (
+                            <div
+                                key={player.id}
+                                className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 ${isAccepted
+                                    ? "border-success/30 bg-success/8"
+                                    : "border-border/70 bg-background/70"
+                                    }`}
+                            >
+                                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ${isAccepted
+                                    ? "bg-success/15 text-success ring-success/30"
+                                    : "bg-secondary text-secondary-foreground ring-border"
+                                    }`}>
+                                    {initials(player.full_name)}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium text-foreground">
+                                        {player.full_name}
+                                    </p>
+                                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+                                            {player.role}
+                                        </span>
+                                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.invite_status)}`}>
+                                            <span className="font-semibold uppercase tracking-wide">Invite:</span>
+                                            <span className="capitalize">{player.invite_status}</span>
+                                        </span>
+                                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.payment_status)}`}>
+                                            <span className="font-semibold uppercase tracking-wide">Payment:</span>
+                                            <span className="capitalize">{player.payment_status}</span>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 text-right text-sm font-semibold text-foreground">
+                                    {formatCurrency(player.amount_due)}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+                {totalPlayerPages > 1 && (
+                    <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
+                        <span className="text-xs text-muted-foreground">
+                            {clampedPage * PAGE_SIZE + 1}–{Math.min((clampedPage + 1) * PAGE_SIZE, filteredPlayers.length)} of {filteredPlayers.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={() => setPlayerPage(clampedPage - 1)}
+                                disabled={clampedPage === 0}
+                                className="rounded-md border border-border p-1 text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                            >
+                                <ChevronLeft size={14} />
+                            </button>
+                            <span className="min-w-[3rem] text-center text-xs text-muted-foreground">
+                                {clampedPage + 1} / {totalPlayerPages}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setPlayerPage(clampedPage + 1)}
+                                disabled={clampedPage >= totalPlayerPages - 1}
+                                className="rounded-md border border-border p-1 text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                            >
+                                <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </section>
         ) : null;
 

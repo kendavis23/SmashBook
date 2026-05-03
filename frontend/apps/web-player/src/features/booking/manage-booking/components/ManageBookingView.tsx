@@ -4,9 +4,12 @@ import {
     Banknote,
     CalendarDays,
     Check,
+    ChevronLeft,
+    ChevronRight,
     Clock3,
     CreditCard,
     RotateCcw,
+    Search,
     ShieldCheck,
     UserPlus,
     UsersRound,
@@ -102,6 +105,9 @@ export default function ManageBookingView({
     onClose,
 }: Props): JSX.Element {
     const [inviteId, setInviteId] = useState("");
+    const [playerSearch, setPlayerSearch] = useState("");
+    const [playerPage, setPlayerPage] = useState(0);
+    const PAGE_SIZE = 4;
 
     if (mode === "modal") {
         return (
@@ -347,10 +353,9 @@ export default function ManageBookingView({
                                                 Players
                                             </dt>
                                             <dd className="mt-0.5 text-sm text-foreground">
-                                                {booking.players.length}
                                                 {booking.max_players != null
-                                                    ? ` / ${booking.max_players}`
-                                                    : ""}
+                                                    ? `${booking.max_players - booking.slots_available} / ${booking.max_players}`
+                                                    : booking.players.length}
                                             </dd>
                                         </div>
                                         <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
@@ -382,17 +387,16 @@ export default function ManageBookingView({
                                                 Slots available
                                             </dt>
                                             <dd
-                                                className={`mt-0.5 text-sm ${
-                                                    booking.slots_available === 0
-                                                        ? "text-destructive"
-                                                        : "text-foreground"
-                                                }`}
+                                                className={`mt-0.5 text-sm ${booking.slots_available === 0
+                                                    ? "text-destructive"
+                                                    : "text-foreground"
+                                                    }`}
                                             >
                                                 {booking.slots_available}
                                             </dd>
                                         </div>
                                         {booking.min_skill_level != null ||
-                                        booking.max_skill_level != null ? (
+                                            booking.max_skill_level != null ? (
                                             <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5 sm:col-span-2">
                                                 <dt className="text-xs font-medium text-muted-foreground">
                                                     Skill level
@@ -406,7 +410,7 @@ export default function ManageBookingView({
                                     </dl>
                                 </section>
 
-                                </div>
+                            </div>
 
                             <div className="min-w-0 space-y-5">
                                 {inviteSection}
@@ -429,74 +433,122 @@ export default function ManageBookingView({
                                                 className="mt-1 text-muted-foreground"
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            {booking.players.map((player) => {
-                                                const isMe = myUserId != null && player.user_id === myUserId;
-                                                return (
-                                                <div
-                                                    key={player.id}
-                                                    className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 ${
-                                                        isMe
-                                                            ? "border-cta/40 bg-cta/10 ring-1 ring-cta/20"
-                                                            : "border-border/70 bg-background/70"
-                                                    }`}
-                                                >
-                                                    {isMe ? (
-                                                        <span className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-cta" />
-                                                    ) : null}
-                                                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ${
-                                                        isMe
-                                                            ? "bg-cta/20 text-cta ring-cta/40"
-                                                            : "bg-secondary text-secondary-foreground ring-border"
-                                                    }`}>
-                                                        {initials(player.full_name)}
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="truncate text-sm font-medium text-foreground">
-                                                            {player.full_name}
-                                                            {isMe ? (
-                                                                <span className="ml-1.5 rounded-full bg-cta/15 px-1.5 py-0.5 text-[10px] font-semibold text-cta">
-                                                                    You
-                                                                </span>
-                                                            ) : null}
-                                                        </p>
-                                                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
-                                                                {player.role}
-                                                            </span>
-                                                            <span
-                                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(
-                                                                    player.invite_status
-                                                                )}`}
-                                                            >
-                                                                <span className="font-semibold uppercase tracking-wide">
-                                                                    Invite:
-                                                                </span>
-                                                                <span className="capitalize">
-                                                                    {player.invite_status}
-                                                                </span>
-                                                            </span>
-                                                            <span
-                                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(
-                                                                    player.payment_status
-                                                                )}`}
-                                                            >
-                                                                <span className="font-semibold uppercase tracking-wide">
-                                                                    Payment:
-                                                                </span>
-                                                                <span className="capitalize">
-                                                                    {player.payment_status}
-                                                                </span>
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                    <div className="shrink-0 text-right text-sm font-semibold text-foreground">
-                                                        {formatCurrency(player.amount_due)}
-                                                    </div>
-                                                </div>
-                                                );
-                                            })}
+                                        <div className="relative mb-3">
+                                            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                            <input
+                                                type="text"
+                                                placeholder="Search by name…"
+                                                value={playerSearch}
+                                                onChange={(e) => { setPlayerSearch(e.target.value); setPlayerPage(0); }}
+                                                className="w-full rounded-lg border border-border bg-background py-2 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta/50"
+                                            />
                                         </div>
+                                        {(() => {
+                                            const sorted = [...booking.players].sort((a, b) => {
+                                                const rankA = myUserId != null && a.user_id === myUserId ? 0 : a.role === "organiser" ? 1 : a.invite_status === "accepted" ? 2 : 3;
+                                                const rankB = myUserId != null && b.user_id === myUserId ? 0 : b.role === "organiser" ? 1 : b.invite_status === "accepted" ? 2 : 3;
+                                                return rankA - rankB;
+                                            });
+                                            const filtered = playerSearch.trim()
+                                                ? sorted.filter((p) => p.full_name.toLowerCase().includes(playerSearch.toLowerCase()))
+                                                : sorted;
+                                            const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+                                            const page = filtered.length === 0 ? 0 : Math.min(playerPage, totalPages - 1);
+                                            const paged = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+                                            return (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        {paged.length === 0 ? (
+                                                            <p className="py-4 text-center text-sm text-muted-foreground">No players found.</p>
+                                                        ) : paged.map((player) => {
+                                                            const isMe = myUserId != null && player.user_id === myUserId;
+                                                            const isAccepted = !isMe && player.invite_status === "accepted";
+                                                            return (
+                                                                <div
+                                                                    key={player.id}
+                                                                    className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 ${isMe
+                                                                        ? "border-cta/40 bg-cta/10 ring-1 ring-cta/20"
+                                                                        : isAccepted
+                                                                            ? "border-success/30 bg-success/8"
+                                                                            : "border-border/70 bg-background/70"
+                                                                        }`}
+                                                                >
+                                                                    {isMe ? (
+                                                                        <span className="absolute inset-y-0 left-0 w-1 rounded-l-lg bg-cta" />
+                                                                    ) : null}
+                                                                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ${isMe
+                                                                        ? "bg-cta/20 text-cta ring-cta/40"
+                                                                        : isAccepted
+                                                                            ? "bg-success/15 text-success ring-success/30"
+                                                                            : "bg-secondary text-secondary-foreground ring-border"
+                                                                        }`}>
+                                                                        {initials(player.full_name)}
+                                                                    </div>
+                                                                    <div className="min-w-0 flex-1">
+                                                                        <p className="truncate text-sm font-medium text-foreground">
+                                                                            {player.full_name}
+                                                                            {isMe ? (
+                                                                                <span className="ml-1.5 rounded-full bg-cta/15 px-1.5 py-0.5 text-[10px] font-semibold text-cta">
+                                                                                    You
+                                                                                </span>
+                                                                            ) : null}
+                                                                        </p>
+                                                                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                                                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+                                                                                {player.role}
+                                                                            </span>
+                                                                            <span
+                                                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.invite_status)}`}
+                                                                            >
+                                                                                <span className="font-semibold uppercase tracking-wide">Invite:</span>
+                                                                                <span className="capitalize">{player.invite_status}</span>
+                                                                            </span>
+                                                                            <span
+                                                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.payment_status)}`}
+                                                                            >
+                                                                                <span className="font-semibold uppercase tracking-wide">Payment:</span>
+                                                                                <span className="capitalize">{player.payment_status}</span>
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="shrink-0 text-right text-sm font-semibold text-foreground">
+                                                                        {formatCurrency(player.amount_due)}
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    {totalPages > 1 && (
+                                                        <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
+                                                            <span className="text-xs text-muted-foreground">
+                                                                {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+                                                            </span>
+                                                            <div className="flex items-center gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setPlayerPage(page - 1)}
+                                                                    disabled={page === 0}
+                                                                    className="rounded-md border border-border p-1 text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                                                                >
+                                                                    <ChevronLeft size={14} />
+                                                                </button>
+                                                                <span className="min-w-[3rem] text-center text-xs text-muted-foreground">
+                                                                    {page + 1} / {totalPages}
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setPlayerPage(page + 1)}
+                                                                    disabled={page >= totalPages - 1}
+                                                                    className="rounded-md border border-border p-1 text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                                                                >
+                                                                    <ChevronRight size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            );
+                                        })()}
                                     </section>
                                 ) : null}
                             </div>

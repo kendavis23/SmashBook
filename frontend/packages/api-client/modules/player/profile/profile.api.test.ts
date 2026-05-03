@@ -37,10 +37,26 @@ describe("updateMyProfileEndpoint", () => {
 });
 
 describe("getMyBookingsEndpoint", () => {
-    it("calls GET /api/v1/players/me/bookings", async () => {
+    it("calls GET /api/v1/players/me/bookings with no params", async () => {
         mockFetcher.mockResolvedValue({ upcoming: [], past: [] });
         await getMyBookingsEndpoint();
         expect(mockFetcher).toHaveBeenCalledWith("/api/v1/players/me/bookings");
+    });
+
+    it("appends past_from and past_to as query params", async () => {
+        mockFetcher.mockResolvedValue({ upcoming: [], past: [] });
+        await getMyBookingsEndpoint({ past_from: "2026-04-01", past_to: "2026-04-30" });
+        expect(mockFetcher).toHaveBeenCalledWith(
+            "/api/v1/players/me/bookings?past_from=2026-04-01&past_to=2026-04-30"
+        );
+    });
+
+    it("appends only past_from when past_to is omitted", async () => {
+        mockFetcher.mockResolvedValue({ upcoming: [], past: [] });
+        await getMyBookingsEndpoint({ past_from: "2026-04-01" });
+        expect(mockFetcher).toHaveBeenCalledWith(
+            "/api/v1/players/me/bookings?past_from=2026-04-01"
+        );
     });
 });
 

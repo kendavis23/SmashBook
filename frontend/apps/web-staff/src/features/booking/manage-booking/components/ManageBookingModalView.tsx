@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
-import { RefreshCw, RotateCcw, UserRound, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Search, UserRound, X } from "lucide-react";
 import {
     AlertToast,
     ConfirmDeleteModal,
@@ -37,7 +37,12 @@ function DetailItem({ label, value }: { label: string; value: string }): JSX.Ele
     );
 }
 
+const MODAL_PAGE_SIZE = 4;
+
 function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element {
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(0);
+
     const getInitials = (name: string): string =>
         name
             .split(" ")
@@ -54,38 +59,102 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                   .join(" ")
             : "—";
 
+    const sorted = [...players].sort((a, b) => {
+        const rankA = a.role === "organiser" ? 0 : a.invite_status === "accepted" ? 1 : 2;
+        const rankB = b.role === "organiser" ? 0 : b.invite_status === "accepted" ? 1 : 2;
+        return rankA - rankB;
+    });
+    const filtered = search.trim()
+        ? sorted.filter((p) => p.full_name.toLowerCase().includes(search.toLowerCase()))
+        : sorted;
+    const totalPages = Math.ceil(filtered.length / MODAL_PAGE_SIZE);
+    const currentPage = filtered.length === 0 ? 0 : Math.min(page, totalPages - 1);
+    const paged = filtered.slice(currentPage * MODAL_PAGE_SIZE, currentPage * MODAL_PAGE_SIZE + MODAL_PAGE_SIZE);
+
     return (
         <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
-            <div className="flex items-center gap-2 border-b border-border/70 bg-muted/15 px-3 py-2">
-                <UserRound size={14} className="text-muted-foreground" />
-                <span className="text-xs font-semibold text-foreground">Player details</span>
+            <div className="flex items-center gap-2 border-b border-border/70 bg-muted/15 px-2.5 py-1.5">
+                <UserRound size={13} className="shrink-0 text-muted-foreground" />
+                <span className="flex-1 text-xs font-semibold text-foreground">Player details</span>
+                <div className="relative">
+                    <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                        type="text"
+                        placeholder="Search…"
+                        value={search}
+                        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                        className="w-32 rounded border border-border bg-background py-0.5 pl-5 pr-2 text-[11px] placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta/50"
+                    />
+                </div>
             </div>
             <div className="divide-y divide-border">
-                {players.map((p) => (
-                    <div key={p.id} className="flex items-center gap-3 px-3 py-2.5">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-muted-foreground">
-                            {getInitials(p.full_name)}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-foreground">
-                                {p.full_name}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground">
-                                <span className="capitalize">{formatStatus(p.role)}</span>
-                                <span className="mx-1.5 opacity-40">&middot;</span>
-                                <span className="text-muted-foreground/60">Invite:</span>{" "}
-                                <span className="capitalize">{formatStatus(p.invite_status)}</span>
-                                <span className="mx-1.5 opacity-40">&middot;</span>
-                                <span className="text-muted-foreground/60">Payment:</span>{" "}
-                                <span className="capitalize">{formatStatus(p.payment_status)}</span>
-                            </p>
+                {paged.length === 0 ? (
+                    <p className="py-3 text-center text-xs text-muted-foreground">No players found.</p>
+                ) : paged.map((p) => {
+                    const isAccepted = p.invite_status === "accepted";
+                    return (
+                        <div
+                            key={p.id}
+                            className={`flex items-center gap-3 px-3 py-2.5 ${isAccepted ? "bg-success/8" : ""}`}
+                        >
+                            <span
+                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                                    isAccepted
+                                        ? "bg-success/15 text-success ring-1 ring-success/30"
+                                        : "bg-muted text-muted-foreground"
+                                }`}
+                            >
+                                {getInitials(p.full_name)}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-foreground">
+                                    {p.full_name}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                    <span className="capitalize">{formatStatus(p.role)}</span>
+                                    <span className="mx-1.5 opacity-40">&middot;</span>
+                                    <span className="text-muted-foreground/60">Invite:</span>{" "}
+                                    <span className="capitalize">{formatStatus(p.invite_status)}</span>
+                                    <span className="mx-1.5 opacity-40">&middot;</span>
+                                    <span className="text-muted-foreground/60">Payment:</span>{" "}
+                                    <span className="capitalize">{formatStatus(p.payment_status)}</span>
+                                </p>
+                            </div>
+                            <span className="shrink-0 text-sm font-medium text-foreground">
+                                {formatCurrency(p.amount_due)}
+                            </span>
                         </div>
-                        <span className="shrink-0 text-sm font-medium text-foreground">
-                            {formatCurrency(p.amount_due)}
-                        </span>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-border/60 px-3 py-1.5">
+                    <span className="text-[11px] text-muted-foreground">
+                        {currentPage * MODAL_PAGE_SIZE + 1}–{Math.min((currentPage + 1) * MODAL_PAGE_SIZE, filtered.length)} of {filtered.length}
+                    </span>
+                    <div className="flex items-center gap-0.5">
+                        <button
+                            type="button"
+                            onClick={() => setPage(currentPage - 1)}
+                            disabled={currentPage === 0}
+                            className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-40"
+                        >
+                            <ChevronLeft size={13} />
+                        </button>
+                        <span className="min-w-[2.5rem] text-center text-[11px] text-muted-foreground">
+                            {currentPage + 1} / {totalPages}
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => setPage(currentPage + 1)}
+                            disabled={currentPage >= totalPages - 1}
+                            className="rounded p-0.5 text-muted-foreground hover:bg-muted disabled:opacity-40"
+                        >
+                            <ChevronRight size={13} />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -220,8 +289,9 @@ export function ManageBookingModalView({
                     <DetailItem
                         label="Players"
                         value={
-                            String(booking.players.length) +
-                            (booking.max_players != null ? ` / ${booking.max_players}` : "")
+                            booking.max_players != null
+                                ? `${booking.max_players - booking.slots_available} / ${booking.max_players}`
+                                : String(booking.players.length)
                         }
                     />
                     <DetailItem label="Total" value={formatCurrency(booking.total_price)} />
