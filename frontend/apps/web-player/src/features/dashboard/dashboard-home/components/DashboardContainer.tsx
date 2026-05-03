@@ -193,8 +193,7 @@ export default function DashboardContainer(): JSX.Element {
         joinError,
         successMessage,
         onClubChange: handleClubChange,
-        onJoinFilterDateChange: (date: string) =>
-            setJoinFilters((prev) => ({ ...prev, date })),
+        onJoinFilterDateChange: (date: string) => setJoinFilters((prev) => ({ ...prev, date })),
         onBookFilterDateChange: (date: string) => {
             setBookFilters((prev) => ({ ...prev, date }));
             setAvailabilityCourtId("");

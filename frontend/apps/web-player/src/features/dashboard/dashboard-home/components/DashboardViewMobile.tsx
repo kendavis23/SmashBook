@@ -7,15 +7,7 @@ import {
     formatUTCDate,
     formatUTCTime,
 } from "@repo/ui";
-import {
-    CalendarDays,
-    Clock3,
-    DoorOpen,
-    Loader2,
-    MapPin,
-    ShieldCheck,
-    Users,
-} from "lucide-react";
+import { CalendarDays, Clock3, DoorOpen, Loader2, MapPin, ShieldCheck, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { JSX } from "react";
 import { NewBookingModal } from "../../../booking/new-booking/components/NewBookingModal";
@@ -72,7 +64,7 @@ type Props = {
 
 type ActiveTab = "join" | "book";
 
-const fieldCls = "input-base h-10";
+const mobileFieldCls = "input-base h-11 rounded-lg text-sm";
 
 function timeLabel(value: string): string {
     const raw = value.includes("T") ? formatUTCTime(value) : formatSlotTime(value);
@@ -140,8 +132,9 @@ export default function DashboardViewMobile({
 
     // Auto-select first court when courts load on book tab
     useEffect(() => {
-        if (activeTab === "book" && courts.length > 0 && !availabilityCourtId) {
-            onCheckAvailability(courts[0]!.id);
+        const firstCourt = courts[0];
+        if (activeTab === "book" && firstCourt && !availabilityCourtId) {
+            onCheckAvailability(firstCourt.id);
         }
     }, [activeTab, courts, availabilityCourtId, onCheckAvailability]);
 
@@ -153,21 +146,24 @@ export default function DashboardViewMobile({
     }, [activeTab]);
 
     return (
-        <div className="flex flex-col gap-3 pb-6">
+        <div className="-mx-[var(--page-padding)] -mt-[var(--page-padding)] flex min-h-[calc(100dvh-var(--nav-height))] flex-col gap-3 bg-background pb-6">
             {/* Club selector */}
-            <div className="flex items-center gap-2 px-4 pt-3">
+            <div className="border-b border-border bg-card px-3 pb-3 pt-3 shadow-sm">
+                <p className="mb-2 truncate text-xs font-medium text-muted-foreground">
+                    {selectedClubName || "Select a club"}
+                </p>
                 <SelectInput
                     value={selectedClubId}
                     onValueChange={onClubChange}
                     options={clubs.map((club) => ({ value: club.id, label: club.name }))}
                     placeholder="Select club"
-                    className="input-base h-10 w-full text-sm font-medium"
+                    className="input-base h-11 w-full rounded-lg text-sm font-semibold"
                 />
             </div>
 
             {/* Toasts */}
             {joinError ? (
-                <div className="px-4">
+                <div className="px-3">
                     <AlertToast
                         variant="error"
                         title="Unable to join game"
@@ -177,7 +173,7 @@ export default function DashboardViewMobile({
                 </div>
             ) : null}
             {successMessage ? (
-                <div className="px-4">
+                <div className="px-3">
                     <AlertToast
                         variant="success"
                         title={successMessage}
@@ -187,11 +183,11 @@ export default function DashboardViewMobile({
             ) : null}
 
             {/* Segmented tabs */}
-            <div className="mx-4 flex rounded-lg border border-border bg-muted/30 p-1">
+            <div className="sticky top-0 z-10 mx-3 flex rounded-lg border border-border bg-muted/40 p-1 shadow-xs backdrop-blur">
                 <button
                     type="button"
                     onClick={() => setActiveTab("join")}
-                    className={`flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
+                    className={`min-h-10 flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
                         activeTab === "join"
                             ? "bg-card text-foreground shadow-sm"
                             : "text-muted-foreground"
@@ -202,7 +198,7 @@ export default function DashboardViewMobile({
                 <button
                     type="button"
                     onClick={() => setActiveTab("book")}
-                    className={`flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
+                    className={`min-h-10 flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
                         activeTab === "book"
                             ? "bg-card text-foreground shadow-sm"
                             : "text-muted-foreground"
@@ -214,7 +210,7 @@ export default function DashboardViewMobile({
 
             {/* JOIN TAB */}
             {activeTab === "join" && (
-                <div className="flex flex-col gap-3 px-4">
+                <div className="flex flex-col gap-3 px-3">
                     {/* Date filter */}
                     <label className="flex flex-col gap-1.5">
                         <span className="text-xs font-semibold text-muted-foreground">Date</span>
@@ -222,7 +218,7 @@ export default function DashboardViewMobile({
                             value={joinFilterDate}
                             onChange={onJoinFilterDateChange}
                             placeholder="All dates"
-                            className={fieldCls}
+                            className={mobileFieldCls}
                         />
                     </label>
 
@@ -249,14 +245,14 @@ export default function DashboardViewMobile({
                             {openGames.map((game) => (
                                 <article
                                     key={game.id}
-                                    className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                                    className="rounded-lg border border-border bg-card p-3.5 shadow-sm"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
-                                            <h3 className="truncate text-sm font-bold text-foreground">
+                                            <h3 className="truncate text-[15px] font-semibold text-foreground">
                                                 {game.court_name}
                                             </h3>
-                                            <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
+                                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
                                                 <span className="inline-flex items-center gap-1">
                                                     <CalendarDays size={13} />
                                                     {formatUTCDate(game.start_datetime)}
@@ -290,7 +286,7 @@ export default function DashboardViewMobile({
                                             type="button"
                                             onClick={() => onJoinGame(game.id)}
                                             disabled={isJoining}
-                                            className="btn-cta flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold"
+                                            className="btn-cta min-h-11 shrink-0 rounded-lg px-4 text-sm font-semibold"
                                         >
                                             {joiningBookingId === game.id ? (
                                                 <Loader2 size={14} className="animate-spin" />
@@ -311,7 +307,7 @@ export default function DashboardViewMobile({
             {activeTab === "book" && (
                 <div className="flex flex-col gap-4">
                     {/* Filters: 2 per row */}
-                    <div className="grid grid-cols-2 gap-3 px-4">
+                    <div className="grid grid-cols-2 gap-3 px-3">
                         <label className="flex flex-col gap-1.5">
                             <span className="text-xs font-semibold text-muted-foreground">
                                 Date
@@ -319,7 +315,7 @@ export default function DashboardViewMobile({
                             <DatePicker
                                 value={bookFilterDate}
                                 onChange={onBookFilterDateChange}
-                                className={fieldCls}
+                                className={mobileFieldCls}
                             />
                         </label>
                         <label className="flex flex-col gap-1.5">
@@ -339,7 +335,7 @@ export default function DashboardViewMobile({
                                 ]}
                                 clearLabel="Any"
                                 placeholder="Any"
-                                className={fieldCls}
+                                className={mobileFieldCls}
                             />
                         </label>
                         <label className="flex flex-col gap-1.5">
@@ -349,7 +345,7 @@ export default function DashboardViewMobile({
                             <TimeInput
                                 value={bookFilterTimeFrom}
                                 onChange={(e) => onBookFilterTimeFromChange(e.target.value)}
-                                className={fieldCls}
+                                className={mobileFieldCls}
                             />
                         </label>
                         <label className="flex flex-col gap-1.5">
@@ -357,21 +353,21 @@ export default function DashboardViewMobile({
                             <TimeInput
                                 value={bookFilterTimeTo}
                                 onChange={(e) => onBookFilterTimeToChange(e.target.value)}
-                                className={fieldCls}
+                                className={mobileFieldCls}
                             />
                         </label>
                     </div>
 
                     {/* Courts horizontal scroll */}
                     {courtsError ? (
-                        <div className="feedback-error mx-4">{courtsError.message}</div>
+                        <div className="feedback-error mx-3">{courtsError.message}</div>
                     ) : isCourtsLoading ? (
                         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                             <Loader2 size={16} className="animate-spin" />
                             Loading courts
                         </div>
                     ) : courts.length === 0 ? (
-                        <div className="mx-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                        <div className="mx-3 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
                             No courts available for this club.
                         </div>
                     ) : (
@@ -379,7 +375,7 @@ export default function DashboardViewMobile({
                             {/* Scrollable court chips */}
                             <div
                                 ref={scrollRef}
-                                className="flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                                className="flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                             >
                                 {courts.map((court) => (
                                     <button
@@ -387,7 +383,7 @@ export default function DashboardViewMobile({
                                         type="button"
                                         disabled={!court.is_active}
                                         onClick={() => onCheckAvailability(court.id)}
-                                        className={`shrink-0 rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
+                                        className={`min-h-10 shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
                                             court.id === availabilityCourtId
                                                 ? "border-cta bg-cta text-white"
                                                 : "border-border bg-card text-foreground"
@@ -399,11 +395,11 @@ export default function DashboardViewMobile({
                             </div>
 
                             {/* Selected court info + availability */}
-                            <div className="mx-4 rounded-xl border border-border bg-card p-4 shadow-sm">
+                            <div className="mx-3 rounded-lg border border-border bg-card p-3.5 shadow-sm">
                                 {checkedCourt ? (
                                     <div className="mb-3 flex items-center justify-between gap-2">
                                         <div>
-                                            <p className="text-sm font-semibold text-foreground">
+                                            <p className="text-[15px] font-semibold text-foreground">
                                                 {checkedCourt.name}
                                             </p>
                                             <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
@@ -440,7 +436,7 @@ export default function DashboardViewMobile({
                                         Select a court to see bookable slots.
                                     </div>
                                 ) : availability?.slots.length ? (
-                                    <div className="grid grid-cols-2 gap-2">
+                                    <div className="grid grid-cols-2 gap-2.5">
                                         {availability.slots.map((slot) => (
                                             <button
                                                 key={`${slot.start_time}-${slot.end_time}`}

@@ -121,19 +121,19 @@ describe("BookingsView — data state", () => {
     it("renders booking row with court name", () => {
         const upcoming = [makeBooking({ court_name: "Court Alpha" })];
         render(<BookingsView {...defaultProps} upcoming={upcoming} />);
-        expect(screen.getByText("Court Alpha")).toBeInTheDocument();
+        expect(screen.getAllByText("Court Alpha")).not.toHaveLength(0);
     });
 
     it("renders formatted amount", () => {
         const upcoming = [makeBooking({ amount_due: 50 })];
         render(<BookingsView {...defaultProps} upcoming={upcoming} />);
-        expect(screen.getByText("£50.00")).toBeInTheDocument();
+        expect(screen.getAllByText("£50.00")).not.toHaveLength(0);
     });
 
     it("renders status badge", () => {
         const upcoming = [makeBooking({ status: "confirmed" })];
         render(<BookingsView {...defaultProps} upcoming={upcoming} />);
-        expect(screen.getByText("confirmed")).toBeInTheDocument();
+        expect(screen.getAllByText("confirmed")).not.toHaveLength(0);
     });
 
     it("shows View button for upcoming bookings and calls onManageClick", () => {
@@ -142,7 +142,13 @@ describe("BookingsView — data state", () => {
         render(
             <BookingsView {...defaultProps} upcoming={upcoming} onManageClick={onManageClick} />
         );
-        fireEvent.click(screen.getByRole("button", { name: /view booking on court alpha/i }));
+        const [viewButton] = screen.getAllByRole("button", {
+            name: /view booking on court alpha/i,
+        });
+        if (!viewButton) {
+            throw new Error("Expected a View button for Court Alpha");
+        }
+        fireEvent.click(viewButton);
         expect(onManageClick).toHaveBeenCalledWith(expect.objectContaining({ booking_id: "b1" }));
     });
 
@@ -156,7 +162,7 @@ describe("BookingsView — data state", () => {
         const past = [makeBooking({ role: "organiser", invite_status: "accepted" })];
         render(<BookingsView {...defaultProps} activeTab="past" past={past} />);
         expect(screen.queryByRole("button", { name: /invite a player/i })).not.toBeInTheDocument();
-        expect(screen.getByText("Accepted")).toBeInTheDocument();
+        expect(screen.getAllByText("Accepted")).not.toHaveLength(0);
     });
 });
 

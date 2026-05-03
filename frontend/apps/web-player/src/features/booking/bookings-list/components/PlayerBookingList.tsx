@@ -383,6 +383,31 @@ type Props = {
     ) => Promise<void>;
 };
 
+function buildPageWindow(current: number, total: number): (number | "...")[] {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i);
+
+    const result: (number | "...")[] = [];
+    const EDGE = 2;
+    const WING = 1;
+
+    const leftEdge = new Set(Array.from({ length: EDGE }, (_, i) => i));
+    const rightEdge = new Set(Array.from({ length: EDGE }, (_, i) => total - 1 - i));
+    const middle = new Set(
+        Array.from({ length: WING * 2 + 1 }, (_, i) => current - WING + i).filter(
+            (p) => p >= 0 && p < total
+        )
+    );
+    const visible = new Set([...leftEdge, ...middle, ...rightEdge]);
+
+    let prev = -1;
+    for (const p of Array.from(visible).sort((a, b) => a - b)) {
+        if (prev !== -1 && p - prev > 1) result.push("...");
+        result.push(p);
+        prev = p;
+    }
+    return result;
+}
+
 export default function PlayerBookingList({
     items,
     emptyMessage,
@@ -422,7 +447,96 @@ export default function PlayerBookingList({
 
     return (
         <>
-            <div className="overflow-x-auto" key={page}>
+            {/* Mobile cards (hidden on md+) */}
+            <div className="flex flex-col divide-y divide-border md:hidden" key={`cards-${page}`}>
+                {pageItems.map((booking) => {
+                    const showPay =
+                        booking.payment_status === "pending" &&
+                        booking.invite_status === "accepted";
+                    const statusStyle =
+                        STATUS_STYLES[booking.status] ?? "bg-muted text-muted-foreground";
+                    const isOrganiser = booking.role === "organiser";
+
+                    return (
+                        <div key={booking.booking_id} className="flex flex-col gap-3 px-4 py-4">
+                            {/* Court + status row */}
+                            <div className="flex items-start justify-between gap-2">
+                                <span className="font-semibold text-foreground">
+                                    {booking.court_name}
+                                </span>
+                                <span
+                                    className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyle}`}
+                                >
+                                    {booking.status}
+                                </span>
+                            </div>
+
+                            {/* Date + time */}
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                <span>{formatUTCDate(booking.start_datetime)}</span>
+                                <span>
+                                    {formatUTCTime(booking.start_datetime)} –{" "}
+                                    {formatUTCTime(booking.end_datetime)}
+                                </span>
+                            </div>
+
+                            {/* Type + role + amount */}
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="capitalize text-xs text-muted-foreground">
+                                    {booking.booking_type.replace(/_/g, " ")}
+                                </span>
+                                <span
+                                    className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                        isOrganiser
+                                            ? "bg-cta/10 text-cta"
+                                            : "bg-secondary text-secondary-foreground"
+                                    }`}
+                                >
+                                    {isOrganiser ? "Organiser" : "Player"}
+                                </span>
+                                <span className="ml-auto text-sm font-medium text-foreground">
+                                    {formatCurrency(booking.amount_due)}
+                                </span>
+                            </div>
+
+                            {/* Invite + actions */}
+                            <div className="flex items-center justify-between gap-2">
+                                <InviteCell
+                                    booking={booking}
+                                    allowActions={showActions}
+                                    onInvitePlayer={onInvitePlayer}
+                                    onRespondInvite={onRespondInvite}
+                                />
+                                {showActions ? (
+                                    <div className="flex items-center gap-1.5">
+                                        {showPay ? (
+                                            <button
+                                                type="button"
+                                                title="Pay now"
+                                                className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
+                                            >
+                                                <CreditCard size={13} /> Pay
+                                            </button>
+                                        ) : null}
+                                        <button
+                                            type="button"
+                                            onClick={() => onManageClick(booking)}
+                                            className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
+                                            aria-label={`View booking on ${booking.court_name}`}
+                                            title="View details"
+                                        >
+                                            <Eye size={13} /> View
+                                        </button>
+                                    </div>
+                                ) : null}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Desktop table (hidden below md) */}
+            <div className="hidden overflow-x-auto md:block" key={`table-${page}`}>
                 <table className="w-full min-w-[700px] border-collapse">
                     <thead>
                         <tr className="border-b border-border bg-muted/30">
@@ -560,21 +674,30 @@ export default function PlayerBookingList({
                         >
                             <ChevronLeft size={14} />
                         </button>
-                        {Array.from({ length: totalPages }, (_, i) => (
-                            <button
-                                key={i}
-                                onClick={() => setPage(i)}
-                                className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
-                                    i === page
-                                        ? "border-cta bg-cta text-cta-foreground"
-                                        : "border-border bg-card text-foreground hover:bg-muted"
-                                }`}
-                                aria-label={`Page ${i + 1}`}
-                                aria-current={i === page ? "page" : undefined}
-                            >
-                                {i + 1}
-                            </button>
-                        ))}
+                        {buildPageWindow(page, totalPages).map((entry, idx) =>
+                            entry === "..." ? (
+                                <span
+                                    key={`ellipsis-${idx}`}
+                                    className="inline-flex h-8 w-6 items-center justify-center text-xs text-muted-foreground"
+                                >
+                                    …
+                                </span>
+                            ) : (
+                                <button
+                                    key={entry}
+                                    onClick={() => setPage(entry)}
+                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
+                                        entry === page
+                                            ? "border-cta bg-cta text-cta-foreground"
+                                            : "border-border bg-card text-foreground hover:bg-muted"
+                                    }`}
+                                    aria-label={`Page ${entry + 1}`}
+                                    aria-current={entry === page ? "page" : undefined}
+                                >
+                                    {entry + 1}
+                                </button>
+                            )
+                        )}
                         <button
                             onClick={() => setPage((p) => p + 1)}
                             disabled={page === totalPages - 1}

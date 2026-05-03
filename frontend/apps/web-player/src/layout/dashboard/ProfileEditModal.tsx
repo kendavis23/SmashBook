@@ -124,7 +124,7 @@ export default function ProfileEditModal({
                     onClose={() => setErrorMessage("")}
                 />
             )}
-            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-y-auto">
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 overflow-x-hidden overflow-y-auto">
                 <div
                     className="flex min-h-full items-center justify-center p-4"
                     onClick={(e) => e.target === e.currentTarget && handleClose()}
