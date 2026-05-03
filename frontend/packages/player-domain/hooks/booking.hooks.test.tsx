@@ -14,6 +14,7 @@ vi.mock("@repo/api-client/modules/share", () => ({
 vi.mock("@repo/api-client/modules/player", () => ({
     joinBookingEndpoint: vi.fn(),
     respondInviteEndpoint: vi.fn(),
+    addEquipmentRentalEndpoint: vi.fn(),
 }));
 
 import * as shareApi from "@repo/api-client/modules/share";
@@ -27,6 +28,7 @@ import {
     useInvitePlayer,
     useJoinBooking,
     useRespondInvite,
+    useAddEquipmentRental,
 } from "./booking.hooks";
 
 function makeWrapper() {
@@ -231,6 +233,36 @@ describe("useRespondInvite", () => {
         );
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["bookings", CLUB_ID] })
+        );
+    });
+});
+
+describe("useAddEquipmentRental", () => {
+    it("calls addEquipmentRentalEndpoint and invalidates booking detail", async () => {
+        const mockRental = {
+            id: "rental-1",
+            booking_id: BOOKING_ID,
+            equipment_id: "equip-1",
+            equipment_name: "Racket",
+            item_type: "racket" as const,
+            quantity: 2,
+            charge: 10,
+        };
+        vi.mocked(playerApi.addEquipmentRentalEndpoint).mockResolvedValue(mockRental);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useAddEquipmentRental(CLUB_ID, BOOKING_ID), {
+            wrapper: Wrapper,
+        });
+        result.current.mutate({ equipment_id: "equip-1", quantity: 2 });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(playerApi.addEquipmentRentalEndpoint).toHaveBeenCalledWith(
+            BOOKING_ID,
+            CLUB_ID,
+            { equipment_id: "equip-1", quantity: 2 }
+        );
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["bookings", BOOKING_ID] })
         );
     });
 });

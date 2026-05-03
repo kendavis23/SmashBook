@@ -134,7 +134,8 @@ export default function EquipmentTable({
                                             <button
                                                 type="button"
                                                 onClick={() => onEdit(item)}
-                                                className="btn-outline min-h-9 px-3"
+                                                disabled={item.condition === "retired"}
+                                                className="btn-outline min-h-9 px-3 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 <Edit3 size={13} />
                                                 Edit
@@ -142,7 +143,8 @@ export default function EquipmentTable({
                                             <button
                                                 type="button"
                                                 onClick={() => onDelete(item)}
-                                                className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-destructive/30 px-3 text-sm font-medium text-destructive transition hover:bg-destructive/10"
+                                                disabled={item.condition === "retired"}
+                                                className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-destructive/30 px-3 text-sm font-medium text-destructive transition hover:bg-destructive/10 disabled:cursor-not-allowed disabled:opacity-40"
                                             >
                                                 <Trash2 size={13} />
                                                 Delete

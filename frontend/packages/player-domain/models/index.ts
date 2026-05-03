@@ -23,4 +23,6 @@ export type {
     BookingPlayer,
     Booking,
     OpenGame,
+    EquipmentRentalInput,
+    EquipmentRental,
 } from "./booking.model";
