@@ -200,7 +200,9 @@ export function PlayerAutocomplete({
                               <button
                                   key={player.id}
                                   id={`${listId}-${i}`}
-                                  ref={(el) => { optionRefs.current[i] = el; }}
+                                  ref={(el) => {
+                                      optionRefs.current[i] = el;
+                                  }}
                                   type="button"
                                   role="option"
                                   aria-selected={i === activeIndex}

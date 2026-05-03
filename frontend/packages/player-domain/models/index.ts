@@ -1,7 +1,11 @@
 export type { PlayerSearchResult, PlayerSearchParams } from "./player.model";
 export type { ItemType, ItemCondition, EquipmentItem } from "./equipment.model";
 export type { SurfaceType, Court, TimeSlot, CourtAvailability } from "./court.model";
-export type { Trainer, TrainerAvailableSummary, ListAvailableTrainersParams } from "./trainer.model";
+export type {
+    Trainer,
+    TrainerAvailableSummary,
+    ListAvailableTrainersParams,
+} from "./trainer.model";
 export type {
     UUID,
     NotificationChannel,
@@ -23,4 +27,6 @@ export type {
     BookingPlayer,
     Booking,
     OpenGame,
+    EquipmentRentalInput,
+    EquipmentRental,
 } from "./booking.model";

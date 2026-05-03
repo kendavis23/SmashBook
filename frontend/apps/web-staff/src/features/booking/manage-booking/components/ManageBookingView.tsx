@@ -1,6 +1,15 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, RefreshCw, RotateCcw, Search, UsersRound } from "lucide-react";
+import {
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    Clock3,
+    RefreshCw,
+    RotateCcw,
+    Search,
+    UsersRound,
+} from "lucide-react";
 import {
     Breadcrumb,
     AlertToast,
@@ -264,11 +273,17 @@ export default function ManageBookingView({
         return rankA - rankB;
     });
     const filteredPlayers = playerSearch.trim()
-        ? sortedPlayers.filter((p) => p.full_name.toLowerCase().includes(playerSearch.toLowerCase()))
+        ? sortedPlayers.filter((p) =>
+              p.full_name.toLowerCase().includes(playerSearch.toLowerCase())
+          )
         : sortedPlayers;
     const totalPlayerPages = Math.ceil(filteredPlayers.length / PAGE_SIZE);
-    const clampedPage = filteredPlayers.length === 0 ? 0 : Math.min(playerPage, totalPlayerPages - 1);
-    const pagedPlayers = filteredPlayers.slice(clampedPage * PAGE_SIZE, clampedPage * PAGE_SIZE + PAGE_SIZE);
+    const clampedPage =
+        filteredPlayers.length === 0 ? 0 : Math.min(playerPage, totalPlayerPages - 1);
+    const pagedPlayers = filteredPlayers.slice(
+        clampedPage * PAGE_SIZE,
+        clampedPage * PAGE_SIZE + PAGE_SIZE
+    );
 
     const playersSection =
         booking.players.length > 0 ? (
@@ -284,63 +299,91 @@ export default function ManageBookingView({
                     <UsersRound size={18} className="mt-1 text-muted-foreground" />
                 </div>
                 <div className="relative mb-3">
-                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Search
+                        size={14}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    />
                     <input
                         type="text"
                         placeholder="Search by name…"
                         value={playerSearch}
-                        onChange={(e) => { setPlayerSearch(e.target.value); setPlayerPage(0); }}
+                        onChange={(e) => {
+                            setPlayerSearch(e.target.value);
+                            setPlayerPage(0);
+                        }}
                         className="w-full rounded-lg border border-border bg-background py-2 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta/50"
                     />
                 </div>
                 <div className="space-y-2">
                     {pagedPlayers.length === 0 ? (
-                        <p className="py-4 text-center text-sm text-muted-foreground">No players found.</p>
-                    ) : pagedPlayers.map((player) => {
-                        const isAccepted = player.invite_status === "accepted";
-                        return (
-                            <div
-                                key={player.id}
-                                className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 ${isAccepted
-                                    ? "border-success/30 bg-success/8"
-                                    : "border-border/70 bg-background/70"
+                        <p className="py-4 text-center text-sm text-muted-foreground">
+                            No players found.
+                        </p>
+                    ) : (
+                        pagedPlayers.map((player) => {
+                            const isAccepted = player.invite_status === "accepted";
+                            return (
+                                <div
+                                    key={player.id}
+                                    className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 ${
+                                        isAccepted
+                                            ? "border-success/30 bg-success/8"
+                                            : "border-border/70 bg-background/70"
                                     }`}
-                            >
-                                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ${isAccepted
-                                    ? "bg-success/15 text-success ring-success/30"
-                                    : "bg-secondary text-secondary-foreground ring-border"
-                                    }`}>
-                                    {initials(player.full_name)}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-medium text-foreground">
-                                        {player.full_name}
-                                    </p>
-                                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                        <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
-                                            {player.role}
-                                        </span>
-                                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.invite_status)}`}>
-                                            <span className="font-semibold uppercase tracking-wide">Invite:</span>
-                                            <span className="capitalize">{player.invite_status}</span>
-                                        </span>
-                                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.payment_status)}`}>
-                                            <span className="font-semibold uppercase tracking-wide">Payment:</span>
-                                            <span className="capitalize">{player.payment_status}</span>
-                                        </span>
+                                >
+                                    <div
+                                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ${
+                                            isAccepted
+                                                ? "bg-success/15 text-success ring-success/30"
+                                                : "bg-secondary text-secondary-foreground ring-border"
+                                        }`}
+                                    >
+                                        {initials(player.full_name)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium text-foreground">
+                                            {player.full_name}
+                                        </p>
+                                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+                                                {player.role}
+                                            </span>
+                                            <span
+                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.invite_status)}`}
+                                            >
+                                                <span className="font-semibold uppercase tracking-wide">
+                                                    Invite:
+                                                </span>
+                                                <span className="capitalize">
+                                                    {player.invite_status}
+                                                </span>
+                                            </span>
+                                            <span
+                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.payment_status)}`}
+                                            >
+                                                <span className="font-semibold uppercase tracking-wide">
+                                                    Payment:
+                                                </span>
+                                                <span className="capitalize">
+                                                    {player.payment_status}
+                                                </span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="shrink-0 text-right text-sm font-semibold text-foreground">
+                                        {formatCurrency(player.amount_due)}
                                     </div>
                                 </div>
-                                <div className="shrink-0 text-right text-sm font-semibold text-foreground">
-                                    {formatCurrency(player.amount_due)}
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })
+                    )}
                 </div>
                 {totalPlayerPages > 1 && (
                     <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
                         <span className="text-xs text-muted-foreground">
-                            {clampedPage * PAGE_SIZE + 1}–{Math.min((clampedPage + 1) * PAGE_SIZE, filteredPlayers.length)} of {filteredPlayers.length}
+                            {clampedPage * PAGE_SIZE + 1}–
+                            {Math.min((clampedPage + 1) * PAGE_SIZE, filteredPlayers.length)} of{" "}
+                            {filteredPlayers.length}
                         </span>
                         <div className="flex items-center gap-1">
                             <button
@@ -742,11 +785,7 @@ export default function ManageBookingView({
                                 {inviteSection}
                                 {playersSection}
                                 <div className="flex justify-start border-t border-border/70 pt-5">
-                                    <button
-                                        type="button"
-                                        onClick={onBack}
-                                        className="btn-outline"
-                                    >
+                                    <button type="button" onClick={onBack} className="btn-outline">
                                         Back
                                     </button>
                                 </div>

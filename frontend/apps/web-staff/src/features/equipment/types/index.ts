@@ -26,34 +26,28 @@ export type EquipmentFilters = {
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
     racket: "Racket",
-    ball: "Ball",
-    shoes: "Shoes",
-    clothing: "Clothing",
-    accessories: "Accessories",
+    ball_tube: "Ball Tube",
     other: "Other",
 };
 
 export const ITEM_CONDITION_LABELS: Record<ItemCondition, string> = {
-    new: "New",
     good: "Good",
     fair: "Fair",
-    poor: "Poor",
+    damaged: "damaged",
+    retired: "retired",
 };
 
 export const ITEM_TYPE_OPTIONS: { value: ItemType; label: string }[] = [
     { value: "racket", label: ITEM_TYPE_LABELS.racket },
-    { value: "ball", label: ITEM_TYPE_LABELS.ball },
-    { value: "shoes", label: ITEM_TYPE_LABELS.shoes },
-    { value: "clothing", label: ITEM_TYPE_LABELS.clothing },
-    { value: "accessories", label: ITEM_TYPE_LABELS.accessories },
+    { value: "ball_tube", label: ITEM_TYPE_LABELS.ball_tube },
     { value: "other", label: ITEM_TYPE_LABELS.other },
 ];
 
 export const ITEM_CONDITION_OPTIONS: { value: ItemCondition; label: string }[] = [
-    { value: "new", label: ITEM_CONDITION_LABELS.new },
     { value: "good", label: ITEM_CONDITION_LABELS.good },
     { value: "fair", label: ITEM_CONDITION_LABELS.fair },
-    { value: "poor", label: ITEM_CONDITION_LABELS.poor },
+    { value: "damaged", label: ITEM_CONDITION_LABELS.damaged },
+    { value: "retired", label: ITEM_CONDITION_LABELS.retired },
 ];
 
 export const ITEM_TYPE_FILTER_OPTIONS: { value: string; label: string }[] = [

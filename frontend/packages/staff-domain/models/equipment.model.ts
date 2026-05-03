@@ -1,8 +1,8 @@
 export type UUID = string;
 
-export type ItemType = "racket" | "ball" | "shoes" | "clothing" | "accessories" | "other";
+export type ItemType = "racket" | "ball_tube" | "other";
 
-export type ItemCondition = "new" | "good" | "fair" | "poor";
+export type ItemCondition = "good" | "fair" | "damaged" | "retired";
 
 export interface EquipmentItem {
     id: UUID;

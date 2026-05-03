@@ -137,10 +137,10 @@ function WeekTimelineBoard({
                 <div className="min-w-fit">
                     {/* Sticky day-column header row */}
                     <div
-                        className="sticky top-0 z-30 grid border-b border-border bg-card"
+                        className="sticky top-0 z-50 grid border-b border-border bg-card"
                         style={{ gridTemplateColumns }}
                     >
-                        <div className="sticky left-0 z-40 flex items-center border-r border-border bg-muted/10 px-3 py-2">
+                        <div className="sticky left-0 z-50 flex items-center border-r border-border bg-card px-3 py-2">
                             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                                 Time
                             </span>
@@ -201,7 +201,7 @@ function WeekTimelineBoard({
                         style={{ gridTemplateColumns, height: `${boardHeight}px` }}
                     >
                         {/* Time rail */}
-                        <div className="sticky left-0 z-20 overflow-hidden border-r border-border bg-card">
+                        <div className="sticky left-0 z-40 overflow-hidden border-r border-border bg-card">
                             {CALENDAR_TIME_SLOTS.map((slot) => (
                                 <div
                                     key={`${slot.start_time}-${slot.end_time}`}
@@ -221,7 +221,7 @@ function WeekTimelineBoard({
                             return (
                                 <div
                                     key={date}
-                                    className="relative border-r border-border/60 last:border-r-0"
+                                    className="relative isolate border-r border-border/60 last:border-r-0"
                                     style={{ height: `${boardHeight}px` }}
                                 >
                                     {/* Current time indicator — only inside today's column */}

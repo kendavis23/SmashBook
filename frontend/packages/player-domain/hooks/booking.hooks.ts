@@ -7,7 +7,11 @@ import {
     cancelBookingEndpoint,
     invitePlayerEndpoint,
 } from "@repo/api-client/modules/share";
-import { joinBookingEndpoint, respondInviteEndpoint } from "@repo/api-client/modules/player";
+import {
+    joinBookingEndpoint,
+    respondInviteEndpoint,
+    addEquipmentRentalEndpoint,
+} from "@repo/api-client/modules/player";
 import type {
     Booking,
     BookingInput,
@@ -15,6 +19,8 @@ import type {
     OpenGameFilters,
     InvitePlayerInput,
     InviteRespondInput,
+    EquipmentRentalInput,
+    EquipmentRental,
 } from "../models";
 
 const bookingKeys = {
@@ -93,6 +99,17 @@ export function useRespondInvite(clubId: string, bookingId: string) {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
             queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
+        },
+    });
+}
+
+export function useAddEquipmentRental(clubId: string, bookingId: string) {
+    const queryClient = useQueryClient();
+    return useMutation<EquipmentRental, Error, EquipmentRentalInput>({
+        mutationFn: (data: EquipmentRentalInput) =>
+            addEquipmentRentalEndpoint(bookingId, clubId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
         },
     });
 }

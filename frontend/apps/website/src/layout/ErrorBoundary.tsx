@@ -22,11 +22,10 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
                         <h1 className="text-3xl font-bold tracking-tight text-foreground mb-4">
                             Smash<span className="text-cta">Book</span>
                         </h1>
-                        <p className="text-muted-foreground mb-6">Something went wrong. Please refresh the page.</p>
-                        <button
-                            onClick={() => window.location.reload()}
-                            className="btn-cta"
-                        >
+                        <p className="text-muted-foreground mb-6">
+                            Something went wrong. Please refresh the page.
+                        </p>
+                        <button onClick={() => window.location.reload()} className="btn-cta">
                             Refresh
                         </button>
                     </div>

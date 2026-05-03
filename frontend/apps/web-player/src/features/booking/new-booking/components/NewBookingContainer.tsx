@@ -112,7 +112,10 @@ export default function NewBookingContainer(): JSX.Element {
     useEffect(() => {
         if (trainerData === prevTrainerDataRef.current) return;
         prevTrainerDataRef.current = trainerData;
-        if (form.staffProfileId && !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)) {
+        if (
+            form.staffProfileId &&
+            !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)
+        ) {
             setForm((prev) => ({ ...prev, staffProfileId: "" }));
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps

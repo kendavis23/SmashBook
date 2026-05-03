@@ -1,5 +1,10 @@
 import { fetcher } from "../../../core/fetcher";
-import type { BookingResponse, InviteRespondRequest } from "./booking.types";
+import type {
+    BookingResponse,
+    InviteRespondRequest,
+    EquipmentRentalRequest,
+    EquipmentRentalResponse,
+} from "./booking.types";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
@@ -16,6 +21,21 @@ export function respondInviteEndpoint(
 ): Promise<BookingResponse> {
     return fetcher<BookingResponse>(
         `/api/v1/bookings/${bookingId}/respond-invite?club_id=${clubId}`,
+        {
+            method: "POST",
+            headers: JSON_HEADERS,
+            body: JSON.stringify(data),
+        }
+    );
+}
+
+export function addEquipmentRentalEndpoint(
+    bookingId: string,
+    clubId: string,
+    data: EquipmentRentalRequest
+): Promise<EquipmentRentalResponse> {
+    return fetcher<EquipmentRentalResponse>(
+        `/api/v1/bookings/${bookingId}/equipment-rental?club_id=${clubId}`,
         {
             method: "POST",
             headers: JSON_HEADERS,

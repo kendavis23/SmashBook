@@ -79,7 +79,6 @@ function formatDelta(value: number): string {
     return "0.0";
 }
 
-
 function PlayerSkillOverview({
     player,
     chartData,

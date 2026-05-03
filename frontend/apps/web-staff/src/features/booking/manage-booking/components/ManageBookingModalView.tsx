@@ -1,6 +1,14 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw, RotateCcw, Search, UserRound, X } from "lucide-react";
+import {
+    ChevronLeft,
+    ChevronRight,
+    RefreshCw,
+    RotateCcw,
+    Search,
+    UserRound,
+    X,
+} from "lucide-react";
 import {
     AlertToast,
     ConfirmDeleteModal,
@@ -69,7 +77,10 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
         : sorted;
     const totalPages = Math.ceil(filtered.length / MODAL_PAGE_SIZE);
     const currentPage = filtered.length === 0 ? 0 : Math.min(page, totalPages - 1);
-    const paged = filtered.slice(currentPage * MODAL_PAGE_SIZE, currentPage * MODAL_PAGE_SIZE + MODAL_PAGE_SIZE);
+    const paged = filtered.slice(
+        currentPage * MODAL_PAGE_SIZE,
+        currentPage * MODAL_PAGE_SIZE + MODAL_PAGE_SIZE
+    );
 
     return (
         <div className="overflow-hidden rounded-lg border border-border/70 bg-background">
@@ -77,60 +88,80 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                 <UserRound size={13} className="shrink-0 text-muted-foreground" />
                 <span className="flex-1 text-xs font-semibold text-foreground">Player details</span>
                 <div className="relative">
-                    <Search size={11} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Search
+                        size={11}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    />
                     <input
                         type="text"
                         placeholder="Search…"
                         value={search}
-                        onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                        onChange={(e) => {
+                            setSearch(e.target.value);
+                            setPage(0);
+                        }}
                         className="w-32 rounded border border-border bg-background py-0.5 pl-5 pr-2 text-[11px] placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta/50"
                     />
                 </div>
             </div>
             <div className="divide-y divide-border">
                 {paged.length === 0 ? (
-                    <p className="py-3 text-center text-xs text-muted-foreground">No players found.</p>
-                ) : paged.map((p) => {
-                    const isAccepted = p.invite_status === "accepted";
-                    return (
-                        <div
-                            key={p.id}
-                            className={`flex items-center gap-3 px-3 py-2.5 ${isAccepted ? "bg-success/8" : ""}`}
-                        >
-                            <span
-                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
-                                    isAccepted
-                                        ? "bg-success/15 text-success ring-1 ring-success/30"
-                                        : "bg-muted text-muted-foreground"
-                                }`}
+                    <p className="py-3 text-center text-xs text-muted-foreground">
+                        No players found.
+                    </p>
+                ) : (
+                    paged.map((p) => {
+                        const isAccepted = p.invite_status === "accepted";
+                        return (
+                            <div
+                                key={p.id}
+                                className={`flex items-center gap-3 px-3 py-2.5 ${isAccepted ? "bg-success/8" : ""}`}
                             >
-                                {getInitials(p.full_name)}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-medium text-foreground">
-                                    {p.full_name}
-                                </p>
-                                <p className="text-[11px] text-muted-foreground">
-                                    <span className="capitalize">{formatStatus(p.role)}</span>
-                                    <span className="mx-1.5 opacity-40">&middot;</span>
-                                    <span className="text-muted-foreground/60">Invite:</span>{" "}
-                                    <span className="capitalize">{formatStatus(p.invite_status)}</span>
-                                    <span className="mx-1.5 opacity-40">&middot;</span>
-                                    <span className="text-muted-foreground/60">Payment:</span>{" "}
-                                    <span className="capitalize">{formatStatus(p.payment_status)}</span>
-                                </p>
+                                <span
+                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
+                                        isAccepted
+                                            ? "bg-success/15 text-success ring-1 ring-success/30"
+                                            : "bg-muted text-muted-foreground"
+                                    }`}
+                                >
+                                    {getInitials(p.full_name)}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium text-foreground">
+                                        {p.full_name}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        <span className="capitalize">{formatStatus(p.role)}</span>
+                                        <span className="mx-1.5 opacity-40">&middot;</span>
+                                        <span className="text-muted-foreground/60">
+                                            Invite:
+                                        </span>{" "}
+                                        <span className="capitalize">
+                                            {formatStatus(p.invite_status)}
+                                        </span>
+                                        <span className="mx-1.5 opacity-40">&middot;</span>
+                                        <span className="text-muted-foreground/60">
+                                            Payment:
+                                        </span>{" "}
+                                        <span className="capitalize">
+                                            {formatStatus(p.payment_status)}
+                                        </span>
+                                    </p>
+                                </div>
+                                <span className="shrink-0 text-sm font-medium text-foreground">
+                                    {formatCurrency(p.amount_due)}
+                                </span>
                             </div>
-                            <span className="shrink-0 text-sm font-medium text-foreground">
-                                {formatCurrency(p.amount_due)}
-                            </span>
-                        </div>
-                    );
-                })}
+                        );
+                    })
+                )}
             </div>
             {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-border/60 px-3 py-1.5">
                     <span className="text-[11px] text-muted-foreground">
-                        {currentPage * MODAL_PAGE_SIZE + 1}–{Math.min((currentPage + 1) * MODAL_PAGE_SIZE, filtered.length)} of {filtered.length}
+                        {currentPage * MODAL_PAGE_SIZE + 1}–
+                        {Math.min((currentPage + 1) * MODAL_PAGE_SIZE, filtered.length)} of{" "}
+                        {filtered.length}
                     </span>
                     <div className="flex items-center gap-0.5">
                         <button

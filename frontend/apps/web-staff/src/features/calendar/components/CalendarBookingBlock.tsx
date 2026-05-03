@@ -80,9 +80,7 @@ function CalendarBookingBlock({
             <span className={`pointer-events-none absolute inset-0 ${typeColors.bg}`} />
             <span className="relative flex h-full flex-col items-start justify-center gap-0.5">
                 <span className="flex w-full items-center gap-1.5">
-                    <p
-                        className={`truncate text-xs font-medium leading-tight ${typeColors.text}`}
-                    >
+                    <p className={`truncate text-xs font-medium leading-tight ${typeColors.text}`}>
                         {typeLabel}
                     </p>
                     {booking.is_open_game ? (

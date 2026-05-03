@@ -54,7 +54,13 @@ type SortHeaderProps = {
     onSort: (sortKey: SortKey) => void;
 };
 
-function SortHeader({ label, sortKey, activeSortKey, direction, onSort }: SortHeaderProps): JSX.Element {
+function SortHeader({
+    label,
+    sortKey,
+    activeSortKey,
+    direction,
+    onSort,
+}: SortHeaderProps): JSX.Element {
     const isActive = activeSortKey === sortKey;
     const Icon = isActive ? (direction === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
 

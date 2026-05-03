@@ -119,7 +119,9 @@ export default function CreateAvailabilityModalView({
                         <div>
                             <label className="mb-1 block text-sm font-medium text-foreground">
                                 Effective Until{" "}
-                                <span className="font-normal text-muted-foreground">(optional)</span>
+                                <span className="font-normal text-muted-foreground">
+                                    (optional)
+                                </span>
                             </label>
                             <DatePicker
                                 className="input-base"

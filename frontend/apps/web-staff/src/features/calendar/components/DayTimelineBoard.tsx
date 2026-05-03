@@ -129,12 +129,23 @@ function DayTimelineBoard({
             ) : (
                 <div className="min-w-fit">
                     {/* Sticky header block — both rows together so sticky works reliably */}
-                    <div className="sticky top-0 z-40 border-b border-border bg-card">
+                    <div
+                        className="sticky top-0 z-50 grid border-b border-border bg-card"
+                        style={{ gridTemplateColumns }}
+                    >
+                        {/* Time-rail header */}
+                        <div className="sticky left-0 z-50 row-span-2 flex items-center border-r border-border bg-card px-3 py-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                Time
+                            </span>
+                        </div>
+
                         {/* Date headline row */}
                         <div
                             className={`border-b border-border px-4 py-1.5 text-center ${
                                 isToday ? "bg-cta/5" : ""
                             }`}
+                            style={{ gridColumn: `2 / span ${Math.max(day.courts.length, 1)}` }}
                         >
                             <div className="flex items-baseline justify-center gap-1">
                                 <p
@@ -162,32 +173,26 @@ function DayTimelineBoard({
                         </div>
 
                         {/* Court name cells row */}
-                        <div className="grid bg-card" style={{ gridTemplateColumns }}>
-                            {/* Empty time-rail spacer */}
-                            <div className="border-r border-border bg-muted/10" />
-
-                            {/* Court name cells */}
-                            {day.courts.map((court: CalendarCourtColumn) => (
-                                <div
-                                    key={court.court_id}
-                                    className="border-r border-border/70 px-3 py-2 text-center last:border-r-0"
-                                >
-                                    <p className="truncate text-xs font-semibold text-foreground">
-                                        {court.court_name}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                        {(() => {
-                                            const n = court.slots.filter(
-                                                (s) => s.kind === "booking"
-                                            ).length;
-                                            return n === 0
-                                                ? "No bookings"
-                                                : `${n} booking${n === 1 ? "" : "s"}`;
-                                        })()}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
+                        {day.courts.map((court: CalendarCourtColumn) => (
+                            <div
+                                key={court.court_id}
+                                className="border-r border-border/70 bg-card px-3 py-2 text-center last:border-r-0"
+                            >
+                                <p className="truncate text-xs font-semibold text-foreground">
+                                    {court.court_name}
+                                </p>
+                                <p className="text-[11px] text-muted-foreground">
+                                    {(() => {
+                                        const n = court.slots.filter(
+                                            (s) => s.kind === "booking"
+                                        ).length;
+                                        return n === 0
+                                            ? "No bookings"
+                                            : `${n} booking${n === 1 ? "" : "s"}`;
+                                    })()}
+                                </p>
+                            </div>
+                        ))}
                     </div>
 
                     {/* Time rail + court lanes */}
@@ -208,7 +213,7 @@ function DayTimelineBoard({
                         ) : null}
 
                         {/* Time rail */}
-                        <div className="sticky left-0 z-20 overflow-hidden border-r border-border bg-card">
+                        <div className="sticky left-0 z-40 overflow-hidden border-r border-border bg-card">
                             {CALENDAR_TIME_SLOTS.map((slot) => (
                                 <div
                                     key={`${slot.start_time}-${slot.end_time}`}
@@ -226,7 +231,7 @@ function DayTimelineBoard({
                         {day.courts.map((court: CalendarCourtColumn) => (
                             <div
                                 key={court.court_id}
-                                className="relative border-r border-border/60 last:border-r-0"
+                                className="relative isolate border-r border-border/60 last:border-r-0"
                                 style={{ height: `${boardHeight}px` }}
                             >
                                 {CALENDAR_TIME_SLOTS.map((slot) => (

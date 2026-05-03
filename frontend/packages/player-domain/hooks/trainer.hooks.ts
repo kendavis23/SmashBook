@@ -1,11 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { listTrainersEndpoint, listAvailableTrainersEndpoint } from "@repo/api-client/modules/share";
+import {
+    listTrainersEndpoint,
+    listAvailableTrainersEndpoint,
+} from "@repo/api-client/modules/share";
 import type { Trainer, TrainerAvailableSummary, ListAvailableTrainersParams } from "../models";
 
 const trainerKeys = {
     all: (clubId: string) => ["trainers", clubId] as const,
     available: (params: ListAvailableTrainersParams) =>
-        ["trainers", "available", params.clubId, params.date, params.startTime, params.endTime] as const,
+        [
+            "trainers",
+            "available",
+            params.clubId,
+            params.date,
+            params.startTime,
+            params.endTime,
+        ] as const,
 };
 
 export function useListTrainers(clubId: string, includeInactive?: boolean) {

@@ -99,9 +99,7 @@ export default function EquipmentFormDialog({
                                     className={`${fieldCls} ${nameError ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""}`}
                                     placeholder="e.g. Pro racket"
                                     value={form.name}
-                                    onChange={(event) =>
-                                        onFormChange({ name: event.target.value })
-                                    }
+                                    onChange={(event) => onFormChange({ name: event.target.value })}
                                 />
                                 {nameError ? (
                                     <p className="mt-1 text-xs text-destructive">{nameError}</p>

@@ -6,10 +6,7 @@ import { formatUTCDate, formatUTCTime } from "@repo/ui";
 import type { Trainer, TrainerAvailability, TrainerBookingItem, TrainerTab } from "../../types";
 import { TRAINER_TABS, BOOKING_TYPE_LABELS, BOOKING_STATUS_LABELS } from "../../types";
 import { TrainerAvailabilityTab } from "./TrainerAvailabilityTab";
-import {
-    TrainerBookingDetailModal,
-    useBookingDetailModal,
-} from "./TrainerBookingDetailModal";
+import { TrainerBookingDetailModal, useBookingDetailModal } from "./TrainerBookingDetailModal";
 
 const BOOKING_PAGE_SIZE = 10;
 
@@ -338,14 +335,10 @@ export default function TrainerDetailView({
                                                             ] ?? booking.booking_type}
                                                         </td>
                                                         <td className="px-3 py-3 text-foreground">
-                                                            {formatUTCDate(
-                                                                booking.start_datetime
-                                                            )}
+                                                            {formatUTCDate(booking.start_datetime)}
                                                         </td>
                                                         <td className="px-3 py-3 text-foreground">
-                                                            {formatUTCTime(
-                                                                booking.start_datetime
-                                                            )}{" "}
+                                                            {formatUTCTime(booking.start_datetime)}{" "}
                                                             – {formatUTCTime(booking.end_datetime)}
                                                         </td>
                                                         <td className="px-3 py-3 text-foreground">
@@ -359,9 +352,7 @@ export default function TrainerDetailView({
                                                         <td className="px-3 py-3 text-right">
                                                             <button
                                                                 type="button"
-                                                                onClick={() =>
-                                                                    openBooking(booking)
-                                                                }
+                                                                onClick={() => openBooking(booking)}
                                                                 className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
                                                                 aria-label={`View booking ${booking.court_name}`}
                                                             >
@@ -420,9 +411,7 @@ export default function TrainerDetailView({
                                                 <button
                                                     type="button"
                                                     onClick={() => setBookingPage((p) => p + 1)}
-                                                    disabled={
-                                                        bookingPage === bookingTotalPages - 1
-                                                    }
+                                                    disabled={bookingPage === bookingTotalPages - 1}
                                                     className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
                                                     aria-label="Next bookings page"
                                                 >

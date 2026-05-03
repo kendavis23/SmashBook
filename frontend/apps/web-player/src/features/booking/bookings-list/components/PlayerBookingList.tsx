@@ -232,7 +232,8 @@ function RespondDialog({
                 </div>
                 <div className="flex flex-col gap-3 p-4">
                     <p className="text-xs text-muted-foreground">
-                        You&apos;ve been invited to join this booking. Would you like to accept or decline?
+                        You&apos;ve been invited to join this booking. Would you like to accept or
+                        decline?
                     </p>
                     {err ? (
                         <p className="rounded-lg bg-destructive/10 px-3 py-2 text-[11px] text-destructive">
@@ -448,7 +449,10 @@ export default function PlayerBookingList({
                             const isOrganiser = booking.role === "organiser";
 
                             return (
-                                <tr key={booking.booking_id} className="transition hover:bg-muted/20">
+                                <tr
+                                    key={booking.booking_id}
+                                    className="transition hover:bg-muted/20"
+                                >
                                     <td className={tdCls}>
                                         <span className="font-medium text-foreground">
                                             {booking.court_name}

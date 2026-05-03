@@ -33,10 +33,11 @@ function NotesTooltip({ notes }: { notes: string }): JSX.Element {
                 type="button"
                 onMouseEnter={() => hasNotes && setVisible(true)}
                 onMouseLeave={() => setVisible(false)}
-                className={`flex items-center justify-center rounded ${hasNotes
-                    ? "text-muted-foreground hover:text-foreground"
-                    : "opacity-0 pointer-events-none"
-                    }`}
+                className={`flex items-center justify-center rounded ${
+                    hasNotes
+                        ? "text-muted-foreground hover:text-foreground"
+                        : "opacity-0 pointer-events-none"
+                }`}
                 aria-label="View notes"
             >
                 <FileText size={11} />
@@ -92,7 +93,7 @@ function AvailabilitySlotPill({
                 ) : null}
             </div>
             {/* Actions footer */}
-            {(canManage || slot.notes?.trim()) ? (
+            {canManage || slot.notes?.trim() ? (
                 <div className="flex items-center justify-end gap-1.5 border-t border-border/60 px-3 py-1.5">
                     <NotesTooltip notes={slot.notes || ""} />
                     {canManage ? (

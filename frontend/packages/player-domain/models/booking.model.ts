@@ -93,3 +93,20 @@ export interface OpenGame {
     slots_available: number;
     total_price: number | null;
 }
+
+import type { ItemType } from "./equipment.model";
+
+export interface EquipmentRentalInput {
+    equipment_id: UUID;
+    quantity: number;
+}
+
+export interface EquipmentRental {
+    id: UUID;
+    booking_id: UUID;
+    equipment_id: UUID;
+    equipment_name: string;
+    item_type: ItemType;
+    quantity: number;
+    charge: number;
+}
