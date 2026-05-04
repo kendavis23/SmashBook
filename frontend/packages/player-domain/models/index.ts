@@ -30,3 +30,14 @@ export type {
     EquipmentRentalInput,
     EquipmentRental,
 } from "./booking.model";
+export type {
+    SetupIntent,
+    SavePaymentMethodInput,
+    PaymentMethod,
+    PaymentIntentInput,
+    PaymentIntent,
+    WalletTransaction,
+    Wallet,
+    WalletTopUpInput,
+    WalletTopUp,
+} from "./payment.model";
