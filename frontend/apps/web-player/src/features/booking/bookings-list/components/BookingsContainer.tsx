@@ -16,6 +16,7 @@ import type {
 } from "../../types";
 import BookingsView from "./BookingsView";
 import { ManageBookingModalView } from "../../manage-booking/components/ManageBookingModalView";
+import { PaymentModal } from "../../../payment";
 import { X } from "lucide-react";
 
 type SelectedBooking = { bookingId: string; clubId: string };
@@ -155,6 +156,7 @@ export default function BookingsContainer(): JSX.Element {
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
     const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
+    const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
 
     const defaultFrom = new Date();
     defaultFrom.setMonth(defaultFrom.getMonth() - 3);
@@ -233,6 +235,14 @@ export default function BookingsContainer(): JSX.Element {
         setSelectedBooking(null);
     }, []);
 
+    const handlePayClick = useCallback((item: PlayerBookingItem): void => {
+        setPayingBooking(item);
+    }, []);
+
+    const handleClosePayModal = useCallback((): void => {
+        setPayingBooking(null);
+    }, []);
+
     const handlePastFilterChange = useCallback(
         (patch: { pastFrom?: string; pastTo?: string }): void => {
             if (patch.pastFrom !== undefined) setPastFrom(patch.pastFrom);
@@ -267,6 +277,7 @@ export default function BookingsContainer(): JSX.Element {
                 onRefresh={handleRefresh}
                 onCreateClick={handleCreateClick}
                 onManageClick={handleManageClick}
+                onPayClick={handlePayClick}
                 onInvitePlayer={handleInvitePlayer}
                 onRespondInvite={handleRespondInvite}
                 onPastFilterChange={handlePastFilterChange}
@@ -275,6 +286,12 @@ export default function BookingsContainer(): JSX.Element {
             />
             {selectedBooking ? (
                 <BookingModal selected={selectedBooking} onClose={handleCloseModal} />
+            ) : null}
+            {payingBooking ? (
+                <PaymentModal
+                    context={{ type: "booking", booking: payingBooking }}
+                    onClose={handleClosePayModal}
+                />
             ) : null}
         </>
     );

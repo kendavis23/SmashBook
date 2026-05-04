@@ -3,6 +3,7 @@ import { z } from "zod";
 const envSchema = z.object({
     VITE_API_BASE_URL: z.string().url("VITE_API_BASE_URL must be a valid URL"),
     VITE_APP_ENV: z.enum(["development", "staging", "production"]).default("development"),
+    VITE_STRIPE_PUBLISHABLE_KEY: z.string().min(1, "VITE_STRIPE_PUBLISHABLE_KEY is required"),
 });
 
 export type Env = z.infer<typeof envSchema>;

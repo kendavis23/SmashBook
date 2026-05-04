@@ -376,6 +376,7 @@ type Props = {
     emptyMessage: string;
     showActions: boolean;
     onManageClick: (item: PlayerBookingItem) => void;
+    onPayClick: (item: PlayerBookingItem) => void;
     onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onRespondInvite: (
         item: PlayerBookingItem,
@@ -413,6 +414,7 @@ export default function PlayerBookingList({
     emptyMessage,
     showActions,
     onManageClick,
+    onPayClick,
     onInvitePlayer,
     onRespondInvite,
 }: Props): JSX.Element {
@@ -513,6 +515,7 @@ export default function PlayerBookingList({
                                             <button
                                                 type="button"
                                                 title="Pay now"
+                                                onClick={() => onPayClick(booking)}
                                                 className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
                                             >
                                                 <CreditCard size={13} /> Pay
@@ -635,6 +638,7 @@ export default function PlayerBookingList({
                                                     <button
                                                         type="button"
                                                         title="Pay now"
+                                                        onClick={() => onPayClick(booking)}
                                                         className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
                                                     >
                                                         <CreditCard size={13} /> Pay

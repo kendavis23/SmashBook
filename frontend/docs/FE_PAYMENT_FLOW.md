@@ -1,4 +1,4 @@
-_Last updated: 2026-05-04 00:00 UTC_
+_Last updated: 2026-05-04 17:05 UTC_
 
 # FE Payment Flow — Booking Pay Button
 
@@ -11,8 +11,8 @@ End-to-end plan for the "Pay" button in `PlayerBookingList` (and the booking mod
 | What we do | Why it's PCI-safe |
 |---|---|
 | Load `@stripe/stripe-js` with the **publishable key only** | Secret key never leaves the backend |
-| Collect card details exclusively inside `<CardElement>` / `<PaymentElement>` | Raw card numbers never touch our JS, our DOM, or our servers |
-| Call `stripe.confirmCardPayment(client_secret)` directly against Stripe | Card data travels Stripe → Stripe; our backend only receives `payment_intent_id` |
+| Collect card details exclusively inside `<PaymentElement>` | Raw card numbers never touch our JS, our DOM, or our servers |
+| Call `stripe.confirmPayment({ elements })` directly against Stripe | Card data travels Stripe → Stripe; our backend only receives `payment_intent_id` |
 | Never log, store, or echo card data anywhere in the frontend | No PCI scope expansion |
 | Backend `client_secret` is short-lived (expires when PaymentIntent expires) | Replay risk is zero |
 
@@ -79,62 +79,72 @@ Triggered when the player already has a default payment method on file.
 ```
 User clicks "Pay"
   ↓
-PaymentModal opens (shows saved card summary + amount)
-  ↓
-User confirms → BookingsContainer calls useCreatePaymentIntent({ booking_id, payment_method_id })
-  ↓
+PaymentModal opens — backend creates PaymentIntent with the saved payment_method_id
 POST /api/v1/payments/payment-intent  → { client_secret, payment_intent_id, amount, currency }
   ↓
-stripe.confirmCardPayment(client_secret, { payment_method: saved_payment_method_id })
+<Elements stripe={stripePromise} options={{ clientSecret }}>
+  renders <PaymentElement> pre-filled with saved card details
+</Elements>
+  ↓
+User clicks "Pay £X.XX"
+  ↓
+stripe.confirmPayment({ elements, confirmParams: { return_url }, redirect: "if_required" })
   ↓
 Result:
   success → show success screen → invalidate ["player","bookings"] query
-  requires_action → stripe.handleCardAction(client_secret) → retry confirmCardPayment
-  error → show inline error, allow retry
+  requires_action (3DS) → Stripe handles popup/redirect automatically via PaymentElement
+  error → show inline error banner, allow retry
 ```
 
 ### Path B — Pay with a new card (no saved method)
 
-Triggered when `useListPaymentMethods()` returns an empty array.
+Triggered when `useListPaymentMethods()` returns an empty array, or the player selects "Use a different card".
 
 ```
 User clicks "Pay"
   ↓
-PaymentModal opens with <PaymentElement> (Stripe-hosted card form)
+POST /api/v1/payments/payment-intent  → { client_secret, payment_intent_id, amount, currency }
   ↓
-User fills card details (PCI-safe, never touches our JS)
+<Elements stripe={stripePromise} options={{ clientSecret }}>
+  renders blank <PaymentElement> (card, Google Pay, Apple Pay — Stripe decides based on browser)
+</Elements>
+  ↓
+User fills card details (PCI-safe, raw data never touches our JS or server)
+  ↓
+Optional: "Save this card for future payments" checkbox
+  → sets payment_intent.setup_future_usage = "off_session" via the backend at intent creation time
   ↓
 User clicks "Pay £X.XX"
   ↓
-stripe.confirmPayment({ elements, redirect: "if_required" })
+stripe.confirmPayment({ elements, confirmParams: { return_url }, redirect: "if_required" })
   ↓
 Result:
   success → show success → invalidate ["player","bookings"]
   error → show inline error banner
-  ↓
-Optional: "Save this card for future payments" checkbox
-  → if checked, call POST /api/v1/payments/payment-methods with the PaymentMethod ID
-    returned by Stripe after confirmation
 ```
 
-### Path C — Pay with a new card AND save it first (via SetupIntent)
+### Path C — Save a card without paying (via SetupIntent)
 
-Alternative to Path B when the player wants to explicitly save a card before paying.
+Triggered from a "Payment Methods" / wallet settings screen — not the booking pay button. Lets players add a card for future use before they have a booking to pay for.
 
 ```
-User goes to "Add Card" section
+User goes to "Add Payment Method"
   ↓
 POST /api/v1/payments/setup-intent  → { client_secret, setup_intent_id }
   ↓
-stripe.confirmCardSetup(client_secret, { payment_method: { card: elements.getElement(CardElement) } })
+<Elements stripe={stripePromise} options={{ clientSecret }}>
+  renders <PaymentElement> in setup mode
+</Elements>
   ↓
-Stripe returns PaymentMethod ID to frontend
+stripe.confirmSetup({ elements, confirmParams: { return_url }, redirect: "if_required" })
+  ↓
+Stripe returns a PaymentMethod ID
   ↓
 POST /api/v1/payments/payment-methods  { payment_method_id, set_as_default: true }
   ↓
 invalidate ["player","payment-methods"]
   ↓
-Now player can use Path A for future bookings
+Player can now use Path A for all future booking payments
 ```
 
 ---
@@ -143,7 +153,7 @@ Now player can use Path A for future bookings
 
 All new files follow the existing container/view pattern and monorepo layer rules.
 
-### 6a. Domain hook (packages/player-domain)
+### 6a. Domain hooks (packages/player-domain)
 
 No new hooks needed. All required hooks already exist in `payment.hooks.ts`:
 
@@ -153,27 +163,44 @@ No new hooks needed. All required hooks already exist in `payment.hooks.ts`:
 - `useSavePaymentMethod()` — persists card after SetupIntent
 - `useDeletePaymentMethod()` / `useSetDefaultPaymentMethod()` — card management
 
-### 6b. Feature components (apps/web-player/src/features/booking)
+### 6b. Top-level payment feature (apps/web-player/src/features/payment)
+
+`payment` lives as a **top-level feature** alongside `booking`, `dashboard`, etc. — not nested inside `booking`. This allows the same modal and hooks to be reused by wallet top-up, subscription flows, or any other future feature that needs Stripe.
 
 ```
-booking/
-  payment/                          ← NEW sub-feature
+features/
+  payment/                              ← NEW top-level feature
     components/
-      PaymentModal.tsx              ← modal shell (portal, backdrop, close)
-      PaymentSavedCardStep.tsx      ← Path A UI: show saved card, confirm button
-      PaymentNewCardStep.tsx        ← Path B UI: <PaymentElement> + pay button
-      PaymentSuccessStep.tsx        ← success confirmation screen
-      PaymentErrorBanner.tsx        ← inline error display (reusable)
-      SavedCardList.tsx             ← list of saved cards with default badge
-      AddCardForm.tsx               ← Path C: SetupIntent card save form
+      PaymentModal.tsx                  ← modal shell: <Elements clientSecret=…> wrapper + backdrop
+      PaymentMethodStep.tsx             ← shows <PaymentElement> for both Path A and B
+      PaymentSuccessStep.tsx            ← success confirmation screen
+      PaymentErrorBanner.tsx            ← inline error display
+      SavedCardList.tsx                 ← list of saved cards with default badge (used in settings)
+      AddCardForm.tsx                   ← Path C: SetupIntent card save form (used in settings)
     hooks/
-      usePayBooking.ts              ← orchestrates Path A or B; returns { pay, status, error }
-      useSaveCard.ts                ← orchestrates Path C SetupIntent flow
-    types.ts                        ← PaymentStep union type, local state shapes
-    index.ts                        ← export PaymentModal only
+      usePayBooking.ts                  ← orchestrates Path A or B; returns { pay, status, error }
+      useSaveCard.ts                    ← orchestrates Path C SetupIntent + savePaymentMethod
+    types.ts                            ← PaymentStep union type, PaymentModalProps
+    index.ts                            ← export: PaymentModal, AddCardForm, SavedCardList
 ```
 
-### 6c. Wiring into BookingsContainer
+Why a single `PaymentMethodStep` for both paths: `<PaymentElement>` already handles both cases — when passed a `clientSecret` tied to a PaymentIntent that has a `payment_method`, it pre-fills the saved card. When no payment method is attached, it renders the full card entry form. The component is the same; the difference is only in what the backend puts on the PaymentIntent.
+
+### 6c. Stripe Elements wrapping inside PaymentModal
+
+`PaymentModal` is responsible for mounting `<Elements>` with the `clientSecret`. It must be rendered **after** the `client_secret` is obtained from the backend, because `<Elements>` requires it at mount time.
+
+```
+PaymentModal
+  ├── fetches client_secret via useCreatePaymentIntent / useTopUpWallet
+  ├── <Elements stripe={stripePromise} options={{ clientSecret, appearance }}>
+  │     └── <PaymentMethodStep />   ← contains <PaymentElement> + submit button
+  └── <PaymentSuccessStep />        ← rendered after confirmPayment resolves
+```
+
+`stripePromise` is the singleton from `StripeProvider` — passed down via context, not re-created inside the modal.
+
+### 6d. Wiring into BookingsContainer
 
 `BookingsContainer` already holds the `onManageClick` / `handleManageClick` pattern. Add alongside it:
 
@@ -185,9 +212,14 @@ const handlePayClick = useCallback((item: PlayerBookingItem) => setPayingBooking
 
 // in JSX:
 {payingBooking ? (
-  <PaymentModal booking={payingBooking} onClose={() => setPayingBooking(null)} />
+  <PaymentModal
+    context={{ type: "booking", booking: payingBooking }}
+    onClose={() => setPayingBooking(null)}
+  />
 ) : null}
 ```
+
+`PaymentModal` accepts a `context` prop (discriminated union: `"booking"` | `"wallet_topup"` | `"add_card"`) so the same modal can be invoked from any feature without modification.
 
 The "Pay" button in `PlayerBookingList` (both mobile card and desktop table) calls `onPayClick(booking)` instead of rendering a standalone button with no handler.
 
@@ -210,38 +242,61 @@ The modal starts in `loading`, fetches `useListPaymentMethods()`, then transitio
 
 ---
 
-## 8. Stripe Call Sequence (code-level, Path A)
+## 8. Stripe Call Sequence (code-level)
 
-Inside `usePayBooking.ts`:
+### Path A + B — inside `PaymentMethodStep.tsx`
+
+`<PaymentElement>` + `stripe.confirmPayment` handles both saved-card and new-card paths identically from the frontend's perspective. The difference lives entirely in what the backend attached to the PaymentIntent.
 
 ```ts
-// Step 1 — create PaymentIntent on our backend
-const { client_secret } = await createPaymentIntentEndpoint({
-  booking_id: booking.booking_id,
-  payment_method_id: selectedMethodId,
+// Inside the submit handler in PaymentMethodStep.tsx
+const stripe = useStripe();     // from <Elements> context
+const elements = useElements(); // from <Elements> context
+
+// Step 1 — confirm directly with Stripe (raw card data never hits our server)
+const { error } = await stripe.confirmPayment({
+  elements,
+  confirmParams: {
+    return_url: `${window.location.origin}/bookings`,  // fallback for redirect-based methods
+  },
+  redirect: "if_required",  // stay in SPA for card payments; only redirect for bank/voucher
 });
 
-// Step 2 — confirm with Stripe directly (card data never hits our server)
-const stripe = useStripe();  // from @stripe/react-stripe-js context
-const result = await stripe.confirmCardPayment(client_secret, {
-  payment_method: selectedMethodId,
-});
-
-// Step 3 — handle result
-if (result.error) {
-  // show error to user; do NOT treat booking as paid
-  throw new Error(result.error.message);
+// Step 2 — handle result
+if (error) {
+  // error.type === "card_error" | "validation_error" | "api_error"
+  // error.message is always safe to display to the user (Stripe localises it)
+  setStep({ id: "error", message: error.message ?? "Payment failed." });
+  return;
 }
 
-if (result.paymentIntent?.status === "requires_action") {
-  // 3DS challenge — Stripe handles the redirect/popup automatically
-  const actionResult = await stripe.handleCardAction(client_secret);
-  if (actionResult.error) throw new Error(actionResult.error.message);
-}
-
-// Step 4 — optimistic UI update (booking confirmation comes via webhook on backend)
+// Step 3 — success (3DS was handled automatically by PaymentElement before resolving)
+// Optimistic UI update — true confirmation arrives via backend webhook
 queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
+setStep({ id: "success", amount: paymentIntent.amount, currency: paymentIntent.currency });
 ```
+
+### Path C — inside `useSaveCard.ts`
+
+```ts
+const stripe = useStripe();
+const elements = useElements();
+
+// SetupIntent client_secret already mounted in <Elements options={{ clientSecret }}>
+const { error } = await stripe.confirmSetup({
+  elements,
+  confirmParams: { return_url: `${window.location.origin}/settings/payment-methods` },
+  redirect: "if_required",
+});
+
+if (error) throw new Error(error.message);
+
+// Stripe has attached the PaymentMethod to the customer — backend handles it via webhook.
+// Invalidate saved cards so SavedCardList reflects the new card.
+queryClient.invalidateQueries({ queryKey: ["player", "payment-methods"] });
+```
+
+Note: `stripe.confirmSetup` is the `PaymentElement` equivalent of the older `stripe.confirmCardSetup`. Always use `confirmSetup` when `<Elements>` wraps a SetupIntent `clientSecret`.
 
 ---
 
@@ -279,17 +334,19 @@ Do **not** invalidate on Stripe error — the booking status has not changed.
 
 | Test | File |
 |---|---|
-| `usePayBooking` — happy path (saved card) | `payment/hooks/usePayBooking.test.ts` |
-| `usePayBooking` — Stripe error propagates | `payment/hooks/usePayBooking.test.ts` |
-| `useSaveCard` — SetupIntent → savePaymentMethod | `payment/hooks/useSaveCard.test.ts` |
-| `PaymentModal` — renders `select_method` when cards exist | `payment/components/PaymentModal.test.tsx` |
-| `PaymentModal` — renders `new_card` when no cards | `payment/components/PaymentModal.test.tsx` |
-| `PaymentModal` — shows success step on resolve | `payment/components/PaymentModal.test.tsx` |
+| `usePayBooking` — happy path, `confirmPayment` resolves | `features/payment/hooks/usePayBooking.test.ts` |
+| `usePayBooking` — Stripe `card_error` sets error step | `features/payment/hooks/usePayBooking.test.ts` |
+| `useSaveCard` — `confirmSetup` resolves, invalidates payment-methods | `features/payment/hooks/useSaveCard.test.ts` |
+| `PaymentModal` — renders `PaymentMethodStep` after client_secret loads | `features/payment/components/PaymentModal.test.tsx` |
+| `PaymentModal` — shows `PaymentSuccessStep` after `confirmPayment` resolves | `features/payment/components/PaymentModal.test.tsx` |
+| `PaymentModal` — shows `PaymentErrorBanner` on Stripe error | `features/payment/components/PaymentModal.test.tsx` |
+| `PaymentModal` — wallet_topup context calls `topUpWalletEndpoint` | `features/payment/components/PaymentModal.test.tsx` |
 
-Mock `useStripe()` and `useElements()` via `vi.mock('@stripe/react-stripe-js')` — never call real Stripe in tests.
+Mock `useStripe()` and `useElements()` via `vi.mock('@stripe/react-stripe-js')` — never call real Stripe in tests. Mock `confirmPayment` to return `{}` (success) or `{ error: { message: "..." } }`.
 
-MSW handlers for:
+MSW handlers to add in `@repo/testing`:
 - `POST /api/v1/payments/payment-intent` → `{ client_secret, payment_intent_id, amount, currency }`
+- `POST /api/v1/payments/setup-intent` → `{ client_secret, setup_intent_id }`
 - `GET /api/v1/payments/payment-methods` → array of saved cards or `[]`
 
 ### Integration / E2E (future)
@@ -301,27 +358,36 @@ Use Stripe's test card numbers (`4242 4242 4242 4242`) against a test-mode publi
 ## 12. Execution Checklist
 
 ```
-[ ] 1. pnpm add @stripe/stripe-js @stripe/react-stripe-js --filter web-player
-[ ] 2. Add VITE_STRIPE_PUBLISHABLE_KEY to packages/config + .env
-[ ] 3. Create apps/web-player/src/providers/StripeProvider.tsx
-[ ] 4. Mount <StripeProvider> in app root
-[ ] 5. Create payment/ sub-feature folder structure
-[ ] 6. Implement usePayBooking.ts (Path A + B)
-[ ] 7. Implement useSaveCard.ts (Path C)
-[ ] 8. Build PaymentModal state machine + step components
-[ ] 9. Wire onPayClick into BookingsContainer + PlayerBookingList
-[ ] 10. Wire PaymentModal into BookingsContainer JSX
-[ ] 11. Write unit tests for hooks and modal
-[ ] 12. Smoke test with Stripe test cards in staging
-[ ] 13. Verify VITE_STRIPE_PUBLISHABLE_KEY set in CI/CD secrets for prod deploy
+[ ] 1.  pnpm add @stripe/stripe-js @stripe/react-stripe-js --filter web-player
+[ ] 2.  Add VITE_STRIPE_PUBLISHABLE_KEY to packages/config/src/player.config.ts (Zod field)
+[ ] 3.  Add VITE_STRIPE_PUBLISHABLE_KEY to apps/web-player/.env + CI/CD secrets
+[ ] 4.  Create apps/web-player/src/providers/StripeProvider.tsx (loadStripe singleton + <Elements>)
+[ ] 5.  Mount <StripeProvider> in app root layout
+[ ] 6.  Create apps/web-player/src/features/payment/ folder structure (see §6b)
+[ ] 7.  Implement types.ts — PaymentStep union, PaymentModalContext discriminated union
+[ ] 8.  Implement usePayBooking.ts — createPaymentIntent + stripe.confirmPayment (Path A + B)
+[ ] 9.  Implement useSaveCard.ts — createSetupIntent + stripe.confirmSetup (Path C)
+[ ] 10. Build PaymentMethodStep.tsx — <PaymentElement> + submit button + PaymentErrorBanner
+[ ] 11. Build PaymentSuccessStep.tsx — success screen with amount + close button
+[ ] 12. Build PaymentModal.tsx — fetches client_secret, mounts <Elements>, state machine
+[ ] 13. Build AddCardForm.tsx + SavedCardList.tsx (for settings/wallet screens)
+[ ] 14. Export from features/payment/index.ts
+[ ] 15. Add onPayClick prop to PlayerBookingList + BookingsView + BookingsContainer
+[ ] 16. Wire <PaymentModal context={{ type: "booking", booking }} /> into BookingsContainer JSX
+[ ] 17. Add MSW handlers to @repo/testing for payment endpoints
+[ ] 18. Write unit tests for hooks and modal components
+[ ] 19. Smoke test with Stripe test card 4242 4242 4242 4242 in staging
+[ ] 20. Smoke test 3DS card 4000 0027 6000 3184 to verify challenge flow
+[ ] 21. Verify VITE_STRIPE_PUBLISHABLE_KEY is pk_live_… in production CI/CD
 ```
 
 ---
 
 ## 13. What This Plan Does NOT Cover
 
-- **Wallet top-up flow** — separate feature; uses `useTopUpWallet` + same Stripe Elements pattern
+- **Wallet top-up flow** — reuses `PaymentModal` with `context={{ type: "wallet_topup" }}`; `usePayBooking` is replaced by `useTopUpWallet` inside the modal for that context. Wiring that context path into `PaymentModal` is left for the wallet feature sprint.
 - **Subscription / recurring payments** — not in scope for booking pay button
+- **Payment methods settings screen** — reuses `SavedCardList` + `AddCardForm` exported from `features/payment/index.ts`; page layout and routing is left for the settings sprint
 - **Mobile app (Expo)** — uses `@stripe/stripe-react-native` instead; separate plan required
 - **Backend webhook implementation** — already documented in `docs/stripe_connect.md`
 - **Fee splitting / Stripe Connect** — entirely server-side; frontend is unaware

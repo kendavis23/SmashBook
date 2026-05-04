@@ -18,6 +18,7 @@ type Props = {
     onRefresh: () => void;
     onCreateClick: () => void;
     onManageClick: (item: PlayerBookingItem) => void;
+    onPayClick: (item: PlayerBookingItem) => void;
     onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onRespondInvite: (
         item: PlayerBookingItem,
@@ -40,6 +41,7 @@ export default function BookingsView({
     onRefresh,
     onCreateClick: _onCreateClick,
     onManageClick,
+    onPayClick,
     onInvitePlayer,
     onRespondInvite,
     onPastFilterChange,
@@ -146,6 +148,7 @@ export default function BookingsView({
                             emptyMessage={emptyMessage}
                             showActions={activeTab === "upcoming"}
                             onManageClick={onManageClick}
+                            onPayClick={onPayClick}
                             onInvitePlayer={onInvitePlayer}
                             onRespondInvite={onRespondInvite}
                         />

@@ -19,6 +19,8 @@
         "@repo/design-system": "workspace:*",
         "@repo/player-domain": "workspace:*",
         "@repo/ui": "workspace:*",
+        "@stripe/react-stripe-js": "^6.3.0",
+        "@stripe/stripe-js": "^9.4.0",
         "@tanstack/react-query": "5.62.9",
         "@tanstack/react-router": "^1.90.0",
         "lucide-react": "0.446.0",
