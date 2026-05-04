@@ -4,7 +4,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { config } from "@repo/config";
-import { useListPaymentMethods, useCreatePaymentIntent, useCreateSetupIntent } from "@repo/player-domain/hooks";
+import { useListPaymentMethods, useCreatePaymentIntent, useCreateSetupIntent, useSavePaymentMethod } from "@repo/player-domain/hooks";
 import type { PaymentModalProps, PaymentStep } from "../types";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { PaymentSuccessStep } from "./PaymentSuccessStep";
@@ -63,13 +63,16 @@ function StripeForm({
 
 // SetupIntent version — used for add_card context
 function StripeSetupForm({
+    clientSecret,
     onSuccess,
 }: {
+    clientSecret: string;
     onSuccess: () => void;
 }): JSX.Element {
     const stripe = useStripe();
     const elements = useElements();
     const queryClient = useQueryClient();
+    const savePaymentMethod = useSavePaymentMethod();
     const [isConfirming, setIsConfirming] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -86,16 +89,33 @@ function StripeSetupForm({
             redirect: "if_required",
         });
 
-        setIsConfirming(false);
-
         if (stripeError) {
+            setIsConfirming(false);
             setError(stripeError.message ?? "Failed to save card.");
             return;
         }
 
+        const { setupIntent } = await stripe.retrieveSetupIntent(clientSecret);
+        const paymentMethodId = setupIntent?.payment_method as string | null;
+
+        if (!paymentMethodId) {
+            setIsConfirming(false);
+            setError("Could not retrieve saved card — please try again.");
+            return;
+        }
+
+        try {
+            await savePaymentMethod.mutateAsync({ payment_method_id: paymentMethodId, set_as_default: false });
+        } catch (err) {
+            setIsConfirming(false);
+            setError((err as { message?: string })?.message ?? "Failed to save card.");
+            return;
+        }
+
+        setIsConfirming(false);
         queryClient.invalidateQueries({ queryKey: ["player", "payment-methods"] });
         onSuccess();
-    }, [stripe, elements, queryClient, onSuccess]);
+    }, [stripe, elements, clientSecret, savePaymentMethod, queryClient, onSuccess]);
 
     return (
         <PaymentMethodStep
@@ -288,7 +308,7 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                                 we&apos;ll proceed to payment.
                             </p>
                         </div>
-                        <StripeSetupForm onSuccess={() => void handleSaveCardThenPay()} />
+                        <StripeSetupForm clientSecret={clientSecret} onSuccess={() => void handleSaveCardThenPay()} />
                     </Elements>
                 ) : showPayForm ? (
                     <Elements
@@ -304,7 +324,7 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                         {context.type === "booking" ? (
                             <StripeForm amount={amount} onSuccess={handlePaySuccess} />
                         ) : (
-                            <StripeSetupForm onSuccess={handleSetupSuccess} />
+                            <StripeSetupForm clientSecret={clientSecret} onSuccess={handleSetupSuccess} />
                         )}
                     </Elements>
                 ) : null}

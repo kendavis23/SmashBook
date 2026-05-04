@@ -119,3 +119,6 @@ The publishable key (not the secret key) is what the frontend uses. It can be ba
 
 - Stripe    → Backend  : Webhook (payment_intent.succeeded)
 - Backend   → DB       : Update payment status
+
+
+https://docs.stripe.com/testing?testing-method=card-numbers#cards
