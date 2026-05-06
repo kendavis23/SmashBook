@@ -32,10 +32,10 @@ def _mock_customer(customer_id: str = STRIPE_CUSTOMER_ID) -> MagicMock:
     return c
 
 
-def _mock_pm(pm_id: str = STRIPE_PM_ID, customer_id: str = STRIPE_CUSTOMER_ID) -> MagicMock:
+def _mock_pm(pm_id: str = STRIPE_PM_ID, customer_id: str = STRIPE_CUSTOMER_ID, attached: bool = True) -> MagicMock:
     pm = MagicMock()
     pm.id = pm_id
-    pm.customer = customer_id
+    pm.customer = customer_id if attached else None
     pm.card.brand = "visa"
     pm.card.last4 = "4242"
     pm.card.exp_month = 12
@@ -132,8 +132,12 @@ class TestCreateSetupIntent:
 
 class TestSavePaymentMethod:
     async def test_saves_and_sets_as_default(self, client, player_headers):
+        """Unattached PM (direct createPaymentMethod flow): retrieve → attach → set default."""
+        unattached_pm = _mock_pm(attached=False)
+        attached_pm = _mock_pm()
         with patch("stripe.Customer.create", return_value=_mock_customer()), \
-             patch("stripe.PaymentMethod.attach", return_value=_mock_pm()), \
+             patch("stripe.PaymentMethod.retrieve", return_value=unattached_pm), \
+             patch("stripe.PaymentMethod.attach", return_value=attached_pm), \
              patch("stripe.Customer.modify"):
             resp = await client.post(
                 "/api/v1/payments/payment-methods",
@@ -154,8 +158,11 @@ class TestSavePaymentMethod:
         # Ensure there's no existing default so is_default comes back False
         await _set_stripe_fields(test_session_factory, player.id, default_pm_id=None)
 
+        unattached_pm = _mock_pm(attached=False)
+        attached_pm = _mock_pm()
         with patch("stripe.Customer.create", return_value=_mock_customer()), \
-             patch("stripe.PaymentMethod.attach", return_value=_mock_pm()):
+             patch("stripe.PaymentMethod.retrieve", return_value=unattached_pm), \
+             patch("stripe.PaymentMethod.attach", return_value=attached_pm):
             resp = await client.post(
                 "/api/v1/payments/payment-methods",
                 json={"payment_method_id": STRIPE_PM_ID, "set_as_default": False},
@@ -166,8 +173,11 @@ class TestSavePaymentMethod:
         assert resp.json()["is_default"] is False
 
     async def test_default_persisted_to_db(self, client, player, player_headers, test_session_factory):
+        unattached_pm = _mock_pm(attached=False)
+        attached_pm = _mock_pm()
         with patch("stripe.Customer.create", return_value=_mock_customer()), \
-             patch("stripe.PaymentMethod.attach", return_value=_mock_pm()), \
+             patch("stripe.PaymentMethod.retrieve", return_value=unattached_pm), \
+             patch("stripe.PaymentMethod.attach", return_value=attached_pm), \
              patch("stripe.Customer.modify"):
             await client.post(
                 "/api/v1/payments/payment-methods",
@@ -178,6 +188,38 @@ class TestSavePaymentMethod:
         async with test_session_factory() as session:
             u = await session.get(User, player.id)
             assert u.default_payment_method_id == STRIPE_PM_ID
+
+    async def test_setup_intent_flow_skips_attach(self, client, player, player_headers, test_session_factory):
+        """PM already attached via SetupIntent: retrieve returns customer match, attach must not be called."""
+        await _set_stripe_fields(test_session_factory, player.id)
+
+        already_attached_pm = _mock_pm()  # customer == STRIPE_CUSTOMER_ID
+        with patch("stripe.PaymentMethod.retrieve", return_value=already_attached_pm) as mock_retrieve, \
+             patch("stripe.PaymentMethod.attach") as mock_attach, \
+             patch("stripe.Customer.modify"):
+            resp = await client.post(
+                "/api/v1/payments/payment-methods",
+                json={"payment_method_id": STRIPE_PM_ID, "set_as_default": True},
+                headers=player_headers,
+            )
+
+        assert resp.status_code == 201
+        mock_retrieve.assert_called_once_with(STRIPE_PM_ID)
+        mock_attach.assert_not_called()
+
+    async def test_rejects_pm_belonging_to_other_customer(self, client, player, player_headers, test_session_factory):
+        """PM attached to a different Stripe customer returns 400."""
+        await _set_stripe_fields(test_session_factory, player.id)
+
+        foreign_pm = _mock_pm(customer_id="cus_someoneElse")
+        with patch("stripe.PaymentMethod.retrieve", return_value=foreign_pm):
+            resp = await client.post(
+                "/api/v1/payments/payment-methods",
+                json={"payment_method_id": STRIPE_PM_ID, "set_as_default": True},
+                headers=player_headers,
+            )
+
+        assert resp.status_code == 400
 
     async def test_unauthenticated_returns_403(self, client):
         resp = await client.post(

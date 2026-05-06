@@ -91,10 +91,14 @@ class PaymentService:
         """
         customer_id = await self._ensure_stripe_customer(user)
         try:
-            pm = stripe.PaymentMethod.attach(
-                payment_method_id,
-                customer=customer_id,
-            )
+            pm = stripe.PaymentMethod.retrieve(payment_method_id)
+            if pm.customer != customer_id:
+                if pm.customer:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Payment method belongs to a different customer",
+                    )
+                pm = stripe.PaymentMethod.attach(payment_method_id, customer=customer_id)
         except stripe.StripeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
