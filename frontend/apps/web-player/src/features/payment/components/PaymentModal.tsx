@@ -260,7 +260,7 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                 onClick={onClose}
                 aria-hidden="true"
             />
-            <div className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl max-h-[90vh]">
                 <div className="flex items-center justify-between border-b border-border px-6 py-4">
                     <h2 className="text-base font-semibold text-foreground">{title}</h2>
                     <button
@@ -273,6 +273,7 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                     </button>
                 </div>
 
+                <div className="overflow-y-auto">
                 {step.id === "loading" ? (
                     <div className="flex items-center justify-center gap-3 py-16">
                         <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
@@ -328,6 +329,7 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                         )}
                     </Elements>
                 ) : null}
+                </div>
             </div>
         </div>
     );
