@@ -117,10 +117,10 @@ class PaymentService:
 
         return {
             "id": pm.id,
-            "brand": pm.card.brand,
-            "last4": pm.card.last4,
-            "exp_month": pm.card.exp_month,
-            "exp_year": pm.card.exp_year,
+            "brand": pm.Card.brand,
+            "last4": pm.Card.last4,
+            "exp_month": pm.Card.exp_month,
+            "exp_year": pm.Card.exp_year,
             "is_default": pm.id == user.default_payment_method_id,
         }
 
@@ -134,10 +134,10 @@ class PaymentService:
         return [
             {
                 "id": pm.id,
-                "brand": pm.card.brand,
-                "last4": pm.card.last4,
-                "exp_month": pm.card.exp_month,
-                "exp_year": pm.card.exp_year,
+                "brand": pm.Card.brand,
+                "last4": pm.Card.last4,
+                "exp_month": pm.Card.exp_month,
+                "exp_year": pm.Card.exp_year,
                 "is_default": pm.id == user.default_payment_method_id,
             }
             for pm in methods.data
@@ -208,10 +208,10 @@ class PaymentService:
 
         return {
             "id": pm.id,
-            "brand": pm.card.brand,
-            "last4": pm.card.last4,
-            "exp_month": pm.card.exp_month,
-            "exp_year": pm.card.exp_year,
+            "brand": pm.Card.brand,
+            "last4": pm.Card.last4,
+            "exp_month": pm.Card.exp_month,
+            "exp_year": pm.Card.exp_year,
             "is_default": True,
         }
 
