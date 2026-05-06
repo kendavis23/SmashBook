@@ -71,6 +71,7 @@ class PaymentService:
         setup_intent = stripe.SetupIntent.create(
             customer=customer_id,
             usage="off_session",
+            payment_method_types=["card"],
         )
         return {
             "client_secret": setup_intent.client_secret,
@@ -105,6 +106,12 @@ class PaymentService:
                 detail=str(exc.user_message or exc),
             )
 
+        if pm.type != "card":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Only card payment methods are supported",
+            )
+
         if set_as_default:
             stripe.Customer.modify(
                 customer_id,
@@ -117,10 +124,10 @@ class PaymentService:
 
         return {
             "id": pm.id,
-            "brand": pm.Card.brand,
-            "last4": pm.Card.last4,
-            "exp_month": pm.Card.exp_month,
-            "exp_year": pm.Card.exp_year,
+            "brand": pm.card.brand,
+            "last4": pm.card.last4,
+            "exp_month": pm.card.exp_month,
+            "exp_year": pm.card.exp_year,
             "is_default": pm.id == user.default_payment_method_id,
         }
 
@@ -134,10 +141,10 @@ class PaymentService:
         return [
             {
                 "id": pm.id,
-                "brand": pm.Card.brand,
-                "last4": pm.Card.last4,
-                "exp_month": pm.Card.exp_month,
-                "exp_year": pm.Card.exp_year,
+                "brand": pm.card.brand if pm.type == "card" else None,
+                "last4": pm.card.last4 if pm.type == "card" else None,
+                "exp_month": pm.card.exp_month if pm.type == "card" else None,
+                "exp_year": pm.card.exp_year if pm.type == "card" else None,
                 "is_default": pm.id == user.default_payment_method_id,
             }
             for pm in methods.data
@@ -208,10 +215,10 @@ class PaymentService:
 
         return {
             "id": pm.id,
-            "brand": pm.Card.brand,
-            "last4": pm.Card.last4,
-            "exp_month": pm.Card.exp_month,
-            "exp_year": pm.Card.exp_year,
+            "brand": pm.card.brand,
+            "last4": pm.card.last4,
+            "exp_month": pm.card.exp_month,
+            "exp_year": pm.card.exp_year,
             "is_default": True,
         }
 
