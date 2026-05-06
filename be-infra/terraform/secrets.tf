@@ -11,6 +11,7 @@ locals {
     "padel-database-read-replica-url",
     "padel-secret-key",
     "stripe-secret-key",
+    "stripe-publishable-key",
     "stripe-webhook-secret",
     "sendgrid-api-key",
     "padel-platform-api-key",
