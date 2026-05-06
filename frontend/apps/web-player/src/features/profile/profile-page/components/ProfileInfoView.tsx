@@ -168,11 +168,11 @@ export function ProfileInfoView({
                 </div>
             </div>
 
-            <div className="pt-1">
+            <div className="flex pt-1 sm:justify-end">
                 <button
                     type="submit"
                     disabled={isPending}
-                    className="btn-cta min-h-9 w-full px-6 text-sm"
+                    className="btn-cta min-h-9 w-full px-6 text-sm sm:w-auto"
                 >
                     {isPending ? "Saving…" : "Save changes"}
                 </button>

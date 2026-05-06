@@ -58,14 +58,14 @@ export function ProfileNotificationView({
                 <AlertToast title={apiError} variant="error" onClose={onDismissError} />
             ) : null}
 
-            <div>
+            <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
                 <p className="text-xs font-medium text-muted-foreground">Notification Channel</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">
+                <p className="mt-0.5 text-sm leading-5 text-foreground">
                     Choose how you want to receive notifications.
                 </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
                 {NOTIFICATION_OPTIONS.map(({ value, label, description, icon }) => {
                     const active = selected === value;
                     return (
@@ -73,23 +73,23 @@ export function ProfileNotificationView({
                             key={value}
                             type="button"
                             onClick={() => onSelect(value)}
-                            className={`group relative flex flex-col items-center gap-2.5 rounded-xl border px-3 py-4 text-center transition-all duration-150
+                            className={`group relative flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all duration-150
                                 ${
                                     active
-                                        ? "border-cta bg-cta/10 ring-1 ring-cta/30"
+                                        ? "border-cta bg-cta/10 ring-1 ring-cta/25"
                                         : "border-border bg-background hover:border-cta/40 hover:bg-cta/5"
                                 }`}
                         >
                             {active && (
-                                <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-cta" />
+                                <span className="absolute right-3 top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-cta" />
                             )}
                             <span
-                                className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-150
+                                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors duration-150
                                     ${active ? "bg-cta text-white" : "bg-muted text-muted-foreground group-hover:bg-cta/10 group-hover:text-cta"}`}
                             >
                                 {icon}
                             </span>
-                            <span className="space-y-0.5">
+                            <span className="min-w-0 flex-1 space-y-0.5 pr-4">
                                 <span className={`block text-sm font-semibold ${active ? "text-cta" : "text-foreground"}`}>
                                     {label}
                                 </span>
@@ -102,11 +102,11 @@ export function ProfileNotificationView({
                 })}
             </div>
 
-            <div className="mt-auto pt-1">
+            <div className="mt-auto flex pt-1 sm:justify-end">
                 <button
                     type="submit"
                     disabled={isPending}
-                    className="btn-cta min-h-9 w-full px-5 text-sm"
+                    className="btn-cta min-h-9 w-full px-5 text-sm sm:w-auto"
                 >
                     {isPending ? "Saving…" : "Save changes"}
                 </button>

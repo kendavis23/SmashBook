@@ -87,10 +87,10 @@ export function ProfileView({
                                 ${activeTab === "payment"
                                     ? "border-cta text-cta"
                                     : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
+                            }`}
                         >
                             <CreditCard size={14} />
-                            Payment
+                            Billing
                         </button>
                     </nav>
                 </div>
@@ -99,15 +99,20 @@ export function ProfileView({
                     {activeTab === "payment" ? (
                         <ProfilePaymentView />
                     ) : (
-                        /* Info + Notifications side by side */
-                        <div className="flex flex-col gap-8 lg:flex-row">
-                            {/* Left — personal info */}
-                            <div className="flex-1">
-                                <div className="mb-4 flex items-center gap-2">
-                                    <User size={14} className="text-muted-foreground" />
-                                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                                        Personal Info
-                                    </p>
+                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
+                            <section className="rounded-xl border border-border bg-background p-4 shadow-xs sm:p-5">
+                                <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                                        <User size={15} />
+                                    </span>
+                                    <div>
+                                        <h2 className="text-sm font-semibold text-foreground">
+                                            Personal Info
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground">
+                                            Basic account details and profile photo
+                                        </p>
+                                    </div>
                                 </div>
                                 <ProfileInfoView
                                     user={user}
@@ -120,18 +125,21 @@ export function ProfileView({
                                     onSubmit={onInfoSubmit}
                                     onDismissError={onInfoDismissError}
                                 />
-                            </div>
+                            </section>
 
-                            {/* Divider */}
-                            <div className="border-t border-border lg:border-l lg:border-t-0" />
-
-                            {/* Right — notifications */}
-                            <div className="flex-1">
-                                <div className="mb-4 flex items-center gap-2">
-                                    <Bell size={14} className="text-muted-foreground" />
-                                    <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                                        Notifications
-                                    </p>
+                            <section className="rounded-xl border border-border bg-background p-4 shadow-xs sm:p-5">
+                                <div className="mb-5 flex items-center gap-3 border-b border-border pb-4">
+                                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                                        <Bell size={15} />
+                                    </span>
+                                    <div>
+                                        <h2 className="text-sm font-semibold text-foreground">
+                                            Notifications
+                                        </h2>
+                                        <p className="text-xs text-muted-foreground">
+                                            Choose your preferred channel
+                                        </p>
+                                    </div>
                                 </div>
                                 <ProfileNotificationView
                                     selected={notifChannel}
@@ -141,7 +149,7 @@ export function ProfileView({
                                     onSubmit={onNotifSubmit}
                                     onDismissError={onNotifDismissError}
                                 />
-                            </div>
+                            </section>
                         </div>
                     )}
                 </div>
