@@ -33,7 +33,7 @@ class PaymentIntentRequest(BaseModel):
 class PaymentIntentResponse(BaseModel):
     client_secret: str
     payment_intent_id: str
-    amount: int   # pence
+    amount: Decimal  # pounds
     currency: str
 
 
@@ -70,5 +70,5 @@ class WalletTopUpRequest(BaseModel):
 class WalletTopUpResponse(BaseModel):
     client_secret: str
     payment_intent_id: str
-    amount: int   # pence
+    amount: Decimal  # pounds
     currency: str

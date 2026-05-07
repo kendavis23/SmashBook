@@ -319,7 +319,7 @@ class PaymentService:
         return {
             "client_secret": pi.client_secret,
             "payment_intent_id": pi.id,
-            "amount": amount_pence,
+            "amount": Decimal(str(amount_pence)) / 100,
             "currency": currency.lower(),
         }
 
@@ -596,7 +596,7 @@ class PaymentService:
         return {
             "client_secret": pi.client_secret,
             "payment_intent_id": pi.id,
-            "amount": amount_pence,
+            "amount": Decimal(str(amount_pence)) / 100,
             "currency": wallet.currency.lower(),
         }
 
