@@ -252,7 +252,7 @@ class TestWalletTopUp:
             body = resp.json()
             assert body["client_secret"] == STRIPE_PI_SECRET
             assert body["payment_intent_id"] == STRIPE_PI_ID
-            assert body["amount"] == 2000
+            assert Decimal(body["amount"]) == Decimal("20.00")  # £20.00
             assert body["currency"] == "gbp"
         finally:
             await _delete_wallet(test_session_factory, wallet.id)
