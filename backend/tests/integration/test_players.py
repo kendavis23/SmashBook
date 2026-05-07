@@ -420,7 +420,12 @@ class TestGetMyBookings:
             role=PlayerRole.player,
         )
 
-        resp = await client.get("/api/v1/players/me/bookings", headers=player_headers)
+        past_from = (datetime.now(tz=timezone.utc) - timedelta(days=7)).date().isoformat()
+        resp = await client.get(
+            "/api/v1/players/me/bookings",
+            params={"past_from": past_from},
+            headers=player_headers,
+        )
         assert resp.status_code == 200
 
         past_ids = {b["booking_id"] for b in resp.json()["past"]}
