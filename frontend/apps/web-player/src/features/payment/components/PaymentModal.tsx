@@ -5,10 +5,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { config } from "@repo/config";
 import { useListPaymentMethods, useCreatePaymentIntent, useCreateSetupIntent, useSavePaymentMethod } from "@repo/player-domain/hooks";
-import type { PaymentModalProps, PaymentStep } from "../types";
+import type { PaymentModalProps, PaymentMethod, PaymentStep } from "../types";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { PaymentSuccessStep } from "./PaymentSuccessStep";
 import { PaymentErrorBanner } from "./PaymentErrorBanner";
+import { SelectMethodStep } from "./SelectMethodStep";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
@@ -61,13 +62,15 @@ function StripeForm({
     );
 }
 
-// SetupIntent version — used for add_card context
+// SetupIntent version — used for add_card and save_card_first contexts
 function StripeSetupForm({
     clientSecret,
     onSuccess,
+    submitLabel,
 }: {
     clientSecret: string;
     onSuccess: () => void;
+    submitLabel?: string;
 }): JSX.Element {
     const stripe = useStripe();
     const elements = useElements();
@@ -124,8 +127,28 @@ function StripeSetupForm({
             error={error}
             onSubmit={() => void handleSubmit()}
             onDismissError={() => setError(null)}
-            submitLabel="Save card"
+            submitLabel={submitLabel ?? "Save card"}
         />
+    );
+}
+
+function StripeElementsWrapper({
+    clientSecret,
+    children,
+}: {
+    clientSecret: string;
+    children: JSX.Element;
+}): JSX.Element {
+    return (
+        <Elements
+            stripe={stripePromise}
+            options={{
+                clientSecret,
+                appearance: { theme: "stripe", variables: { borderRadius: "8px" } },
+            }}
+        >
+            {children}
+        </Elements>
     );
 }
 
@@ -134,41 +157,13 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [amount, setAmount] = useState(0);
     const [currency, setCurrency] = useState("gbp");
+    // Tracks amount to show on SelectMethodStep before intent is created
+    const [pendingAmount, setPendingAmount] = useState(0);
 
     const queryClient = useQueryClient();
     const { data: paymentMethods, isLoading: methodsLoading } = useListPaymentMethods();
     const createPaymentIntent = useCreatePaymentIntent();
     const createSetupIntent = useCreateSetupIntent();
-
-    const startPaymentIntent = useCallback(
-        async (methods: typeof paymentMethods) => {
-            if (context.type !== "booking") return;
-            const defaultMethod = methods?.find((m) => m.is_default) ?? null;
-            try {
-                const intent = await createPaymentIntent.mutateAsync({
-                    booking_id: context.booking.booking_id,
-                    payment_method_id: defaultMethod?.id ?? null,
-                });
-                setClientSecret(intent.client_secret);
-                setAmount(intent.amount);
-                setCurrency(intent.currency);
-                setStep(
-                    (methods?.length ?? 0) > 0
-                        ? { id: "select_method", methods: methods! }
-                        : { id: "new_card" }
-                );
-            } catch (err) {
-                setStep({
-                    id: "error",
-                    message:
-                        (err as { message?: string })?.message ??
-                        "Unable to start payment — please try again.",
-                });
-            }
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [context]
-    );
 
     useEffect(() => {
         if (methodsLoading) return;
@@ -190,7 +185,9 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                         });
                     }
                 } else {
-                    await startPaymentIntent(paymentMethods);
+                    // Show card selection — don't call createPaymentIntent yet
+                    setPendingAmount(context.booking.amount_due ?? 0);
+                    setStep({ id: "choose_card", methods: paymentMethods! });
                 }
             } else {
                 try {
@@ -212,6 +209,33 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [methodsLoading]);
 
+    // Called when user picks a card (or null = use new card) on SelectMethodStep
+    const handleCardChosen = useCallback(
+        async (methodId: string | null) => {
+            if (context.type !== "booking") return;
+            setStep({ id: "loading" });
+            try {
+                const intent = await createPaymentIntent.mutateAsync({
+                    booking_id: context.booking.booking_id,
+                    payment_method_id: methodId,
+                });
+                setClientSecret(intent.client_secret);
+                setAmount(intent.amount);
+                setCurrency(intent.currency);
+                // null methodId = enter new card details; otherwise show confirm form
+                setStep(methodId ? { id: "select_method", methods: paymentMethods ?? [] } : { id: "new_card" });
+            } catch (err) {
+                setStep({
+                    id: "error",
+                    message:
+                        (err as { message?: string })?.message ??
+                        "Unable to start payment — please try again.",
+                });
+            }
+        },
+        [context, createPaymentIntent, paymentMethods]
+    );
+
     const handlePaySuccess = useCallback(
         (successAmount: number, successCurrency: string) => {
             setStep({ id: "success", amount: successAmount, currency: successCurrency });
@@ -219,17 +243,19 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
         []
     );
 
-    // Called after the user saves a card in the save_card_first flow
+    // Called after user saves a card in save_card_first flow — re-enter choose_card
     const handleSaveCardThenPay = useCallback(async () => {
         setStep({ id: "loading" });
         setClientSecret(null);
         await queryClient.invalidateQueries({ queryKey: ["player", "payment-methods"] });
-        const freshMethods = queryClient.getQueryData<typeof paymentMethods>([
-            "player",
-            "payment-methods",
-        ]);
-        await startPaymentIntent(freshMethods);
-    }, [queryClient, startPaymentIntent]);
+        const freshMethods = queryClient.getQueryData<PaymentMethod[]>(["player", "payment-methods"]);
+        if ((freshMethods?.length ?? 0) > 0) {
+            setPendingAmount(context.type === "booking" ? (context.booking.amount_due ?? 0) : 0);
+            setStep({ id: "choose_card", methods: freshMethods! });
+        } else {
+            setStep({ id: "error", message: "No payment methods found — please try again." });
+        }
+    }, [queryClient, context]);
 
     const handleSetupSuccess = useCallback(() => {
         setStep({ id: "success", amount: 0, currency });
@@ -238,15 +264,20 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
     const title =
         step.id === "save_card_first"
             ? "Save a card to pay"
-            : context.type === "booking"
-                ? "Pay for booking"
-                : "Add payment method";
+            : step.id === "choose_card"
+                ? "Choose payment method"
+                : context.type === "booking"
+                    ? "Pay for booking"
+                    : "Add payment method";
 
     const showPayForm =
         clientSecret &&
         (step.id === "select_method" || step.id === "new_card" || step.id === "confirming");
 
     const showSaveCardForm = clientSecret && step.id === "save_card_first";
+
+    // add_card context: new_card step with setup intent
+    const showAddCardForm = clientSecret && step.id === "new_card" && context.type === "add_card";
 
     return (
         <div
@@ -274,61 +305,58 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                 </div>
 
                 <div className="overflow-y-auto">
-                {step.id === "loading" ? (
-                    <div className="flex items-center justify-center gap-3 py-16">
-                        <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
-                        <span className="text-sm text-muted-foreground">Preparing payment…</span>
-                    </div>
-                ) : step.id === "error" ? (
-                    <div className="p-6">
-                        <PaymentErrorBanner message={step.message} />
-                        <button type="button" onClick={onClose} className="btn-outline mt-4 w-full">
-                            Close
-                        </button>
-                    </div>
-                ) : step.id === "success" ? (
-                    <PaymentSuccessStep
-                        amount={step.amount}
-                        currency={step.currency}
-                        onClose={onClose}
-                    />
-                ) : showSaveCardForm ? (
-                    <Elements
-                        stripe={stripePromise}
-                        options={{
-                            clientSecret,
-                            appearance: {
-                                theme: "stripe",
-                                variables: { borderRadius: "8px" },
-                            },
-                        }}
-                    >
-                        <div className="px-6 pb-2 pt-4">
-                            <p className="text-sm text-muted-foreground">
-                                You need a saved card to pay for bookings. Add one below and
-                                we&apos;ll proceed to payment.
-                            </p>
+                    {step.id === "loading" ? (
+                        <div className="flex items-center justify-center gap-3 py-16">
+                            <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
+                            <span className="text-sm text-muted-foreground">Preparing payment…</span>
                         </div>
-                        <StripeSetupForm clientSecret={clientSecret} onSuccess={() => void handleSaveCardThenPay()} />
-                    </Elements>
-                ) : showPayForm ? (
-                    <Elements
-                        stripe={stripePromise}
-                        options={{
-                            clientSecret,
-                            appearance: {
-                                theme: "stripe",
-                                variables: { borderRadius: "8px" },
-                            },
-                        }}
-                    >
-                        {context.type === "booking" ? (
+                    ) : step.id === "error" ? (
+                        <div className="p-6">
+                            <PaymentErrorBanner message={step.message} />
+                            <button type="button" onClick={onClose} className="btn-outline mt-4 w-full">
+                                Close
+                            </button>
+                        </div>
+                    ) : step.id === "success" ? (
+                        <PaymentSuccessStep
+                            amount={step.amount}
+                            currency={step.currency}
+                            onClose={onClose}
+                        />
+                    ) : step.id === "choose_card" ? (
+                        <SelectMethodStep
+                            methods={step.methods}
+                            amount={pendingAmount}
+                            isLoading={createPaymentIntent.isPending}
+                            onConfirm={(methodId) => void handleCardChosen(methodId)}
+                        />
+                    ) : showSaveCardForm && clientSecret ? (
+                        <StripeElementsWrapper clientSecret={clientSecret}>
+                            <>
+                                <div className="px-6 pb-2 pt-4">
+                                    <p className="text-sm text-muted-foreground">
+                                        You need a saved card to pay for bookings. Add one below and
+                                        we&apos;ll proceed to payment.
+                                    </p>
+                                </div>
+                                <StripeSetupForm
+                                    clientSecret={clientSecret}
+                                    onSuccess={() => void handleSaveCardThenPay()}
+                                />
+                            </>
+                        </StripeElementsWrapper>
+                    ) : showAddCardForm && clientSecret ? (
+                        <StripeElementsWrapper clientSecret={clientSecret}>
+                            <StripeSetupForm
+                                clientSecret={clientSecret}
+                                onSuccess={handleSetupSuccess}
+                            />
+                        </StripeElementsWrapper>
+                    ) : showPayForm && clientSecret ? (
+                        <StripeElementsWrapper clientSecret={clientSecret}>
                             <StripeForm amount={amount} onSuccess={handlePaySuccess} />
-                        ) : (
-                            <StripeSetupForm clientSecret={clientSecret} onSuccess={handleSetupSuccess} />
-                        )}
-                    </Elements>
-                ) : null}
+                        </StripeElementsWrapper>
+                    ) : null}
                 </div>
             </div>
         </div>

@@ -217,17 +217,11 @@ export function ProfilePaymentView(): JSX.Element {
         setSetupError(null);
     }, []);
 
-    const handleOpenAdd = useCallback(async () => {
-        setShowAddCard(true);
+    const handleOpenAdd = useCallback(() => {
         setSetupError(null);
         setClientSecret(null);
-        try {
-            const intent = await createSetupIntent.mutateAsync();
-            setClientSecret(intent.client_secret);
-        } catch (err) {
-            setSetupError((err as { message?: string })?.message ?? "Unable to set up card.");
-        }
-    }, [createSetupIntent]);
+        setShowAddCard(true);
+    }, []);
 
     return (
         <div className="space-y-4">
