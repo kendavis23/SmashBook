@@ -185,7 +185,7 @@ async def list_available_trainers(
             continue
         available.append(
             TrainerAvailableSummary(
-                staff_profile_id=profile.id,
+                id=profile.id,
                 club_id=profile.club_id,
                 full_name=user_names.get(profile.user_id, ""),
                 bio=profile.bio,

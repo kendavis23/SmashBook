@@ -11,6 +11,7 @@ import { useClubAccess } from "../../store";
 import type { BookingInput, BookingType } from "../../types";
 import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
+import { getTrainerStaffProfileId } from "./trainerSelect";
 
 type Props = {
     courtId: string;
@@ -58,6 +59,7 @@ export default function NewBookingModalContainer({
 
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
+    const [staffError, setStaffError] = useState("");
 
     const {
         data: availabilityData,
@@ -95,7 +97,7 @@ export default function NewBookingModalContainer({
         prevTrainerDataRef.current = trainerData;
         if (
             form.staffProfileId &&
-            !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)
+            !trainerData.some((t) => getTrainerStaffProfileId(t) === form.staffProfileId)
         ) {
             setForm((prev) => ({ ...prev, staffProfileId: "" }));
         }
@@ -111,8 +113,10 @@ export default function NewBookingModalContainer({
                 const next = { ...prev, ...patch };
                 if (patch.bookingType !== undefined) {
                     next.isOpenGame = false;
+                    if (staffError) setStaffError("");
                     if (patch.bookingType === "lesson_individual") {
                         next.maxPlayers = "1";
+                        next.playerUserIds = [];
                     }
                 }
                 if (patch.courtId !== undefined && courtError) setCourtError("");
@@ -121,10 +125,11 @@ export default function NewBookingModalContainer({
                     startError
                 )
                     setStartError("");
+                if (patch.staffProfileId !== undefined && staffError) setStaffError("");
                 return next;
             });
         },
-        [courtError, startError]
+        [courtError, staffError, startError]
     );
 
     const validate = (): boolean => {
@@ -137,6 +142,10 @@ export default function NewBookingModalContainer({
             setStartError("Date and start time are required.");
             valid = false;
         }
+        if (form.bookingType === "lesson_individual" && !form.staffProfileId.trim()) {
+            setStaffError("Staff trainer is required for individual lessons.");
+            valid = false;
+        }
         return valid;
     };
 
@@ -147,7 +156,7 @@ export default function NewBookingModalContainer({
 
             const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
 
-            const invitedPlayerIds = form.isOpenGame
+            const invitedPlayerIds = form.isOpenGame || form.bookingType === "lesson_individual"
                 ? []
                 : form.playerUserIds.map((id) => id.trim()).filter(Boolean);
             const payload: BookingInput = {
@@ -192,6 +201,7 @@ export default function NewBookingModalContainer({
             form={form}
             courtError={courtError}
             startError={startError}
+            staffError={staffError}
             apiError={apiError}
             isPending={createMutation.isPending}
             onFormChange={handleFormChange}

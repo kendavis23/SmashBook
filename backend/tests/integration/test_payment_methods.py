@@ -35,6 +35,7 @@ def _mock_customer(customer_id: str = STRIPE_CUSTOMER_ID) -> MagicMock:
 def _mock_pm(pm_id: str = STRIPE_PM_ID, customer_id: str = STRIPE_CUSTOMER_ID, attached: bool = True) -> MagicMock:
     pm = MagicMock()
     pm.id = pm_id
+    pm.type = "card"
     pm.customer = customer_id if attached else None
     pm.card.brand = "visa"
     pm.card.last4 = "4242"

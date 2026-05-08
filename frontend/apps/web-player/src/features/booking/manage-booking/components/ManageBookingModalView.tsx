@@ -75,9 +75,11 @@ const MODAL_PAGE_SIZE = 4;
 function PlayersTable({
     players,
     myUserId,
+    showPayCta,
 }: {
     players: Booking["players"];
     myUserId?: string;
+    showPayCta: boolean;
 }): JSX.Element {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(0);
@@ -196,9 +198,20 @@ function PlayersTable({
                                         </span>
                                     </p>
                                 </div>
-                                <span className="shrink-0 text-sm font-medium text-foreground">
-                                    {formatCurrency(p.amount_due)}
-                                </span>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <span className="text-sm font-medium text-foreground">
+                                        {formatCurrency(p.amount_due)}
+                                    </span>
+                                    {isMe && showPayCta ? (
+                                        <button
+                                            type="button"
+                                            className="btn-cta inline-flex min-h-8 items-center justify-center gap-1.5 px-3 text-xs"
+                                        >
+                                            <CreditCard size={13} />
+                                            Pay now
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
                         );
                     })
@@ -435,35 +448,6 @@ export function ManageBookingModalView({
                     </section>
                 ) : null}
 
-                {showPayCta ? (
-                    <section className={sectionCls}>
-                        <div className="rounded-lg border border-cta/30 bg-cta/8 px-4 py-3">
-                            <div className="mb-3 flex items-start justify-between gap-3">
-                                <div className="min-w-0">
-                                    <p className="mb-0.5 text-sm font-semibold text-foreground">
-                                        Payment due
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Complete payment to confirm your spot.
-                                    </p>
-                                </div>
-                                {myInfo?.amountDue != null && myInfo.amountDue > 0 ? (
-                                    <span className="shrink-0 text-base font-bold text-foreground">
-                                        {formatCurrency(myInfo.amountDue)}
-                                    </span>
-                                ) : null}
-                            </div>
-                            <button
-                                type="button"
-                                className="btn-cta inline-flex w-full min-h-9 items-center justify-center gap-1.5 text-sm"
-                            >
-                                <CreditCard size={14} />
-                                Pay now
-                            </button>
-                        </div>
-                    </section>
-                ) : null}
-
                 {booking.players.length > 0 ? (
                     <section className={sectionCls}>
                         <div className="flex items-center justify-between gap-2">
@@ -472,7 +456,11 @@ export function ManageBookingModalView({
                                 {booking.players.length}
                             </span>
                         </div>
-                        <PlayersTable players={booking.players} myUserId={myUserId} />
+                        <PlayersTable
+                            players={booking.players}
+                            myUserId={myUserId}
+                            showPayCta={showPayCta}
+                        />
                     </section>
                 ) : null}
             </main>

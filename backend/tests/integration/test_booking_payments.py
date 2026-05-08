@@ -184,7 +184,7 @@ class TestCreatePaymentIntent:
         body = resp.json()
         assert body["client_secret"] == STRIPE_PI_SECRET
         assert body["payment_intent_id"] == STRIPE_PI_ID
-        assert body["amount"] == 2000   # £20.00 → 2000p
+        assert Decimal(body["amount"]) == Decimal("20.00")  # £20.00
         assert body["currency"] == "gbp"
 
     async def test_payment_record_created(self, client, player, player_headers, booking, booking_player, test_session_factory):

@@ -465,13 +465,21 @@ class BookingService:
             if breakdown and breakdown.credit_consumed:
                 await pricing_svc.consume_credit(breakdown.membership_subscription_id, booking.id)
 
-        # 17. Add named players
+        # 17. Add named players.
+        # Private booking where staff fits everyone within capacity: players are directly
+        # booked (accepted). Open games or over-invited private bookings use pending so
+        # players can voluntarily accept/decline and slots aren't over-committed.
+        organiser_count = 0 if is_empty_admin_game else 1
+        over_invited = (len(named_players) + organiser_count) > (max_players or 4)
+        named_invite_status = (
+            InviteStatus.pending if (is_open_game or over_invited) else InviteStatus.accepted
+        )
         for named_user in named_players:
             bp = BookingPlayer(
                 booking=booking,
                 user=named_user,
                 role=PlayerRole.player,
-                invite_status=InviteStatus.pending,
+                invite_status=named_invite_status,
                 payment_status=PaymentStatus.pending,
                 amount_due=amount_due,
             )

@@ -221,7 +221,7 @@ class TestTopUpWallet:
             result = await PaymentService(db).top_up_wallet(user, 2000, STRIPE_PM_ID)
         assert result["client_secret"] == STRIPE_PI_SECRET
         assert result["payment_intent_id"] == STRIPE_PI_ID
-        assert result["amount"] == 2000
+        assert result["amount"] == Decimal("20.00")  # £20.00
         assert result["currency"] == "gbp"
 
     @pytest.mark.asyncio
