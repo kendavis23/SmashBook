@@ -193,7 +193,7 @@ class TestMembershipCredit:
         bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
         assert bd.credit_consumed is True
         assert bd.amount_due == Decimal("0.00")
-        assert bd.total_price == Decimal("0.00")
+        assert bd.total_price == Decimal("20.00")   # full court cost unchanged
         assert bd.discount_source == DiscountSource.membership
         assert bd.membership_subscription_id == SUB_ID
 
@@ -205,8 +205,8 @@ class TestMembershipCredit:
         bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
         assert bd.credit_consumed is False
         assert bd.discount_source == DiscountSource.membership
-        assert bd.discount_amount == Decimal("2.00")   # 10% of 20
-        assert bd.total_price == Decimal("18.00")
+        assert bd.discount_amount == Decimal("0.50")   # 10% of 5.00 per-player
+        assert bd.total_price == Decimal("20.00")      # full court cost unchanged
 
     @pytest.mark.asyncio
     async def test_credit_takes_priority_over_discount_pct(self):
@@ -230,9 +230,9 @@ class TestMembershipDiscountPct:
         sub = _sub(_plan(booking_credits_per_period=5, discount_pct="25.00"), credits_remaining=0)
         svc = PricingService(_db_rule_and_sub(rule, sub))
         bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
-        assert bd.discount_amount == Decimal("5.00")   # 25% of 20
-        assert bd.total_price == Decimal("15.00")
-        assert bd.amount_due == Decimal("3.75")         # 15 / 4
+        assert bd.discount_amount == Decimal("1.25")   # 25% of 5.00 per-player
+        assert bd.total_price == Decimal("20.00")      # full court cost unchanged
+        assert bd.amount_due == Decimal("3.75")        # 5.00 - 1.25
 
     @pytest.mark.asyncio
     async def test_discount_pct_applied_to_incentive_price(self):
@@ -242,8 +242,8 @@ class TestMembershipDiscountPct:
         svc = PricingService(_db_rule_and_sub(rule, sub))
         bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
         assert bd.unit_price == Decimal("12.00")
-        assert bd.discount_amount == Decimal("6.00")   # 50% of 12
-        assert bd.total_price == Decimal("6.00")
+        assert bd.discount_amount == Decimal("1.50")   # 50% of 3.00 per-player (12/4)
+        assert bd.total_price == Decimal("12.00")      # full court cost unchanged
 
     @pytest.mark.asyncio
     async def test_no_discount_pct_and_no_credits_gives_base_price(self):

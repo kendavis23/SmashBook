@@ -41,8 +41,8 @@ class PricingService:
 
         Priority order:
           1. incentive_price (flat promotional override on the pricing rule)
-          2. Membership booking credit (free booking — amount_due = 0)
-          3. Membership discount_pct (percentage off unit_price)
+          2. Membership booking credit (free for this player — amount_due = 0)
+          3. Membership discount_pct (percentage off the per-player price)
 
         This method is read-only. Credit consumption must be done separately via
         consume_credit() so callers control when the side effect is committed.
@@ -73,6 +73,8 @@ class PricingService:
         else:
             unit_price = base_price
 
+        per_player_price = (unit_price / max_players).quantize(Decimal("0.01"))
+
         discount_amount = Decimal("0.00")
         discount_source: Optional[DiscountSource] = None
         membership_subscription_id: Optional[uuid.UUID] = None
@@ -87,19 +89,19 @@ class PricingService:
                 has_credits = sub.credits_remaining > 0
 
                 if has_credits:
-                    discount_amount = unit_price
+                    discount_amount = per_player_price
                     discount_source = DiscountSource.membership
                     credit_consumed = True
                 elif plan.discount_pct is not None:
-                    discount_amount = (unit_price * Decimal(str(plan.discount_pct)) / 100).quantize(
+                    discount_amount = (per_player_price * Decimal(str(plan.discount_pct)) / 100).quantize(
                         Decimal("0.01")
                     )
                     discount_source = DiscountSource.membership
                 else:
                     membership_subscription_id = None
 
-        total_price = (unit_price - discount_amount).quantize(Decimal("0.01"))
-        amount_due = (total_price / max_players).quantize(Decimal("0.01"))
+        total_price = unit_price
+        amount_due = (per_player_price - discount_amount).quantize(Decimal("0.01"))
 
         return PriceBreakdown(
             base_price=base_price,

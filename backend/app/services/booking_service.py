@@ -412,6 +412,7 @@ class BookingService:
         )
         total_price = breakdown.total_price if breakdown else None
         amount_due = breakdown.amount_due if breakdown else Decimal("0.00")
+        full_per_player = (breakdown.unit_price / max_players).quantize(Decimal("0.01")) if breakdown else Decimal("0.00")
 
         # Capture requesting_user.id before any flush — after flush() SQLAlchemy may
         # expire the ORM object (loaded via db.get with a string key), making .id None.
@@ -481,7 +482,7 @@ class BookingService:
                 role=PlayerRole.player,
                 invite_status=named_invite_status,
                 payment_status=PaymentStatus.pending,
-                amount_due=amount_due,
+                amount_due=full_per_player,
             )
             self.db.add(bp)
             created_players.append(bp)
