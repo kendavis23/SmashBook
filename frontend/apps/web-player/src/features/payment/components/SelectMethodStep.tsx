@@ -124,7 +124,7 @@ export function SelectMethodStep({ methods, amount, isLoading, onConfirm }: Prop
                 ) : (
                     <>
                         <CreditCard size={15} />
-                        Pay {formatCurrency(amount)}
+                        {useNew ? `Pay ${formatCurrency(amount)}` : "Proceed"}
                     </>
                 )}
             </button>

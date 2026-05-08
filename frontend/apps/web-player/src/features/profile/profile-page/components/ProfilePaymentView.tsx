@@ -16,17 +16,10 @@ import type { PaymentMethod } from "@repo/player-domain/models";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
-// ── Saved card row ────────────────────────────────────────────────────────────
+// ── Card tile (credit-card proportions) ──────────────────────────────────────
 
-function CardBrandBadge({ brand }: { brand: string }): JSX.Element {
-    return (
-        <div className="flex h-7 w-11 items-center justify-center rounded border border-border bg-muted text-[9px] font-bold uppercase text-muted-foreground">
-            {brand}
-        </div>
-    );
-}
 
-function CardRow({
+function CardTile({
     card,
     onDelete,
     onSetDefault,
@@ -39,39 +32,58 @@ function CardRow({
     isDeleting: boolean;
     isSettingDefault: boolean;
 }): JSX.Element {
+    const base = card.is_default
+        ? "bg-cta/10 border-cta/50"
+        : "bg-background border-border";
+
     return (
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
-            <CardBrandBadge brand={card.brand} />
+        <div className={`group relative flex items-center gap-3 rounded-lg border p-3 shadow-sm transition hover:shadow-md ${base}`}>
+            {/* Chip icon */}
+            <div className="shrink-0">
+                <div className="h-4 w-6 rounded-sm bg-gradient-to-br from-yellow-300/80 to-yellow-500/60 shadow-inner" />
+            </div>
+
+            {/* Card info */}
             <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-foreground">•••• {card.last4}</p>
-                <p className="text-[11px] text-muted-foreground">
-                    {card.exp_month.toString().padStart(2, "0")}/{card.exp_year}
+                <div className="flex items-center gap-1.5">
+                    <span className="font-mono text-xs font-semibold tracking-wider text-foreground">
+                        •••• {card.last4}
+                    </span>
+                    <span className="text-[9px] uppercase tracking-widest text-muted-foreground">{card.brand}</span>
+                    {card.is_default && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-cta/20 px-1.5 py-0.5 text-[8px] font-semibold text-cta-foreground">
+                            <Star size={7} fill="currentColor" />
+                            Default
+                        </span>
+                    )}
+                </div>
+                <p className="text-[9px] text-muted-foreground">
+                    Exp {card.exp_month.toString().padStart(2, "0")}/{card.exp_year}
                 </p>
             </div>
-            {card.is_default ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-cta/10 px-2 py-0.5 text-[10px] font-semibold text-cta">
-                    <Star size={9} />
-                    Default
-                </span>
-            ) : (
+
+            {/* Actions */}
+            <div className="flex shrink-0 items-center gap-1">
+                {!card.is_default && (
+                    <button
+                        type="button"
+                        disabled={isSettingDefault}
+                        onClick={() => onSetDefault(card.id)}
+                        className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-medium text-muted-foreground transition hover:bg-muted/70 hover:text-foreground disabled:opacity-40"
+                    >
+                        Set default
+                    </button>
+                )}
                 <button
                     type="button"
-                    disabled={isSettingDefault}
-                    onClick={() => onSetDefault(card.id)}
-                    className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+                    disabled={isDeleting}
+                    onClick={() => onDelete(card.id)}
+                    className="flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground opacity-0 transition group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive disabled:opacity-30"
+                    aria-label="Remove card"
                 >
-                    Set default
+                    <Trash2 size={10} />
                 </button>
-            )}
-            <button
-                type="button"
-                disabled={isDeleting}
-                onClick={() => onDelete(card.id)}
-                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-                aria-label="Remove card"
-            >
-                <Trash2 size={13} />
-            </button>
+            </div>
         </div>
     );
 }
@@ -224,18 +236,18 @@ export function ProfilePaymentView(): JSX.Element {
     }, []);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-5">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="text-sm font-semibold text-foreground">Payment methods</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Cards used for booking payments.</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Saved cards for booking payments.</p>
                 </div>
                 {hasCards && !showAddCard && (
                     <button
                         type="button"
                         onClick={() => void handleOpenAdd()}
-                        className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-muted"
+                        className="flex items-center gap-1.5 rounded-lg bg-cta px-3 py-1.5 text-xs font-semibold text-cta-foreground shadow-sm transition hover:opacity-90"
                     >
                         <Plus size={12} />
                         Add card
@@ -258,9 +270,9 @@ export function ProfilePaymentView(): JSX.Element {
 
             {/* Saved cards */}
             {hasCards && (
-                <div className="space-y-2">
-                    {methods!.map((card) => (
-                        <CardRow
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {[...methods!].sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0)).map((card) => (
+                        <CardTile
                             key={card.id}
                             card={card}
                             onDelete={handleDelete}
@@ -274,17 +286,20 @@ export function ProfilePaymentView(): JSX.Element {
 
             {/* Add card panel */}
             {isAddCardOpen && (
-                <div className="rounded-xl border border-border bg-card p-4">
-                    <div className="mb-3 flex items-center justify-between">
-                        <h4 className="text-xs font-semibold text-foreground">Add card</h4>
+                <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+                    <div className="mb-4 flex items-center justify-between">
+                        <div>
+                            <h4 className="text-sm font-semibold text-foreground">Add new card</h4>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">Your card details are encrypted and secure.</p>
+                        </div>
                         {hasCards && (
                             <button
                                 type="button"
                                 onClick={handleAddDone}
-                                className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
                                 aria-label="Close"
                             >
-                                <X size={13} />
+                                <X size={14} />
                             </button>
                         )}
                     </div>

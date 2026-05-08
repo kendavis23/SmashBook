@@ -5,7 +5,6 @@ export type { PaymentMethod };
 
 export type PaymentStep =
     | { id: "loading" }
-    | { id: "save_card_first" }
     | { id: "choose_card"; methods: PaymentMethod[] }
     | { id: "select_method"; methods: PaymentMethod[] }
     | { id: "new_card" }

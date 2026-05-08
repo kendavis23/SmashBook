@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback, type JSX } from "react";
+import { useEffect, useState, useCallback, useRef, type JSX } from "react";
 import { Elements, useStripe, useElements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { useQueryClient } from "@tanstack/react-query";
-import { X } from "lucide-react";
+import { X, CreditCard } from "lucide-react";
+import { formatCurrency } from "@repo/ui";
 import { config } from "@repo/config";
-import { useListPaymentMethods, useCreatePaymentIntent, useCreateSetupIntent, useSavePaymentMethod } from "@repo/player-domain/hooks";
-import type { PaymentModalProps, PaymentMethod, PaymentStep } from "../types";
+import { useListPaymentMethods, useCreatePaymentIntent } from "@repo/player-domain/hooks";
+import type { PaymentModalProps, PaymentStep } from "../types";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { PaymentSuccessStep } from "./PaymentSuccessStep";
 import { PaymentErrorBanner } from "./PaymentErrorBanner";
@@ -13,17 +14,17 @@ import { SelectMethodStep } from "./SelectMethodStep";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
-// Must live inside <Elements> so useStripe/useElements work
-function StripeForm({
+// ─── New-card form — needs <Elements> for useStripe/useElements ───────────────
+
+function NewCardForm({
     amount,
     onSuccess,
 }: {
     amount: number;
-    onSuccess: (amount: number, currency: string) => void;
+    onSuccess: () => void;
 }): JSX.Element {
     const stripe = useStripe();
     const elements = useElements();
-    const queryClient = useQueryClient();
     const [isConfirming, setIsConfirming] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -34,9 +35,7 @@ function StripeForm({
 
         const { error: stripeError } = await stripe.confirmPayment({
             elements,
-            confirmParams: {
-                return_url: `${window.location.origin}/bookings`,
-            },
+            confirmParams: { return_url: `${window.location.origin}/bookings` },
             redirect: "if_required",
         });
 
@@ -47,9 +46,8 @@ function StripeForm({
             return;
         }
 
-        queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
-        onSuccess(amount, "gbp");
-    }, [stripe, elements, amount, queryClient, onSuccess]);
+        onSuccess();
+    }, [stripe, elements, onSuccess]);
 
     return (
         <PaymentMethodStep
@@ -62,222 +60,155 @@ function StripeForm({
     );
 }
 
-// SetupIntent version — used for add_card and save_card_first contexts
-function StripeSetupForm({
+// ─── Saved-card confirm — backend already attached the payment_method to the intent ──
+
+function SavedCardConfirm({
     clientSecret,
+    amount,
+    currency,
     onSuccess,
-    submitLabel,
+    onError,
 }: {
     clientSecret: string;
+    amount: number;
+    currency: string;
     onSuccess: () => void;
-    submitLabel?: string;
+    onError: (msg: string) => void;
 }): JSX.Element {
-    const stripe = useStripe();
-    const elements = useElements();
-    const queryClient = useQueryClient();
-    const savePaymentMethod = useSavePaymentMethod();
     const [isConfirming, setIsConfirming] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const handleSubmit = useCallback(async () => {
-        if (!stripe || !elements) return;
+    const handlePay = useCallback(async () => {
+        const stripe = await stripePromise;
+        if (!stripe) return;
+
         setIsConfirming(true);
         setError(null);
 
-        const { error: stripeError } = await stripe.confirmSetup({
-            elements,
-            confirmParams: {
-                return_url: `${window.location.origin}/settings/payment-methods`,
-            },
-            redirect: "if_required",
-        });
-
-        if (stripeError) {
-            setIsConfirming(false);
-            setError(stripeError.message ?? "Failed to save card.");
-            return;
-        }
-
-        const { setupIntent } = await stripe.retrieveSetupIntent(clientSecret);
-        const paymentMethodId = setupIntent?.payment_method as string | null;
-
-        if (!paymentMethodId) {
-            setIsConfirming(false);
-            setError("Could not retrieve saved card — please try again.");
-            return;
-        }
-
-        try {
-            await savePaymentMethod.mutateAsync({ payment_method_id: paymentMethodId, set_as_default: false });
-        } catch (err) {
-            setIsConfirming(false);
-            setError((err as { message?: string })?.message ?? "Failed to save card.");
-            return;
-        }
+        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(clientSecret);
 
         setIsConfirming(false);
-        queryClient.invalidateQueries({ queryKey: ["player", "payment-methods"] });
-        onSuccess();
-    }, [stripe, elements, clientSecret, savePaymentMethod, queryClient, onSuccess]);
+
+        if (stripeError) {
+            setError(stripeError.message ?? "Payment failed.");
+            return;
+        }
+
+        if (paymentIntent?.status === "succeeded") {
+            onSuccess();
+        } else {
+            onError("Payment did not complete — please try again.");
+        }
+    }, [clientSecret, onSuccess, onError]);
 
     return (
-        <PaymentMethodStep
-            amount={0}
-            isConfirming={isConfirming}
-            error={error}
-            onSubmit={() => void handleSubmit()}
-            onDismissError={() => setError(null)}
-            submitLabel={submitLabel ?? "Save card"}
-        />
+        <div className="flex flex-col gap-5 p-6">
+            <div className="rounded-xl border border-border bg-muted/40 px-4 py-4">
+                <p className="text-xs text-muted-foreground">Amount due</p>
+                <p className="mt-1 text-2xl font-semibold text-foreground">
+                    {formatCurrency(amount)}
+                    <span className="ml-1 text-sm font-normal text-muted-foreground uppercase">
+                        {currency}
+                    </span>
+                </p>
+            </div>
+
+            {error ? (
+                <PaymentErrorBanner message={error} onDismiss={() => setError(null)} />
+            ) : null}
+
+            <button
+                type="button"
+                disabled={isConfirming}
+                onClick={() => void handlePay()}
+                className="btn-primary flex items-center justify-center gap-2"
+            >
+                {isConfirming ? (
+                    <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-cta-foreground/40 border-t-cta-foreground" />
+                        Processing…
+                    </>
+                ) : (
+                    <>
+                        <CreditCard size={15} />
+                        Pay {formatCurrency(amount)}
+                    </>
+                )}
+            </button>
+        </div>
     );
 }
 
-function StripeElementsWrapper({
-    clientSecret,
-    children,
-}: {
-    clientSecret: string;
-    children: JSX.Element;
-}): JSX.Element {
-    return (
-        <Elements
-            stripe={stripePromise}
-            options={{
-                clientSecret,
-                appearance: { theme: "stripe", variables: { borderRadius: "8px" } },
-            }}
-        >
-            {children}
-        </Elements>
-    );
-}
+// ─── Modal ────────────────────────────────────────────────────────────────────
 
 export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Element {
     const [step, setStep] = useState<PaymentStep>({ id: "loading" });
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [amount, setAmount] = useState(0);
     const [currency, setCurrency] = useState("gbp");
-    // Tracks amount to show on SelectMethodStep before intent is created
-    const [pendingAmount, setPendingAmount] = useState(0);
 
     const queryClient = useQueryClient();
     const { data: paymentMethods, isLoading: methodsLoading } = useListPaymentMethods();
     const createPaymentIntent = useCreatePaymentIntent();
-    const createSetupIntent = useCreateSetupIntent();
+    const initRan = useRef(false);
 
     useEffect(() => {
-        if (methodsLoading) return;
+        if (methodsLoading || initRan.current) return;
+        initRan.current = true;
 
-        async function init() {
-            if (context.type === "booking") {
-                if ((paymentMethods?.length ?? 0) === 0) {
-                    // No saved cards — ask user to save one first
-                    try {
-                        const intent = await createSetupIntent.mutateAsync();
-                        setClientSecret(intent.client_secret);
-                        setStep({ id: "save_card_first" });
-                    } catch (err) {
-                        setStep({
-                            id: "error",
-                            message:
-                                (err as { message?: string })?.message ??
-                                "Unable to set up card — please try again.",
-                        });
-                    }
-                } else {
-                    // Show card selection — don't call createPaymentIntent yet
-                    setPendingAmount(context.booking.amount_due ?? 0);
-                    setStep({ id: "choose_card", methods: paymentMethods! });
-                }
-            } else {
-                try {
-                    const intent = await createSetupIntent.mutateAsync();
-                    setClientSecret(intent.client_secret);
-                    setStep({ id: "new_card" });
-                } catch (err) {
-                    setStep({
-                        id: "error",
-                        message:
-                            (err as { message?: string })?.message ??
-                            "Unable to set up card — please try again.",
-                    });
-                }
-            }
+        if (context.type !== "booking") {
+            setStep({ id: "error", message: "Unsupported payment context." });
+            return;
         }
 
-        void init();
+        if ((paymentMethods?.length ?? 0) === 0) {
+            void createIntentThenShow(context.booking.booking_id, null);
+        } else {
+            setStep({ id: "choose_card", methods: paymentMethods! });
+        }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [methodsLoading]);
 
-    // Called when user picks a card (or null = use new card) on SelectMethodStep
-    const handleCardChosen = useCallback(
-        async (methodId: string | null) => {
-            if (context.type !== "booking") return;
-            setStep({ id: "loading" });
-            try {
-                const intent = await createPaymentIntent.mutateAsync({
-                    booking_id: context.booking.booking_id,
-                    payment_method_id: methodId,
-                });
-                setClientSecret(intent.client_secret);
-                setAmount(intent.amount);
-                setCurrency(intent.currency);
-                // null methodId = enter new card details; otherwise show confirm form
-                setStep(methodId ? { id: "select_method", methods: paymentMethods ?? [] } : { id: "new_card" });
-            } catch (err) {
-                setStep({
-                    id: "error",
-                    message:
-                        (err as { message?: string })?.message ??
-                        "Unable to start payment — please try again.",
-                });
-            }
-        },
-        [context, createPaymentIntent, paymentMethods]
-    );
-
-    const handlePaySuccess = useCallback(
-        (successAmount: number, successCurrency: string) => {
-            setStep({ id: "success", amount: successAmount, currency: successCurrency });
-        },
-        []
-    );
-
-    // Called after user saves a card in save_card_first flow — re-enter choose_card
-    const handleSaveCardThenPay = useCallback(async () => {
+    async function createIntentThenShow(bookingId: string, methodId: string | null) {
         setStep({ id: "loading" });
-        setClientSecret(null);
-        await queryClient.invalidateQueries({ queryKey: ["player", "payment-methods"] });
-        const freshMethods = queryClient.getQueryData<PaymentMethod[]>(["player", "payment-methods"]);
-        if ((freshMethods?.length ?? 0) > 0) {
-            setPendingAmount(context.type === "booking" ? (context.booking.amount_due ?? 0) : 0);
-            setStep({ id: "choose_card", methods: freshMethods! });
-        } else {
-            setStep({ id: "error", message: "No payment methods found — please try again." });
+        try {
+            const intent = await createPaymentIntent.mutateAsync({
+                booking_id: bookingId,
+                ...(methodId ? { payment_method_id: methodId } : {}),
+            });
+            setClientSecret(intent.client_secret);
+            setAmount(intent.amount);
+            setCurrency(intent.currency);
+            // saved card → confirm screen; new card → Stripe PaymentElement
+            setStep(methodId ? { id: "select_method", methods: paymentMethods ?? [] } : { id: "new_card" });
+        } catch (err) {
+            setStep({
+                id: "error",
+                message: (err as { message?: string })?.message ?? "Unable to start payment — please try again.",
+            });
         }
-    }, [queryClient, context]);
+    }
 
-    const handleSetupSuccess = useCallback(() => {
-        setStep({ id: "success", amount: 0, currency });
-    }, [currency]);
+    const handleCardChosen = useCallback(
+        (methodId: string | null) => {
+            if (context.type !== "booking") return;
+            void createIntentThenShow(context.booking.booking_id, methodId);
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [context, paymentMethods]
+    );
+
+    const handleStripeSuccess = useCallback(() => {
+        queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
+        setStep({ id: "success", amount, currency });
+    }, [amount, currency, queryClient]);
 
     const title =
-        step.id === "save_card_first"
-            ? "Save a card to pay"
-            : step.id === "choose_card"
-                ? "Choose payment method"
-                : context.type === "booking"
-                    ? "Pay for booking"
-                    : "Add payment method";
-
-    const showPayForm =
-        clientSecret &&
-        (step.id === "select_method" || step.id === "new_card" || step.id === "confirming");
-
-    const showSaveCardForm = clientSecret && step.id === "save_card_first";
-
-    // add_card context: new_card step with setup intent
-    const showAddCardForm = clientSecret && step.id === "new_card" && context.type === "add_card";
+        step.id === "choose_card"
+            ? "Choose payment method"
+            : step.id === "select_method"
+                ? "Confirm payment"
+                : "Pay for booking";
 
     return (
         <div
@@ -326,36 +257,31 @@ export function PaymentModal({ context, onClose }: PaymentModalProps): JSX.Eleme
                     ) : step.id === "choose_card" ? (
                         <SelectMethodStep
                             methods={step.methods}
-                            amount={pendingAmount}
+                            amount={context.type === "booking" ? (context.booking.amount_due ?? 0) : 0}
                             isLoading={createPaymentIntent.isPending}
-                            onConfirm={(methodId) => void handleCardChosen(methodId)}
+                            onConfirm={handleCardChosen}
                         />
-                    ) : showSaveCardForm && clientSecret ? (
-                        <StripeElementsWrapper clientSecret={clientSecret}>
-                            <>
-                                <div className="px-6 pb-2 pt-4">
-                                    <p className="text-sm text-muted-foreground">
-                                        You need a saved card to pay for bookings. Add one below and
-                                        we&apos;ll proceed to payment.
-                                    </p>
-                                </div>
-                                <StripeSetupForm
-                                    clientSecret={clientSecret}
-                                    onSuccess={() => void handleSaveCardThenPay()}
-                                />
-                            </>
-                        </StripeElementsWrapper>
-                    ) : showAddCardForm && clientSecret ? (
-                        <StripeElementsWrapper clientSecret={clientSecret}>
-                            <StripeSetupForm
-                                clientSecret={clientSecret}
-                                onSuccess={handleSetupSuccess}
+                    ) : step.id === "select_method" && clientSecret ? (
+                        <SavedCardConfirm
+                            clientSecret={clientSecret}
+                            amount={amount}
+                            currency={currency}
+                            onSuccess={handleStripeSuccess}
+                            onError={(msg) => setStep({ id: "error", message: msg })}
+                        />
+                    ) : step.id === "new_card" && clientSecret ? (
+                        <Elements
+                            stripe={stripePromise}
+                            options={{
+                                clientSecret,
+                                appearance: { theme: "stripe", variables: { borderRadius: "8px" } },
+                            }}
+                        >
+                            <NewCardForm
+                                amount={amount}
+                                onSuccess={handleStripeSuccess}
                             />
-                        </StripeElementsWrapper>
-                    ) : showPayForm && clientSecret ? (
-                        <StripeElementsWrapper clientSecret={clientSecret}>
-                            <StripeForm amount={amount} onSuccess={handlePaySuccess} />
-                        </StripeElementsWrapper>
+                        </Elements>
                     ) : null}
                 </div>
             </div>
