@@ -43,11 +43,11 @@ async def stripe_webhook(request: Request, db=Depends(get_db)):
     event_type = event["type"]
 
     if event_type == "payment_intent.succeeded":
-        await svc.confirm_payment(dict(event))
+        await svc.confirm_payment(event)
     elif event_type == "payment_intent.payment_failed":
-        await svc.handle_payment_failed(dict(event))
+        await svc.handle_payment_failed(event)
     elif event_type == "payout.paid":
-        await svc.handle_payout_paid(dict(event))
+        await svc.handle_payout_paid(event)
 
     return {"received": True}
 

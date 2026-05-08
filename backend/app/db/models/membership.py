@@ -38,7 +38,7 @@ class MembershipPlan(Base, UUIDMixin, TimestampMixin):
     trial_days = Column(Integer, nullable=False, default=0)
 
     # Booking entitlements per billing period
-    booking_credits_per_period = Column(Integer, nullable=True)   # NULL = unlimited
+    booking_credits_per_period = Column(Integer, nullable=False, default=0)  # 0 = no credits
     guest_passes_per_period = Column(Integer, nullable=True)      # NULL = none
 
     # Pricing benefits
@@ -75,7 +75,7 @@ class MembershipSubscription(Base, UUIDMixin, TimestampMixin):
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
     # Rolling credit balances for the current billing period
-    credits_remaining = Column(Integer, nullable=True)        # NULL when plan has unlimited credits
+    credits_remaining = Column(Integer, nullable=False, default=0)
     guest_passes_remaining = Column(Integer, nullable=True)   # NULL when plan has no guest passes
 
     stripe_subscription_id = Column(String(255), nullable=True)
