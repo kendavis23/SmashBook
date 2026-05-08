@@ -41,14 +41,14 @@ def _rule(price_per_slot="20.00", incentive_price=None, incentive_expires_at=Non
     )
 
 
-def _plan(booking_credits_per_period=None, discount_pct=None):
+def _plan(booking_credits_per_period=0, discount_pct=None):
     return SimpleNamespace(
         booking_credits_per_period=booking_credits_per_period,
         discount_pct=Decimal(discount_pct) if discount_pct else None,
     )
 
 
-def _sub(plan, credits_remaining=None):
+def _sub(plan, credits_remaining=0):
     return SimpleNamespace(
         id=SUB_ID,
         plan=plan,
@@ -198,16 +198,6 @@ class TestMembershipCredit:
         assert bd.membership_subscription_id == SUB_ID
 
     @pytest.mark.asyncio
-    async def test_unlimited_credits_makes_amount_due_zero(self):
-        rule = _rule(price_per_slot="20.00")
-        # booking_credits_per_period=None means unlimited
-        sub = _sub(_plan(booking_credits_per_period=None), credits_remaining=None)
-        svc = PricingService(_db_rule_and_sub(rule, sub))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
-        assert bd.credit_consumed is True
-        assert bd.amount_due == Decimal("0.00")
-
-    @pytest.mark.asyncio
     async def test_zero_credits_falls_through_to_discount_pct(self):
         rule = _rule(price_per_slot="20.00")
         sub = _sub(_plan(booking_credits_per_period=5, discount_pct="10.00"), credits_remaining=0)
@@ -284,18 +274,6 @@ class TestConsumeCredit:
 
         assert sub.credits_remaining == 2
         db.add.assert_called()
-
-    @pytest.mark.asyncio
-    async def test_unlimited_credits_not_decremented(self):
-        sub = SimpleNamespace(id=SUB_ID, credits_remaining=None)
-        db = AsyncMock()
-        db.get = AsyncMock(return_value=sub)
-        db.add = MagicMock()
-
-        svc = PricingService(db)
-        await svc.consume_credit(SUB_ID, BOOKING_ID)
-
-        assert sub.credits_remaining is None
 
     @pytest.mark.asyncio
     async def test_missing_subscription_is_silent_noop(self):

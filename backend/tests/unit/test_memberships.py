@@ -415,4 +415,4 @@ def test_plan_create_valid_minimal():
     )
     assert plan.trial_days == 0
     assert plan.description is None
-    assert plan.booking_credits_per_period is None
+    assert plan.booking_credits_per_period == 0

@@ -13,7 +13,7 @@ class MembershipPlanCreate(BaseModel):
     billing_period: BillingPeriod
     price: Decimal
     trial_days: int = 0
-    booking_credits_per_period: Optional[int] = None
+    booking_credits_per_period: int = 0
     guest_passes_per_period: Optional[int] = None
     discount_pct: Optional[Decimal] = None
     priority_booking_days: Optional[int] = None
@@ -26,7 +26,7 @@ class MembershipPlanUpdate(BaseModel):
     billing_period: Optional[BillingPeriod] = None
     price: Optional[Decimal] = None
     trial_days: Optional[int] = None
-    booking_credits_per_period: Optional[int] = None
+    booking_credits_per_period: Optional[int] = None  # None = don't update
     guest_passes_per_period: Optional[int] = None
     discount_pct: Optional[Decimal] = None
     priority_booking_days: Optional[int] = None
@@ -42,7 +42,7 @@ class MembershipPlanResponse(BaseModel):
     billing_period: BillingPeriod
     price: Decimal
     trial_days: int
-    booking_credits_per_period: Optional[int] = None
+    booking_credits_per_period: int
     guest_passes_per_period: Optional[int] = None
     discount_pct: Optional[Decimal] = None
     priority_booking_days: Optional[int] = None

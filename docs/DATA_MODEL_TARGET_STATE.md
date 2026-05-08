@@ -1,4 +1,4 @@
-_Last updated: 2026-05-03 17:30 UTC_
+_Last updated: 2026-05-08 14:50 UTC_
 
 # SmashBook — Data Model Target State
 
@@ -741,7 +741,7 @@ Defines the benefits of a plan. Replaces single discount_pct with a flexible per
 | `current_period_end` | TIMESTAMPTZ | |
 | `cancel_at_period_end` | BOOLEAN | Default `false` |
 | `cancelled_at` | TIMESTAMPTZ | Nullable |
-| `credits_remaining` | INTEGER | Nullable |
+| `credits_remaining` | INTEGER | Not null — `0` = none remaining |
 | `guest_passes_remaining` | INTEGER | Nullable |
 | `stripe_subscription_id` | VARCHAR(255) | Nullable |
 | `created_at` | TIMESTAMPTZ | |

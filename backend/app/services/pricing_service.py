@@ -84,10 +84,7 @@ class PricingService:
                 membership_subscription_id = sub.id
                 plan = sub.plan
 
-                credits_unlimited = plan.booking_credits_per_period is None
-                has_credits = credits_unlimited or (
-                    sub.credits_remaining is not None and sub.credits_remaining > 0
-                )
+                has_credits = sub.credits_remaining > 0
 
                 if has_credits:
                     discount_amount = unit_price
@@ -129,11 +126,10 @@ class PricingService:
         if sub is None:
             return
 
-        if sub.credits_remaining is not None:
-            sub.credits_remaining -= 1
-            self.db.add(sub)
+        sub.credits_remaining -= 1
+        self.db.add(sub)
 
-        balance_after = sub.credits_remaining if sub.credits_remaining is not None else 0
+        balance_after = sub.credits_remaining
 
         log = MembershipCreditLog(
             subscription_id=sub.id,

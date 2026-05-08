@@ -1,4 +1,4 @@
-_Last updated: 2026-05-03 17:30 UTC_
+_Last updated: 2026-05-08 14:50 UTC_
 
 # SmashBook Data Model
 
@@ -524,7 +524,7 @@ Club-defined subscription tiers (e.g. Silver, Gold, Platinum).
 | `billing_period` | ENUM | `monthly`, `annual` |
 | `price` | NUMERIC(10,2) | |
 | `trial_days` | INTEGER | Default `0` |
-| `booking_credits_per_period` | INTEGER | Nullable — `NULL` = unlimited |
+| `booking_credits_per_period` | INTEGER | Not null — `0` = no credits |
 | `guest_passes_per_period` | INTEGER | Nullable — `NULL` = none |
 | `discount_pct` | NUMERIC(5,2) | Nullable — % off court bookings |
 | `priority_booking_days` | INTEGER | Nullable — extra advance-booking window beyond club default |
@@ -552,7 +552,7 @@ A player's active subscription to a `MembershipPlan`.
 | `current_period_end` | TIMESTAMPTZ | |
 | `cancel_at_period_end` | BOOLEAN | Default `false` |
 | `cancelled_at` | TIMESTAMPTZ | Nullable |
-| `credits_remaining` | INTEGER | Nullable — `NULL` when plan has unlimited credits |
+| `credits_remaining` | INTEGER | Not null — `0` = none remaining |
 | `guest_passes_remaining` | INTEGER | Nullable — `NULL` when plan has no guest passes |
 | `stripe_subscription_id` | VARCHAR(255) | Nullable |
 | `created_at` | TIMESTAMPTZ | |
