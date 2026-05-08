@@ -60,12 +60,14 @@ export function SelectInput({
     className = "",
     "aria-label": ariaLabel,
 }: SelectInputProps): JSX.Element {
+    const safeValue = value ?? "";
+
     function handleChange(val: string) {
         onValueChange(val === CLEAR_SENTINEL ? "" : val);
     }
     return (
         <SelectPrimitive.Root
-            value={value || undefined}
+            value={safeValue}
             onValueChange={handleChange}
             disabled={disabled}
             required={required}

@@ -14,6 +14,8 @@ import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
 import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import { NewBookingModalView } from "./NewBookingModalView";
+import { buildTrainerOptions } from "./trainerSelect";
+import type { TrainerOptionSource } from "./trainerSelect";
 
 export type NewBookingMode = "page" | "modal";
 
@@ -49,7 +51,7 @@ export type NewBookingFormState = {
     staffProfileId: string;
 };
 
-type Trainer = { staff_profile_id: string; full_name: string };
+type Trainer = TrainerOptionSource;
 
 type Props = {
     courts: { id: string; name: string }[];
@@ -61,6 +63,7 @@ type Props = {
     form: NewBookingFormState;
     courtError: string;
     startError: string;
+    staffError: string;
     apiError: string;
     isPending: boolean;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
@@ -75,7 +78,9 @@ type Props = {
     onClose?: () => void;
 };
 
-const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
+const typeOptions = BOOKING_TYPE_OPTIONS.filter(
+    (o) => o.value === "regular" || o.value === "lesson_individual"
+);
 
 export default function NewBookingView({
     courts,
@@ -87,6 +92,7 @@ export default function NewBookingView({
     form,
     courtError,
     startError,
+    staffError,
     apiError,
     isPending,
     onFormChange,
@@ -103,7 +109,9 @@ export default function NewBookingView({
     const [invitePlayerId, setInvitePlayerId] = useState("");
     const [invitedPlayerNames, setInvitedPlayerNames] = useState<Record<string, string>>({});
     const courtSelected = Boolean(form.courtId);
+    const isIndividualLesson = form.bookingType === "lesson_individual";
     const invitedCount = form.playerUserIds.filter(Boolean).length;
+    const trainerOptions = buildTrainerOptions(trainers);
     const todayStr = useMemo(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -145,7 +153,12 @@ export default function NewBookingView({
                     </label>
                     <SelectInput
                         value={form.bookingType}
-                        onValueChange={(v) => onFormChange({ bookingType: v as BookingType })}
+                        onValueChange={(v) =>
+                            onFormChange({
+                                bookingType: v as BookingType,
+                                maxPlayers: v === "lesson_individual" ? "1" : "4",
+                            })
+                        }
                         options={typeOptions}
                     />
                 </div>
@@ -253,6 +266,9 @@ export default function NewBookingView({
                 <div className="mt-4">
                     <label htmlFor="bk-staff-id" className={labelCls}>
                         Staff (Trainer)
+                        {isIndividualLesson ? (
+                            <span className="ml-1 text-destructive">*</span>
+                        ) : null}
                         <span className="ml-1 font-normal text-muted-foreground">
                             - Lesson assigned to the trainer.
                         </span>
@@ -273,21 +289,23 @@ export default function NewBookingView({
                         <SelectInput
                             value={form.staffProfileId}
                             onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                            options={trainers.map((t) => ({
-                                value: t.staff_profile_id,
-                                label: t.full_name,
-                            }))}
+                            options={trainerOptions}
                             placeholder={
-                                trainers.length === 0 ? "No trainers available" : "Select trainer…"
+                                trainerOptions.length === 0
+                                    ? "Trainer not available"
+                                    : "Select trainer…"
                             }
-                            disabled={trainers.length === 0}
+                            disabled={!isIndividualLesson && trainerOptions.length === 0}
+                            className={staffError ? "!border-destructive" : ""}
                         />
                     )}
+                    {staffError ? (
+                        <p className="mt-1 text-xs text-destructive">{staffError}</p>
+                    ) : null}
                 </div>
             ) : null}
 
-            {/* Add Players */}
-            {!form.isOpenGame ? (
+            {!isIndividualLesson ? (
                 <div className="mt-4 rounded-xl border border-border/70 bg-muted/10 p-4">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -366,62 +384,6 @@ export default function NewBookingView({
         </>
     );
 
-    const optionalEventFields = (
-        <div className="space-y-4">
-            <div>
-                <label htmlFor="bk-event-name" className={labelCls}>
-                    Event name
-                </label>
-                <input
-                    id="bk-event-name"
-                    type="text"
-                    className={fieldCls}
-                    placeholder="e.g. Friday Corporate Cup"
-                    value={form.eventName}
-                    onChange={(e) => onFormChange({ eventName: e.target.value })}
-                />
-            </div>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                    <label htmlFor="bk-contact-name" className={labelCls}>
-                        Contact name
-                    </label>
-                    <input
-                        id="bk-contact-name"
-                        type="text"
-                        className={fieldCls}
-                        value={form.contactName}
-                        onChange={(e) => onFormChange({ contactName: e.target.value })}
-                    />
-                </div>
-                <div>
-                    <label htmlFor="bk-contact-email" className={labelCls}>
-                        Contact email
-                    </label>
-                    <input
-                        id="bk-contact-email"
-                        type="email"
-                        className={fieldCls}
-                        value={form.contactEmail}
-                        onChange={(e) => onFormChange({ contactEmail: e.target.value })}
-                    />
-                </div>
-            </div>
-            <div>
-                <label htmlFor="bk-contact-phone" className={labelCls}>
-                    Contact phone
-                </label>
-                <input
-                    id="bk-contact-phone"
-                    type="tel"
-                    className={fieldCls}
-                    value={form.contactPhone}
-                    onChange={(e) => onFormChange({ contactPhone: e.target.value })}
-                />
-            </div>
-        </div>
-    );
-
     if (mode === "modal") {
         return (
             <NewBookingModalView
@@ -430,6 +392,7 @@ export default function NewBookingView({
                 trainersLoading={trainersLoading}
                 trainersError={trainersError}
                 form={form}
+                staffError={staffError}
                 apiError={apiError}
                 isPending={isPending}
                 selectedPrice={selectedPrice}
@@ -486,7 +449,7 @@ export default function NewBookingView({
 
                 <div className="bg-background/40 px-4 py-5 sm:px-6">
                     <form onSubmit={onSubmit} noValidate>
-                        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(0,0.85fr)]">
+                        <div>
                             {/* Core details */}
                             <section className={sectionShellCls}>
                                 <div className={sectionHeaderCls}>
@@ -503,70 +466,6 @@ export default function NewBookingView({
                                 </div>
                                 {coreFields}
                             </section>
-
-                            <div className="space-y-5">
-                                {/* Open Game — regular bookings only */}
-                                {form.bookingType === "regular" ? (
-                                    <section className={sectionShellCls}>
-                                        <div className={sectionHeaderCls}>
-                                            <div>
-                                                <p className={sectionKickerCls}>Match quality</p>
-                                                <h3 className="mt-1 text-base font-semibold text-foreground">
-                                                    Open Game{" "}
-                                                    <span className="text-xs font-normal text-muted-foreground">
-                                                        (optional)
-                                                    </span>
-                                                </h3>
-                                                <p className="mt-1 text-sm text-muted-foreground">
-                                                    Mark as open to allow other players to join.
-                                                </p>
-                                            </div>
-                                            <UsersRound
-                                                size={18}
-                                                className="mt-1 text-muted-foreground"
-                                            />
-                                        </div>
-                                        <div className="rounded-lg border border-border/70 bg-muted/10 px-3 py-3">
-                                            <label className="flex cursor-pointer items-center gap-2">
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-4 w-4 rounded border-border accent-cta"
-                                                    checked={form.isOpenGame}
-                                                    onChange={(e) =>
-                                                        onFormChange({
-                                                            isOpenGame: e.target.checked,
-                                                        })
-                                                    }
-                                                    aria-label="Mark as open game"
-                                                />
-                                                <span className="text-sm font-medium text-foreground">
-                                                    Open game
-                                                </span>
-                                            </label>
-                                        </div>
-                                    </section>
-                                ) : null}
-
-                                {/* Event / contact  */}
-                                <section className={sectionShellCls}>
-                                    <div className={sectionHeaderCls}>
-                                        <div>
-                                            <p className={sectionKickerCls}>Client details</p>
-                                            <h3 className="mt-1 text-base font-semibold text-foreground">
-                                                Event &amp; Contact{" "}
-                                                <span className="text-xs font-normal text-muted-foreground">
-                                                    (optional)
-                                                </span>
-                                            </h3>
-                                            <p className="mt-1 text-sm text-muted-foreground">
-                                                Useful for corporate, tournament, or hosted
-                                                bookings.
-                                            </p>
-                                        </div>
-                                    </div>
-                                    {optionalEventFields}
-                                </section>
-                            </div>
                         </div>
 
                         {/* Actions */}
