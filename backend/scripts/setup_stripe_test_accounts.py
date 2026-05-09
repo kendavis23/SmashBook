@@ -110,7 +110,6 @@ async def _create_connected_account(club: Club) -> str:
     Returns the new account ID.
     """
     country = _country_for(club.currency)
-    currency = club.currency.lower()
     now_ts = int(datetime.now(timezone.utc).timestamp())
 
     # 1. Create the Custom account with required fields.
