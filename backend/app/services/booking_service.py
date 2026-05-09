@@ -467,13 +467,15 @@ class BookingService:
                 await pricing_svc.consume_credit(breakdown.membership_subscription_id, booking.id)
 
         # 17. Add named players.
-        # Private booking where staff fits everyone within capacity: players are directly
-        # booked (accepted). Open games or over-invited private bookings use pending so
-        # players can voluntarily accept/decline and slots aren't over-committed.
+        # Staff creating a private booking within capacity: players are directly booked
+        # (accepted) — staff has authority to place players without their consent.
+        # All other cases (player-organised, open games, over-invited) use pending so
+        # invitees must explicitly accept/decline before their slot is committed.
         organiser_count = 0 if is_empty_admin_game else 1
         over_invited = (len(named_players) + organiser_count) > (max_players or 4)
         named_invite_status = (
-            InviteStatus.pending if (is_open_game or over_invited) else InviteStatus.accepted
+            InviteStatus.accepted if (is_staff and not is_open_game and not over_invited)
+            else InviteStatus.pending
         )
         for named_user in named_players:
             bp = BookingPlayer(
