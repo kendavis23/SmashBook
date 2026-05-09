@@ -325,7 +325,7 @@ class PaymentService:
 
     async def _handle_wallet_top_up_succeeded(self, pi: dict) -> None:
         """Credit wallet after a wallet_top_up PaymentIntent succeeds."""
-        metadata = pi.get("metadata") or {}
+        metadata = getattr(pi, "metadata", None) or {}
         wallet_id_str = metadata.get("wallet_id")
         user_id_str = metadata.get("user_id")
         if not wallet_id_str:
@@ -374,7 +374,7 @@ class PaymentService:
         pi = stripe_event["data"]["object"]
         pi_id = pi["id"]
 
-        if (pi.get("metadata") or {}).get("purpose") == "wallet_top_up":
+        if getattr(getattr(pi, "metadata", None), "purpose", None) == "wallet_top_up":
             await self._handle_wallet_top_up_succeeded(pi)
             return
 
@@ -386,7 +386,7 @@ class PaymentService:
             return  # unknown PI or already processed
 
         payment.state = PaymentState.succeeded
-        payment.stripe_charge_id = pi.get("latest_charge")
+        payment.stripe_charge_id = getattr(pi, "latest_charge", None)
 
         if payment.stripe_charge_id:
             try:
@@ -467,8 +467,8 @@ class PaymentService:
         if not payment or payment.state == PaymentState.failed:
             return
 
-        last_error = pi.get("last_payment_error") or {}
-        failure_reason = last_error.get("message") or "Payment failed"
+        last_error = getattr(pi, "last_payment_error", None)
+        failure_reason = getattr(last_error, "message", None) or "Payment failed"
 
         payment.state = PaymentState.failed
         payment.failure_reason = failure_reason
