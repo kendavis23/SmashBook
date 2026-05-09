@@ -1,4 +1,4 @@
-_Last updated: 2026-04-28 00:00 UTC_
+_Last updated: 2026-05-09 00:00 UTC_
 
 # SmashBook — Architecture
 
@@ -618,7 +618,7 @@ All 8 services are deployed from just **2 Docker images** (`padel-api` and `pade
 
 | Service | Purpose |
 |---|---|
-| Cloud SQL (PostgreSQL 16) | Primary database + pgvector extension. One primary instance + one read replica. All ORM access goes through async SQLAlchemy sessions. |
+| Cloud SQL (PostgreSQL 18) | Primary database + pgvector extension. One primary instance + one read replica. All ORM access goes through async SQLAlchemy sessions. |
 | Artifact Registry | Docker image storage for `padel-api` and `padel-worker`, tagged by git SHA. Two images serve all 8 Cloud Run services. |
 | Pub/Sub | Async event bus. See topic list below. |
 | Cloud Storage | Booking receipts, exports, court media, and Terraform remote state. |

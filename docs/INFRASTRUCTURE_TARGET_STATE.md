@@ -1,4 +1,4 @@
-_Last updated: 2026-04-29 12:00 UTC_
+_Last updated: 2026-05-09 00:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -70,7 +70,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - `padel-notification-worker` — Pub/Sub push subscription on `notification-events`
 
 ### Cloud SQL
-- `smashbook-staging` (PostgreSQL 16) — single primary instance
+- `smashbook-staging` (PostgreSQL 18) — single primary instance
 - `padel_db` database
 - No read replica yet
 - pgvector extension status: not yet enabled at the instance flag level
@@ -160,7 +160,16 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 
 **Resources affected:** every existing resource gains an environment suffix or workspace-scoped name. The variables file gets an `environment` variable consumed everywhere.
 
-### 1.6 Dead-letter queues for existing subscriptions
+### 1.6 Cloud SQL backups
+
+**Why:** Backups are currently disabled on `smashbook-staging`. Before any real customer data lands, automated backups and point-in-time recovery must be enabled. Data loss without backups is unrecoverable.
+
+**Resources:**
+- Update `database.tf` `backup_configuration` block: `enabled = true`, `point_in_time_recovery_enabled = true`
+- `start_time = "19:00"` (low-traffic window), `transaction_log_retention_days = 7`, `retained_backups = 15`
+- Repeat on the replica once it is created (Stage 1.3)
+
+### 1.7 Dead-letter queues for existing subscriptions
 
 **Why:** Pulled forward from Stage 2 because it is trivial and applies to MVP workers too. Pub/Sub at-least-once delivery means a poison message in `booking-events` today can loop forever.
 
@@ -176,6 +185,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - [ ] Read replica live, secret value set
 - [ ] pgvector flag on, extension created via Alembic
 - [ ] Production environment scaffold merged (no production resources yet — just the structure)
+- [ ] Backups and point-in-time recovery enabled on Cloud SQL
 - [ ] DLQ topics + policies on three MVP subscriptions
 
 ---
