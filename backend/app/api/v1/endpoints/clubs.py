@@ -232,6 +232,78 @@ async def update_pricing_rules(
     return new_rules
 
 
+def _is_test_mode() -> bool:
+    return get_settings().STRIPE_SECRET_KEY.startswith("sk_test_")
+
+
+async def _create_test_connected_account(club) -> str:
+    """
+    Programmatically create and fully enable a Stripe Custom connected account
+    using synthetic test data.  Only valid in Stripe test mode.
+    """
+    import time as _time
+
+    country_map = {"GBP": "GB", "EUR": "DE", "USD": "US"}
+    country = country_map.get(club.currency.upper(), "GB")
+    now_ts = int(_time.time())
+
+    account = await stripe.Account.create_async(
+        type="custom",
+        country=country,
+        email=f"club-{str(club.id)[:8]}@smashbook.test",
+        capabilities={
+            "card_payments": {"requested": True},
+            "transfers": {"requested": True},
+        },
+        business_type="individual",
+        individual={
+            "first_name": "Test",
+            "last_name": "Club",
+            "email": f"club-{str(club.id)[:8]}@smashbook.test",
+            "phone": "+441234567890" if country == "GB" else "+12025551234",
+            "dob": {"day": 1, "month": 1, "year": 1901},
+            "address": {
+                "line1": club.address or "1 Test Street",
+                "city": "London" if country == "GB" else "New York",
+                "postal_code": "SW1A 1AA" if country == "GB" else "10001",
+                "country": country,
+            },
+            "id_number": "000000000",
+        },
+        tos_acceptance={
+            "date": now_ts,
+            "ip": "127.0.0.1",
+            "user_agent": "SmashBook-TestSetup/1.0",
+        },
+        settings={
+            "payouts": {
+                "schedule": {"interval": "daily"},
+                "debit_negative_balances": True,
+            },
+        },
+        metadata={"club_id": str(club.id), "club_name": club.name, "environment": "test"},
+    )
+
+    gb_test_bank = {
+        "object": "bank_account",
+        "country": "GB",
+        "currency": "gbp",
+        "routing_number": "108800",
+        "account_number": "00012345",
+    }
+    us_test_bank = {
+        "object": "bank_account",
+        "country": "US",
+        "currency": "usd",
+        "routing_number": "110000000",
+        "account_number": "000123456789",
+    }
+    ext_account = gb_test_bank if club.currency.upper() == "GBP" else us_test_bank
+    await stripe.Account.create_external_account_async(account.id, external_account=ext_account)
+
+    return account.id
+
+
 @router.post("/{club_id}/stripe/connect", response_model=StripeConnectResponse)
 async def configure_stripe_connect(
     club_id: uuid.UUID,
@@ -240,11 +312,43 @@ async def configure_stripe_connect(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Initiate Stripe Connect Express onboarding for the club.
-    Returns a one-time onboarding URL; redirect the admin there to complete setup.
-    Re-calling this endpoint regenerates the link if onboarding was not completed.
+    Set up Stripe Connect for the club.
+
+    - **Test mode** (sk_test_*): creates a fully-enabled Custom account
+      programmatically — no browser onboarding needed.  `return_url` and
+      `refresh_url` are ignored.
+    - **Live mode**: creates an Express account and returns a one-time
+      onboarding URL.  Re-calling regenerates the link if onboarding was
+      not completed.
     """
     club = await _get_club(club_id, db)
+
+    if _is_test_mode():
+        if not club.stripe_connect_account_id:
+            try:
+                account_id = await _create_test_connected_account(club)
+            except stripe.StripeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=str(exc.user_message or exc),
+                )
+            club.stripe_connect_account_id = account_id
+            await db.flush()
+
+        acct = await stripe.Account.retrieve_async(club.stripe_connect_account_id)
+        return StripeConnectResponse(
+            account_id=club.stripe_connect_account_id,
+            onboarding_url=None,
+            charges_enabled=acct.charges_enabled,
+            payouts_enabled=acct.payouts_enabled,
+        )
+
+    # Live mode — Express onboarding flow
+    if not body.return_url or not body.refresh_url:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="return_url and refresh_url are required for live-mode onboarding",
+        )
 
     if not club.stripe_connect_account_id:
         account = await stripe.Account.create_async(type="express")
@@ -258,4 +362,10 @@ async def configure_stripe_connect(
         type="account_onboarding",
     )
 
-    return StripeConnectResponse(onboarding_url=account_link.url)
+    acct = await stripe.Account.retrieve_async(club.stripe_connect_account_id)
+    return StripeConnectResponse(
+        account_id=club.stripe_connect_account_id,
+        onboarding_url=account_link.url,
+        charges_enabled=acct.charges_enabled,
+        payouts_enabled=acct.payouts_enabled,
+    )

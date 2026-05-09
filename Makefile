@@ -99,6 +99,23 @@ seed-local:
 	docker-compose exec api python scripts/seed_staging.py
 
 # ── Stripe ────────────────────────────────────────────────────────────────────
+# Create Stripe test connected accounts for all clubs (local DB via Docker)
+stripe-connect-local:
+	docker-compose exec api python scripts/setup_stripe_test_accounts.py
+
+# Start Cloud SQL Auth Proxy for staging (listens on localhost:5433 to avoid conflict with local Postgres on 5432)
+cloud-sql-proxy-staging:
+	cloud-sql-proxy --port 5433 smashbook-488121:europe-west2:smashbook-staging &
+
+# Create Stripe test connected accounts for all clubs (staging DB via Cloud SQL proxy)
+# Requires: make cloud-sql-proxy-staging running, and STAGING_DB_PASSWORD set
+# Uses STRIPE_SECRET_KEY from your environment (must be sk_test_*)
+stripe-connect-staging:
+	cd backend && \
+	DATABASE_URL=postgresql+asyncpg://padel_user:$(STAGING_DB_PASSWORD)@127.0.0.1:5433/padel_db \
+	DATABASE_READ_REPLICA_URL=postgresql+asyncpg://padel_user:$(STAGING_DB_PASSWORD)@127.0.0.1:5433/padel_db \
+	.venv/bin/python scripts/setup_stripe_test_accounts.py
+
 # Create a Stripe test payment method (tok_visa): make payment-intent
 payment-intent:
 	curl https://api.stripe.com/v1/payment_methods \
@@ -117,4 +134,4 @@ get-token:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging seed-local payment-intent get-token
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token
