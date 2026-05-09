@@ -47,7 +47,7 @@ from app.db.models.club import Club
 
 settings = get_settings()
 
-stripe.api_key = settings.STRIPE_SECRET_KEY
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", settings.STRIPE_SECRET_KEY)
 stripe.api_version = settings.STRIPE_API_VERSION
 
 if not stripe.api_key.startswith("sk_test_"):
@@ -55,7 +55,9 @@ if not stripe.api_key.startswith("sk_test_"):
     print("       This script must not run against a live Stripe environment.")
     sys.exit(1)
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False)
+database_url = os.environ.get("DATABASE_URL", settings.DATABASE_URL)
+print(f"Connecting to: {database_url}")
+engine = create_async_engine(database_url, echo=False)
 Session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
@@ -115,6 +117,8 @@ async def _create_connected_account(club: Club) -> str:
     # 1. Create the Custom account with required fields.
     #    In test mode, passing id_number "000000000" and DOB 1901-01-01
     #    triggers Stripe's automatic identity-verification bypass.
+    slug = club.name.lower().replace(" ", "-")
+
     account = stripe.Account.create(
         type="custom",
         country=country,
@@ -124,11 +128,16 @@ async def _create_connected_account(club: Club) -> str:
             "transfers": {"requested": True},
         },
         business_type="individual",
+        business_profile={
+            "name": club.name,
+            "url": f"https://{slug}.smashbook.app",
+            "mcc": "7941",  # Athletic Fields / Commercial Sports Clubs
+        },
         individual={
             "first_name": "Test",
             "last_name": "Club",
             "email": f"club-{str(club.id)[:8]}@smashbook.test",
-            "phone": "+441234567890" if country == "GB" else "+12025551234",
+            "phone": "+447700900000" if country == "GB" else "+12025550123",
             "dob": {"day": 1, "month": 1, "year": 1901},  # triggers test verification
             "address": {
                 "line1": club.address or "1 Test Street",
