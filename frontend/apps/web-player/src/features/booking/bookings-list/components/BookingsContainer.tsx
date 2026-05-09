@@ -20,6 +20,7 @@ import { PaymentModal } from "../../../payment";
 import { X } from "lucide-react";
 
 type SelectedBooking = { bookingId: string; clubId: string };
+type PayingBooking = { item: PlayerBookingItem; onSuccess?: () => void };
 
 type MyInfo = {
     role: PlayerRole;
@@ -31,9 +32,11 @@ type MyInfo = {
 function BookingModal({
     selected,
     onClose,
+    onPayClick,
 }: {
     selected: SelectedBooking;
     onClose: () => void;
+    onPayClick: (item: PlayerBookingItem, onSuccess?: () => void) => void;
 }): JSX.Element {
     const {
         data: booking,
@@ -140,6 +143,12 @@ function BookingModal({
                         isRespondPending={respondMutation.isPending}
                         onInvitePlayer={handleInvitePlayer}
                         onRespondInvite={handleRespondInvite}
+                        onPayClick={(item) =>
+                            onPayClick(item, () => {
+                                void refetch();
+                                window.setTimeout(() => void refetch(), 1500);
+                            })
+                        }
                         onDismissError={() => setApiError("")}
                         onRefresh={() => void refetch()}
                         clubId={selected.clubId}
@@ -155,8 +164,9 @@ export default function BookingsContainer(): JSX.Element {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
+    const [pastTabVisited, setPastTabVisited] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
-    const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
+    const [payingBooking, setPayingBooking] = useState<PayingBooking | null>(null);
 
     const defaultFrom = new Date();
     defaultFrom.setMonth(defaultFrom.getMonth() - 3);
@@ -168,14 +178,35 @@ export default function BookingsContainer(): JSX.Element {
     const [appliedFrom, setAppliedFrom] = useState(defaultFromIso);
     const [appliedTo, setAppliedTo] = useState(defaultToIso);
 
-    const { data, isLoading, error, refetch } = useMyBookings(
-        appliedFrom || appliedTo
-            ? { past_from: appliedFrom || undefined, past_to: appliedTo || undefined }
-            : undefined
+    const {
+        data: upcomingData,
+        isLoading: isUpcomingLoading,
+        error: upcomingError,
+        refetch: refetchUpcoming,
+    } = useMyBookings(undefined);
+
+    const {
+        data: pastData,
+        isLoading: isPastLoading,
+        error: pastError,
+        refetch: refetchPast,
+    } = useMyBookings(
+        { past_from: appliedFrom || undefined, past_to: appliedTo || undefined },
+        { enabled: pastTabVisited }
     );
 
-    const handleRefresh = useCallback(() => void refetch(), [refetch]);
-    const handleTabChange = useCallback((tab: BookingTab) => setActiveTab(tab), []);
+    const isLoading = activeTab === "upcoming" ? isUpcomingLoading : isPastLoading;
+    const error = activeTab === "upcoming" ? upcomingError : pastError;
+
+    const handleRefresh = useCallback(() => {
+        if (activeTab === "upcoming") void refetchUpcoming();
+        else void refetchPast();
+    }, [activeTab, refetchUpcoming, refetchPast]);
+
+    const handleTabChange = useCallback((tab: BookingTab) => {
+        setActiveTab(tab);
+        if (tab === "past") setPastTabVisited(true);
+    }, []);
     const handleCreateClick = useCallback(() => void navigate({ to: "/bookings/new" }), [navigate]);
 
     const inviteMutation = useMutation({
@@ -235,13 +266,29 @@ export default function BookingsContainer(): JSX.Element {
         setSelectedBooking(null);
     }, []);
 
-    const handlePayClick = useCallback((item: PlayerBookingItem): void => {
-        setPayingBooking(item);
-    }, []);
+    const handlePayClick = useCallback(
+        (item: PlayerBookingItem, onSuccess?: () => void): void => {
+            setPayingBooking({ item, onSuccess });
+        },
+        []
+    );
+
+    const refreshCurrentBookings = useCallback((): void => {
+        const refetch = activeTab === "upcoming" ? refetchUpcoming : refetchPast;
+        void refetch();
+        window.setTimeout(() => void refetch(), 1500);
+    }, [activeTab, refetchUpcoming, refetchPast]);
+
+    const handlePaymentSuccess = useCallback((): void => {
+        refreshCurrentBookings();
+        payingBooking?.onSuccess?.();
+    }, [payingBooking, refreshCurrentBookings]);
 
     const handleClosePayModal = useCallback((): void => {
         setPayingBooking(null);
-    }, []);
+        refreshCurrentBookings();
+        payingBooking?.onSuccess?.();
+    }, [payingBooking, refreshCurrentBookings]);
 
     const handlePastFilterChange = useCallback(
         (patch: { pastFrom?: string; pastTo?: string }): void => {
@@ -266,8 +313,8 @@ export default function BookingsContainer(): JSX.Element {
     return (
         <>
             <BookingsView
-                upcoming={data?.upcoming ?? []}
-                past={data?.past ?? []}
+                upcoming={upcomingData?.upcoming ?? []}
+                past={pastData?.past ?? []}
                 activeTab={activeTab}
                 isLoading={isLoading}
                 error={error}
@@ -285,12 +332,17 @@ export default function BookingsContainer(): JSX.Element {
                 onPastFilterClear={handlePastFilterClear}
             />
             {selectedBooking ? (
-                <BookingModal selected={selectedBooking} onClose={handleCloseModal} />
+                <BookingModal
+                    selected={selectedBooking}
+                    onClose={handleCloseModal}
+                    onPayClick={handlePayClick}
+                />
             ) : null}
             {payingBooking ? (
                 <PaymentModal
-                    context={{ type: "booking", booking: payingBooking }}
+                    context={{ type: "booking", booking: payingBooking.item }}
                     onClose={handleClosePayModal}
+                    onSuccess={handlePaymentSuccess}
                 />
             ) : null}
         </>

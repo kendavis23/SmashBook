@@ -1,5 +1,5 @@
 import { type JSX, useState } from "react";
-import { CreditCard, Star, Plus } from "lucide-react";
+import { CreditCard, Star, Plus, Check } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import type { PaymentMethod } from "../types";
 
@@ -23,34 +23,36 @@ function CardOption({
         <button
             type="button"
             onClick={onSelect}
-            className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+            className={`group flex w-full items-center gap-4 rounded-xl border px-4 py-4 text-left shadow-sm transition ${
                 selected
-                    ? "border-cta bg-cta/5 ring-1 ring-cta"
-                    : "border-border bg-card hover:border-cta/40"
+                    ? "border-cta bg-cta/5 ring-2 ring-cta/25"
+                    : "border-border bg-card hover:border-cta/40 hover:bg-muted/20"
             }`}
         >
-            <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded border border-border bg-muted text-[10px] font-bold uppercase text-muted-foreground">
-                {card.brand}
-            </div>
+            <span className="flex h-11 w-16 shrink-0 items-center justify-center rounded-lg bg-muted px-2 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
+                <span className="max-w-full truncate">{card.brand}</span>
+            </span>
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                    •••• {card.last4}
-                </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-base font-semibold text-foreground">•••• {card.last4}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
                     Expires {card.exp_month.toString().padStart(2, "0")}/{card.exp_year}
                 </p>
             </div>
             {card.is_default && (
-                <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-cta/10 px-2 py-0.5 text-[10px] font-semibold text-cta">
-                    <Star size={10} />
+                <span className="hidden shrink-0 items-center gap-1 rounded-full bg-cta/10 px-3 py-1 text-xs font-semibold text-cta sm:inline-flex">
+                    <Star size={12} />
                     Default
                 </span>
             )}
             <div
-                className={`ml-1 h-4 w-4 shrink-0 rounded-full border-2 transition ${
-                    selected ? "border-cta bg-cta" : "border-muted-foreground"
+                className={`ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                    selected
+                        ? "border-cta bg-cta text-cta-foreground"
+                        : "border-muted-foreground/70"
                 }`}
-            />
+            >
+                {selected ? <Check size={14} /> : null}
+            </div>
         </button>
     );
 }
@@ -75,8 +77,18 @@ export function SelectMethodStep({ methods, amount, isLoading, onConfirm }: Prop
     }
 
     return (
-        <div className="flex flex-col gap-4 p-6">
-            <div className="flex flex-col gap-2">
+        <div className="flex min-h-0 flex-1 flex-col px-6 pb-6 pt-5">
+            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-muted/25 px-4 py-3">
+                <div>
+                    <p className="text-sm font-semibold text-foreground">Amount due</p>
+                    <p className="text-xs text-muted-foreground">
+                        Select a saved card or add a new one
+                    </p>
+                </div>
+                <p className="text-lg font-semibold text-foreground">{formatCurrency(amount)}</p>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
                 {methods.map((card) => (
                     <CardOption
                         key={card.id}
@@ -89,24 +101,30 @@ export function SelectMethodStep({ methods, amount, isLoading, onConfirm }: Prop
                 <button
                     type="button"
                     onClick={handleSelectNew}
-                    className={`flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition ${
+                    className={`flex w-full items-center gap-4 rounded-xl border px-4 py-4 text-left shadow-sm transition ${
                         useNew
-                            ? "border-cta bg-cta/5 ring-1 ring-cta"
-                            : "border-border bg-card hover:border-cta/40"
+                            ? "border-cta bg-cta/5 ring-2 ring-cta/25"
+                            : "border-border bg-card hover:border-cta/40 hover:bg-muted/20"
                     }`}
                 >
-                    <div className="flex h-8 w-12 shrink-0 items-center justify-center rounded border border-border bg-muted text-muted-foreground">
-                        <Plus size={14} />
+                    <div className="flex h-11 w-16 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground">
+                        <Plus size={18} />
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">Use a new card</p>
-                        <p className="text-xs text-muted-foreground">Enter card details at checkout</p>
+                        <p className="text-base font-semibold text-foreground">Use a new card</p>
+                        <p className="mt-0.5 text-sm text-muted-foreground">
+                            Enter card details at checkout
+                        </p>
                     </div>
                     <div
-                        className={`ml-1 h-4 w-4 shrink-0 rounded-full border-2 transition ${
-                            useNew ? "border-cta bg-cta" : "border-muted-foreground"
+                        className={`ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition ${
+                            useNew
+                                ? "border-cta bg-cta text-cta-foreground"
+                                : "border-muted-foreground/70"
                         }`}
-                    />
+                    >
+                        {useNew ? <Check size={14} /> : null}
+                    </div>
                 </button>
             </div>
 
@@ -114,7 +132,7 @@ export function SelectMethodStep({ methods, amount, isLoading, onConfirm }: Prop
                 type="button"
                 disabled={isLoading || (!useNew && !selected)}
                 onClick={handleConfirm}
-                className="btn-primary flex items-center justify-center gap-2"
+                className="btn-cta mt-5 min-h-11 w-full"
             >
                 {isLoading ? (
                     <>

@@ -304,7 +304,7 @@ export function NewBookingModalView({
                     className="btn-cta flex items-center gap-2"
                 >
                     <CalendarDays size={14} />
-                    {isPending ? "Creating..." : "Create Booking"}
+                    {isPending ? "Creating..." : "Create & Pay"}
                 </button>
             </footer>
         </form>

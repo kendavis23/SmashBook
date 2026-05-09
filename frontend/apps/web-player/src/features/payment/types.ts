@@ -6,7 +6,7 @@ export type { PaymentMethod };
 export type PaymentStep =
     | { id: "loading" }
     | { id: "choose_card"; methods: PaymentMethod[] }
-    | { id: "select_method"; methods: PaymentMethod[] }
+    | { id: "select_method"; methods: PaymentMethod[]; chosenCard: PaymentMethod }
     | { id: "new_card" }
     | { id: "confirming" }
     | { id: "success"; amount: number; currency: string }
@@ -19,4 +19,5 @@ export type PaymentModalContext =
 export interface PaymentModalProps {
     context: PaymentModalContext;
     onClose: () => void;
+    onSuccess?: () => void;
 }

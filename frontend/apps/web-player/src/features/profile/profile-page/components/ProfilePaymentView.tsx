@@ -10,7 +10,7 @@ import {
     useDeletePaymentMethod,
     useSetDefaultPaymentMethod,
 } from "@repo/player-domain/hooks";
-import { AlertToast } from "@repo/ui";
+import { AlertToast, ConfirmDeleteModal } from "@repo/ui";
 import { Lock, Plus, Star, Trash2, X } from "lucide-react";
 import type { PaymentMethod } from "@repo/player-domain/models";
 
@@ -203,6 +203,9 @@ export function ProfilePaymentView(): JSX.Element {
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [setupError, setSetupError] = useState<string | null>(null);
 
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+    const [successToast, setSuccessToast] = useState<string | null>(null);
+
     const hasCards = !isLoading && !error && !!methods && methods.length > 0;
     const isAddCardOpen = showAddCard || (!isLoading && !error && !hasCards);
 
@@ -220,14 +223,35 @@ export function ProfilePaymentView(): JSX.Element {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAddCardOpen]);
 
-    const handleDelete = useCallback((id: string) => { deleteMutation.mutate(id); }, [deleteMutation]);
-    const handleSetDefault = useCallback((id: string) => { setDefaultMutation.mutate(id); }, [setDefaultMutation]);
+    const handleDeleteRequest = useCallback((id: string) => { setDeleteTargetId(id); }, []);
+
+    const handleDeleteConfirm = useCallback(() => {
+        if (!deleteTargetId) return;
+        deleteMutation.mutate(deleteTargetId, {
+            onSuccess: () => {
+                setSuccessToast("Card removed successfully.");
+                setDeleteTargetId(null);
+            },
+            onError: () => { setDeleteTargetId(null); },
+        });
+    }, [deleteTargetId, deleteMutation]);
+
+    const handleSetDefault = useCallback((id: string) => {
+        setDefaultMutation.mutate(id, {
+            onSuccess: () => { setSuccessToast("Default payment method updated."); },
+        });
+    }, [setDefaultMutation]);
 
     const handleAddDone = useCallback(() => {
         setShowAddCard(false);
         setClientSecret(null);
         setSetupError(null);
     }, []);
+
+    const handleAddSuccess = useCallback(() => {
+        handleAddDone();
+        setSuccessToast("Card saved successfully.");
+    }, [handleAddDone]);
 
     const handleOpenAdd = useCallback(() => {
         setSetupError(null);
@@ -237,6 +261,20 @@ export function ProfilePaymentView(): JSX.Element {
 
     return (
         <div className="space-y-5">
+            {successToast && (
+                <AlertToast title={successToast} variant="success" onClose={() => setSuccessToast(null)} />
+            )}
+
+            {deleteTargetId && (
+                <ConfirmDeleteModal
+                    title="Remove card"
+                    description="Are you sure you want to remove this card? This action cannot be undone."
+                    saving={deleteMutation.isPending}
+                    onConfirm={handleDeleteConfirm}
+                    onCancel={() => setDeleteTargetId(null)}
+                />
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
@@ -275,7 +313,7 @@ export function ProfilePaymentView(): JSX.Element {
                         <CardTile
                             key={card.id}
                             card={card}
-                            onDelete={handleDelete}
+                            onDelete={handleDeleteRequest}
                             onSetDefault={handleSetDefault}
                             isDeleting={deleteMutation.isPending && deleteMutation.variables === card.id}
                             isSettingDefault={setDefaultMutation.isPending && setDefaultMutation.variables === card.id}
@@ -325,7 +363,7 @@ export function ProfilePaymentView(): JSX.Element {
                         >
                             <AddCardInner
                                 clientSecret={clientSecret}
-                                onSuccess={handleAddDone}
+                                onSuccess={handleAddSuccess}
                                 onCancel={handleAddDone}
                                 canCancel={hasCards}
                             />

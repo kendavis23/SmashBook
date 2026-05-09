@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
+import { useMyProfile } from "@repo/player-domain/hooks";
+import { useQueryClient } from "@tanstack/react-query";
 import {
     useCreateBooking,
     useGetCourtAvailability,
@@ -8,7 +10,8 @@ import {
     useListAvailableTrainers,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
-import type { BookingInput, BookingType } from "../../types";
+import type { Booking, BookingInput, BookingType, PlayerBookingItem } from "../../types";
+import { PaymentModal } from "../../../payment";
 import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
 import { getTrainerStaffProfileId } from "./trainerSelect";
@@ -27,6 +30,30 @@ function parseOptionalNumber(val: string): number | null {
     return isNaN(n) ? null : n;
 }
 
+function getPayableBookingForUser(
+    booking: Booking,
+    myUserId: string | undefined
+): PlayerBookingItem | null {
+    if (!myUserId) return null;
+    const me = booking.players.find((player) => player.user_id === myUserId);
+    if (!me || me.invite_status !== "accepted" || me.payment_status !== "pending") return null;
+
+    return {
+        booking_id: booking.id,
+        club_id: booking.club_id,
+        court_id: booking.court_id,
+        court_name: booking.court_name,
+        booking_type: booking.booking_type,
+        status: booking.status,
+        start_datetime: booking.start_datetime,
+        end_datetime: booking.end_datetime,
+        role: me.role,
+        invite_status: me.invite_status,
+        payment_status: me.payment_status,
+        amount_due: me.amount_due,
+    };
+}
+
 export default function NewBookingModalContainer({
     courtId,
     courtName,
@@ -35,7 +62,9 @@ export default function NewBookingModalContainer({
     onClose,
     onSuccess,
 }: Props): JSX.Element {
+    const queryClient = useQueryClient();
     const { clubId } = useClubAccess();
+    const { data: profile, isError: profileError } = useMyProfile();
     const { data: courts = [] } = useListCourts(clubId ?? "");
     const courtList = courts as { id: string; name: string }[];
 
@@ -60,6 +89,9 @@ export default function NewBookingModalContainer({
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
     const [staffError, setStaffError] = useState("");
+    const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
+    const [createdBookingAwaitingProfile, setCreatedBookingAwaitingProfile] =
+        useState<Booking | null>(null);
 
     const {
         data: availabilityData,
@@ -106,6 +138,26 @@ export default function NewBookingModalContainer({
 
     const createMutation = useCreateBooking(clubId ?? "");
     const apiError = (createMutation.error as Error | null)?.message ?? "";
+
+    useEffect(() => {
+        if (!createdBookingAwaitingProfile) return;
+        if (profileError) {
+            setCreatedBookingAwaitingProfile(null);
+            onClose();
+            onSuccess?.();
+            return;
+        }
+        if (!profile?.id) return;
+
+        const payableBooking = getPayableBookingForUser(createdBookingAwaitingProfile, profile.id);
+        setCreatedBookingAwaitingProfile(null);
+        if (payableBooking) {
+            setPayingBooking(payableBooking);
+            return;
+        }
+        onClose();
+        onSuccess?.();
+    }, [createdBookingAwaitingProfile, onClose, onSuccess, profile?.id, profileError]);
 
     const handleFormChange = useCallback(
         (patch: Partial<NewBookingFormState>): void => {
@@ -178,40 +230,73 @@ export default function NewBookingModalContainer({
             };
 
             createMutation.mutate(payload, {
-                onSuccess: () => {
+                onSuccess: (booking) => {
+                    const createdBooking = booking as Booking;
+                    const payableBooking = getPayableBookingForUser(createdBooking, profile?.id);
+                    if (payableBooking) {
+                        setPayingBooking(payableBooking);
+                        return;
+                    }
+                    if (!profile?.id && !profileError) {
+                        setCreatedBookingAwaitingProfile(createdBooking);
+                        return;
+                    }
                     onClose();
                     onSuccess?.();
                 },
             });
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [form, clubId, createMutation, onClose]
+        [form, clubId, createMutation, onClose, onSuccess, profile?.id, profileError]
     );
 
+    const finishPaymentFlow = useCallback((): void => {
+        setPayingBooking(null);
+        void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        if (onSuccess) {
+            onSuccess();
+        } else {
+            onClose();
+        }
+    }, [onClose, onSuccess, queryClient]);
+
     return (
-        <NewBookingView
-            mode="modal"
-            courtName={courtName}
-            courts={courtList}
-            trainers={trainerData}
-            trainersLoading={trainersLoading}
-            trainersError={trainersError}
-            slots={slots}
-            slotsLoading={slotsLoading}
-            form={form}
-            courtError={courtError}
-            startError={startError}
-            staffError={staffError}
-            apiError={apiError}
-            isPending={createMutation.isPending}
-            onFormChange={handleFormChange}
-            onSubmit={handleSubmit}
-            onCancel={onClose}
-            onClose={onClose}
-            onDismissError={() => createMutation.reset()}
-            onRefreshSlots={() => void refetchSlots()}
-            selectedPrice={selectedPrice}
-            clubId={clubId}
-        />
+        <>
+            <NewBookingView
+                mode="modal"
+                courtName={courtName}
+                courts={courtList}
+                trainers={trainerData}
+                trainersLoading={trainersLoading}
+                trainersError={trainersError}
+                slots={slots}
+                slotsLoading={slotsLoading}
+                form={form}
+                courtError={courtError}
+                startError={startError}
+                staffError={staffError}
+                apiError={apiError}
+                isPending={createMutation.isPending || createdBookingAwaitingProfile != null}
+                onFormChange={handleFormChange}
+                onSubmit={handleSubmit}
+                onCancel={onClose}
+                onClose={onClose}
+                onDismissError={() => createMutation.reset()}
+                onRefreshSlots={() => void refetchSlots()}
+                selectedPrice={selectedPrice}
+                clubId={clubId}
+            />
+            {payingBooking ? (
+                <PaymentModal
+                    context={{ type: "booking", booking: payingBooking }}
+                    onClose={finishPaymentFlow}
+                    onSuccess={() => {
+                        void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
+                        void queryClient.invalidateQueries({ queryKey: ["bookings"] });
+                    }}
+                />
+            ) : null}
+        </>
     );
 }

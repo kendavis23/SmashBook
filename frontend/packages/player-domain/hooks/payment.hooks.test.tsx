@@ -37,6 +37,19 @@ function makeWrapper() {
     return { client, Wrapper };
 }
 
+function makeWrapperWithCachedQueries() {
+    const client = new QueryClient({
+        defaultOptions: {
+            queries: { retry: false, staleTime: Infinity },
+            mutations: { retry: false },
+        },
+    });
+    const Wrapper = ({ children }: { children: React.ReactNode }) => (
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    return { client, Wrapper };
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
 });
@@ -131,6 +144,20 @@ describe("useListPaymentMethods", () => {
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(result.current.data).toEqual([mockPaymentMethod]);
         expect(shareApi.listPaymentMethodsEndpoint).toHaveBeenCalled();
+    });
+
+    it("always calls listPaymentMethodsEndpoint on mount even when cached data exists", async () => {
+        vi.mocked(shareApi.listPaymentMethodsEndpoint).mockResolvedValue([mockPaymentMethod]);
+        const { Wrapper } = makeWrapperWithCachedQueries();
+
+        const first = renderHook(() => useListPaymentMethods(), { wrapper: Wrapper });
+        await waitFor(() => expect(first.result.current.isSuccess).toBe(true));
+        first.unmount();
+
+        const second = renderHook(() => useListPaymentMethods(), { wrapper: Wrapper });
+        await waitFor(() => expect(second.result.current.isSuccess).toBe(true));
+
+        expect(shareApi.listPaymentMethodsEndpoint).toHaveBeenCalledTimes(2);
     });
 });
 

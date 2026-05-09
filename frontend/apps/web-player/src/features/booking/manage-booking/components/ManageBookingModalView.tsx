@@ -12,7 +12,13 @@ import {
     X,
 } from "lucide-react";
 import { AlertToast, formatCurrency, formatUTCDate, formatUTCTime } from "@repo/ui";
-import type { Booking, InviteStatus, PaymentStatus, PlayerRole } from "../../types";
+import type {
+    Booking,
+    InviteStatus,
+    PaymentStatus,
+    PlayerBookingItem,
+    PlayerRole,
+} from "../../types";
 import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
 type MyInfo = {
@@ -76,10 +82,14 @@ function PlayersTable({
     players,
     myUserId,
     showPayCta,
+    payableBooking,
+    onPayClick,
 }: {
     players: Booking["players"];
     myUserId?: string;
     showPayCta: boolean;
+    payableBooking: PlayerBookingItem | null;
+    onPayClick?: (item: PlayerBookingItem) => void;
 }): JSX.Element {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(0);
@@ -205,6 +215,9 @@ function PlayersTable({
                                     {isMe && showPayCta ? (
                                         <button
                                             type="button"
+                                            onClick={() => {
+                                                if (payableBooking) onPayClick?.(payableBooking);
+                                            }}
                                             className="btn-cta inline-flex min-h-8 items-center justify-center gap-1.5 px-3 text-xs"
                                         >
                                             <CreditCard size={13} />
@@ -261,6 +274,7 @@ type Props = {
     isRespondPending: boolean;
     onInvitePlayer: (userId: string) => void;
     onRespondInvite: (action: Extract<InviteStatus, "accepted" | "declined">) => void;
+    onPayClick?: (item: PlayerBookingItem) => void;
     onDismissError: () => void;
     onRefresh: () => void;
     clubId?: string | null;
@@ -277,6 +291,7 @@ export function ManageBookingModalView({
     isRespondPending,
     onInvitePlayer,
     onRespondInvite,
+    onPayClick,
     onDismissError,
     onRefresh,
     clubId,
@@ -288,7 +303,24 @@ export function ManageBookingModalView({
         BOOKING_STATUS_CLASSES[booking.status] ?? "bg-secondary text-secondary-foreground";
     const myInviteStatus = myInfo?.inviteStatus ?? null;
     const myPaymentStatus = myInfo?.paymentStatus ?? null;
-    const showPayCta = myInviteStatus === "accepted" && myPaymentStatus === "pending";
+    const payableBooking: PlayerBookingItem | null =
+        myInfo && myInviteStatus === "accepted" && myPaymentStatus === "pending"
+            ? {
+                  booking_id: booking.id,
+                  club_id: booking.club_id,
+                  court_id: booking.court_id,
+                  court_name: booking.court_name,
+                  booking_type: booking.booking_type,
+                  status: booking.status,
+                  start_datetime: booking.start_datetime,
+                  end_datetime: booking.end_datetime,
+                  role: myInfo.role,
+                  invite_status: myInfo.inviteStatus,
+                  payment_status: myInfo.paymentStatus,
+                  amount_due: myInfo.amountDue,
+              }
+            : null;
+    const showPayCta = payableBooking != null && onPayClick != null;
     const bookingTypeLabel =
         BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type.replace(/_/g, " ");
 
@@ -460,6 +492,8 @@ export function ManageBookingModalView({
                             players={booking.players}
                             myUserId={myUserId}
                             showPayCta={showPayCta}
+                            payableBooking={payableBooking}
+                            onPayClick={onPayClick}
                         />
                     </section>
                 ) : null}

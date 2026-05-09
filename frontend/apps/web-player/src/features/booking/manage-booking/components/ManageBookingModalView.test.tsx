@@ -322,6 +322,50 @@ describe("ManageBookingModalView", () => {
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
     });
 
+    it("calls onPayClick from the current player's pending payment row", () => {
+        const onPayClick = vi.fn();
+        const bookingWithPlayers = {
+            ...booking,
+            players: [
+                {
+                    id: "p1",
+                    booking_id: "booking-1",
+                    user_id: "user-1",
+                    full_name: "Alex Doe",
+                    role: "player",
+                    invite_status: "accepted",
+                    payment_status: "pending",
+                    amount_due: 10,
+                },
+            ],
+        };
+
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                booking={bookingWithPlayers as never}
+                myUserId="user-1"
+                myInfo={{
+                    role: "player",
+                    inviteStatus: "accepted",
+                    paymentStatus: "pending",
+                    amountDue: 10,
+                }}
+                onPayClick={onPayClick}
+            />
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Pay now" }));
+
+        expect(onPayClick).toHaveBeenCalledWith(
+            expect.objectContaining({
+                booking_id: "booking-1",
+                amount_due: 10,
+                payment_status: "pending",
+            })
+        );
+    });
+
     it("does not render players section when booking has no players", () => {
         render(<ManageBookingModalView {...defaultProps} />);
 

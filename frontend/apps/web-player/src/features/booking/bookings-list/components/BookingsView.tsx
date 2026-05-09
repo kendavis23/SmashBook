@@ -109,11 +109,10 @@ export default function BookingsView({
                                 key={tab.id}
                                 type="button"
                                 onClick={() => onTabChange(tab.id)}
-                                className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-1 py-3 text-sm font-medium transition ${
-                                    activeTab === tab.id
+                                className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-1 py-3 text-sm font-medium transition ${activeTab === tab.id
                                         ? "border-cta text-cta"
                                         : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
+                                    }`}
                             >
                                 {tab.label}
                                 {tab.id === "upcoming" && upcoming.length > 0 ? (

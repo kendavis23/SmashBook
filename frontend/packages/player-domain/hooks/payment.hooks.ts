@@ -51,6 +51,9 @@ export function useListPaymentMethods() {
     return useQuery({
         queryKey: paymentKeys.paymentMethods(),
         queryFn: (): Promise<PaymentMethod[]> => listPaymentMethodsEndpoint(),
+        gcTime: 0,
+        staleTime: 0,
+        refetchOnMount: "always",
     });
 }
 

@@ -26,6 +26,7 @@ describe("createPaymentIntentEndpoint", () => {
         await createPaymentIntentEndpoint(data);
         expect(mockFetcher).toHaveBeenCalledWith("/api/v1/payments/payment-intent", {
             method: "POST",
+            cache: "no-store",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
@@ -38,6 +39,7 @@ describe("createSetupIntentEndpoint", () => {
         await createSetupIntentEndpoint();
         expect(mockFetcher).toHaveBeenCalledWith("/api/v1/payments/setup-intent", {
             method: "POST",
+            cache: "no-store",
         });
     });
 });
@@ -59,7 +61,9 @@ describe("listPaymentMethodsEndpoint", () => {
     it("calls GET /api/v1/payments/payment-methods", async () => {
         mockFetcher.mockResolvedValue([]);
         await listPaymentMethodsEndpoint();
-        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/payments/payment-methods");
+        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/payments/payment-methods", {
+            cache: "no-store",
+        });
     });
 });
 
