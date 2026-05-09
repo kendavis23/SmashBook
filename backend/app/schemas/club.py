@@ -156,9 +156,12 @@ class ClubUpdate(BaseModel):
 
 
 class StripeConnectRequest(BaseModel):
-    return_url: str
-    refresh_url: str
+    return_url: Optional[str] = None
+    refresh_url: Optional[str] = None
 
 
 class StripeConnectResponse(BaseModel):
-    onboarding_url: str
+    account_id: str
+    onboarding_url: Optional[str] = None  # None when test-mode account is self-configured
+    charges_enabled: bool = False
+    payouts_enabled: bool = False
