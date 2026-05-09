@@ -325,11 +325,15 @@ class PaymentService:
 
     async def _handle_wallet_top_up_succeeded(self, pi: dict) -> None:
         """Credit wallet after a wallet_top_up PaymentIntent succeeds."""
-        metadata = getattr(pi, "metadata", None) or {}
-        wallet_id_str = metadata.get("wallet_id")
-        user_id_str = metadata.get("user_id")
-        if not wallet_id_str:
+        try:
+            metadata = pi["metadata"]
+            wallet_id_str = metadata["wallet_id"]
+        except (KeyError, TypeError, AttributeError):
             return
+        try:
+            user_id_str = metadata["user_id"]
+        except (KeyError, TypeError, AttributeError):
+            user_id_str = None
 
         result = await self.db.execute(
             sa_select(Wallet).where(Wallet.id == uuid.UUID(wallet_id_str))
@@ -374,7 +378,11 @@ class PaymentService:
         pi = stripe_event["data"]["object"]
         pi_id = pi["id"]
 
-        if getattr(getattr(pi, "metadata", None), "purpose", None) == "wallet_top_up":
+        try:
+            _purpose = pi["metadata"]["purpose"]
+        except (KeyError, TypeError, AttributeError):
+            _purpose = None
+        if _purpose == "wallet_top_up":
             await self._handle_wallet_top_up_succeeded(pi)
             return
 
@@ -386,7 +394,10 @@ class PaymentService:
             return  # unknown PI or already processed
 
         payment.state = PaymentState.succeeded
-        payment.stripe_charge_id = getattr(pi, "latest_charge", None)
+        try:
+            payment.stripe_charge_id = pi["latest_charge"]
+        except (KeyError, AttributeError):
+            payment.stripe_charge_id = None
 
         if payment.stripe_charge_id:
             try:
@@ -467,8 +478,10 @@ class PaymentService:
         if not payment or payment.state == PaymentState.failed:
             return
 
-        last_error = getattr(pi, "last_payment_error", None)
-        failure_reason = getattr(last_error, "message", None) or "Payment failed"
+        try:
+            failure_reason = pi["last_payment_error"]["message"] or "Payment failed"
+        except (KeyError, TypeError, AttributeError):
+            failure_reason = "Payment failed"
 
         payment.state = PaymentState.failed
         payment.failure_reason = failure_reason
