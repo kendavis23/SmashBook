@@ -1,4 +1,4 @@
-_Last updated: 2026-05-09 00:00 UTC_
+_Last updated: 2026-05-09 12:00 UTC_
 
 # SmashBook — Architecture
 
@@ -621,9 +621,19 @@ All 8 services are deployed from just **2 Docker images** (`padel-api` and `pade
 | Cloud SQL (PostgreSQL 18) | Primary database + pgvector extension. One primary instance + one read replica. All ORM access goes through async SQLAlchemy sessions. |
 | Artifact Registry | Docker image storage for `padel-api` and `padel-worker`, tagged by git SHA. Two images serve all 8 Cloud Run services. |
 | Pub/Sub | Async event bus. See topic list below. |
-| Cloud Storage | Booking receipts, exports, court media, and Terraform remote state. |
+| Cloud Storage | Three application buckets (staging) + Terraform remote state. See GCS Buckets table below. |
 | Secret Manager | All credentials: database URLs, Stripe keys, SendGrid API key, Firebase credentials, JWT secret. Never in env files. |
 | Cloud Scheduler | Triggers utilisation snapshot job (hourly) and churn scoring job (daily). |
+
+### GCS Buckets
+
+| Bucket (staging) | Purpose | Lifecycle |
+|---|---|---|
+| `padel-media-<project>-staging` | Booking receipts, court media, player avatars | No expiry; CORS restricted to `*.smashbook.app` |
+| `padel-exports-<project>-staging` | Async CSV exports; callers retrieve via signed URL | Objects deleted after 7 days |
+| `padel-ai-archive-<project>-staging` | `ai_inference_log` payload archives older than 90 days | Transitions to Coldline after 30 days in bucket |
+
+All buckets: uniform bucket-level access, public access prevention enforced. Runtime SA (`padel-runtime`) holds `roles/storage.objectAdmin` on each bucket.
 
 ### Pub/Sub Topics
 

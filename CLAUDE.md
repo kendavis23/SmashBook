@@ -323,6 +323,16 @@ After any significant change, update the relevant `docs/` file(s) before finishi
 
 If no single existing doc covers the change, add a note to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+### Tracking Infrastructure Changes
+
+`docs/INFRASTRUCTURE.md` is the authoritative record of what is actually deployed in GCP. **Update it every time a `terraform apply` moves infrastructure from `INFRASTRUCTURE_TARGET_STATE.md` toward the live state.** Steps:
+
+1. Add or update the relevant section (Cloud Run, Cloud SQL, Pub/Sub, Secret Manager, Cloud Storage, IAM, etc.) to reflect exactly what was applied.
+2. Remove the item from the **Known Gaps** table if it is now resolved.
+3. Update the `_Last updated` timestamp on line 1 to the current UTC date/time.
+
+Never leave `INFRASTRUCTURE.md` out of sync with Terraform after completing an infrastructure task.
+
 ### Tracking Implemented APIs
 
 `docs/IMPLEMENTED_API.md` is the authoritative list of working endpoints. **Update it every time an endpoint moves from stub (`pass`) to implemented.** Steps:

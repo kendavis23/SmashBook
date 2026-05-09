@@ -1,4 +1,4 @@
-_Last updated: 2026-05-09 00:00 UTC_
+_Last updated: 2026-05-09 12:00 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -19,6 +19,7 @@ _Last updated: 2026-05-09 00:00 UTC_
 - [Cloud SQL](#cloud-sql)
 - [Pub/Sub](#pubsub)
 - [Secret Manager](#secret-manager)
+- [Cloud Storage](#cloud-storage)
 - [IAM & Service Accounts](#iam--service-accounts)
 - [Artifact Registry](#artifact-registry)
 - [CI/CD Pipeline](#cicd-pipeline)
@@ -45,7 +46,7 @@ _Last updated: 2026-05-09 00:00 UTC_
 | State prefix | `staging` |
 | Terraform version | `>= 1.7` |
 | Google provider | `~> 5.0` (locked at `5.45.2` in `.terraform.lock.hcl`) |
-| Terraform layout | Flat files per concern — `cloud_run.tf`, `database.tf`, `pubsub.tf`, `secrets.tf`, `iam.tf`, `artifact_registry.tf`, `main.tf`, `variables.tf`, `outputs.tf` |
+| Terraform layout | Flat files per concern — `cloud_run.tf`, `database.tf`, `pubsub.tf`, `secrets.tf`, `iam.tf`, `artifact_registry.tf`, `storage.tf`, `main.tf`, `variables.tf`, `outputs.tf` |
 
 ---
 
@@ -182,6 +183,28 @@ The `padel-runtime` SA has `roles/secretmanager.secretAccessor` on all secrets v
 
 ---
 
+## Cloud Storage
+
+All buckets: `europe-west2`, uniform bucket-level access, public access prevention enforced, soft-delete disabled.
+
+| Bucket | Purpose | Lifecycle |
+|---|---|---|
+| `padel-media-smashbook-488121-staging` | Booking receipts, court media, player avatars | No expiry. CORS restricted to `https://*.smashbook.app` (GET/HEAD). |
+| `padel-exports-smashbook-488121-staging` | Async CSV exports; callers retrieve objects via signed URL | Objects deleted after 7 days. |
+| `padel-ai-archive-smashbook-488121-staging` | `ai_inference_log` payload archives (>90 days). Archive job lands in Stage 3. | Transitions to Coldline after 30 days in bucket. |
+
+The `padel-runtime` SA holds `roles/storage.objectAdmin` on each bucket via bucket-level IAM bindings (not project-level).
+
+**Terraform outputs:**
+
+| Output | Value |
+|---|---|
+| `media_bucket_name` | `padel-media-smashbook-488121-staging` |
+| `exports_bucket_name` | `padel-exports-smashbook-488121-staging` |
+| `ai_archive_bucket_name` | `padel-ai-archive-smashbook-488121-staging` |
+
+---
+
 ## IAM & Service Accounts
 
 ### Service Accounts
@@ -211,6 +234,14 @@ The `padel-runtime` SA has `roles/secretmanager.secretAccessor` on all secrets v
 | `roles/iam.serviceAccountUser` | Act as `padel-runtime` SA during deploy |
 
 `github-actions-deployer` also has `roles/artifactregistry.writer` bound at the repository level on `padel-api`.
+
+### `padel-runtime` Bucket-Level Roles
+
+| Bucket | Role |
+|---|---|
+| `padel-media-smashbook-488121-staging` | `roles/storage.objectAdmin` |
+| `padel-exports-smashbook-488121-staging` | `roles/storage.objectAdmin` |
+| `padel-ai-archive-smashbook-488121-staging` | `roles/storage.objectAdmin` |
 
 ---
 
@@ -260,7 +291,6 @@ These are gaps between the current state and the next stage of infrastructure wo
 
 | Gap | Stage | Impact |
 |---|---|---|
-| No Cloud Storage buckets | Stage 1.2 | `storage_service.py` has no bucket to write to; receipt/export features will fail |
 | No Cloud SQL read replica | Stage 1.3 | `padel-database-read-replica-url` secret points to primary; read path not separated |
 | pgvector flag not enabled | Stage 1.4 | `player_profiles.embedding` migration will fail; matchmaking blocked |
 | No production environment | Stage 1.5 | All Terraform is hardcoded to `smashbook-staging`; no path to production |
