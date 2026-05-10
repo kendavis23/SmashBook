@@ -44,11 +44,12 @@ module "secrets" {
 }
 
 module "database" {
-  source      = "../modules/database"
-  region      = var.region
-  zone        = var.zone
-  environment = var.environment
-  # Staging defaults: db-g1-small, ZONAL, 20 GB, no backups
+  source          = "../modules/database"
+  region          = var.region
+  zone            = var.zone
+  environment     = var.environment
+  backup_enabled  = true
+  # Staging: db-g1-small, ZONAL, 20 GB, backups enabled (15 retained, 7-day PITR)
 }
 
 module "cloud_run" {

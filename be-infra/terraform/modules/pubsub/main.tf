@@ -10,9 +10,27 @@ locals {
   ]
 }
 
+data "google_project" "project" {}
+
 resource "google_pubsub_topic" "topics" {
   for_each = toset(local.pubsub_topics)
   name     = each.key
+}
+
+# ---------------------------------------------------------------------------
+# Dead-letter topics
+# ---------------------------------------------------------------------------
+
+resource "google_pubsub_topic" "booking_events_dlq" {
+  name = "booking-events-dlq"
+}
+
+resource "google_pubsub_topic" "payment_events_dlq" {
+  name = "payment-events-dlq"
+}
+
+resource "google_pubsub_topic" "notification_events_dlq" {
+  name = "notification-events-dlq"
 }
 
 # ---------------------------------------------------------------------------
@@ -39,6 +57,11 @@ resource "google_pubsub_subscription" "booking_events" {
     minimum_backoff = "10s"
     maximum_backoff = "600s"
   }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.booking_events_dlq.id
+    max_delivery_attempts = 5
+  }
 }
 
 resource "google_pubsub_subscription" "payment_events" {
@@ -60,6 +83,11 @@ resource "google_pubsub_subscription" "payment_events" {
   retry_policy {
     minimum_backoff = "10s"
     maximum_backoff = "600s"
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.payment_events_dlq.id
+    max_delivery_attempts = 5
   }
 }
 
@@ -83,6 +111,38 @@ resource "google_pubsub_subscription" "notification_events" {
     minimum_backoff = "10s"
     maximum_backoff = "600s"
   }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.notification_events_dlq.id
+    max_delivery_attempts = 5
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Grant Pub/Sub service agent publisher rights on each DLQ topic
+# (required for Pub/Sub to forward poison messages to the DLQ)
+# ---------------------------------------------------------------------------
+
+locals {
+  pubsub_sa = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-pubsub.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_topic_iam_member" "dlq_publisher_booking" {
+  topic  = google_pubsub_topic.booking_events_dlq.name
+  role   = "roles/pubsub.publisher"
+  member = local.pubsub_sa
+}
+
+resource "google_pubsub_topic_iam_member" "dlq_publisher_payment" {
+  topic  = google_pubsub_topic.payment_events_dlq.name
+  role   = "roles/pubsub.publisher"
+  member = local.pubsub_sa
+}
+
+resource "google_pubsub_topic_iam_member" "dlq_publisher_notification" {
+  topic  = google_pubsub_topic.notification_events_dlq.name
+  role   = "roles/pubsub.publisher"
+  member = local.pubsub_sa
 }
 
 # ---------------------------------------------------------------------------
