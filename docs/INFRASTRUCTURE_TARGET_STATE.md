@@ -1,4 +1,4 @@
-_Last updated: 2026-05-09 00:00 UTC_
+_Last updated: 2026-05-10 12:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -35,7 +35,7 @@ Update this table as each stage is delivered. The stage is "Delivered" only when
 | Stage | Scope | Sprint | Status | Delivered date |
 |---|---|---|---|---|
 | 0 | Current state baseline | Sprint 1–3 | ✅ Delivered | 2026-04 |
-| 1 | MVP hardening | Sprint 4–6 | 🟡 Pending | — |
+| 1 | MVP hardening | Sprint 4–6 | 🔵 Partial | — |
 | 2 | Production readiness | Sprint 6–7 | 🟡 Pending | — |
 | 3 | AI Phase 1 | Sprint 7–8 | 🟡 Pending | — |
 | 4 | AI Phase 2 | Sprint 9–10 | 🟡 Pending | — |
@@ -180,10 +180,10 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 
 ### Stage 1 deliverables checklist
 
-- [ ] GCS state backend live, local state migrated
-- [ ] Three Cloud Storage buckets created and IAM bound
-- [ ] Read replica live, secret value set
-- [ ] pgvector flag on, extension created via Alembic
+- [x] GCS state backend live, local state migrated
+- [x] Three Cloud Storage buckets created and IAM bound
+- [x] Read replica live, secret value set _(delivered 2026-05-10: `smashbook-staging-replica`)_
+- [x] pgvector extension created via Alembic _(delivered 2026-05-10: no instance flag needed on PostgreSQL 15+; `CREATE EXTENSION vector` only)_
 - [ ] Production environment scaffold merged (no production resources yet — just the structure)
 - [ ] Backups and point-in-time recovery enabled on Cloud SQL
 - [ ] DLQ topics + policies on three MVP subscriptions

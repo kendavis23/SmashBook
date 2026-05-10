@@ -1,4 +1,4 @@
-_Last updated: 2026-05-09 12:00 UTC_
+_Last updated: 2026-05-10 12:00 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -132,9 +132,9 @@ No Cloud Scheduler jobs exist yet.
 | Point-in-time recovery | **Disabled** |
 | SSL mode | `ALLOW_UNENCRYPTED_AND_ENCRYPTED` |
 | IAM authentication | Enabled (`cloudsql.iam_authentication = on`) |
-| pgvector flag | **Not enabled** |
-| Read replica | **None** |
-| Deletion protection | Enabled |
+| pgvector | Enabled — `CREATE EXTENSION vector` applied via Alembic (no instance flag required on PostgreSQL 15+) |
+| Read replica | `smashbook-staging-replica` (`europe-west2-a`, `db-g1-small`, `failover_target = false`) |
+| Deletion protection | Enabled (both instances) |
 | Database name | `padel_db` |
 | Database user | `padel_user` |
 
@@ -171,7 +171,7 @@ All secret resources are managed by Terraform. Secret **values** are set manuall
 | Secret name | Purpose | Status |
 |---|---|---|
 | `padel-database-url` | Primary DB connection string | Live |
-| `padel-database-read-replica-url` | Read replica connection string | Declared — points to primary (no replica exists yet) |
+| `padel-database-read-replica-url` | Read replica connection string | Live — points to `smashbook-staging-replica` |
 | `padel-secret-key` | JWT signing key | Live |
 | `stripe-secret-key` | Stripe API key | Live (test key) |
 | `stripe-publishable-key` | Stripe publishable key | Live (test key) |
@@ -291,8 +291,6 @@ These are gaps between the current state and the next stage of infrastructure wo
 
 | Gap | Stage | Impact |
 |---|---|---|
-| No Cloud SQL read replica | Stage 1.3 | `padel-database-read-replica-url` secret points to primary; read path not separated |
-| pgvector flag not enabled | Stage 1.4 | `player_profiles.embedding` migration will fail; matchmaking blocked |
 | No production environment | Stage 1.5 | All Terraform is hardcoded to `smashbook-staging`; no path to production |
 | No dead-letter queues | Stage 1.6 | Poison messages loop indefinitely on all three MVP subscriptions |
 | Backups disabled on Cloud SQL | — | Data loss risk; should be enabled before any real customer data lands |
