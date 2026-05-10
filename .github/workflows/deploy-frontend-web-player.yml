@@ -3,7 +3,7 @@ name: Deploy web-player
 on:
   push:
     branches:
-      - frontend
+      - main
     paths:
       - frontend/apps/web-player/**
       - frontend/packages/player-domain/**

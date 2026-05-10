@@ -1,4 +1,4 @@
-_Last updated: 2026-05-02 21:30 UTC_
+_Last updated: 2026-05-10 00:00 UTC_
 
 # Frontend Deployment
 
@@ -313,7 +313,7 @@ secrets → lint → test → build → deploy → smoke
 | secrets | Auth to GCP, fetch `VITE_API_BASE_URL` from Cloud Run + bucket/CF credentials from Secret Manager                   |
 | lint    | `pnpm --filter @repo/<app> lint`                                                                                    |
 | test    | `pnpm --filter @repo/<app> test`                                                                                    |
-| build   | `pnpm --filter @repo/<app> build` with `VITE_API_BASE_URL` + `VITE_APP_ENV` injected                                |
+| build   | `pnpm --filter @repo/<app> build` with `VITE_API_BASE_URL`, `VITE_APP_ENV`, and `VITE_STRIPE_PUBLISHABLE_KEY` injected |
 | deploy  | Upload versioned build to `gs://<bucket>/<sha>/`, promote to bucket root, set cache headers, purge Cloudflare cache |
 | smoke   | HTTP 200 + `<!doctype html` check with 10 retries                                                                   |
 
@@ -385,10 +385,11 @@ Short SHAs are supported. No rebuild required — rollback takes seconds.
 
 All env vars are Zod-validated at app startup in `packages/config/env.ts`.
 
-| Variable            | Required | Source in CI                                       |
-| ------------------- | -------- | -------------------------------------------------- |
-| `VITE_API_BASE_URL` | Yes      | Fetched from Cloud Run (`padel-api` service URL)   |
-| `VITE_APP_ENV`      | Yes      | `staging` (auto) or `production` (manual dispatch) |
+| Variable                    | Required | Source in CI                                       |
+| --------------------------- | -------- | -------------------------------------------------- |
+| `VITE_API_BASE_URL`         | Yes      | Fetched from Cloud Run (`padel-api` service URL)   |
+| `VITE_APP_ENV`              | Yes      | `staging` (auto) or `production` (manual dispatch) |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Yes    | GCP Secret Manager (`stripe-publishable-key`)      |
 
 `VITE_APP_ENV` accepts: `development`, `staging`, `production`.
 
@@ -407,12 +408,13 @@ All env vars are Zod-validated at app startup in `packages/config/env.ts`.
 
 | Secret                       | Used for                               |
 | ---------------------------- | -------------------------------------- |
-| `FRONTEND_WEB_STAFF_BUCKET`  | staff deploy — GCS bucket name         |
-| `FRONTEND_WEB_PLAYER_BUCKET` | player deploy — GCS bucket name        |
-| `CF_ZONE_ID`                 | Cloudflare cache purge (all workflows) |
-| `CF_API_TOKEN`               | Cloudflare cache purge (all workflows) |
-| `CERTIFICATE`                | Cloudflare Origin Certificate PEM      |
-| `PRIVATE_KEY`                | Cloudflare Origin Certificate key PEM  |
+| `FRONTEND_WEB_STAFF_BUCKET`  | staff deploy — GCS bucket name                    |
+| `FRONTEND_WEB_PLAYER_BUCKET` | player deploy — GCS bucket name                   |
+| `CF_ZONE_ID`                 | Cloudflare cache purge (all workflows)             |
+| `CF_API_TOKEN`               | Cloudflare cache purge (all workflows)             |
+| `CERTIFICATE`                | Cloudflare Origin Certificate PEM                  |
+| `PRIVATE_KEY`                | Cloudflare Origin Certificate key PEM              |
+| `stripe-publishable-key`     | Stripe publishable key (`web-staff`, `web-player`) |
 
 `VITE_API_BASE_URL` is fetched directly from the `padel-api` Cloud Run service URL — not stored as a secret.
 
