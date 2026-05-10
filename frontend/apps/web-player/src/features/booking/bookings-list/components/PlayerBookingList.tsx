@@ -33,6 +33,38 @@ const STATUS_STYLES: Record<string, string> = {
     completed: "bg-muted text-muted-foreground",
 };
 
+const PAYMENT_BADGE: Record<
+    string,
+    { label: string; cls: string }
+> = {
+    paid: { label: "Paid", cls: "bg-success/15 text-success" },
+    pending: { label: "Unpaid", cls: "bg-warning/15 text-warning" },
+    failed: { label: "Failed", cls: "bg-destructive/15 text-destructive" },
+    refunded: { label: "Refunded", cls: "bg-muted text-muted-foreground" },
+};
+
+function PaymentCell({
+    amount,
+    paymentStatus,
+}: {
+    amount: number;
+    paymentStatus: string;
+}): JSX.Element {
+    const isFree = amount === 0;
+    const badge = isFree
+        ? { label: "Free", cls: "bg-secondary/60 text-secondary-foreground" }
+        : (PAYMENT_BADGE[paymentStatus] ?? { label: paymentStatus, cls: "bg-muted text-muted-foreground" });
+
+    return (
+        <span className="inline-flex items-center gap-1.5">
+            <span className="font-medium text-foreground tabular-nums text-sm">{formatCurrency(amount)}</span>
+            <span className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight ${badge.cls}`}>
+                {badge.label}
+            </span>
+        </span>
+    );
+}
+
 function useOutsideClick(ref: RefObject<HTMLElement | null>, onClose: () => void) {
     useEffect(() => {
         function handler(e: MouseEvent) {
@@ -376,6 +408,7 @@ type Props = {
     emptyMessage: string;
     showActions: boolean;
     onManageClick: (item: PlayerBookingItem) => void;
+    onPayClick: (item: PlayerBookingItem) => void;
     onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
     onRespondInvite: (
         item: PlayerBookingItem,
@@ -413,6 +446,7 @@ export default function PlayerBookingList({
     emptyMessage,
     showActions,
     onManageClick,
+    onPayClick,
     onInvitePlayer,
     onRespondInvite,
 }: Props): JSX.Element {
@@ -494,8 +528,11 @@ export default function PlayerBookingList({
                                 >
                                     {isOrganiser ? "Organiser" : "Player"}
                                 </span>
-                                <span className="ml-auto text-sm font-medium text-foreground">
-                                    {formatCurrency(booking.amount_due)}
+                                <span className="ml-auto">
+                                    <PaymentCell
+                                        amount={booking.amount_due}
+                                        paymentStatus={booking.payment_status}
+                                    />
                                 </span>
                             </div>
 
@@ -513,6 +550,7 @@ export default function PlayerBookingList({
                                             <button
                                                 type="button"
                                                 title="Pay now"
+                                                onClick={() => onPayClick(booking)}
                                                 className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
                                             >
                                                 <CreditCard size={13} /> Pay
@@ -623,9 +661,10 @@ export default function PlayerBookingList({
                                     </td>
 
                                     <td className={tdCls}>
-                                        <span className="text-foreground">
-                                            {formatCurrency(booking.amount_due)}
-                                        </span>
+                                        <PaymentCell
+                                            amount={booking.amount_due}
+                                            paymentStatus={booking.payment_status}
+                                        />
                                     </td>
 
                                     {showActions ? (
@@ -635,6 +674,7 @@ export default function PlayerBookingList({
                                                     <button
                                                         type="button"
                                                         title="Pay now"
+                                                        onClick={() => onPayClick(booking)}
                                                         className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
                                                     >
                                                         <CreditCard size={13} /> Pay

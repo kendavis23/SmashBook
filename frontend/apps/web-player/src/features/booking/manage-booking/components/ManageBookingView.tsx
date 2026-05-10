@@ -16,7 +16,13 @@ import {
     X,
 } from "lucide-react";
 import { Breadcrumb, AlertToast, formatUTCDateTime, formatCurrency } from "@repo/ui";
-import type { Booking, PlayerRole, InviteStatus, PaymentStatus } from "../../types";
+import type {
+    Booking,
+    PlayerBookingItem,
+    PlayerRole,
+    InviteStatus,
+    PaymentStatus,
+} from "../../types";
 import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 
 type MyInfo = {
@@ -79,6 +85,7 @@ type Props = {
     isRespondPending: boolean;
     onInvitePlayer: (userId: string) => void;
     onRespondInvite: (action: Extract<InviteStatus, "accepted" | "declined">) => void;
+    onPayClick?: (item: PlayerBookingItem) => void;
     onDismissError: () => void;
     onRefresh: () => void;
     onBack: () => void;
@@ -97,6 +104,7 @@ export default function ManageBookingView({
     isRespondPending,
     onInvitePlayer,
     onRespondInvite,
+    onPayClick,
     onDismissError,
     onRefresh,
     onBack,
@@ -121,6 +129,7 @@ export default function ManageBookingView({
                 isRespondPending={isRespondPending}
                 onInvitePlayer={onInvitePlayer}
                 onRespondInvite={onRespondInvite}
+                onPayClick={onPayClick}
                 onDismissError={onDismissError}
                 onRefresh={onRefresh}
                 clubId={clubId}
@@ -136,7 +145,24 @@ export default function ManageBookingView({
 
     const myInviteStatus = myInfo?.inviteStatus ?? null;
     const myPaymentStatus = myInfo?.paymentStatus ?? null;
-    const showPayCta = myInviteStatus === "accepted" && myPaymentStatus === "pending";
+    const payableBooking: PlayerBookingItem | null =
+        myInfo && myInviteStatus === "accepted" && myPaymentStatus === "pending"
+            ? {
+                  booking_id: booking.id,
+                  club_id: booking.club_id,
+                  court_id: booking.court_id,
+                  court_name: booking.court_name,
+                  booking_type: booking.booking_type,
+                  status: booking.status,
+                  start_datetime: booking.start_datetime,
+                  end_datetime: booking.end_datetime,
+                  role: myInfo.role,
+                  invite_status: myInfo.inviteStatus,
+                  payment_status: myInfo.paymentStatus,
+                  amount_due: myInfo.amountDue,
+              }
+            : null;
+    const showPayCta = payableBooking != null && onPayClick != null;
     const bookingDate = formatUTCDateTime(booking.start_datetime);
     const bookingTypeLabel =
         BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type.replace(/_/g, " ");
@@ -250,7 +276,13 @@ export default function ManageBookingView({
                         </p>
                     </div>
                 </div>
-                <button type="button" className="btn-cta min-h-11 shrink-0 justify-center px-5">
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (payableBooking) onPayClick?.(payableBooking);
+                    }}
+                    className="btn-cta min-h-11 shrink-0 justify-center px-5"
+                >
                     <Banknote size={15} />
                     Pay here
                 </button>

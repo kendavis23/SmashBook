@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { FormEvent, JSX } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
+import { useMyProfile } from "@repo/player-domain/hooks";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
     useCreateBooking,
@@ -9,7 +11,8 @@ import {
     useListAvailableTrainers,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
-import type { BookingInput, BookingType } from "../../types";
+import type { Booking, BookingInput, BookingType, PlayerBookingItem } from "../../types";
+import { PaymentModal } from "../../../payment";
 import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
 import { getTrainerStaffProfileId } from "./trainerSelect";
@@ -50,9 +53,35 @@ const bookingsCreatedSearch = {
     playerSearch: undefined,
 };
 
+function getPayableBookingForUser(
+    booking: Booking,
+    myUserId: string | undefined
+): PlayerBookingItem | null {
+    if (!myUserId) return null;
+    const me = booking.players.find((player) => player.user_id === myUserId);
+    if (!me || me.invite_status !== "accepted" || me.payment_status !== "pending") return null;
+
+    return {
+        booking_id: booking.id,
+        club_id: booking.club_id,
+        court_id: booking.court_id,
+        court_name: booking.court_name,
+        booking_type: booking.booking_type,
+        status: booking.status,
+        start_datetime: booking.start_datetime,
+        end_datetime: booking.end_datetime,
+        role: me.role,
+        invite_status: me.invite_status,
+        payment_status: me.payment_status,
+        amount_due: me.amount_due,
+    };
+}
+
 export default function NewBookingContainer(): JSX.Element {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { clubId } = useClubAccess();
+    const { data: profile, isError: profileError } = useMyProfile();
     const search = useSearch({ strict: false }) as {
         courtId?: string;
         date?: string;
@@ -79,6 +108,9 @@ export default function NewBookingContainer(): JSX.Element {
     const [courtError, setCourtError] = useState("");
     const [startError, setStartError] = useState("");
     const [staffError, setStaffError] = useState("");
+    const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
+    const [createdBookingAwaitingProfile, setCreatedBookingAwaitingProfile] =
+        useState<Booking | null>(null);
 
     const {
         data: availabilityData,
@@ -126,6 +158,24 @@ export default function NewBookingContainer(): JSX.Element {
     const createMutation = useCreateBooking(clubId ?? "");
     const activeMutation = createMutation;
     const apiError = (activeMutation.error as Error | null)?.message ?? "";
+
+    useEffect(() => {
+        if (!createdBookingAwaitingProfile) return;
+        if (profileError) {
+            setCreatedBookingAwaitingProfile(null);
+            void navigate({ to: "/bookings", search: bookingsCreatedSearch });
+            return;
+        }
+        if (!profile?.id) return;
+
+        const payableBooking = getPayableBookingForUser(createdBookingAwaitingProfile, profile.id);
+        setCreatedBookingAwaitingProfile(null);
+        if (payableBooking) {
+            setPayingBooking(payableBooking);
+            return;
+        }
+        void navigate({ to: "/bookings", search: bookingsCreatedSearch });
+    }, [createdBookingAwaitingProfile, navigate, profile?.id, profileError]);
 
     const handleFormChange = useCallback(
         (patch: Partial<NewBookingFormState>): void => {
@@ -198,14 +248,31 @@ export default function NewBookingContainer(): JSX.Element {
             };
 
             createMutation.mutate(payload, {
-                onSuccess: () => {
+                onSuccess: (booking) => {
+                    const createdBooking = booking as Booking;
+                    const payableBooking = getPayableBookingForUser(createdBooking, profile?.id);
+                    if (payableBooking) {
+                        setPayingBooking(payableBooking);
+                        return;
+                    }
+                    if (!profile?.id && !profileError) {
+                        setCreatedBookingAwaitingProfile(createdBooking);
+                        return;
+                    }
                     void navigate({ to: "/bookings", search: bookingsCreatedSearch });
                 },
             });
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [form, clubId, createMutation, navigate]
+        [form, clubId, createMutation, navigate, profile?.id, profileError]
     );
+
+    const goToBookingsAfterPayment = useCallback((): void => {
+        setPayingBooking(null);
+        void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
+        void queryClient.invalidateQueries({ queryKey: ["bookings"] });
+        void navigate({ to: "/bookings", search: bookingsCreatedSearch });
+    }, [navigate, queryClient]);
 
     const handleCancel = useCallback((): void => {
         void navigate({
@@ -219,26 +286,38 @@ export default function NewBookingContainer(): JSX.Element {
     }, [activeMutation]);
 
     return (
-        <NewBookingView
-            courts={courtList}
-            trainers={trainerData}
-            trainersLoading={trainersLoading}
-            trainersError={trainersError}
-            slots={slots}
-            slotsLoading={slotsLoading}
-            form={form}
-            courtError={courtError}
-            startError={startError}
-            staffError={staffError}
-            apiError={apiError}
-            isPending={activeMutation.isPending}
-            onFormChange={handleFormChange}
-            onSubmit={handleSubmit}
-            onCancel={handleCancel}
-            onDismissError={handleDismissError}
-            onRefreshSlots={() => void refetchSlots()}
-            selectedPrice={selectedPrice}
-            clubId={clubId}
-        />
+        <>
+            <NewBookingView
+                courts={courtList}
+                trainers={trainerData}
+                trainersLoading={trainersLoading}
+                trainersError={trainersError}
+                slots={slots}
+                slotsLoading={slotsLoading}
+                form={form}
+                courtError={courtError}
+                startError={startError}
+                staffError={staffError}
+                apiError={apiError}
+                isPending={activeMutation.isPending || createdBookingAwaitingProfile != null}
+                onFormChange={handleFormChange}
+                onSubmit={handleSubmit}
+                onCancel={handleCancel}
+                onDismissError={handleDismissError}
+                onRefreshSlots={() => void refetchSlots()}
+                selectedPrice={selectedPrice}
+                clubId={clubId}
+            />
+            {payingBooking ? (
+                <PaymentModal
+                    context={{ type: "booking", booking: payingBooking }}
+                    onClose={goToBookingsAfterPayment}
+                    onSuccess={() => {
+                        void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
+                        void queryClient.invalidateQueries({ queryKey: ["bookings"] });
+                    }}
+                />
+            ) : null}
+        </>
     );
 }

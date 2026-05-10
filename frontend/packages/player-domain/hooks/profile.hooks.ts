@@ -36,10 +36,14 @@ export function useUpdateMyProfile() {
     });
 }
 
-export function useMyBookings(params?: { past_from?: string; past_to?: string }) {
+export function useMyBookings(
+    params?: { past_from?: string; past_to?: string },
+    options?: { enabled?: boolean }
+) {
     return useQuery({
         queryKey: profileKeys.bookings(params?.past_from, params?.past_to),
         queryFn: (): Promise<PlayerBookings> => getMyBookingsEndpoint(params),
+        enabled: options?.enabled ?? true,
     });
 }
 

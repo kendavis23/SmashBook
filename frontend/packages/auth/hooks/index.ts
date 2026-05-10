@@ -1,7 +1,7 @@
 // Auth hooks — consume these in apps and features; never import the store directly.
 // Also exports tryRefreshToken() and signOut() for use by api-client/fetcher.ts.
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "../store";
 import {
     loginService,
@@ -206,6 +206,7 @@ export function useRegister() {
 // ---------------------------------------------------------------------------
 
 export function useLogout() {
+    const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (): Promise<void> => {
             const { accessToken, refreshToken, tenantSubdomain } = useAuthStore.getState();
@@ -215,6 +216,7 @@ export function useLogout() {
         },
         onSettled: () => {
             useAuthStore.getState().clearAuth();
+            queryClient.clear();
         },
     });
 }

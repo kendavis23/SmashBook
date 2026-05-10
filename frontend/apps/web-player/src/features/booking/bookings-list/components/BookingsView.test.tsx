@@ -83,6 +83,7 @@ const defaultProps = {
     onRefresh: vi.fn(),
     onCreateClick: vi.fn(),
     onManageClick: vi.fn(),
+    onPayClick: vi.fn(),
     onInvitePlayer: vi.fn().mockResolvedValue(undefined),
     onRespondInvite: vi.fn().mockResolvedValue(undefined),
     onPastFilterChange: vi.fn(),

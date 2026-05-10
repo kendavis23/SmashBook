@@ -7,6 +7,7 @@ export default defineConfig({
     define: {
         "import.meta.env.VITE_API_BASE_URL": JSON.stringify("http://localhost:8080"),
         "import.meta.env.VITE_APP_ENV": JSON.stringify("development"),
+        "import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY": JSON.stringify("pk_test_mock"),
     },
     resolve: {
         alias: {

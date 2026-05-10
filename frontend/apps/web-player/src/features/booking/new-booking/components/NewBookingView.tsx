@@ -482,7 +482,7 @@ export default function NewBookingView({
                                 disabled={isPending}
                                 className="rounded-lg bg-cta px-5 py-2.5 text-sm font-semibold text-cta-foreground shadow-sm transition hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-cta-ring/40 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {isPending ? "Creating…" : "Create Booking"}
+                                {isPending ? "Creating…" : "Create & Pay"}
                             </button>
                         </div>
                     </form>

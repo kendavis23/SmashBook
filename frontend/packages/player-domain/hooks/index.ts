@@ -18,3 +18,13 @@ export {
 } from "./booking.hooks";
 export { useListTrainers, useListAvailableTrainers } from "./trainer.hooks";
 export { useListEquipment } from "./equipment.hooks";
+export {
+    useCreatePaymentIntent,
+    useCreateSetupIntent,
+    useSavePaymentMethod,
+    useListPaymentMethods,
+    useDeletePaymentMethod,
+    useSetDefaultPaymentMethod,
+    useGetWallet,
+    useTopUpWallet,
+} from "./payment.hooks";

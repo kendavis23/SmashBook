@@ -323,6 +323,32 @@ describe("ManageBookingView — page mode", () => {
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
     });
 
+    it("calls onPayClick from the pending payment section", () => {
+        const onPayClick = vi.fn();
+        render(
+            <ManageBookingView
+                {...defaultProps}
+                myInfo={{
+                    role: "player",
+                    inviteStatus: "accepted",
+                    paymentStatus: "pending",
+                    amountDue: 10,
+                }}
+                onPayClick={onPayClick}
+            />
+        );
+
+        fireEvent.click(screen.getByRole("button", { name: "Pay here" }));
+
+        expect(onPayClick).toHaveBeenCalledWith(
+            expect.objectContaining({
+                booking_id: "booking-1",
+                amount_due: 10,
+                payment_status: "pending",
+            })
+        );
+    });
+
     it("labels participant invite and payment statuses", () => {
         render(<ManageBookingView {...defaultProps} />);
 

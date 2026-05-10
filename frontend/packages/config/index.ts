@@ -14,6 +14,7 @@ export const config = {
     apiBaseUrl: env.VITE_API_BASE_URL,
     appEnv: env.VITE_APP_ENV,
     injectTenantHeader: env.VITE_APP_ENV === "development" || env.VITE_APP_ENV === "staging",
+    stripePublishableKey: env.VITE_STRIPE_PUBLISHABLE_KEY,
 } as const;
 
 export type Config = typeof config;

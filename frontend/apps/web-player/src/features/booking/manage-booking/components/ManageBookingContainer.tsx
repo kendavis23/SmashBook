@@ -3,8 +3,15 @@ import type { JSX } from "react";
 import { useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import { useGetBooking, useInvitePlayer, useRespondInvite } from "../../hooks";
 import { useMyProfile } from "@repo/player-domain/hooks";
-import type { Booking, PlayerRole, InviteStatus, PaymentStatus } from "../../types";
+import type {
+    Booking,
+    PlayerBookingItem,
+    PlayerRole,
+    InviteStatus,
+    PaymentStatus,
+} from "../../types";
 import ManageBookingView from "./ManageBookingView";
+import { PaymentModal } from "../../../payment";
 
 type MyInfo = {
     role: PlayerRole;
@@ -36,6 +43,7 @@ export default function ManageBookingContainer(): JSX.Element {
 
     const playerRole: PlayerRole = myInfo?.role ?? "player";
     const [apiError, setApiError] = useState("");
+    const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
 
     const inviteMutation = useInvitePlayer(clubId, bookingId);
     const respondMutation = useRespondInvite(clubId, bookingId);
@@ -76,6 +84,20 @@ export default function ManageBookingContainer(): JSX.Element {
         void navigate({ to: "/bookings" });
     }, [navigate]);
 
+    const handlePayClick = useCallback((item: PlayerBookingItem): void => {
+        setPayingBooking(item);
+    }, []);
+
+    const refreshBookingAfterPayment = useCallback((): void => {
+        void refetch();
+        window.setTimeout(() => void refetch(), 1500);
+    }, [refetch]);
+
+    const handleClosePayModal = useCallback((): void => {
+        setPayingBooking(null);
+        refreshBookingAfterPayment();
+    }, [refreshBookingAfterPayment]);
+
     if (isLoading) {
         return (
             <div className="flex items-center justify-center gap-3 py-20">
@@ -94,20 +116,30 @@ export default function ManageBookingContainer(): JSX.Element {
     }
 
     return (
-        <ManageBookingView
-            booking={booking as Booking}
-            playerRole={playerRole}
-            myInfo={myInfo}
-            myUserId={profile?.id}
-            apiError={apiError}
-            isInvitePending={inviteMutation.isPending}
-            isRespondPending={respondMutation.isPending}
-            onInvitePlayer={handleInvitePlayer}
-            onRespondInvite={handleRespondInvite}
-            onDismissError={() => setApiError("")}
-            onRefresh={() => void refetch()}
-            onBack={handleBack}
-            clubId={clubId}
-        />
+        <>
+            <ManageBookingView
+                booking={booking as Booking}
+                playerRole={playerRole}
+                myInfo={myInfo}
+                myUserId={profile?.id}
+                apiError={apiError}
+                isInvitePending={inviteMutation.isPending}
+                isRespondPending={respondMutation.isPending}
+                onInvitePlayer={handleInvitePlayer}
+                onRespondInvite={handleRespondInvite}
+                onPayClick={handlePayClick}
+                onDismissError={() => setApiError("")}
+                onRefresh={() => void refetch()}
+                onBack={handleBack}
+                clubId={clubId}
+            />
+            {payingBooking ? (
+                <PaymentModal
+                    context={{ type: "booking", booking: payingBooking }}
+                    onClose={handleClosePayModal}
+                    onSuccess={refreshBookingAfterPayment}
+                />
+            ) : null}
+        </>
     );
 }

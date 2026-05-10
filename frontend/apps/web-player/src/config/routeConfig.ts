@@ -1,4 +1,4 @@
-import { CalendarCheck, LayoutDashboard, Swords } from "lucide-react";
+import { CalendarCheck, LayoutDashboard, Swords, UserCircle } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type UserRole = "player";
@@ -82,6 +82,15 @@ export const ROUTES: RouteConfig[] = [
         title: "My Games",
         breadcrumb: ["Operations", "My Games"],
         group: "Operations",
+    },
+    {
+        key: "profile",
+        path: "/profile",
+        label: "Profile",
+        icon: UserCircle,
+        title: "Profile",
+        breadcrumb: ["Account", "Profile"],
+        group: "Account",
     },
 ];
 

@@ -42,6 +42,7 @@ jobs:
       site_url: ${{ steps.fetch.outputs.site_url }}
       cf_zone_id: ${{ steps.fetch.outputs.cf_zone_id }}
       cf_api_token: ${{ steps.fetch.outputs.cf_api_token }}
+      stripe_publishable_key: ${{ steps.fetch.outputs.stripe_publishable_key }}
     steps:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v2
@@ -74,7 +75,11 @@ jobs:
           echo "bucket=$BUCKET" >> $GITHUB_OUTPUT
           echo "site_url=$SITE_URL" >> $GITHUB_OUTPUT
           echo "cf_zone_id=$CF_ZONE_ID" >> $GITHUB_OUTPUT
+          STRIPE_PUBLISHABLE_KEY=$(gcloud secrets versions access latest \
+            --secret=stripe-publishable-key \
+            --project=${{ secrets.GCP_PROJECT_ID }})
           echo "cf_api_token=$CF_API_TOKEN" >> $GITHUB_OUTPUT
+          echo "stripe_publishable_key=$STRIPE_PUBLISHABLE_KEY" >> $GITHUB_OUTPUT
 
   lint:
     name: Lint
@@ -151,6 +156,7 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ needs.secrets.outputs.api_base_url }}
           VITE_APP_ENV: ${{ env.DEPLOY_ENV }}
+          VITE_STRIPE_PUBLISHABLE_KEY: ${{ needs.secrets.outputs.stripe_publishable_key }}
         run: pnpm --filter @repo/web-staff build
 
       - name: Upload dist artifact
