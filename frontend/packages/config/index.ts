@@ -3,10 +3,18 @@ export { parseEnv } from "./env";
 
 import { parseEnv } from "./env";
 
-const rawEnv =
-    typeof window !== "undefined"
-        ? ((import.meta as unknown as Record<string, Record<string, string | undefined>>).env ?? {})
-        : {};
+const viteEnv = (import.meta as unknown as { env?: Record<string, string | undefined> }).env ?? {};
+const processEnv =
+    (globalThis as unknown as { process?: { env?: Record<string, string | undefined> } }).process
+        ?.env ?? {};
+
+const rawEnv = {
+    ...viteEnv,
+    VITE_API_BASE_URL: viteEnv.VITE_API_BASE_URL ?? processEnv.EXPO_PUBLIC_API_BASE_URL,
+    VITE_APP_ENV: viteEnv.VITE_APP_ENV ?? processEnv.EXPO_PUBLIC_APP_ENV,
+    VITE_STRIPE_PUBLISHABLE_KEY:
+        viteEnv.VITE_STRIPE_PUBLISHABLE_KEY ?? processEnv.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY,
+};
 
 const env = parseEnv(rawEnv);
 
