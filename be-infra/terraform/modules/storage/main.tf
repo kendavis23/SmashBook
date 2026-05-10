@@ -1,15 +1,13 @@
 # ---------------------------------------------------------------------------
-# GCS Buckets — staging environment
+# GCS Buckets
 # ---------------------------------------------------------------------------
 
 resource "google_storage_bucket" "media" {
-  name                        = "padel-media-${var.project_id}-staging"
+  name                        = "padel-media-${var.project_id}-${var.environment}"
   location                    = var.region
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
 
-  # Soft-delete disabled — receipts/media are re-derivable from the DB;
-  # no need to pay for 7-day retained deletes.
   soft_delete_policy {
     retention_duration_seconds = 0
   }
@@ -27,7 +25,7 @@ resource "google_storage_bucket" "media" {
 }
 
 resource "google_storage_bucket" "exports" {
-  name                        = "padel-exports-${var.project_id}-staging"
+  name                        = "padel-exports-${var.project_id}-${var.environment}"
   location                    = var.region
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
@@ -40,7 +38,6 @@ resource "google_storage_bucket" "exports" {
     enabled = false
   }
 
-  # Export objects expire after 7 days; signed URLs are short-lived anyway.
   lifecycle_rule {
     condition {
       age = 7
@@ -52,7 +49,7 @@ resource "google_storage_bucket" "exports" {
 }
 
 resource "google_storage_bucket" "ai_archive" {
-  name                        = "padel-ai-archive-${var.project_id}-staging"
+  name                        = "padel-ai-archive-${var.project_id}-${var.environment}"
   location                    = var.region
   uniform_bucket_level_access = true
   public_access_prevention    = "enforced"
@@ -65,8 +62,6 @@ resource "google_storage_bucket" "ai_archive" {
     enabled = false
   }
 
-  # Archive job (Stage 3) will write objects here for inference logs >90 days.
-  # Transition to Coldline after 30 days in the bucket to cut storage cost.
   lifecycle_rule {
     condition {
       age = 30
@@ -79,24 +74,23 @@ resource "google_storage_bucket" "ai_archive" {
 }
 
 # ---------------------------------------------------------------------------
-# IAM — runtime SA gets objectAdmin on media, exports, and ai-archive.
-# Scoped to individual buckets rather than the project to follow least-privilege.
+# IAM — runtime SA gets objectAdmin on all three buckets
 # ---------------------------------------------------------------------------
 
 resource "google_storage_bucket_iam_member" "runtime_media" {
   bucket = google_storage_bucket.media.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.compute.email}"
+  member = "serviceAccount:${var.compute_sa_email}"
 }
 
 resource "google_storage_bucket_iam_member" "runtime_exports" {
   bucket = google_storage_bucket.exports.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.compute.email}"
+  member = "serviceAccount:${var.compute_sa_email}"
 }
 
 resource "google_storage_bucket_iam_member" "runtime_ai_archive" {
   bucket = google_storage_bucket.ai_archive.name
   role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.compute.email}"
+  member = "serviceAccount:${var.compute_sa_email}"
 }

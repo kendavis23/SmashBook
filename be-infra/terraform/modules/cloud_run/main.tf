@@ -3,16 +3,11 @@
 # ---------------------------------------------------------------------------
 
 locals {
-  cloud_sql_connection         = "${var.project_id}:${var.region}:smashbook-staging"
-  cloud_sql_replica_connection = "${var.project_id}:${var.region}:smashbook-staging-replica"
-
-  # Common container resource limits
   resource_limits = {
     cpu    = "1000m"
     memory = "512Mi"
   }
 
-  # Common startup probe — matches existing configuration
   startup_probe = {
     failure_threshold = 1
     period_seconds    = 240
@@ -30,10 +25,10 @@ resource "google_cloud_run_v2_service" "api" {
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
-    service_account = google_service_account.compute.email
+    service_account = var.compute_sa_email
 
     scaling {
-      max_instance_count = 20
+      max_instance_count = var.max_instance_count
     }
 
     annotations = {
@@ -43,7 +38,7 @@ resource "google_cloud_run_v2_service" "api" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
-        instances = [local.cloud_sql_connection, local.cloud_sql_replica_connection]
+        instances = [var.cloud_sql_connection, var.cloud_sql_replica_connection]
       }
     }
 
@@ -56,9 +51,9 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       resources {
-        limits             = local.resource_limits
-        cpu_idle           = true
-        startup_cpu_boost  = true
+        limits            = local.resource_limits
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
 
       startup_probe {
@@ -75,12 +70,11 @@ resource "google_cloud_run_v2_service" "api" {
         mount_path = "/cloudsql"
       }
 
-      # Secrets from Secret Manager
       env {
         name = "DATABASE_URL"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-database-url"].secret_id
+            secret  = var.secret_ids["padel-database-url"]
             version = "latest"
           }
         }
@@ -90,7 +84,7 @@ resource "google_cloud_run_v2_service" "api" {
         name = "DATABASE_READ_REPLICA_URL"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-database-read-replica-url"].secret_id
+            secret  = var.secret_ids["padel-database-read-replica-url"]
             version = "latest"
           }
         }
@@ -100,7 +94,7 @@ resource "google_cloud_run_v2_service" "api" {
         name = "SECRET_KEY"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-secret-key"].secret_id
+            secret  = var.secret_ids["padel-secret-key"]
             version = "latest"
           }
         }
@@ -110,7 +104,7 @@ resource "google_cloud_run_v2_service" "api" {
         name = "STRIPE_SECRET_KEY"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["stripe-secret-key"].secret_id
+            secret  = var.secret_ids["stripe-secret-key"]
             version = "latest"
           }
         }
@@ -120,7 +114,7 @@ resource "google_cloud_run_v2_service" "api" {
         name = "STRIPE_WEBHOOK_SECRET"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["stripe-webhook-secret"].secret_id
+            secret  = var.secret_ids["stripe-webhook-secret"]
             version = "latest"
           }
         }
@@ -130,7 +124,7 @@ resource "google_cloud_run_v2_service" "api" {
         name = "SENDGRID_API_KEY"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["sendgrid-api-key"].secret_id
+            secret  = var.secret_ids["sendgrid-api-key"]
             version = "latest"
           }
         }
@@ -138,7 +132,7 @@ resource "google_cloud_run_v2_service" "api" {
     }
 
     max_instance_request_concurrency = 80
-    timeout               = "300s"
+    timeout                          = "300s"
   }
 
   traffic {
@@ -147,7 +141,6 @@ resource "google_cloud_run_v2_service" "api" {
   }
 
   lifecycle {
-    # Image tag is managed by CI/CD — don't let terraform plan show drift on every deploy
     ignore_changes = [
       template[0].containers[0].image,
       template[0].annotations,
@@ -157,7 +150,6 @@ resource "google_cloud_run_v2_service" "api" {
   }
 }
 
-# Public access — API is open (auth handled by JWT middleware)
 resource "google_cloud_run_v2_service_iam_member" "api_public" {
   project  = var.project_id
   location = var.region
@@ -176,10 +168,10 @@ resource "google_cloud_run_v2_service" "booking_worker" {
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
-    service_account = google_service_account.compute.email
+    service_account = var.compute_sa_email
 
     scaling {
-      max_instance_count = 20
+      max_instance_count = var.max_instance_count
     }
 
     annotations = {
@@ -189,7 +181,7 @@ resource "google_cloud_run_v2_service" "booking_worker" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
-        instances = [local.cloud_sql_connection]
+        instances = [var.cloud_sql_connection]
       }
     }
 
@@ -204,9 +196,9 @@ resource "google_cloud_run_v2_service" "booking_worker" {
       }
 
       resources {
-        limits             = local.resource_limits
-        cpu_idle           = true
-        startup_cpu_boost  = true
+        limits            = local.resource_limits
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
 
       startup_probe {
@@ -227,7 +219,7 @@ resource "google_cloud_run_v2_service" "booking_worker" {
         name = "DATABASE_URL"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-database-url"].secret_id
+            secret  = var.secret_ids["padel-database-url"]
             version = "latest"
           }
         }
@@ -237,7 +229,7 @@ resource "google_cloud_run_v2_service" "booking_worker" {
         name = "SECRET_KEY"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-secret-key"].secret_id
+            secret  = var.secret_ids["padel-secret-key"]
             version = "latest"
           }
         }
@@ -245,7 +237,7 @@ resource "google_cloud_run_v2_service" "booking_worker" {
     }
 
     max_instance_request_concurrency = 80
-    timeout               = "300s"
+    timeout                          = "300s"
   }
 
   traffic {
@@ -273,10 +265,10 @@ resource "google_cloud_run_v2_service" "payment_worker" {
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
-    service_account = google_service_account.compute.email
+    service_account = var.compute_sa_email
 
     scaling {
-      max_instance_count = 20
+      max_instance_count = var.max_instance_count
     }
 
     annotations = {
@@ -286,7 +278,7 @@ resource "google_cloud_run_v2_service" "payment_worker" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
-        instances = [local.cloud_sql_connection]
+        instances = [var.cloud_sql_connection]
       }
     }
 
@@ -301,9 +293,9 @@ resource "google_cloud_run_v2_service" "payment_worker" {
       }
 
       resources {
-        limits             = local.resource_limits
-        cpu_idle           = true
-        startup_cpu_boost  = true
+        limits            = local.resource_limits
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
 
       startup_probe {
@@ -324,7 +316,7 @@ resource "google_cloud_run_v2_service" "payment_worker" {
         name = "DATABASE_URL"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-database-url"].secret_id
+            secret  = var.secret_ids["padel-database-url"]
             version = "latest"
           }
         }
@@ -334,7 +326,7 @@ resource "google_cloud_run_v2_service" "payment_worker" {
         name = "SECRET_KEY"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-secret-key"].secret_id
+            secret  = var.secret_ids["padel-secret-key"]
             version = "latest"
           }
         }
@@ -342,7 +334,7 @@ resource "google_cloud_run_v2_service" "payment_worker" {
     }
 
     max_instance_request_concurrency = 80
-    timeout               = "300s"
+    timeout                          = "300s"
   }
 
   traffic {
@@ -370,10 +362,10 @@ resource "google_cloud_run_v2_service" "notification_worker" {
   ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
-    service_account = google_service_account.compute.email
+    service_account = var.compute_sa_email
 
     scaling {
-      max_instance_count = 20
+      max_instance_count = var.max_instance_count
     }
 
     annotations = {
@@ -383,7 +375,7 @@ resource "google_cloud_run_v2_service" "notification_worker" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
-        instances = [local.cloud_sql_connection]
+        instances = [var.cloud_sql_connection]
       }
     }
 
@@ -398,9 +390,9 @@ resource "google_cloud_run_v2_service" "notification_worker" {
       }
 
       resources {
-        limits             = local.resource_limits
-        cpu_idle           = true
-        startup_cpu_boost  = true
+        limits            = local.resource_limits
+        cpu_idle          = true
+        startup_cpu_boost = true
       }
 
       startup_probe {
@@ -421,7 +413,7 @@ resource "google_cloud_run_v2_service" "notification_worker" {
         name = "DATABASE_URL"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-database-url"].secret_id
+            secret  = var.secret_ids["padel-database-url"]
             version = "latest"
           }
         }
@@ -431,7 +423,7 @@ resource "google_cloud_run_v2_service" "notification_worker" {
         name = "SECRET_KEY"
         value_source {
           secret_key_ref {
-            secret  = google_secret_manager_secret.secrets["padel-secret-key"].secret_id
+            secret  = var.secret_ids["padel-secret-key"]
             version = "latest"
           }
         }
@@ -439,7 +431,7 @@ resource "google_cloud_run_v2_service" "notification_worker" {
     }
 
     max_instance_request_concurrency = 80
-    timeout               = "300s"
+    timeout                          = "300s"
   }
 
   traffic {

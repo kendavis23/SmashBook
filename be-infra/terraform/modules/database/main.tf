@@ -3,14 +3,14 @@
 # ---------------------------------------------------------------------------
 
 resource "google_sql_database_instance" "main" {
-  name             = "smashbook-staging"
+  name             = "smashbook-${var.environment}"
   database_version = "POSTGRES_18"
   region           = var.region
 
   settings {
-    tier              = "db-g1-small"
+    tier              = var.tier
     edition           = "ENTERPRISE"
-    availability_type = "ZONAL"
+    availability_type = var.availability_type
     activation_policy = "ALWAYS"
 
     location_preference {
@@ -28,8 +28,8 @@ resource "google_sql_database_instance" "main" {
     }
 
     backup_configuration {
-      enabled                        = false
-      point_in_time_recovery_enabled = false
+      enabled                        = var.backup_enabled
+      point_in_time_recovery_enabled = var.backup_enabled
       start_time                     = "19:00"
       transaction_log_retention_days = 7
 
@@ -40,14 +40,14 @@ resource "google_sql_database_instance" "main" {
     }
 
     disk_type             = "PD_SSD"
-    disk_size             = 20
+    disk_size             = var.disk_size
     disk_autoresize       = false
   }
 
   deletion_protection = true
 
   lifecycle {
-   prevent_destroy = true
+    prevent_destroy = true
     ignore_changes  = []
   }
 }
@@ -58,11 +58,11 @@ resource "google_sql_database" "smashbook" {
 }
 
 # ---------------------------------------------------------------------------
-# Cloud SQL — Read replica (Stage 1.3)
+# Read replica
 # ---------------------------------------------------------------------------
 
 resource "google_sql_database_instance" "replica" {
-  name                 = "smashbook-staging-replica"
+  name                 = "smashbook-${var.environment}-replica"
   database_version     = "POSTGRES_18"
   region               = var.region
   master_instance_name = google_sql_database_instance.main.name
@@ -72,7 +72,7 @@ resource "google_sql_database_instance" "replica" {
   }
 
   settings {
-    tier              = "db-g1-small"
+    tier              = var.tier
     edition           = "ENTERPRISE"
     availability_type = "ZONAL"
     activation_policy = "ALWAYS"
@@ -92,7 +92,7 @@ resource "google_sql_database_instance" "replica" {
     }
 
     disk_type       = "PD_SSD"
-    disk_size       = 20
+    disk_size       = var.disk_size
     disk_autoresize = false
   }
 
@@ -102,9 +102,4 @@ resource "google_sql_database_instance" "replica" {
     prevent_destroy = true
     ignore_changes  = []
   }
-}
-
-output "replica_connection_name" {
-  description = "Cloud SQL read replica connection name"
-  value       = google_sql_database_instance.replica.connection_name
 }
