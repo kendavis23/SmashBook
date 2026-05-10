@@ -3,7 +3,7 @@
 // getAccessToken() and getTenantSubdomain() are exported for use by api-client/fetcher.ts.
 
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, type StateStorage } from "zustand/middleware";
 import type { ClubSummary, UserResponse, TokenResponse } from "../types";
 
 interface AuthStoreState {
@@ -41,6 +41,29 @@ const initialState: AuthStoreState = {
     activeRole: null,
 };
 
+const memoryStorage = new Map<string, string>();
+
+let authStorage: StateStorage =
+    typeof localStorage === "undefined"
+        ? {
+              getItem: (name) => memoryStorage.get(name) ?? null,
+              setItem: (name, value) => {
+                  memoryStorage.set(name, value);
+              },
+              removeItem: (name) => {
+                  memoryStorage.delete(name);
+              },
+          }
+        : localStorage;
+
+export function setAuthStorage(storage: StateStorage): void {
+    authStorage = storage;
+    // rehydrate() is safe to call after store creation; re-reads persisted state with the new storage.
+    if (useAuthStore.persist.getOptions().storage) {
+        void useAuthStore.persist.rehydrate();
+    }
+}
+
 export const useAuthStore = create<AuthStore>()(
     persist(
         (set) => ({
@@ -72,7 +95,7 @@ export const useAuthStore = create<AuthStore>()(
         }),
         {
             name: "smashbook-auth",
-            storage: createJSONStorage(() => localStorage),
+            storage: createJSONStorage(() => authStorage),
             // user is NOT persisted — always fetched fresh from /me on session restore.
             partialize: (state) => ({
                 accessToken: state.accessToken,
