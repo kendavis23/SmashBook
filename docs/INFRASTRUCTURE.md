@@ -1,4 +1,4 @@
-_Last updated: 2026-05-10 12:00 UTC_
+_Last updated: 2026-05-10 18:00 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -46,7 +46,8 @@ _Last updated: 2026-05-10 12:00 UTC_
 | State prefix | `staging` |
 | Terraform version | `>= 1.7` |
 | Google provider | `~> 5.0` (locked at `5.45.2` in `.terraform.lock.hcl`) |
-| Terraform layout | Flat files per concern — `cloud_run.tf`, `database.tf`, `pubsub.tf`, `secrets.tf`, `iam.tf`, `artifact_registry.tf`, `storage.tf`, `main.tf`, `variables.tf`, `outputs.tf` |
+| Terraform layout | Module-based — `be-infra/terraform/staging/` and `be-infra/terraform/prod/` (scaffold only, no GCP project yet) call shared modules in `be-infra/terraform/modules/` (`artifact_registry`, `cloud_run`, `database`, `iam`, `pubsub`, `secrets`, `storage`) |
+| Working directory (staging) | `be-infra/terraform/staging/` |
 
 ---
 
@@ -291,7 +292,7 @@ These are gaps between the current state and the next stage of infrastructure wo
 
 | Gap | Stage | Impact |
 |---|---|---|
-| No production environment | Stage 1.5 | All Terraform is hardcoded to `smashbook-staging`; no path to production |
+| No production GCP project | Stage 1.5 | `be-infra/terraform/prod/` scaffold exists with prod-tuned settings (HA, backups, larger tier); replace `smashbook-prod-REPLACE_ME` in `prod/terraform.tfvars` and `prod/main.tf` once the GCP project is created |
 | No dead-letter queues | Stage 1.6 | Poison messages loop indefinitely on all three MVP subscriptions |
 | Backups disabled on Cloud SQL | — | Data loss risk; should be enabled before any real customer data lands |
 | No monitoring or alerting | Stage 2.3 | No paging on 5xx spikes, DB storage, or subscription backlogs |

@@ -1,4 +1,4 @@
-_Last updated: 2026-04-15 00:00 UTC_
+_Last updated: 2026-05-10 18:00 UTC_
 
 # SmashBook — Deployment & CI/CD Runbook
 
@@ -95,21 +95,31 @@ gcloud storage buckets create gs://tf-state-smashbook-488121-backend \
 
 ### 3.2 Bootstrap Infrastructure with Terraform
 
-```bash
-cd be-infra/terraform
+Terraform is split into environment directories with shared modules:
 
-# Initialise — downloads providers and connects to state backend
+```
+be-infra/terraform/
+  modules/          # shared resource modules (cloud_run, database, iam, pubsub, secrets, storage, artifact_registry)
+  staging/          # staging environment — active
+  prod/             # prod environment scaffold — ready, awaiting GCP project
+```
+
+```bash
+# Always work from the environment directory, not the repo root
+cd be-infra/terraform/staging   # or prod/
+
+# Initialise — downloads providers and connects to GCS state backend
 terraform init
 
 # For a brand-new environment with no existing resources:
-terraform apply -var="project_id=<GCP_PROJECT_ID>"
+terraform apply
 
-# For an environment with pre-existing resources (e.g. Cloud SQL created manually):
+# For an environment with pre-existing GCP resources (e.g. Cloud SQL created manually):
 # Run import.sh first to bring existing resources under Terraform management,
 # then apply to create the remainder.
-chmod +x import.sh
-./import.sh
-terraform apply -var="project_id=<GCP_PROJECT_ID>"
+chmod +x ../import.sh
+../import.sh
+terraform apply
 ```
 
 Terraform creates and manages:
@@ -319,14 +329,14 @@ The CI pipeline runs migrations automatically before deploying the new revision.
 
 > Changes to Cloud Run config, Cloud SQL, Pub/Sub topics, secrets, or IAM.
 >
-> Terraform files live in `be-infra/terraform/`. State is stored remotely in GCS bucket `tf-state-smashbook-488121-backend` — never commit `.tfstate` files.
+> Shared module code lives in `be-infra/terraform/modules/`. Environment-specific config lives in `be-infra/terraform/staging/` and `be-infra/terraform/prod/`. State is stored remotely in GCS — never commit `.tfstate` files.
 
-**Step 1** — Make changes in `be-infra/terraform/`.
+**Step 1** — Make changes in the relevant module (`be-infra/terraform/modules/<module>/`) or environment file (`staging/main.tf`).
 
 **Step 2** — Initialise Terraform (first time, or after provider changes):
 
 ```bash
-cd be-infra/terraform
+cd be-infra/terraform/staging   # or prod/
 terraform init
 ```
 
@@ -352,7 +362,8 @@ git commit -m "infra: <description>"
 git push origin main
 ```
 
-> **Never commit `.terraform/`** — it contains large provider binaries and is excluded by `be-infra/terraform/.gitignore`. State lives in GCS, not in the repo.
+> **Never commit `.terraform/`** — it contains large provider binaries and is excluded by `.gitignore`. State lives in GCS, not in the repo.
+> **Module changes affect all environments** — if you edit a shared module, plan both `staging/` and `prod/` before applying.
 
 ---
 
