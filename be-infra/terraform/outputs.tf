@@ -41,3 +41,18 @@ output "runtime_sa_email" {
   description = "Runtime service account email used by Cloud Run services"
   value       = google_service_account.compute.email
 }
+
+output "media_bucket_name" {
+  description = "GCS bucket for booking receipts, court media, and player avatars"
+  value       = google_storage_bucket.media.name
+}
+
+output "exports_bucket_name" {
+  description = "GCS bucket for async CSV exports (objects expire after 7 days)"
+  value       = google_storage_bucket.exports.name
+}
+
+output "ai_archive_bucket_name" {
+  description = "GCS bucket for ai_inference_log payload archives (>90 days)"
+  value       = google_storage_bucket.ai_archive.name
+}

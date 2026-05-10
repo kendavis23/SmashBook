@@ -3,7 +3,8 @@
 # ---------------------------------------------------------------------------
 
 locals {
-  cloud_sql_connection = "${var.project_id}:${var.region}:smashbook-staging"
+  cloud_sql_connection         = "${var.project_id}:${var.region}:smashbook-staging"
+  cloud_sql_replica_connection = "${var.project_id}:${var.region}:smashbook-staging-replica"
 
   # Common container resource limits
   resource_limits = {
@@ -42,7 +43,7 @@ resource "google_cloud_run_v2_service" "api" {
     volumes {
       name = "cloudsql"
       cloud_sql_instance {
-        instances = [local.cloud_sql_connection]
+        instances = [local.cloud_sql_connection, local.cloud_sql_replica_connection]
       }
     }
 

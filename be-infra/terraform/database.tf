@@ -56,3 +56,55 @@ resource "google_sql_database" "smashbook" {
   name     = "padel_db"
   instance = google_sql_database_instance.main.name
 }
+
+# ---------------------------------------------------------------------------
+# Cloud SQL — Read replica (Stage 1.3)
+# ---------------------------------------------------------------------------
+
+resource "google_sql_database_instance" "replica" {
+  name                 = "smashbook-staging-replica"
+  database_version     = "POSTGRES_18"
+  region               = var.region
+  master_instance_name = google_sql_database_instance.main.name
+
+  replica_configuration {
+    failover_target = false
+  }
+
+  settings {
+    tier              = "db-g1-small"
+    edition           = "ENTERPRISE"
+    availability_type = "ZONAL"
+    activation_policy = "ALWAYS"
+
+    location_preference {
+      zone = var.zone
+    }
+
+    ip_configuration {
+      ipv4_enabled = true
+      ssl_mode     = "ALLOW_UNENCRYPTED_AND_ENCRYPTED"
+    }
+
+    database_flags {
+      name  = "cloudsql.iam_authentication"
+      value = "on"
+    }
+
+    disk_type       = "PD_SSD"
+    disk_size       = 20
+    disk_autoresize = false
+  }
+
+  deletion_protection = true
+
+  lifecycle {
+    prevent_destroy = true
+    ignore_changes  = []
+  }
+}
+
+output "replica_connection_name" {
+  description = "Cloud SQL read replica connection name"
+  value       = google_sql_database_instance.replica.connection_name
+}
