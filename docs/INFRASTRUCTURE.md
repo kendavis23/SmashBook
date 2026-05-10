@@ -1,4 +1,4 @@
-_Last updated: 2026-05-10 18:00 UTC_
+_Last updated: 2026-05-10 20:00 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -46,7 +46,7 @@ _Last updated: 2026-05-10 18:00 UTC_
 | State prefix | `staging` |
 | Terraform version | `>= 1.7` |
 | Google provider | `~> 5.0` (locked at `5.45.2` in `.terraform.lock.hcl`) |
-| Terraform layout | Module-based — `be-infra/terraform/staging/` and `be-infra/terraform/prod/` (scaffold only, no GCP project yet) call shared modules in `be-infra/terraform/modules/` (`artifact_registry`, `cloud_run`, `database`, `iam`, `pubsub`, `secrets`, `storage`) |
+| Terraform layout | Module-based — `be-infra/terraform/staging/` (live) and `be-infra/terraform/prod/` (scaffold delivered 2026-05-10 — prod-tuned settings wired, no GCP project yet; replace `smashbook-prod-REPLACE_ME` once the project is created) call shared modules in `be-infra/terraform/modules/` (`artifact_registry`, `cloud_run`, `database`, `iam`, `pubsub`, `secrets`, `storage`) |
 | Working directory (staging) | `be-infra/terraform/staging/` |
 
 ---
@@ -129,8 +129,8 @@ No Cloud Scheduler jobs exist yet.
 | Disk type | `PD_SSD` |
 | Disk size | 20 GB |
 | Disk autoresize | **Disabled** |
-| Backups | **Disabled** |
-| Point-in-time recovery | **Disabled** |
+| Backups | **Enabled** — automated, 15 retained, window starts 19:00 UTC |
+| Point-in-time recovery | **Enabled** — 7-day transaction log retention |
 | SSL mode | `ALLOW_UNENCRYPTED_AND_ENCRYPTED` |
 | IAM authentication | Enabled (`cloudsql.iam_authentication = on`) |
 | pgvector | Enabled — `CREATE EXTENSION vector` applied via Alembic (no instance flag required on PostgreSQL 15+) |
@@ -147,21 +147,24 @@ No Cloud Scheduler jobs exist yet.
 
 ### Topics
 
-| Topic | Phase |
-|---|---|
-| `booking-events` | MVP |
-| `payment-events` | MVP |
-| `notification-events` | MVP |
+| Topic | Phase | Purpose |
+|---|---|---|
+| `booking-events` | MVP | Booking lifecycle events |
+| `payment-events` | MVP | Payment and refund events |
+| `notification-events` | MVP | Notification dispatch events |
+| `booking-events-dlq` | MVP | Dead-letter sink for `booking-events-sub` |
+| `payment-events-dlq` | MVP | Dead-letter sink for `payment-events-sub` |
+| `notification-events-dlq` | MVP | Dead-letter sink for `notification-events-sub` |
 
 ### Push Subscriptions
 
-| Subscription | Topic | Worker endpoint | Ack deadline | Retention | Dead-letter |
-|---|---|---|---|---|---|
-| `booking-events-sub` | `booking-events` | `padel-booking-worker /pubsub` | 300s | 7 days | **None** |
-| `payment-events-sub` | `payment-events` | `padel-payment-worker /pubsub` | 300s | 7 days | **None** |
-| `notification-events-sub` | `notification-events` | `padel-notification-worker /pubsub` | 300s | 7 days | **None** |
+| Subscription | Topic | Worker endpoint | Ack deadline | Retention | Dead-letter | Max attempts |
+|---|---|---|---|---|---|---|
+| `booking-events-sub` | `booking-events` | `padel-booking-worker /pubsub` | 300s | 7 days | `booking-events-dlq` | 5 |
+| `payment-events-sub` | `payment-events` | `padel-payment-worker /pubsub` | 300s | 7 days | `payment-events-dlq` | 5 |
+| `notification-events-sub` | `notification-events` | `padel-notification-worker /pubsub` | 300s | 7 days | `notification-events-dlq` | 5 |
 
-All subscriptions use exponential backoff retry (10s–600s). Push authentication via OIDC token using `padel-runtime` SA.
+All subscriptions use exponential backoff retry (10s–600s). Push authentication via OIDC token using `padel-runtime` SA. The Pub/Sub service agent (`service-607958067144@gcp-sa-pubsub.iam.gserviceaccount.com`) holds `roles/pubsub.publisher` on each DLQ topic.
 
 ---
 
@@ -292,9 +295,7 @@ These are gaps between the current state and the next stage of infrastructure wo
 
 | Gap | Stage | Impact |
 |---|---|---|
-| No production GCP project | Stage 1.5 | `be-infra/terraform/prod/` scaffold exists with prod-tuned settings (HA, backups, larger tier); replace `smashbook-prod-REPLACE_ME` in `prod/terraform.tfvars` and `prod/main.tf` once the GCP project is created |
-| No dead-letter queues | Stage 1.6 | Poison messages loop indefinitely on all three MVP subscriptions |
-| Backups disabled on Cloud SQL | — | Data loss risk; should be enabled before any real customer data lands |
+| No production GCP project | — | `be-infra/terraform/prod/` scaffold exists with prod-tuned settings (HA, backups, larger tier); replace `smashbook-prod-REPLACE_ME` in `prod/terraform.tfvars` and `prod/main.tf` once the GCP project is created |
 | No monitoring or alerting | Stage 2.3 | No paging on 5xx spikes, DB storage, or subscription backlogs |
 | No VPC connector | Stage 2.1 | Workers connect to Cloud SQL via public IP; required for private IP migration |
 
