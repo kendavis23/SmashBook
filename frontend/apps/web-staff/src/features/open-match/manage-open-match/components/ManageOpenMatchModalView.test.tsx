@@ -50,6 +50,8 @@ const mockBooking: Booking = {
             invite_status: "accepted",
             payment_status: "paid",
             amount_due: 25,
+            discount_amount: "",
+            discount_source: "",
         },
     ],
     created_at: "2026-04-10T09:00:00Z",

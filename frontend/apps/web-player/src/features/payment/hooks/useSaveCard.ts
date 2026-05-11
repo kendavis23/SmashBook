@@ -24,7 +24,8 @@ export function useSaveCard() {
             const { setupIntent } = await stripe.retrieveSetupIntent(clientSecret);
             const paymentMethodId = setupIntent?.payment_method as string | null;
 
-            if (!paymentMethodId) throw new Error("Could not retrieve saved card — please try again.");
+            if (!paymentMethodId)
+                throw new Error("Could not retrieve saved card — please try again.");
 
             await savePaymentMethod.mutateAsync({
                 payment_method_id: paymentMethodId,

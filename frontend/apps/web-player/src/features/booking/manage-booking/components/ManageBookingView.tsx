@@ -599,6 +599,27 @@ export default function ManageBookingView({
                                                                                         }
                                                                                     </span>
                                                                                 </span>
+                                                                                {player.discount_amount ? (
+                                                                                    <span className="inline-flex items-center gap-1 rounded-full bg-cta/10 px-2 py-0.5 text-[11px] font-medium text-cta">
+                                                                                        <span className="font-semibold uppercase tracking-wide">
+                                                                                            Discount:
+                                                                                        </span>
+                                                                                        <span>
+                                                                                            {
+                                                                                                player.discount_amount
+                                                                                            }
+                                                                                        </span>
+                                                                                        {player.discount_source ? (
+                                                                                            <span className="opacity-70">
+                                                                                                (
+                                                                                                {
+                                                                                                    player.discount_source
+                                                                                                }
+                                                                                                )
+                                                                                            </span>
+                                                                                        ) : null}
+                                                                                    </span>
+                                                                                ) : null}
                                                                             </div>
                                                                         </div>
                                                                         <div className="shrink-0 text-right text-sm font-semibold text-foreground">

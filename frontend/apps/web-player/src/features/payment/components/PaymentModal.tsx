@@ -250,12 +250,14 @@ function PaymentStepIndicator({ active }: { active: number }): JSX.Element {
                     return (
                         <div key={label} className="min-w-0">
                             <div
-                                className={`h-1.5 rounded-full transition-colors ${isActive ? "bg-cta" : "bg-muted"
-                                    }`}
+                                className={`h-1.5 rounded-full transition-colors ${
+                                    isActive ? "bg-cta" : "bg-muted"
+                                }`}
                             />
                             <p
-                                className={`mt-2 truncate text-[11px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"
-                                    }`}
+                                className={`mt-2 truncate text-[11px] font-medium ${
+                                    isActive ? "text-foreground" : "text-muted-foreground"
+                                }`}
                             >
                                 {label}
                             </p>

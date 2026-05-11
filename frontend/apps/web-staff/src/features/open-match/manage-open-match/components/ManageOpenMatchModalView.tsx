@@ -223,6 +223,9 @@ export function ManageOpenMatchModalView({
                                                 <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                                     Payment
                                                 </th>
+                                                <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                    Discount
+                                                </th>
                                                 <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                                     Amount
                                                 </th>
@@ -239,6 +242,18 @@ export function ManageOpenMatchModalView({
                                                     </td>
                                                     <td className="px-3 py-2 capitalize text-muted-foreground">
                                                         {p.payment_status}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-muted-foreground">
+                                                        {p.discount_amount ? (
+                                                            <span className="text-cta">
+                                                                {p.discount_amount}
+                                                                {p.discount_source
+                                                                    ? ` (${p.discount_source})`
+                                                                    : ""}
+                                                            </span>
+                                                        ) : (
+                                                            "—"
+                                                        )}
                                                     </td>
                                                     <td className="px-3 py-2 text-right text-foreground">
                                                         {formatCurrency(p.amount_due)}

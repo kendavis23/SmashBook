@@ -71,6 +71,9 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                             <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                 Payment
                             </th>
+                            <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                Discount
+                            </th>
                             <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                 Amount
                             </th>
@@ -111,6 +114,16 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                                     >
                                         {formatStatus(p.payment_status)}
                                     </span>
+                                </td>
+                                <td className="px-3 py-2">
+                                    {p.discount_amount ? (
+                                        <span className="inline-flex h-6 items-center rounded-full bg-cta/10 px-2.5 text-[11px] font-semibold text-cta ring-1 ring-cta/20">
+                                            {p.discount_amount}
+                                            {p.discount_source ? ` (${p.discount_source})` : ""}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[11px] text-muted-foreground">—</span>
+                                    )}
                                 </td>
                                 <td className="px-3 py-2 text-right text-foreground">
                                     <span className="font-semibold">
