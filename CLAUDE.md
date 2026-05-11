@@ -191,6 +191,15 @@ Always follow this order exactly — no shortcuts:
 - Apply a migration without reviewing the generated file first
 - Update `DATA_MODEL.md` before the migration is applied and verified
 - Commit a model change without its migration, or a migration without its model change
+- **Write migration files by hand** — always use `alembic revision --autogenerate`. Hand-writing revision IDs or `down_revision` values causes duplicate-head errors and broken chains. Before creating any migration, run `alembic heads` to confirm a single head exists.
+
+**Useful state commands (run from `backend/`):**
+```bash
+alembic current    # revision the DB is currently on
+alembic heads      # should always show exactly one head
+alembic history    # full revision lineage
+alembic check      # warns if models are ahead of the latest migration
+```
 
 ---
 

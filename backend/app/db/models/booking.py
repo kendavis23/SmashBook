@@ -106,6 +106,8 @@ class BookingPlayer(Base, UUIDMixin, TimestampMixin):
     role = Column(Enum(PlayerRole), nullable=False)
     payment_status = Column(Enum(PaymentStatus), nullable=False, default=PaymentStatus.pending)
     amount_due = Column(Numeric(10, 2), nullable=False)
+    discount_amount = Column(Numeric(10, 2), nullable=True)
+    discount_source = Column(Enum(DiscountSource), nullable=True)
     invite_status = Column(Enum(InviteStatus), nullable=False, default=InviteStatus.accepted)
 
     booking = relationship("Booking", back_populates="players")
