@@ -25,6 +25,7 @@ from sqlalchemy import delete as sql_delete, select
 from app.core.security import create_access_token
 from app.db.models.booking import Booking, BookingPlayer, InviteStatus, PaymentStatus, PlayerRole
 from app.db.models.club import OperatingHours, PricingRule
+from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipStatus, MembershipSubscription
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.user import TenantUserRole, User
@@ -943,6 +944,158 @@ class TestInvitePlayer:
             headers=staff_headers,
         )
         assert resp.status_code == 200
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_invite_response_includes_discount_fields(
+        self, client, player_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Invited player entry always exposes discount_amount and discount_source keys."""
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        invited = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+        assert "discount_amount" in invited
+        assert "discount_source" in invited
+        # player2 has no membership — both fields are null
+        assert invited["discount_amount"] is None
+        assert invited["discount_source"] is None
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_invite_applies_membership_discount(
+        self, client, player_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Invited player with an active membership gets the correct discount applied."""
+        from datetime import timezone
+
+        # Give player2 a membership plan with 20% discount and no credits
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Test Plan",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("30.00"),
+                booking_credits_per_period=0,
+                discount_pct=Decimal("20.00"),
+                is_active=True,
+            )
+            session.add(plan)
+            await session.flush()
+
+            now = datetime.now(tz=timezone.utc)
+            sub = MembershipSubscription(
+                user_id=player2.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+                credits_remaining=0,
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id = plan.id
+            sub_id = sub.id
+
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        invited = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+
+        # Court costs 20.00 / 4 players = 5.00 per player; 20% discount = 1.00
+        assert Decimal(invited["discount_amount"]) == Decimal("1.00")
+        assert invited["discount_source"] == "membership"
+        assert Decimal(invited["amount_due"]) == Decimal("4.00")
+
+        # Cleanup membership data
+        async with test_session_factory() as session:
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_invite_applies_membership_credit(
+        self, client, player_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Invited player with booking credits gets amount_due = 0."""
+        from datetime import timezone
+
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Credit Plan",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("50.00"),
+                booking_credits_per_period=4,
+                is_active=True,
+            )
+            session.add(plan)
+            await session.flush()
+
+            now = datetime.now(tz=timezone.utc)
+            sub = MembershipSubscription(
+                user_id=player2.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+                credits_remaining=2,
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id = plan.id
+            sub_id = sub.id
+
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        invited = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+
+        # Credit covers full per-player share (20.00 / 4 = 5.00)
+        assert Decimal(invited["discount_amount"]) == Decimal("5.00")
+        assert invited["discount_source"] == "membership"
+        assert Decimal(invited["amount_due"]) == Decimal("0.00")
+
+        # Cleanup membership data
+        async with test_session_factory() as session:
+            from sqlalchemy import delete as sql_delete
+            from app.db.models.membership import MembershipCreditLog
+            await session.execute(sql_delete(MembershipCreditLog).where(MembershipCreditLog.subscription_id == sub_id))
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 

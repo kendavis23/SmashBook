@@ -852,7 +852,18 @@ class BookingService:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Player not found in this tenant")
 
         # Skill check bypassed for organiser and staff invites
-        amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
+        pricing_svc = PricingService(self.db)
+        breakdown = await pricing_svc.calculate(
+            club_id, booking.start_datetime, booking.max_players, invited_user.id
+        )
+        if breakdown:
+            amount_due = breakdown.amount_due
+            discount_amount = breakdown.discount_amount
+            discount_source = breakdown.discount_source
+        else:
+            amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
+            discount_amount = None
+            discount_source = None
 
         bp = BookingPlayer(
             booking=booking,
@@ -861,9 +872,15 @@ class BookingService:
             invite_status=InviteStatus.pending,
             payment_status=PaymentStatus.pending,
             amount_due=amount_due,
+            discount_amount=discount_amount,
+            discount_source=discount_source,
         )
         self.db.add(bp)
         await self.db.flush()
+
+        if breakdown and breakdown.credit_consumed:
+            await pricing_svc.consume_credit(breakdown.membership_subscription_id, bp.id)
+
         return await self._load_booking(booking.id)
 
     async def respond_to_invite(

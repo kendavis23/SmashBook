@@ -1,4 +1,4 @@
-_Last updated: 2026-05-08 14:50 UTC_
+_Last updated: 2026-05-11 00:00 UTC_
 
 # SmashBook — Data Model Target State
 
@@ -78,7 +78,7 @@ Changes are grouped by the sprint that first needs them. Implement the group for
 | G1 | Sprint 1 | `users`: add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` |
 | G2 | Sprint 2 | `operating_hours`: add `valid_from`, `valid_until` for seasonal variations |
 | G3 | Sprint 3 | `bookings`: add `min_skill_level`, `max_skill_level`, `invite_confirmed`; `booking_players`: add `invite_status`; new table: `waitlist_entries` |
-| G4 | Sprint 4 | `payments`: add `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `dispute_status`, `club_id`; new table: `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id` |
+| G4 | Sprint 4 | `payments`: add `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `dispute_status`, `club_id`; new table: `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id`; `booking_players`: add `discount_amount`, `discount_source` |
 | G5 | Sprint 5 | `bookings`: add `parent_booking_id` (self-ref for recurring series), `recurrence_end_date`; new table: `calendar_reservations`; `clubs`: add `default_skill_range_above`, `default_skill_range_below`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`; `equipment_inventory`: add `reorder_threshold` |
 | G6 | Sprint 6 | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`; `skill_level_history`: add `change_source`, `club_id` |
 | G7 | Sprint 7 | New tables: `ai_inference_log`, `ai_feature_flags`; `subscription_plans`: add AI feature flag columns; `clubs`: add `latitude`, `longitude`, `timezone`, `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`, `weather_alerts_enabled` |
@@ -357,7 +357,7 @@ No changes from current state.
 ---
 
 ### `booking_players`
-**Changes from current:** Add `invite_status` to track whether invited players have accepted. *(Migration group G3)*
+**Changes from current:** Add `invite_status` *(G3)*; add `discount_amount`, `discount_source` *(G4 — implemented Sprint 5)*.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -367,7 +367,9 @@ No changes from current state.
 | `role` | ENUM | `organiser`, `player` |
 | `payment_status` | ENUM | `pending`, `paid`, `refunded` |
 | `amount_due` | NUMERIC(10,2) | |
-| `invite_status` | ENUM | **NEW** `pending`, `accepted`, `declined` — default `accepted` for organiser |
+| `discount_amount` | NUMERIC(10,2) | **NEW** Nullable — per-player discount applied at invite/booking time *(G4)* |
+| `discount_source` | ENUM | **NEW** Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` *(G4)* |
+| `invite_status` | ENUM | **NEW** `pending`, `accepted`, `declined` — default `accepted` for organiser *(G3)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 

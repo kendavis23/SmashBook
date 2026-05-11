@@ -5,7 +5,7 @@ from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.db.models.booking import BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
+from app.db.models.booking import BookingStatus, BookingType, DiscountSource, InviteStatus, PaymentStatus, PlayerRole
 
 
 class BookingCreate(BaseModel):
@@ -112,6 +112,8 @@ class BookingPlayerResponse(BaseModel):
     invite_status: InviteStatus
     payment_status: PaymentStatus
     amount_due: Decimal
+    discount_amount: Optional[Decimal] = None
+    discount_source: Optional[DiscountSource] = None
 
     model_config = {"from_attributes": True}
 
@@ -131,6 +133,8 @@ class BookingResponse(BaseModel):
     max_players: Optional[int] = None
     slots_available: int
     total_price: Optional[Decimal] = None
+    discount_amount: Optional[Decimal] = None
+    discount_source: Optional[DiscountSource] = None
     notes: Optional[str] = None
     event_name: Optional[str] = None
     players: list[BookingPlayerResponse]
@@ -159,6 +163,8 @@ class OpenGameSummary(BaseModel):
     max_skill_level: Optional[Decimal] = None
     slots_available: int
     total_price: Optional[Decimal] = None
+    discount_amount: Optional[Decimal] = None
+    discount_source: Optional[DiscountSource] = None
 
     model_config = {"from_attributes": True}
 
@@ -177,6 +183,8 @@ class CalendarBookingItem(BaseModel):
     players: list[BookingPlayerResponse]
     slots_available: int
     total_price: Optional[Decimal] = None
+    discount_amount: Optional[Decimal] = None
+    discount_source: Optional[DiscountSource] = None
 
     model_config = {"from_attributes": True}
 

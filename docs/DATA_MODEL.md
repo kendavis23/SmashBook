@@ -1,4 +1,4 @@
-_Last updated: 2026-05-08 14:50 UTC_
+_Last updated: 2026-05-11 00:00 UTC_
 
 # SmashBook Data Model
 
@@ -299,6 +299,8 @@ Links players to a booking and tracks their individual payment status.
 | `invite_status` | ENUM | `pending`, `accepted`, `declined` — default `accepted` |
 | `payment_status` | ENUM | `pending`, `paid`, `refunded` |
 | `amount_due` | NUMERIC(10,2) | |
+| `discount_amount` | NUMERIC(10,2) | Nullable — per-player discount applied at invite time |
+| `discount_source` | ENUM | Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
