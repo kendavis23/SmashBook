@@ -33,10 +33,7 @@ const STATUS_STYLES: Record<string, string> = {
     completed: "bg-muted text-muted-foreground",
 };
 
-const PAYMENT_BADGE: Record<
-    string,
-    { label: string; cls: string }
-> = {
+const PAYMENT_BADGE: Record<string, { label: string; cls: string }> = {
     paid: { label: "Paid", cls: "bg-success/15 text-success" },
     pending: { label: "Unpaid", cls: "bg-warning/15 text-warning" },
     failed: { label: "Failed", cls: "bg-destructive/15 text-destructive" },
@@ -53,12 +50,19 @@ function PaymentCell({
     const isFree = amount === 0;
     const badge = isFree
         ? { label: "Free", cls: "bg-secondary/60 text-secondary-foreground" }
-        : (PAYMENT_BADGE[paymentStatus] ?? { label: paymentStatus, cls: "bg-muted text-muted-foreground" });
+        : (PAYMENT_BADGE[paymentStatus] ?? {
+              label: paymentStatus,
+              cls: "bg-muted text-muted-foreground",
+          });
 
     return (
         <span className="inline-flex items-center gap-1.5">
-            <span className="font-medium text-foreground tabular-nums text-sm">{formatCurrency(amount)}</span>
-            <span className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight ${badge.cls}`}>
+            <span className="font-medium text-foreground tabular-nums text-sm">
+                {formatCurrency(amount)}
+            </span>
+            <span
+                className={`rounded-full px-1.5 py-px text-[9px] font-semibold leading-tight ${badge.cls}`}
+            >
                 {badge.label}
             </span>
         </span>

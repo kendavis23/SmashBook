@@ -70,8 +70,8 @@ export function ProfileInfoView({
         typeof rawSkill === "number"
             ? rawSkill
             : rawSkill != null && !Number.isNaN(Number(rawSkill))
-                ? Number(rawSkill)
-                : null;
+              ? Number(rawSkill)
+              : null;
 
     return (
         <form onSubmit={onSubmit} noValidate className="space-y-5">
@@ -96,7 +96,12 @@ export function ProfileInfoView({
                     <p className="text-sm font-semibold text-foreground">{user.full_name}</p>
                     <p className="text-xs text-muted-foreground">{user.email}</p>
                     <label className="mt-1.5 cursor-pointer">
-                        <input type="file" accept="image/*" onChange={onFileChange} className="hidden" />
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={onFileChange}
+                            className="hidden"
+                        />
                         <div className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/30 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition hover:bg-muted">
                             <Upload size={11} />
                             Change photo
@@ -108,7 +113,10 @@ export function ProfileInfoView({
             {/* Editable fields */}
             <div className="space-y-3">
                 <div>
-                    <label htmlFor="full_name" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    <label
+                        htmlFor="full_name"
+                        className="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >
                         Full Name
                     </label>
                     <input
@@ -122,7 +130,10 @@ export function ProfileInfoView({
                     />
                 </div>
                 <div>
-                    <label htmlFor="phone" className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                    <label
+                        htmlFor="phone"
+                        className="mb-1.5 block text-xs font-medium text-muted-foreground"
+                    >
                         Phone
                     </label>
                     <input
@@ -163,7 +174,6 @@ export function ProfileInfoView({
                                     : "Not yet assigned"}
                             </p>
                         </div>
-
                     </div>
                 </div>
             </div>

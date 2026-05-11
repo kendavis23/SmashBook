@@ -18,7 +18,6 @@ const stripePromise = loadStripe(config.stripePublishableKey);
 
 // ── Card tile (credit-card proportions) ──────────────────────────────────────
 
-
 function CardTile({
     card,
     onDelete,
@@ -32,12 +31,12 @@ function CardTile({
     isDeleting: boolean;
     isSettingDefault: boolean;
 }): JSX.Element {
-    const base = card.is_default
-        ? "bg-cta/10 border-cta/50"
-        : "bg-background border-border";
+    const base = card.is_default ? "bg-cta/10 border-cta/50" : "bg-background border-border";
 
     return (
-        <div className={`group relative flex items-center gap-3 rounded-lg border p-3 shadow-sm transition hover:shadow-md ${base}`}>
+        <div
+            className={`group relative flex items-center gap-3 rounded-lg border p-3 shadow-sm transition hover:shadow-md ${base}`}
+        >
             {/* Chip icon */}
             <div className="shrink-0">
                 <div className="h-4 w-6 rounded-sm bg-gradient-to-br from-yellow-300/80 to-yellow-500/60 shadow-inner" />
@@ -49,7 +48,9 @@ function CardTile({
                     <span className="font-mono text-xs font-semibold tracking-wider text-foreground">
                         •••• {card.last4}
                     </span>
-                    <span className="text-[9px] uppercase tracking-widest text-muted-foreground">{card.brand}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-muted-foreground">
+                        {card.brand}
+                    </span>
                     {card.is_default && (
                         <span className="inline-flex items-center gap-0.5 rounded-full bg-cta/20 px-1.5 py-0.5 text-[8px] font-semibold text-cta-foreground">
                             <Star size={7} fill="currentColor" />
@@ -135,7 +136,10 @@ function AddCardInner({
         }
 
         try {
-            await savePaymentMethod.mutateAsync({ payment_method_id: paymentMethodId, set_as_default: false });
+            await savePaymentMethod.mutateAsync({
+                payment_method_id: paymentMethodId,
+                set_as_default: false,
+            });
         } catch (err) {
             setIsPending(false);
             setError((err as { message?: string })?.message ?? "Failed to save card.");
@@ -156,9 +160,7 @@ function AddCardInner({
 
             <PaymentElement options={{ layout: "tabs" }} />
 
-            {error && (
-                <AlertToast title={error} variant="error" onClose={() => setError(null)} />
-            )}
+            {error && <AlertToast title={error} variant="error" onClose={() => setError(null)} />}
 
             <div className="flex items-center justify-end gap-2 pt-1">
                 {canCancel && (
@@ -214,16 +216,28 @@ export function ProfilePaymentView(): JSX.Element {
         if (!isAddCardOpen || clientSecret) return;
         let cancelled = false;
 
-        createSetupIntent.mutateAsync()
-            .then((intent) => { if (!cancelled) setClientSecret(intent.client_secret); })
-            .catch((err) => { if (!cancelled) setSetupError((err as { message?: string })?.message ?? "Unable to set up card."); });
+        createSetupIntent
+            .mutateAsync()
+            .then((intent) => {
+                if (!cancelled) setClientSecret(intent.client_secret);
+            })
+            .catch((err) => {
+                if (!cancelled)
+                    setSetupError(
+                        (err as { message?: string })?.message ?? "Unable to set up card."
+                    );
+            });
 
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
         // intentionally run only when isAddCardOpen flips to true
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAddCardOpen]);
 
-    const handleDeleteRequest = useCallback((id: string) => { setDeleteTargetId(id); }, []);
+    const handleDeleteRequest = useCallback((id: string) => {
+        setDeleteTargetId(id);
+    }, []);
 
     const handleDeleteConfirm = useCallback(() => {
         if (!deleteTargetId) return;
@@ -232,15 +246,22 @@ export function ProfilePaymentView(): JSX.Element {
                 setSuccessToast("Card removed successfully.");
                 setDeleteTargetId(null);
             },
-            onError: () => { setDeleteTargetId(null); },
+            onError: () => {
+                setDeleteTargetId(null);
+            },
         });
     }, [deleteTargetId, deleteMutation]);
 
-    const handleSetDefault = useCallback((id: string) => {
-        setDefaultMutation.mutate(id, {
-            onSuccess: () => { setSuccessToast("Default payment method updated."); },
-        });
-    }, [setDefaultMutation]);
+    const handleSetDefault = useCallback(
+        (id: string) => {
+            setDefaultMutation.mutate(id, {
+                onSuccess: () => {
+                    setSuccessToast("Default payment method updated.");
+                },
+            });
+        },
+        [setDefaultMutation]
+    );
 
     const handleAddDone = useCallback(() => {
         setShowAddCard(false);
@@ -262,7 +283,11 @@ export function ProfilePaymentView(): JSX.Element {
     return (
         <div className="space-y-5">
             {successToast && (
-                <AlertToast title={successToast} variant="success" onClose={() => setSuccessToast(null)} />
+                <AlertToast
+                    title={successToast}
+                    variant="success"
+                    onClose={() => setSuccessToast(null)}
+                />
             )}
 
             {deleteTargetId && (
@@ -279,7 +304,9 @@ export function ProfilePaymentView(): JSX.Element {
             <div className="flex items-center justify-between">
                 <div>
                     <h3 className="text-sm font-semibold text-foreground">Payment methods</h3>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Saved cards for booking payments.</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Saved cards for booking payments.
+                    </p>
                 </div>
                 {hasCards && !showAddCard && (
                     <button
@@ -309,16 +336,23 @@ export function ProfilePaymentView(): JSX.Element {
             {/* Saved cards */}
             {hasCards && (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {[...methods!].sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0)).map((card) => (
-                        <CardTile
-                            key={card.id}
-                            card={card}
-                            onDelete={handleDeleteRequest}
-                            onSetDefault={handleSetDefault}
-                            isDeleting={deleteMutation.isPending && deleteMutation.variables === card.id}
-                            isSettingDefault={setDefaultMutation.isPending && setDefaultMutation.variables === card.id}
-                        />
-                    ))}
+                    {[...methods!]
+                        .sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0))
+                        .map((card) => (
+                            <CardTile
+                                key={card.id}
+                                card={card}
+                                onDelete={handleDeleteRequest}
+                                onSetDefault={handleSetDefault}
+                                isDeleting={
+                                    deleteMutation.isPending && deleteMutation.variables === card.id
+                                }
+                                isSettingDefault={
+                                    setDefaultMutation.isPending &&
+                                    setDefaultMutation.variables === card.id
+                                }
+                            />
+                        ))}
                 </div>
             )}
 
@@ -328,7 +362,9 @@ export function ProfilePaymentView(): JSX.Element {
                     <div className="mb-4 flex items-center justify-between">
                         <div>
                             <h4 className="text-sm font-semibold text-foreground">Add new card</h4>
-                            <p className="mt-0.5 text-[11px] text-muted-foreground">Your card details are encrypted and secure.</p>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                Your card details are encrypted and secure.
+                            </p>
                         </div>
                         {hasCards && (
                             <button
@@ -343,7 +379,11 @@ export function ProfilePaymentView(): JSX.Element {
                     </div>
 
                     {setupError && (
-                        <AlertToast title={setupError} variant="error" onClose={() => setSetupError(null)} />
+                        <AlertToast
+                            title={setupError}
+                            variant="error"
+                            onClose={() => setSetupError(null)}
+                        />
                     )}
 
                     {!clientSecret && !setupError && (

@@ -308,14 +308,14 @@ Two workflows — one per app (`web-staff`, `web-player`). No cross-triggering.
 secrets → lint → test → build → deploy → smoke
 ```
 
-| Stage   | Detail                                                                                                              |
-| ------- | ------------------------------------------------------------------------------------------------------------------- |
-| secrets | Auth to GCP, fetch `VITE_API_BASE_URL` from Cloud Run + bucket/CF credentials from Secret Manager                   |
-| lint    | `pnpm --filter @repo/<app> lint`                                                                                    |
-| test    | `pnpm --filter @repo/<app> test`                                                                                    |
+| Stage   | Detail                                                                                                                 |
+| ------- | ---------------------------------------------------------------------------------------------------------------------- |
+| secrets | Auth to GCP, fetch `VITE_API_BASE_URL` from Cloud Run + bucket/CF credentials from Secret Manager                      |
+| lint    | `pnpm --filter @repo/<app> lint`                                                                                       |
+| test    | `pnpm --filter @repo/<app> test`                                                                                       |
 | build   | `pnpm --filter @repo/<app> build` with `VITE_API_BASE_URL`, `VITE_APP_ENV`, and `VITE_STRIPE_PUBLISHABLE_KEY` injected |
-| deploy  | Upload versioned build to `gs://<bucket>/<sha>/`, promote to bucket root, set cache headers, purge Cloudflare cache |
-| smoke   | HTTP 200 + `<!doctype html` check with 10 retries                                                                   |
+| deploy  | Upload versioned build to `gs://<bucket>/<sha>/`, promote to bucket root, set cache headers, purge Cloudflare cache    |
+| smoke   | HTTP 200 + `<!doctype html` check with 10 retries                                                                      |
 
 ### Smoke test URL
 
@@ -385,11 +385,11 @@ Short SHAs are supported. No rebuild required — rollback takes seconds.
 
 All env vars are Zod-validated at app startup in `packages/config/env.ts`.
 
-| Variable                    | Required | Source in CI                                       |
-| --------------------------- | -------- | -------------------------------------------------- |
-| `VITE_API_BASE_URL`         | Yes      | Fetched from Cloud Run (`padel-api` service URL)   |
-| `VITE_APP_ENV`              | Yes      | `staging` (auto) or `production` (manual dispatch) |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Yes    | GCP Secret Manager (`stripe-publishable-key`)      |
+| Variable                      | Required | Source in CI                                       |
+| ----------------------------- | -------- | -------------------------------------------------- |
+| `VITE_API_BASE_URL`           | Yes      | Fetched from Cloud Run (`padel-api` service URL)   |
+| `VITE_APP_ENV`                | Yes      | `staging` (auto) or `production` (manual dispatch) |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Yes      | GCP Secret Manager (`stripe-publishable-key`)      |
 
 `VITE_APP_ENV` accepts: `development`, `staging`, `production`.
 
@@ -406,10 +406,10 @@ All env vars are Zod-validated at app startup in `packages/config/env.ts`.
 
 ### GCP Secret Manager
 
-| Secret                       | Used for                               |
-| ---------------------------- | -------------------------------------- |
-| `FRONTEND_WEB_STAFF_BUCKET`  | staff deploy — GCS bucket name                    |
-| `FRONTEND_WEB_PLAYER_BUCKET` | player deploy — GCS bucket name                   |
+| Secret                       | Used for                                           |
+| ---------------------------- | -------------------------------------------------- |
+| `FRONTEND_WEB_STAFF_BUCKET`  | staff deploy — GCS bucket name                     |
+| `FRONTEND_WEB_PLAYER_BUCKET` | player deploy — GCS bucket name                    |
 | `CF_ZONE_ID`                 | Cloudflare cache purge (all workflows)             |
 | `CF_API_TOKEN`               | Cloudflare cache purge (all workflows)             |
 | `CERTIFICATE`                | Cloudflare Origin Certificate PEM                  |

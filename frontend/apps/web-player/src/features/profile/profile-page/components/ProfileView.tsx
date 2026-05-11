@@ -72,9 +72,10 @@ export function ProfileView({
                             type="button"
                             onClick={() => onTabChange("info")}
                             className={`flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-medium transition-colors
-                                ${activeTab !== "payment"
-                                    ? "border-cta text-cta"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
+                                ${
+                                    activeTab !== "payment"
+                                        ? "border-cta text-cta"
+                                        : "border-transparent text-muted-foreground hover:text-foreground"
                                 }`}
                         >
                             <User size={14} />
@@ -84,10 +85,11 @@ export function ProfileView({
                             type="button"
                             onClick={() => onTabChange("payment")}
                             className={`flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-medium transition-colors
-                                ${activeTab === "payment"
-                                    ? "border-cta text-cta"
-                                    : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
+                                ${
+                                    activeTab === "payment"
+                                        ? "border-cta text-cta"
+                                        : "border-transparent text-muted-foreground hover:text-foreground"
+                                }`}
                         >
                             <CreditCard size={14} />
                             Billing

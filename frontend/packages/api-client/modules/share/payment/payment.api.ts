@@ -12,7 +12,9 @@ import type {
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
-export function createPaymentIntentEndpoint(data: PaymentIntentRequest): Promise<PaymentIntentResponse> {
+export function createPaymentIntentEndpoint(
+    data: PaymentIntentRequest
+): Promise<PaymentIntentResponse> {
     return fetcher<PaymentIntentResponse>("/api/v1/payments/payment-intent", {
         method: "POST",
         cache: "no-store",
@@ -28,7 +30,9 @@ export function createSetupIntentEndpoint(): Promise<SetupIntentResponse> {
     });
 }
 
-export function savePaymentMethodEndpoint(data: SavePaymentMethodRequest): Promise<PaymentMethodResponse> {
+export function savePaymentMethodEndpoint(
+    data: SavePaymentMethodRequest
+): Promise<PaymentMethodResponse> {
     return fetcher<PaymentMethodResponse>("/api/v1/payments/payment-methods", {
         method: "POST",
         headers: JSON_HEADERS,

@@ -87,14 +87,14 @@ Step-by-step trace of what actually runs in the code today, for both contexts (`
 
 ## API Calls Summary
 
-| # | Direction | Endpoint | When |
-|---|---|---|---|
-| 1 | Frontend → Backend | `GET /api/v1/payments/payment-methods` | Modal mount (booking context) |
-| 2 | Frontend → Backend | `POST /api/v1/payments/setup-intent` | No saved cards (booking) OR add_card context |
-| 3 | Frontend → Stripe | `stripe.confirmSetup(...)` | After SetupIntent secret is ready |
-| 4 | Frontend → Backend | `POST /api/v1/payments/payment-methods` | After confirmSetup succeeds |
-| 5 | Frontend → Backend | `POST /api/v1/payments/payment-intent` | After card is chosen on SelectMethodStep |
-| 6 | Frontend → Stripe | `stripe.confirmPayment(...)` | After PaymentIntent secret is ready |
+| #   | Direction          | Endpoint                                | When                                         |
+| --- | ------------------ | --------------------------------------- | -------------------------------------------- |
+| 1   | Frontend → Backend | `GET /api/v1/payments/payment-methods`  | Modal mount (booking context)                |
+| 2   | Frontend → Backend | `POST /api/v1/payments/setup-intent`    | No saved cards (booking) OR add_card context |
+| 3   | Frontend → Stripe  | `stripe.confirmSetup(...)`              | After SetupIntent secret is ready            |
+| 4   | Frontend → Backend | `POST /api/v1/payments/payment-methods` | After confirmSetup succeeds                  |
+| 5   | Frontend → Backend | `POST /api/v1/payments/payment-intent`  | After card is chosen on SelectMethodStep     |
+| 6   | Frontend → Stripe  | `stripe.confirmPayment(...)`            | After PaymentIntent secret is ready          |
 
 ---
 
@@ -129,35 +129,36 @@ Step-by-step trace of what actually runs in the code today, for both contexts (`
 
 ## Key Files
 
-| File | Role |
-|---|---|
-| `apps/web-player/src/features/payment/components/PaymentModal.tsx` | Orchestrates all steps and state |
-| `apps/web-player/src/features/payment/components/SelectMethodStep.tsx` | Card picker UI |
-| `apps/web-player/src/features/payment/components/PaymentMethodStep.tsx` | Stripe `<PaymentElement>` + submit |
-| `apps/web-player/src/features/payment/components/PaymentSuccessStep.tsx` | Success screen |
-| `apps/web-player/src/features/payment/components/PaymentErrorBanner.tsx` | Inline error display |
-| `packages/player-domain/hooks/payment.hooks.ts` | `useCreatePaymentIntent`, `useCreateSetupIntent`, `useSavePaymentMethod`, `useListPaymentMethods` |
-| `packages/api-client/modules/share/payment/payment.api.ts` | Raw HTTP calls to backend |
+| File                                                                     | Role                                                                                              |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `apps/web-player/src/features/payment/components/PaymentModal.tsx`       | Orchestrates all steps and state                                                                  |
+| `apps/web-player/src/features/payment/components/SelectMethodStep.tsx`   | Card picker UI                                                                                    |
+| `apps/web-player/src/features/payment/components/PaymentMethodStep.tsx`  | Stripe `<PaymentElement>` + submit                                                                |
+| `apps/web-player/src/features/payment/components/PaymentSuccessStep.tsx` | Success screen                                                                                    |
+| `apps/web-player/src/features/payment/components/PaymentErrorBanner.tsx` | Inline error display                                                                              |
+| `packages/player-domain/hooks/payment.hooks.ts`                          | `useCreatePaymentIntent`, `useCreateSetupIntent`, `useSavePaymentMethod`, `useListPaymentMethods` |
+| `packages/api-client/modules/share/payment/payment.api.ts`               | Raw HTTP calls to backend                                                                         |
 
+---
 
+No saved cards
 
- ---                                                                                                                              
-  No saved cards                                                                                                                   
-  1. Modal opens → GET /api/v1/payments/payment-methods returns []                                                                 
-  2. Immediately → POST /api/v1/payments/payment-intent { booking_id } (no payment_method_id)                                      
-  3. client_secret received → <Elements clientSecret> mounts → blank <PaymentElement> shown                                        
-  4. User enters card → clicks Pay                                                                                                 
-  5. stripe.confirmPayment({ elements }) — Stripe creates a temporary payment method internally                                    
-  6. Success → invalidate ["player", "bookings"] → success screen                                                                  
-                                                                                                                                   
-  Has saved cards                                                                                                                  
-  1. Modal opens → GET /api/v1/payments/payment-methods returns cards                                                              
-  2. SelectMethodStep shown — user picks a saved card (or "Use a new card") → clicks Proceed                                       
-  3. → POST /api/v1/payments/payment-intent { booking_id, payment_method_id } → { client_secret, amount, currency }              
-  4. SavedCardConfirm shown — displays amount/currency, Pay button (no card entry form)                                            
-  5. User clicks Pay → stripe.confirmCardPayment(clientSecret, { payment_method: selectedMethodId })                               
-  6. If paymentIntent.status === "succeeded" → invalidate + success screen                                                         
-  7. If 3DS required → Stripe handles the challenge popup automatically before resolving                                           
-                                                                                                                                   
-  "Use a new card" from the card picker → same as path 1 from step 2 onward (intent without payment_method_id, then <Elements> +   
-  confirmPayment).     
+1. Modal opens → GET /api/v1/payments/payment-methods returns []
+2. Immediately → POST /api/v1/payments/payment-intent { booking_id } (no payment_method_id)
+3. client_secret received → <Elements clientSecret> mounts → blank <PaymentElement> shown
+4. User enters card → clicks Pay
+5. stripe.confirmPayment({ elements }) — Stripe creates a temporary payment method internally
+6. Success → invalidate ["player", "bookings"] → success screen
+
+Has saved cards
+
+1. Modal opens → GET /api/v1/payments/payment-methods returns cards
+2. SelectMethodStep shown — user picks a saved card (or "Use a new card") → clicks Proceed
+3. → POST /api/v1/payments/payment-intent { booking_id, payment_method_id } → { client_secret, amount, currency }
+4. SavedCardConfirm shown — displays amount/currency, Pay button (no card entry form)
+5. User clicks Pay → stripe.confirmCardPayment(clientSecret, { payment_method: selectedMethodId })
+6. If paymentIntent.status === "succeeded" → invalidate + success screen
+7. If 3DS required → Stripe handles the challenge popup automatically before resolving
+
+"Use a new card" from the card picker → same as path 1 from step 2 onward (intent without payment_method_id, then <Elements> +  
+ confirmPayment).

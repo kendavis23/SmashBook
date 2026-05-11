@@ -68,7 +68,8 @@ export default function ProfileContainer(): JSX.Element {
                 if (user) setUser({ ...user, preferred_notification_channel: notifChannel });
             } catch (err) {
                 setNotifApiError(
-                    (err as { message?: string })?.message ?? "Failed to update notification settings."
+                    (err as { message?: string })?.message ??
+                        "Failed to update notification settings."
                 );
             }
         },

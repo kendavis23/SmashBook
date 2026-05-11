@@ -1,4 +1,4 @@
-Last updated: 2026-05-10 00:00 UTC_
+Last updated: 2026-05-10 00:00 UTC\_
 
 # Mobile Player Development Guide
 
@@ -89,8 +89,8 @@ export default function PlayerLayout() {
 Use full group paths in all redirects — never bare `/login` or `/home`:
 
 ```tsx
-router.replace("/(player)/home" as Href);   // correct
-router.replace("/home" as Href);             // wrong — ambiguous between groups
+router.replace("/(player)/home" as Href); // correct
+router.replace("/home" as Href); // wrong — ambiguous between groups
 ```
 
 Inside `pages/`, always split container and view. Zod schemas go in a sibling `types.ts`:
@@ -282,4 +282,3 @@ pnpm --filter mobile-player ios     # iOS
 ```
 
 Use EAS dev client (not Expo Go) when the feature uses MMKV or any native module.
-

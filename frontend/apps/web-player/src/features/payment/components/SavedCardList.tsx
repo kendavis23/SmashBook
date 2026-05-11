@@ -1,6 +1,10 @@
 import { type JSX, useCallback } from "react";
 import { CreditCard, Star, Trash2 } from "lucide-react";
-import { useListPaymentMethods, useDeletePaymentMethod, useSetDefaultPaymentMethod } from "@repo/player-domain/hooks";
+import {
+    useListPaymentMethods,
+    useDeletePaymentMethod,
+    useSetDefaultPaymentMethod,
+} from "@repo/player-domain/hooks";
 import type { PaymentMethod } from "../types";
 
 function CardBrandIcon({ brand }: { brand: string }): JSX.Element {
@@ -28,9 +32,7 @@ function CardRow({
         <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
             <CardBrandIcon brand={card.brand} />
             <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                    •••• {card.last4}
-                </p>
+                <p className="text-sm font-medium text-foreground">•••• {card.last4}</p>
                 <p className="text-xs text-muted-foreground">
                     Expires {card.exp_month.toString().padStart(2, "0")}/{card.exp_year}
                 </p>
@@ -92,9 +94,7 @@ export function SavedCardList(): JSX.Element {
     }
 
     if (error) {
-        return (
-            <p className="text-sm text-destructive">Failed to load payment methods.</p>
-        );
+        return <p className="text-sm text-destructive">Failed to load payment methods.</p>;
     }
 
     if (!methods || methods.length === 0) {
