@@ -157,6 +157,24 @@ describe("NewBookingModalView", () => {
         expect(onClose).toHaveBeenCalled();
     });
 
+    it("uses trainer id as fallback when staff profile id is missing", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "lesson_individual" }}
+                trainers={[{ id: "trainer-id-1", full_name: "Jane Trainer" }]}
+                onFormChange={onFormChange}
+            />
+        );
+
+        fireEvent.change(screen.getByRole("combobox", { name: /select trainer/i }), {
+            target: { value: "trainer-id-1" },
+        });
+
+        expect(onFormChange).toHaveBeenCalledWith({ staffProfileId: "trainer-id-1" });
+    });
+
     it("calls onCancel when Cancel button is clicked", () => {
         const onCancel = vi.fn();
         render(<NewBookingModalView {...defaultProps} onCancel={onCancel} />);
@@ -260,10 +278,10 @@ describe("NewBookingModalView", () => {
         expect(maxPlayersInput).toBeDisabled();
     });
 
-    it("renders Event & Contact fields for regular booking type", () => {
+    it("does not render Event & Contact fields for regular booking type", () => {
         render(<NewBookingModalView {...defaultProps} />);
 
-        expect(screen.getByLabelText("Event name")).toBeInTheDocument();
+        expect(screen.queryByLabelText("Event name")).not.toBeInTheDocument();
     });
 
     it("renders Event & Contact fields for corporate_event", () => {

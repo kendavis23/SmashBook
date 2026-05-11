@@ -25,6 +25,7 @@ import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } fro
 import { formatSlotTime } from "../../utils/slotTime";
 import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import { ManageBookingModalView } from "./ManageBookingModalView";
+import { shouldShowEventContactFields } from "../../new-booking/components/newBookingRules";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground " +
@@ -133,6 +134,7 @@ export default function ManageBookingView({
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
     const isCancellable = booking.status !== "cancelled" && booking.status !== "completed";
     const isEditable = booking.status !== "cancelled" && booking.status !== "completed";
+    const showEventContactFields = shouldShowEventContactFields(booking.booking_type);
     const bookingTime = `${formatUTCTime(booking.start_datetime)} - ${formatUTCTime(booking.end_datetime)}`;
     const todayStr = useMemo(() => {
         const d = new Date();
@@ -643,94 +645,98 @@ export default function ManageBookingView({
                                                 </div>
                                             </div>
 
-                                            <div className="mt-5 border-t border-border/70 pt-4">
-                                                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                                                    <div>
-                                                        <p className={sectionKickerCls}>
-                                                            Client details
-                                                        </p>
+                                            {showEventContactFields ? (
+                                                <div className="mt-5 border-t border-border/70 pt-4">
+                                                    <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                                                        <div>
+                                                            <p className={sectionKickerCls}>
+                                                                Client details
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                        <div className="md:col-span-2">
+                                                            <label
+                                                                htmlFor="mb-event-name"
+                                                                className={labelCls}
+                                                            >
+                                                                Event name
+                                                            </label>
+                                                            <input
+                                                                id="mb-event-name"
+                                                                type="text"
+                                                                className={fieldCls}
+                                                                placeholder="e.g. Friday Corporate Cup"
+                                                                value={form.eventName}
+                                                                onChange={(e) =>
+                                                                    onFormChange({
+                                                                        eventName: e.target.value,
+                                                                    })
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label
+                                                                htmlFor="mb-contact-name"
+                                                                className={labelCls}
+                                                            >
+                                                                Contact name
+                                                            </label>
+                                                            <input
+                                                                id="mb-contact-name"
+                                                                type="text"
+                                                                className={fieldCls}
+                                                                value={form.contactName}
+                                                                onChange={(e) =>
+                                                                    onFormChange({
+                                                                        contactName: e.target.value,
+                                                                    })
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label
+                                                                htmlFor="mb-contact-email"
+                                                                className={labelCls}
+                                                            >
+                                                                Contact email
+                                                            </label>
+                                                            <input
+                                                                id="mb-contact-email"
+                                                                type="email"
+                                                                className={fieldCls}
+                                                                value={form.contactEmail}
+                                                                onChange={(e) =>
+                                                                    onFormChange({
+                                                                        contactEmail:
+                                                                            e.target.value,
+                                                                    })
+                                                                }
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label
+                                                                htmlFor="mb-contact-phone"
+                                                                className={labelCls}
+                                                            >
+                                                                Contact phone
+                                                            </label>
+                                                            <input
+                                                                id="mb-contact-phone"
+                                                                type="tel"
+                                                                className={fieldCls}
+                                                                value={form.contactPhone}
+                                                                onChange={(e) =>
+                                                                    onFormChange({
+                                                                        contactPhone:
+                                                                            e.target.value,
+                                                                    })
+                                                                }
+                                                            />
+                                                        </div>
                                                     </div>
                                                 </div>
-                                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                                    <div className="md:col-span-2">
-                                                        <label
-                                                            htmlFor="mb-event-name"
-                                                            className={labelCls}
-                                                        >
-                                                            Event name
-                                                        </label>
-                                                        <input
-                                                            id="mb-event-name"
-                                                            type="text"
-                                                            className={fieldCls}
-                                                            placeholder="e.g. Friday Corporate Cup"
-                                                            value={form.eventName}
-                                                            onChange={(e) =>
-                                                                onFormChange({
-                                                                    eventName: e.target.value,
-                                                                })
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label
-                                                            htmlFor="mb-contact-name"
-                                                            className={labelCls}
-                                                        >
-                                                            Contact name
-                                                        </label>
-                                                        <input
-                                                            id="mb-contact-name"
-                                                            type="text"
-                                                            className={fieldCls}
-                                                            value={form.contactName}
-                                                            onChange={(e) =>
-                                                                onFormChange({
-                                                                    contactName: e.target.value,
-                                                                })
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label
-                                                            htmlFor="mb-contact-email"
-                                                            className={labelCls}
-                                                        >
-                                                            Contact email
-                                                        </label>
-                                                        <input
-                                                            id="mb-contact-email"
-                                                            type="email"
-                                                            className={fieldCls}
-                                                            value={form.contactEmail}
-                                                            onChange={(e) =>
-                                                                onFormChange({
-                                                                    contactEmail: e.target.value,
-                                                                })
-                                                            }
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label
-                                                            htmlFor="mb-contact-phone"
-                                                            className={labelCls}
-                                                        >
-                                                            Contact phone
-                                                        </label>
-                                                        <input
-                                                            id="mb-contact-phone"
-                                                            type="tel"
-                                                            className={fieldCls}
-                                                            value={form.contactPhone}
-                                                            onChange={(e) =>
-                                                                onFormChange({
-                                                                    contactPhone: e.target.value,
-                                                                })
-                                                            }
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            ) : null}
 
                                             <div className="mt-5 border-t border-border/70 pt-4">
                                                 <div className="mb-3">

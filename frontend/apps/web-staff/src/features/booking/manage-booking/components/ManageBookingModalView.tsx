@@ -22,6 +22,7 @@ import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } fro
 import { formatSlotTime } from "../../utils/slotTime";
 import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import type { ManageBookingFormState } from "./ManageBookingView";
+import { shouldShowEventContactFields } from "../../new-booking/components/newBookingRules";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground " +
@@ -252,6 +253,7 @@ export function ManageBookingModalView({
     const statusColors = BOOKING_STATUS_COLORS[booking.status] ?? BOOKING_STATUS_COLORS["pending"]!;
     const isCancellable = booking.status !== "cancelled" && booking.status !== "completed";
     const isEditable = booking.status !== "cancelled" && booking.status !== "completed";
+    const showEventContactFields = shouldShowEventContactFields(booking.booking_type);
     const todayStr = useMemo(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -482,65 +484,69 @@ export function ManageBookingModalView({
                         ) : null}
 
                         {/* Event & Contact */}
-                        <section className={`space-y-3 ${dividerCls}`}>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                <div className="sm:col-span-2">
-                                    <label htmlFor="mb-event-name" className={labelCls}>
-                                        Event name
-                                    </label>
-                                    <input
-                                        id="mb-event-name"
-                                        type="text"
-                                        className={fieldCls}
-                                        placeholder="e.g. Friday Corporate Cup"
-                                        value={form.eventName}
-                                        onChange={(e) =>
-                                            onFormChange({ eventName: e.target.value })
-                                        }
-                                    />
+                        {showEventContactFields ? (
+                            <section className={`space-y-3 ${dividerCls}`}>
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    <div className="sm:col-span-2">
+                                        <label htmlFor="mb-event-name" className={labelCls}>
+                                            Event name
+                                        </label>
+                                        <input
+                                            id="mb-event-name"
+                                            type="text"
+                                            className={fieldCls}
+                                            placeholder="e.g. Friday Corporate Cup"
+                                            value={form.eventName}
+                                            onChange={(e) =>
+                                                onFormChange({ eventName: e.target.value })
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="mb-contact-name" className={labelCls}>
+                                            Contact name
+                                        </label>
+                                        <input
+                                            id="mb-contact-name"
+                                            type="text"
+                                            className={fieldCls}
+                                            value={form.contactName}
+                                            onChange={(e) =>
+                                                onFormChange({ contactName: e.target.value })
+                                            }
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="mb-contact-email" className={labelCls}>
+                                            Contact email
+                                        </label>
+                                        <input
+                                            id="mb-contact-email"
+                                            type="email"
+                                            className={fieldCls}
+                                            value={form.contactEmail}
+                                            onChange={(e) =>
+                                                onFormChange({ contactEmail: e.target.value })
+                                            }
+                                        />
+                                    </div>
                                 </div>
                                 <div>
-                                    <label htmlFor="mb-contact-name" className={labelCls}>
-                                        Contact name
+                                    <label htmlFor="mb-contact-phone" className={labelCls}>
+                                        Contact phone
                                     </label>
                                     <input
-                                        id="mb-contact-name"
-                                        type="text"
+                                        id="mb-contact-phone"
+                                        type="tel"
                                         className={fieldCls}
-                                        value={form.contactName}
+                                        value={form.contactPhone}
                                         onChange={(e) =>
-                                            onFormChange({ contactName: e.target.value })
+                                            onFormChange({ contactPhone: e.target.value })
                                         }
                                     />
                                 </div>
-                                <div>
-                                    <label htmlFor="mb-contact-email" className={labelCls}>
-                                        Contact email
-                                    </label>
-                                    <input
-                                        id="mb-contact-email"
-                                        type="email"
-                                        className={fieldCls}
-                                        value={form.contactEmail}
-                                        onChange={(e) =>
-                                            onFormChange({ contactEmail: e.target.value })
-                                        }
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label htmlFor="mb-contact-phone" className={labelCls}>
-                                    Contact phone
-                                </label>
-                                <input
-                                    id="mb-contact-phone"
-                                    type="tel"
-                                    className={fieldCls}
-                                    value={form.contactPhone}
-                                    onChange={(e) => onFormChange({ contactPhone: e.target.value })}
-                                />
-                            </div>
-                        </section>
+                            </section>
+                        ) : null}
 
                         {/* Notes */}
                         <section className={sectionCls}>

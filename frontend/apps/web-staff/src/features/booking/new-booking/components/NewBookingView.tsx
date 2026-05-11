@@ -25,12 +25,15 @@ import {
     OPEN_GAME_SKILL_DEFAULTS,
     resolveMaxPlayers,
     shouldShowInvitedPlayers,
+    shouldShowEventContactFields,
     shouldShowOpenGameSettings,
     shouldShowOnBehalfField,
     shouldShowParticipantAssignmentSection,
     shouldShowRecurringSettings,
     shouldShowStaffTrainerField,
 } from "./newBookingRules";
+import { buildTrainerOptions } from "./trainerSelect";
+import type { TrainerOptionSource } from "./trainerSelect";
 
 export type NewBookingMode = "page" | "modal";
 
@@ -71,7 +74,7 @@ export type NewBookingFormState = {
     skipConflicts: boolean;
 };
 
-type Trainer = { staff_profile_id: string; full_name: string };
+type Trainer = TrainerOptionSource;
 
 type Props = {
     courts: { id: string; name: string }[];
@@ -139,6 +142,8 @@ export default function NewBookingView({
     const showStaffTrainerField = shouldShowStaffTrainerField(form.bookingType);
     const showOpenGameSettings = shouldShowOpenGameSettings(form.bookingType);
     const showRecurringSettings = shouldShowRecurringSettings(form.bookingType);
+    const showEventContactFields = shouldShowEventContactFields(form.bookingType);
+    const trainerOptions = buildTrainerOptions(trainers);
     const todayStr = useMemo(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -341,16 +346,13 @@ export default function NewBookingView({
                                 <SelectInput
                                     value={form.staffProfileId}
                                     onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                                    options={trainers.map((t) => ({
-                                        value: t.staff_profile_id,
-                                        label: t.full_name,
-                                    }))}
+                                    options={trainerOptions}
                                     placeholder={
-                                        trainers.length === 0
-                                            ? "No trainers available"
+                                        trainerOptions.length === 0
+                                            ? "Trainer not available"
                                             : "Select trainer…"
                                     }
-                                    disabled={trainers.length === 0}
+                                    disabled={trainerOptions.length === 0}
                                     className={staffProfileError ? "!border-destructive" : ""}
                                 />
                             )}
@@ -689,24 +691,25 @@ export default function NewBookingView({
                                 ) : null}
 
                                 {/* Event / contact  */}
-                                <section className={sectionShellCls}>
-                                    <div className={sectionHeaderCls}>
-                                        <div>
-                                            <p className={sectionKickerCls}>Client details</p>
-                                            <h3 className="mt-1 text-base font-semibold text-foreground">
-                                                Event &amp; Contact{" "}
-                                                <span className="text-xs font-normal text-muted-foreground">
-                                                    (optional)
-                                                </span>
-                                            </h3>
-                                            <p className="mt-1 text-sm text-muted-foreground">
-                                                Useful for corporate, tournament, or hosted
-                                                bookings.
-                                            </p>
+                                {showEventContactFields ? (
+                                    <section className={sectionShellCls}>
+                                        <div className={sectionHeaderCls}>
+                                            <div>
+                                                <p className={sectionKickerCls}>Client details</p>
+                                                <h3 className="mt-1 text-base font-semibold text-foreground">
+                                                    Event &amp; Contact{" "}
+                                                    <span className="text-xs font-normal text-muted-foreground">
+                                                        (optional)
+                                                    </span>
+                                                </h3>
+                                                <p className="mt-1 text-sm text-muted-foreground">
+                                                    Useful for corporate event bookings.
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
-                                    {optionalEventFields}
-                                </section>
+                                        {optionalEventFields}
+                                    </section>
+                                ) : null}
 
                                 {/* Recurring */}
                                 {showRecurringSettings ? (

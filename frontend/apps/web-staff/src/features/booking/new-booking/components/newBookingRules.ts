@@ -15,6 +15,7 @@ export const OPEN_GAME_SKILL_DEFAULTS = {
 const REGULAR_BOOKING_TYPE: BookingType = "regular";
 const INDIVIDUAL_LESSON_BOOKING_TYPE: BookingType = "lesson_individual";
 const GROUP_LESSON_BOOKING_TYPE: BookingType = "lesson_group";
+const CORPORATE_EVENT_BOOKING_TYPE: BookingType = "corporate_event";
 
 export function isIndividualLessonBookingType(bookingType: BookingType): boolean {
     return bookingType === INDIVIDUAL_LESSON_BOOKING_TYPE;
@@ -28,6 +29,10 @@ export function isLessonBookingType(bookingType: BookingType): boolean {
 
 export function isRegularBookingType(bookingType: BookingType): boolean {
     return bookingType === REGULAR_BOOKING_TYPE;
+}
+
+export function isCorporateEventBookingType(bookingType: BookingType): boolean {
+    return bookingType === CORPORATE_EVENT_BOOKING_TYPE;
 }
 
 export function canEditMaxPlayers(bookingType: BookingType): boolean {
@@ -69,6 +74,10 @@ export function shouldShowOpenGameSettings(bookingType: BookingType): boolean {
 
 export function shouldShowRecurringSettings(bookingType: BookingType): boolean {
     return !isRegularBookingType(bookingType);
+}
+
+export function shouldShowEventContactFields(bookingType: BookingType): boolean {
+    return isCorporateEventBookingType(bookingType);
 }
 
 export function createOpenGameSettingsPatch(isOpenGame: boolean) {

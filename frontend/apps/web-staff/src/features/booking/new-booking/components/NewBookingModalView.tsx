@@ -23,11 +23,14 @@ import {
     isLessonBookingType,
     OPEN_GAME_SKILL_DEFAULTS,
     resolveMaxPlayers,
+    shouldShowEventContactFields,
     shouldShowInvitedPlayers,
     shouldShowOpenGameSettings,
     shouldShowOnBehalfField,
     shouldShowRecurringSettings,
 } from "./newBookingRules";
+import { buildTrainerOptions } from "./trainerSelect";
+import type { TrainerOptionSource } from "./trainerSelect";
 
 const fieldCls =
     "w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground " +
@@ -53,7 +56,7 @@ function DetailItem({ label, value }: { label: string; value: string }): JSX.Ele
     );
 }
 
-type Trainer = { staff_profile_id: string; full_name: string };
+type Trainer = TrainerOptionSource;
 
 type Props = {
     courtName: string;
@@ -100,7 +103,9 @@ export function NewBookingModalView({
     const showInvitedPlayers = shouldShowInvitedPlayers(form.isOpenGame);
     const showOpenGameSettings = shouldShowOpenGameSettings(form.bookingType);
     const showRecurringSettings = shouldShowRecurringSettings(form.bookingType);
+    const showEventContactFields = shouldShowEventContactFields(form.bookingType);
     const invitedCount = form.playerUserIds.filter(Boolean).length;
+    const trainerOptions = buildTrainerOptions(trainers);
 
     const formattedDate = form.bookingDate ? formatUTCDate(form.bookingDate + "T00:00:00Z") : "—";
 
@@ -216,16 +221,13 @@ export function NewBookingModalView({
                                 <SelectInput
                                     value={form.staffProfileId}
                                     onValueChange={(v) => onFormChange({ staffProfileId: v })}
-                                    options={trainers.map((t) => ({
-                                        value: t.staff_profile_id,
-                                        label: t.full_name,
-                                    }))}
+                                    options={trainerOptions}
                                     placeholder={
-                                        trainers.length === 0
-                                            ? "No trainers available"
+                                        trainerOptions.length === 0
+                                            ? "Trainer not available"
                                             : "Select trainer..."
                                     }
-                                    disabled={trainers.length === 0}
+                                    disabled={trainerOptions.length === 0}
                                     className={staffProfileError ? "!border-destructive" : ""}
                                 />
                             )}
@@ -375,59 +377,61 @@ export function NewBookingModalView({
                     </section>
                 ) : null}
 
-                <section className={`space-y-3 ${dividerCls}`}>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="sm:col-span-2">
-                            <label htmlFor="bk-event-name" className={labelCls}>
-                                Event name
-                            </label>
-                            <input
-                                id="bk-event-name"
-                                type="text"
-                                className={fieldCls}
-                                placeholder="e.g. Friday Corporate Cup"
-                                value={form.eventName}
-                                onChange={(e) => onFormChange({ eventName: e.target.value })}
-                            />
+                {showEventContactFields ? (
+                    <section className={`space-y-3 ${dividerCls}`}>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div className="sm:col-span-2">
+                                <label htmlFor="bk-event-name" className={labelCls}>
+                                    Event name
+                                </label>
+                                <input
+                                    id="bk-event-name"
+                                    type="text"
+                                    className={fieldCls}
+                                    placeholder="e.g. Friday Corporate Cup"
+                                    value={form.eventName}
+                                    onChange={(e) => onFormChange({ eventName: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="bk-contact-name" className={labelCls}>
+                                    Contact name
+                                </label>
+                                <input
+                                    id="bk-contact-name"
+                                    type="text"
+                                    className={fieldCls}
+                                    value={form.contactName}
+                                    onChange={(e) => onFormChange({ contactName: e.target.value })}
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="bk-contact-email" className={labelCls}>
+                                    Contact email
+                                </label>
+                                <input
+                                    id="bk-contact-email"
+                                    type="email"
+                                    className={fieldCls}
+                                    value={form.contactEmail}
+                                    onChange={(e) => onFormChange({ contactEmail: e.target.value })}
+                                />
+                            </div>
                         </div>
                         <div>
-                            <label htmlFor="bk-contact-name" className={labelCls}>
-                                Contact name
+                            <label htmlFor="bk-contact-phone" className={labelCls}>
+                                Contact phone
                             </label>
                             <input
-                                id="bk-contact-name"
-                                type="text"
+                                id="bk-contact-phone"
+                                type="tel"
                                 className={fieldCls}
-                                value={form.contactName}
-                                onChange={(e) => onFormChange({ contactName: e.target.value })}
+                                value={form.contactPhone}
+                                onChange={(e) => onFormChange({ contactPhone: e.target.value })}
                             />
                         </div>
-                        <div>
-                            <label htmlFor="bk-contact-email" className={labelCls}>
-                                Contact email
-                            </label>
-                            <input
-                                id="bk-contact-email"
-                                type="email"
-                                className={fieldCls}
-                                value={form.contactEmail}
-                                onChange={(e) => onFormChange({ contactEmail: e.target.value })}
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label htmlFor="bk-contact-phone" className={labelCls}>
-                            Contact phone
-                        </label>
-                        <input
-                            id="bk-contact-phone"
-                            type="tel"
-                            className={fieldCls}
-                            value={form.contactPhone}
-                            onChange={(e) => onFormChange({ contactPhone: e.target.value })}
-                        />
-                    </div>
-                </section>
+                    </section>
+                ) : null}
 
                 {showRecurringSettings ? (
                     <section className={sectionCls}>

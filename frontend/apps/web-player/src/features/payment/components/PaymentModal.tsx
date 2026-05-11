@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, type JSX } from "react";
 import { Elements, useStripe, useElements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { X, CreditCard, Check } from "lucide-react";
+import { X, CreditCard } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import { config } from "@repo/config";
 import { useListPaymentMethods, useCreatePaymentIntent } from "@repo/player-domain/hooks";
@@ -216,36 +216,27 @@ function getStepMeta(step: PaymentStep): { title: string; active: number } {
 }
 
 function PaymentStepIndicator({ active }: { active: number }): JSX.Element {
-    const steps = ["Method", "Confirm", "Done"];
+    const progressPercent = ((active - 1) / 2) * 100;
 
     return (
-        <div className="grid grid-cols-3 gap-2 px-6 pb-4">
-            {steps.map((label, index) => {
-                const stepNumber = index + 1;
-                const isDone = stepNumber < active;
-                const isActive = stepNumber === active;
-
-                return (
-                    <div key={label} className="flex items-center gap-2">
-                        <span
-                            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold transition ${
-                                isDone || isActive
-                                    ? "bg-cta text-cta-foreground"
-                                    : "bg-muted text-muted-foreground"
-                            }`}
-                        >
-                            {isDone ? <Check size={13} /> : stepNumber}
-                        </span>
-                        <span
-                            className={`truncate text-xs font-medium ${
-                                isActive ? "text-foreground" : "text-muted-foreground"
-                            }`}
-                        >
-                            {label}
-                        </span>
-                    </div>
-                );
-            })}
+        <div className="px-6 pb-5">
+            <div
+                className="relative h-2 rounded-full bg-muted"
+                role="progressbar"
+                aria-label="Payment progress"
+                aria-valuemin={1}
+                aria-valuemax={3}
+                aria-valuenow={active}
+            >
+                <span
+                    className="absolute inset-y-0 left-0 rounded-full bg-cta transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                />
+                <span
+                    className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-card bg-cta shadow-sm ring-1 ring-cta/25 transition-all duration-300"
+                    style={{ left: `${progressPercent}%` }}
+                />
+            </div>
         </div>
     );
 }
