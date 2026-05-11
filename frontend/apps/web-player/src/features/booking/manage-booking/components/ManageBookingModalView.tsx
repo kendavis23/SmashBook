@@ -206,6 +206,17 @@ function PlayersTable({
                                         <span className="capitalize">
                                             {formatStatus(p.payment_status)}
                                         </span>
+                                        {p.discount_amount ? (
+                                            <>
+                                                <span className="mx-1.5 opacity-40">&middot;</span>
+                                                <span className="text-cta">
+                                                    Discount: {p.discount_amount}
+                                                    {p.discount_source
+                                                        ? ` (${p.discount_source})`
+                                                        : ""}
+                                                </span>
+                                            </>
+                                        ) : null}
                                     </p>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">

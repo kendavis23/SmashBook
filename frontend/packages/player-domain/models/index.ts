@@ -41,3 +41,9 @@ export type {
     WalletTopUpInput,
     WalletTopUp,
 } from "./payment.model";
+export type {
+    BillingPeriod,
+    MembershipStatus,
+    MembershipPlan,
+    MembershipSubscription,
+} from "./membership.model";

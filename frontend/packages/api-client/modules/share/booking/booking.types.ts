@@ -56,6 +56,8 @@ export interface BookingPlayerResponse {
     invite_status: InviteStatus;
     payment_status: PaymentStatus;
     amount_due: number;
+    discount_amount: string;
+    discount_source: string;
 }
 
 export interface BookingResponse {

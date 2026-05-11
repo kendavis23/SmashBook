@@ -9,3 +9,5 @@ export type {
     ItemType,
     ItemCondition,
 } from "./booking/booking.types";
+export * from "./membership/membership.api";
+export * from "./membership/membership.types";

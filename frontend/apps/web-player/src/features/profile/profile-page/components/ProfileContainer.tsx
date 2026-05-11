@@ -1,17 +1,18 @@
 import { type ChangeEvent, type FormEvent, type JSX, useCallback, useState } from "react";
 import type { NotificationChannel } from "@repo/auth";
 import { useAuthStore } from "@repo/auth";
-import { useUpdateMyProfile } from "../../hooks";
+import { useUpdateMyProfile, useMyMembership } from "../../hooks";
 import { useAuth } from "../../store";
 import type { ProfileTab } from "../../types";
 import type { InfoFormState } from "./ProfileInfoView";
 import { ProfileView } from "./ProfileView";
 
 export default function ProfileContainer(): JSX.Element {
-    const { user } = useAuth();
+    const { user, clubId } = useAuth();
     const setUser = useAuthStore((state) => state.setUser);
 
     const [activeTab, setActiveTab] = useState<ProfileTab>("info");
+    const [hasMembershipTabLoaded, setHasMembershipTabLoaded] = useState(false);
 
     // Info tab state
     const [infoForm, setInfoForm] = useState<InfoFormState>({
@@ -30,6 +31,18 @@ export default function ProfileContainer(): JSX.Element {
 
     const updateProfile = useUpdateMyProfile();
     const notifMutation = useUpdateMyProfile();
+    const {
+        data: membership,
+        isLoading: membershipLoading,
+        error: membershipError,
+    } = useMyMembership(clubId ?? "", { enabled: hasMembershipTabLoaded });
+
+    const handleTabChange = useCallback((tab: ProfileTab) => {
+        setActiveTab(tab);
+        if (tab === "membership") {
+            setHasMembershipTabLoaded(true);
+        }
+    }, []);
 
     const handleInfoFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -95,7 +108,10 @@ export default function ProfileContainer(): JSX.Element {
             notifChannel={notifChannel}
             notifIsPending={notifMutation.isPending}
             notifApiError={notifApiError}
-            onTabChange={setActiveTab}
+            membership={membership ?? null}
+            membershipLoading={membershipLoading}
+            membershipError={membershipError}
+            onTabChange={handleTabChange}
             onInfoFormChange={(patch) => setInfoForm((prev) => ({ ...prev, ...patch }))}
             onInfoFileChange={handleInfoFileChange}
             onInfoSubmit={(e) => void handleInfoSubmit(e)}
