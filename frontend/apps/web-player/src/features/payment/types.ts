@@ -8,6 +8,7 @@ export type PaymentStep =
     | { id: "choose_card"; methods: PaymentMethod[] }
     | { id: "select_method"; methods: PaymentMethod[]; chosenCard: PaymentMethod }
     | { id: "new_card" }
+    | { id: "save_card"; setupClientSecret: string }
     | { id: "confirming" }
     | { id: "success"; amount: number; currency: string }
     | { id: "error"; message: string };

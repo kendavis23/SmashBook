@@ -1,5 +1,5 @@
 import { type JSX, type FormEvent } from "react";
-import { CreditCard } from "lucide-react";
+import { CreditCard, LockKeyhole } from "lucide-react";
 import { PaymentElement } from "@stripe/react-stripe-js";
 import { formatCurrency } from "@repo/ui";
 import { PaymentErrorBanner } from "./PaymentErrorBanner";
@@ -27,21 +27,47 @@ export function PaymentMethodStep({
     }
 
     return (
-        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col px-6 pb-6 pt-5">
-            <div className="mb-4 flex items-center justify-between gap-4 rounded-xl border border-border/70 bg-muted/25 px-4 py-3">
-                <div>
-                    <p className="text-sm font-semibold text-foreground">New card</p>
-                    <p className="text-xs text-muted-foreground">Your card is processed securely</p>
+        <form
+            onSubmit={handleSubmit}
+            className="flex min-h-0 flex-1 flex-col px-5 pb-5 pt-4 sm:px-6 sm:pb-6"
+        >
+            {amount > 0 && (
+                <div className="mb-4 rounded-lg border border-border bg-card shadow-sm">
+                    <div className="flex items-center justify-between gap-4 px-5 py-4">
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-foreground">
+                                New card payment
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Enter details in the secure Stripe form below
+                            </p>
+                        </div>
+                        <p className="shrink-0 text-xl font-semibold tracking-tight text-foreground">
+                            {formatCurrency(amount)}
+                        </p>
+                    </div>
                 </div>
-                <p className="text-lg font-semibold text-foreground">{formatCurrency(amount)}</p>
-            </div>
+            )}
 
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/70 bg-card p-4 shadow-sm">
-                <PaymentElement
-                    options={{
-                        layout: "tabs",
-                    }}
-                />
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-border bg-card shadow-sm">
+                <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
+                    <div>
+                        <p className="text-sm font-semibold text-foreground">Payment details</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                            Securely processed by Stripe
+                        </p>
+                    </div>
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cta/10 text-cta">
+                        <LockKeyhole size={15} />
+                    </span>
+                </div>
+                <div className="p-4">
+                    <PaymentElement
+                        options={{
+                            layout: "tabs",
+                        }}
+                    />
+                </div>
             </div>
 
             {error ? (

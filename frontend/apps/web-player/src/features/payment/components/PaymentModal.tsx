@@ -1,60 +1,63 @@
 import { useEffect, useState, useCallback, useRef, type JSX } from "react";
-import { Elements, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { X, CreditCard } from "lucide-react";
+import { CalendarDays, CreditCard, LockKeyhole, ReceiptText, X } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import { config } from "@repo/config";
-import { useListPaymentMethods, useCreatePaymentIntent } from "@repo/player-domain/hooks";
+import {
+    useListPaymentMethods,
+    useCreatePaymentIntent,
+    useCreateSetupIntent,
+} from "@repo/player-domain/hooks";
+import { useQueryClient } from "@tanstack/react-query";
+import type { PaymentMethod } from "../types";
 import type { PaymentModalProps, PaymentStep } from "../types";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { PaymentSuccessStep } from "./PaymentSuccessStep";
 import { PaymentErrorBanner } from "./PaymentErrorBanner";
 import { SelectMethodStep } from "./SelectMethodStep";
+import { useSaveCard } from "../hooks/useSaveCard";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
-// ─── New-card form — needs <Elements> for useStripe/useElements ───────────────
+// ─── Save-card form (setup intent) — shown when user has no saved cards ──────
 
-function NewCardForm({
-    amount,
-    onSuccess,
+function SaveCardForm({
+    setupClientSecret,
+    onSaved,
+    onError,
 }: {
-    amount: number;
-    onSuccess: () => void;
+    setupClientSecret: string;
+    onSaved: (paymentMethodId: string) => void;
+    onError: (msg: string) => void;
 }): JSX.Element {
-    const stripe = useStripe();
-    const elements = useElements();
-    const [isConfirming, setIsConfirming] = useState(false);
+    const { confirmSetup } = useSaveCard();
+    const [isPending, setIsPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = useCallback(async () => {
-        if (!stripe || !elements) return;
-        setIsConfirming(true);
+        setIsPending(true);
         setError(null);
-
-        const { error: stripeError } = await stripe.confirmPayment({
-            elements,
-            confirmParams: { return_url: `${window.location.origin}/bookings` },
-            redirect: "if_required",
-        });
-
-        setIsConfirming(false);
-
-        if (stripeError) {
-            setError(stripeError.message ?? "Payment failed.");
-            return;
+        try {
+            const paymentMethodId = await confirmSetup(setupClientSecret);
+            onSaved(paymentMethodId);
+        } catch (err) {
+            const msg = (err as { message?: string })?.message ?? "Failed to save card.";
+            setError(msg);
+            onError(msg);
+        } finally {
+            setIsPending(false);
         }
-
-        onSuccess();
-    }, [stripe, elements, onSuccess]);
+    }, [confirmSetup, setupClientSecret, onSaved, onError]);
 
     return (
         <PaymentMethodStep
-            amount={amount}
-            isConfirming={isConfirming}
+            amount={0}
+            isConfirming={isPending}
             error={error}
             onSubmit={() => void handleSubmit()}
             onDismissError={() => setError(null)}
+            submitLabel="Save card & continue"
         />
     );
 }
@@ -111,31 +114,40 @@ function SavedCardConfirm({
     });
 
     return (
-        <div className="flex min-h-0 flex-1 flex-col px-6 pb-6 pt-5">
-            <div className="rounded-xl border border-border/70 bg-muted/30 p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex min-h-0 flex-1 flex-col px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
+            <div className="rounded-lg border border-border bg-card shadow-sm">
+                <div className="flex items-start justify-between gap-4 border-b border-border/70 px-5 py-4">
                     <div>
-                        <p className="text-sm font-semibold text-foreground">Payment details</p>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                            <ReceiptText size={16} className="text-cta" />
+                            <p className="text-sm font-semibold text-foreground">Payment summary</p>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
                             Review before confirming
                         </p>
                     </div>
-                    <span className="rounded-full bg-cta/10 px-3 py-1 text-xs font-semibold uppercase text-cta">
+                    <span className="rounded-md border border-border bg-background px-2.5 py-1 text-xs font-semibold uppercase text-muted-foreground">
                         {currency}
                     </span>
                 </div>
-                <div className="flex flex-col divide-y divide-border/80">
-                    <div className="flex items-center justify-between gap-6 py-3">
-                        <span className="text-sm text-muted-foreground">Date</span>
+                <div className="px-5 py-2">
+                    <div className="flex items-center justify-between gap-6 border-b border-border/70 py-3">
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CalendarDays size={14} />
+                            Date
+                        </span>
                         <span className="text-sm font-medium text-foreground">{today}</span>
                     </div>
-                    <div className="flex items-center justify-between gap-6 py-3">
-                        <span className="text-sm text-muted-foreground">Payment method</span>
+                    <div className="flex items-center justify-between gap-6 border-b border-border/70 py-3">
+                        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CreditCard size={14} />
+                            Payment method
+                        </span>
                         <span className="text-sm font-medium capitalize text-foreground">
                             {card.brand}
                         </span>
                     </div>
-                    <div className="flex items-center justify-between gap-6 py-3">
+                    <div className="flex items-center justify-between gap-6 border-b border-border/70 py-3">
                         <span className="text-sm text-muted-foreground">Card number</span>
                         <span className="text-sm font-medium text-foreground">
                             •••• •••• •••• {card.last4}
@@ -148,9 +160,9 @@ function SavedCardConfirm({
                         </span>
                     </div>
                 </div>
-                <div className="mt-1 flex items-center justify-between gap-6 border-t border-border pt-4">
-                    <span className="text-base font-semibold text-foreground">Total amount</span>
-                    <span className="text-base font-semibold text-foreground">
+                <div className="flex items-end justify-between gap-6 border-t border-border bg-muted/20 px-5 py-4">
+                    <span className="text-sm font-semibold text-foreground">Total amount</span>
+                    <span className="text-xl font-semibold tracking-tight text-foreground">
                         {formatCurrency(amount)}{" "}
                         <span className="text-sm font-normal uppercase text-muted-foreground">
                             {currency}
@@ -203,6 +215,9 @@ function getStepMeta(step: PaymentStep): { title: string; active: number } {
     if (step.id === "choose_card" || step.id === "loading") {
         return { title: "Choose payment method", active: 1 };
     }
+    if (step.id === "save_card") {
+        return { title: "Save a card", active: 2 };
+    }
     if (step.id === "select_method" || step.id === "new_card" || step.id === "confirming") {
         return {
             title: step.id === "new_card" ? "Enter card details" : "Confirm payment",
@@ -216,26 +231,37 @@ function getStepMeta(step: PaymentStep): { title: string; active: number } {
 }
 
 function PaymentStepIndicator({ active }: { active: number }): JSX.Element {
-    const progressPercent = ((active - 1) / 2) * 100;
+    const steps = ["Method", "Details", "Done"];
 
     return (
-        <div className="px-6 pb-5">
+        <div className="px-5 pb-4 sm:px-6">
             <div
-                className="relative h-2 rounded-full bg-muted"
+                className="grid grid-cols-3 gap-2"
                 role="progressbar"
                 aria-label="Payment progress"
                 aria-valuemin={1}
                 aria-valuemax={3}
                 aria-valuenow={active}
             >
-                <span
-                    className="absolute inset-y-0 left-0 rounded-full bg-cta transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
-                />
-                <span
-                    className="absolute top-1/2 h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-4 border-card bg-cta shadow-sm ring-1 ring-cta/25 transition-all duration-300"
-                    style={{ left: `${progressPercent}%` }}
-                />
+                {steps.map((label, index) => {
+                    const stepNumber = index + 1;
+                    const isActive = stepNumber <= active;
+
+                    return (
+                        <div key={label} className="min-w-0">
+                            <div
+                                className={`h-1.5 rounded-full transition-colors ${isActive ? "bg-cta" : "bg-muted"
+                                    }`}
+                            />
+                            <p
+                                className={`mt-2 truncate text-[11px] font-medium ${isActive ? "text-foreground" : "text-muted-foreground"
+                                    }`}
+                            >
+                                {label}
+                            </p>
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
@@ -249,6 +275,8 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
 
     const { data: paymentMethods, isLoading: methodsLoading } = useListPaymentMethods();
     const createPaymentIntent = useCreatePaymentIntent();
+    const createSetupIntent = useCreateSetupIntent();
+    const queryClient = useQueryClient();
     const initRan = useRef(false);
 
     useEffect(() => {
@@ -261,31 +289,63 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
         }
 
         if ((paymentMethods?.length ?? 0) === 0) {
-            void createIntentThenShow(context.booking.booking_id, null);
+            void initSaveCard();
         } else {
-            setStep({ id: "choose_card", methods: paymentMethods! });
+            setStep({ id: "choose_card", methods: paymentMethods ?? [] });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [methodsLoading]);
 
-    async function createIntentThenShow(bookingId: string, methodId: string | null) {
+    async function initSaveCard() {
+        setStep({ id: "loading" });
+        try {
+            const intent = await createSetupIntent.mutateAsync();
+            setStep({ id: "save_card", setupClientSecret: intent.client_secret });
+        } catch (err) {
+            setStep({
+                id: "error",
+                message:
+                    (err as { message?: string })?.message ??
+                    "Unable to start card setup — please try again.",
+            });
+        }
+    }
+
+    async function createIntentThenShow(
+        bookingId: string,
+        methodId: string,
+        cardOverride?: PaymentMethod
+    ) {
         setStep({ id: "loading" });
         try {
             const intent = await createPaymentIntent.mutateAsync({
                 booking_id: bookingId,
-                ...(methodId ? { payment_method_id: methodId } : {}),
+                payment_method_id: methodId,
             });
             setClientSecret(intent.client_secret);
             setAmount(intent.amount);
             setCurrency(intent.currency);
-            if (methodId) {
-                const chosenCard =
-                    (paymentMethods ?? []).find((m) => m.id === methodId) ??
-                    (paymentMethods ?? [])[0]!;
-                setStep({ id: "select_method", methods: paymentMethods ?? [], chosenCard });
-            } else {
-                setStep({ id: "new_card" });
+
+            let freshMethods = paymentMethods ?? [];
+            let chosenCard = cardOverride ?? freshMethods.find((m) => m.id === methodId);
+
+            if (!chosenCard) {
+                // methods list is stale (just saved a new card) — reuse the already-invalidated query
+                await queryClient.refetchQueries({ queryKey: ["player", "payment-methods"] });
+                freshMethods =
+                    queryClient.getQueryData<PaymentMethod[]>(["player", "payment-methods"]) ?? [];
+                chosenCard = freshMethods.find((m) => m.id === methodId) ?? freshMethods[0];
             }
+
+            if (!chosenCard) {
+                setStep({
+                    id: "error",
+                    message: "Could not load card details — please try again.",
+                });
+                return;
+            }
+
+            setStep({ id: "select_method", methods: freshMethods, chosenCard });
         } catch (err) {
             setStep({
                 id: "error",
@@ -299,10 +359,23 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
     const handleCardChosen = useCallback(
         (methodId: string | null) => {
             if (context.type !== "booking") return;
-            void createIntentThenShow(context.booking.booking_id, methodId);
+            if (methodId) {
+                void createIntentThenShow(context.booking.booking_id, methodId);
+            } else {
+                void initSaveCard();
+            }
         },
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [context, paymentMethods]
+    );
+
+    const handleCardSaved = useCallback(
+        (paymentMethodId: string) => {
+            if (context.type !== "booking") return;
+            void createIntentThenShow(context.booking.booking_id, paymentMethodId);
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [context]
     );
 
     const handleStripeSuccess = useCallback(() => {
@@ -324,36 +397,44 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                 onClick={onClose}
                 aria-hidden="true"
             />
-            <div className="relative z-10 flex h-[680px] max-h-[calc(100vh-2rem)] w-full max-w-[560px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="relative z-10 flex h-[700px] max-h-[calc(100vh-2rem)] w-full max-w-[580px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
                 <div className="border-b border-border bg-card">
-                    <div className="flex items-center justify-between px-6 py-5">
+                    <div className="flex items-start justify-between gap-4 px-5 py-5 sm:px-6">
                         <div className="min-w-0">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-cta">
-                                Secure payment
-                            </p>
-                            <h2 className="mt-1 truncate text-xl font-semibold tracking-tight text-foreground">
+                            <div className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-cta/20 bg-cta/10 px-2.5 py-1 text-xs font-semibold text-cta">
+                                <LockKeyhole size={12} />
+                                Secure checkout
+                            </div>
+                            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground">
                                 {title}
                             </h2>
                         </div>
                         <button
                             type="button"
                             onClick={onClose}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
                             aria-label="Close"
                         >
                             <X size={18} />
                         </button>
                     </div>
-                    <PaymentStepIndicator active={active} />
+                    {step.id !== "save_card" && <PaymentStepIndicator active={active} />}
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background/30">
                     {step.id === "loading" ? (
-                        <div className="flex flex-1 items-center justify-center gap-3">
-                            <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
-                            <span className="text-sm text-muted-foreground">
-                                Preparing payment…
+                        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+                            <span className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-sm">
+                                <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-cta" />
                             </span>
+                            <div>
+                                <p className="text-sm font-medium text-foreground">
+                                    Preparing payment
+                                </p>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Setting up a secure Stripe session…
+                                </p>
+                            </div>
                         </div>
                     ) : step.id === "error" ? (
                         <div className="p-6">
@@ -372,6 +453,26 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                             currency={step.currency}
                             onClose={onClose}
                         />
+                    ) : step.id === "save_card" ? (
+                        <Elements
+                            stripe={stripePromise}
+                            options={{
+                                clientSecret: step.setupClientSecret,
+                                appearance: {
+                                    theme: "stripe",
+                                    variables: {
+                                        borderRadius: "6px",
+                                        spacingUnit: "4px",
+                                    },
+                                },
+                            }}
+                        >
+                            <SaveCardForm
+                                setupClientSecret={step.setupClientSecret}
+                                onSaved={handleCardSaved}
+                                onError={(msg) => setStep({ id: "error", message: msg })}
+                            />
+                        </Elements>
                     ) : step.id === "choose_card" ? (
                         <SelectMethodStep
                             methods={step.methods}
@@ -391,16 +492,6 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                             onCancel={onClose}
                             onError={(msg) => setStep({ id: "error", message: msg })}
                         />
-                    ) : step.id === "new_card" && clientSecret ? (
-                        <Elements
-                            stripe={stripePromise}
-                            options={{
-                                clientSecret,
-                                appearance: { theme: "stripe", variables: { borderRadius: "8px" } },
-                            }}
-                        >
-                            <NewCardForm amount={amount} onSuccess={handleStripeSuccess} />
-                        </Elements>
                     ) : null}
                 </div>
             </div>

@@ -9,7 +9,13 @@ import { PaymentErrorBanner } from "./PaymentErrorBanner";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
-function AddCardInner({ onSuccess }: { onSuccess: () => void }): JSX.Element {
+function AddCardInner({
+    clientSecret,
+    onSuccess,
+}: {
+    clientSecret: string;
+    onSuccess: () => void;
+}): JSX.Element {
     const { confirmSetup } = useSaveCard();
     const [isPending, setIsPending] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -18,7 +24,7 @@ function AddCardInner({ onSuccess }: { onSuccess: () => void }): JSX.Element {
         setIsPending(true);
         setError(null);
         try {
-            await confirmSetup();
+            await confirmSetup(clientSecret);
             onSuccess();
         } catch (err) {
             setError((err as { message?: string })?.message ?? "Failed to save card.");
@@ -98,7 +104,7 @@ export function AddCardForm({ onSuccess }: Props): JSX.Element {
                 appearance: { theme: "stripe", variables: { borderRadius: "8px" } },
             }}
         >
-            <AddCardInner onSuccess={handleSuccess} />
+            <AddCardInner clientSecret={clientSecret} onSuccess={handleSuccess} />
         </Elements>
     );
 }
