@@ -1,6 +1,8 @@
 # CLAUDE.md
 
-# 21 March, 2026
+_Last updated: 2026-05-11_
+
+> **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -145,7 +147,7 @@ All AI calls must go through `ai_inference_service.py`, which handles:
 
 **Fallback required:** Every AI feature must have a non-AI fallback. If dynamic pricing is unavailable, return `price_per_slot` from `pricing_rules`. If matchmaking fails, proceed without player suggestions. `fallback_used` on `ai_inference_log` records which path ran.
 
-Dynamic pricing is the only **synchronous** AI call (blocks the booking request). Everything else is async via Pub/Sub. AI features are gated per-tenant via flags on `subscription_plans` (plan-level) and `ai_feature_flags` (runtime override).
+Dynamic pricing is the only **synchronous** AI call (blocks the booking request). Everything else is async via Pub/Sub. **AI features are gated per-tenant via the `ai_feature_flags` table only.** Plan-level defaults are seeded as rows into `ai_feature_flags` when a tenant is provisioned (one row per AI feature, `is_enabled` set from the plan default). `subscription_plans` does **not** carry AI feature flag columns — it carries only non-AI flags (clubs/courts/staff caps, `tournaments_enabled`, `messaging_enabled`, etc.). When toggling an AI feature for a tenant, write to `ai_feature_flags`, never to `subscription_plans`.
 
 ### Auth
 
@@ -168,6 +170,26 @@ These two files together define the full schema lifecycle. Understanding the dis
 
 **The diff between the two files is the migration backlog.** When starting work on a sprint, read the relevant migration group from `DATA_MODEL_TARGET_STATE.md`, implement those changes, then update `DATA_MODEL.md` to match.
 
+**Migration group status:** `DATA_MODEL_TARGET_STATE.md` has a Status column in its migration backlog table. When you apply a migration, update both `DATA_MODEL.md` (add the migration row) **and** flip the Status to ✅ in `DATA_MODEL_TARGET_STATE.md`. If the migration is run but the docs haven't caught up, the group is 🚧 — it is not ✅ until both files reflect reality.
+
+---
+
+## Target State Design Decisions (May 2026 simplification)
+
+The target state was simplified in May 2026 to remove ~7 tables and avoid over-engineering before real customer demand reveals what's actually needed. **These are deliberate non-decisions** — when you encounter a use case that *seems* to call for one of the dropped tables, re-read this section before reintroducing it.
+
+**Merged / dropped tables, and where their concerns now live:**
+
+- **`notification_deliveries` + `campaign_deliveries` → `message_deliveries`.** One unified delivery table with `source` enum (`template`, `campaign`) and nullable FKs to both `template_id` and `campaign_id`. All inbox queries, open/click/conversion analytics, and per-campaign rollups go through this single table.
+- **`chat_threads` + `chat_messages` dropped.** Support tickets and casual player↔club chat are the same domain. `support_tickets` carries a `category` enum (`support`, `chat`, `booking_inquiry`); `support_messages` carries `intent`, `booking_id`, and `ai_inference_id` for chat use cases. One inbox, one query path.
+- **`membership_perks` dropped.** Perks (`discount_pct`, `booking_credits_per_period`, `guest_passes_per_period`, `priority_booking_days`, `max_active_members`, `trial_days`) remain as columns on `membership_plans`. Don't add a perks table until a customer asks for a perk that can't be expressed in a column. `membership_plan_pricing` is kept — multiple billing intervals per plan is a real need.
+- **`player_segments` + `player_segment_memberships` + `campaign_messages` dropped.** Campaigns is now a single table with a `target_filter` JSONB (saved query). Structured player segmentation gets reintroduced post-revenue when real clubs reveal what they want to segment by.
+- **`tournament_matches` dropped.** A tournament match is a `bookings` row with `booking_type = 'tournament'`, a `tournament_id` FK, and optional `tournament_round` / `tournament_match_label` fields. Players (and doubles partners) go in `booking_players` with a new nullable `team` enum. Scores go in `match_results`.
+
+**Architectural decisions held open:**
+
+- **`ai_recommendations` table design** is deferred to Sprint 10. Two options on the table: (1) thin inbox row that links via `source_event_id` to feature-specific tables (`gap_detection_events`, `cancellation_predictions`, etc.) that already own the structured data — recommended; or (2) unified table with a smaller (3–4 value) recommendation domain enum. Don't bake either into code without revisiting this decision at Sprint 10 kickoff. See the architectural note at the top of `DATA_MODEL_TARGET_STATE.md` for full context.
+
 ---
 
 ## Database Change Workflow
@@ -183,7 +205,11 @@ Always follow this order exactly — no shortcuts:
 5. alembic upgrade head
 6. alembic downgrade -1 && alembic upgrade head  (verify both directions)
 7. Update docs/DATA_MODEL.md to reflect the applied change
-8. Commit model file + migration file + updated DATA_MODEL.md together
+   (add a row to the Database Migrations table at the bottom)
+8. Update docs/DATA_MODEL_TARGET_STATE.md — flip the migration group's
+   Status to ✅ Applied (with the migration revision ID)
+9. Bump the "_Last updated:_" line on both docs to today's date
+10. Commit model file + migration file + both updated docs together
 ```
 
 **Never:**
@@ -311,7 +337,7 @@ Defined in `backend/app/core/config.py` via pydantic-settings. For local dev, cr
 
 ### Timestamps
 
-Every file in `docs/` must have a `_Last updated: YYYY-MM-DD HH:MM UTC_` line at the very top (line 1), before the title. Update this timestamp whenever you modify the file.
+Every file in `docs/` must have a `_Last updated: YYYY-MM-DD HH:MM UTC_` line at the very top (line 1), before the title. `CLAUDE.md` follows the same rule but with just the date (`_Last updated: YYYY-MM-DD_`). Update the timestamp whenever you modify the file — for `CLAUDE.md` in particular, this is non-negotiable: it is the AI-assistant entry point and a stale date silently signals "no recent changes" to every future session.
 
 ```
 _Last updated: 2026-03-21 14:00 UTC_

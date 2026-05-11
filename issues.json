@@ -1,6 +1,188 @@
 [
   {
     "assignees": [],
+    "body": "",
+    "closedAt": "2026-05-06T12:27:24Z",
+    "createdAt": "2026-05-06T08:13:30Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      }
+    ],
+    "milestone": null,
+    "number": 202,
+    "state": "CLOSED",
+    "title": "Implement Save Payment Method",
+    "updatedAt": "2026-05-06T12:27:24Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/202",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Stage 3 (AI Phase 1) is the first AI delivery — gap detection, dynamic pricing, dashboard insights. This is where the Terraform expansion gets significant: two new workers, three new scheduled jobs, plus operational jobs (partition management, archive, materialized view refresh) that are easy to forget but mandatory.",
+    "closedAt": null,
+    "createdAt": "2026-05-04T12:24:21Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 201,
+    "state": "OPEN",
+    "title": "AI Phase 1 Infrastructure",
+    "updatedAt": "2026-05-04T12:24:21Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/201",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Stage 2 (production readiness) is the \"before any AI worker ships\" pass — VPC connector, Cloud Armor, monitoring, the Anthropic and Vertex AI access. It is easy to skip and will bite hard the first time production traffic hits the platform.",
+    "closedAt": null,
+    "createdAt": "2026-05-04T12:22:02Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 200,
+    "state": "OPEN",
+    "title": "Production Readiness Infrastructure",
+    "updatedAt": "2026-05-04T12:22:02Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/200",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Stage 1 (MVP hardening) lands first because every item in it is a gap that exists today and would block production go-live regardless of AI work — Cloud Storage, read replica, pgvector, production environment scaffold, Terraform remote state. None of it is AI work and all of it derisks what comes next.",
+    "closedAt": "2026-05-10T13:15:31Z",
+    "createdAt": "2026-05-04T12:20:02Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 199,
+    "state": "CLOSED",
+    "title": "MVP Infrastructure Hardening",
+    "updatedAt": "2026-05-10T13:15:31Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/199",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-05-02T14:13:42Z",
+    "createdAt": "2026-05-01T08:14:35Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 192,
+    "state": "CLOSED",
+    "title": "Allow invitation of more players until status of match is confirmed, so can be more than four people",
+    "updatedAt": "2026-05-02T14:13:42Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/192",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-05-02T13:44:25Z",
+    "createdAt": "2026-05-01T08:06:00Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 191,
+    "state": "CLOSED",
+    "title": "Fix bux where invitaction is accepted immediately when bookign court",
+    "updatedAt": "2026-05-02T13:44:25Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/191",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-05-02T14:40:18Z",
+    "createdAt": "2026-04-30T11:16:58Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 188,
+    "state": "CLOSED",
+    "title": "Split up player/bookings to future and past with a feature to filter past by dates with default of previous three months",
+    "updatedAt": "2026-05-02T14:40:18Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/188",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "3a41d995",
+      "startDate": "2026-04-19",
+      "title": "Sprint 4"
+    }
+  },
+  {
+    "assignees": [],
     "body": "Provide clear report to show financial reconcilation of bookings, payments, etc. by time period",
     "closedAt": null,
     "createdAt": "2026-04-28T20:06:38Z",
@@ -132,7 +314,7 @@
   {
     "assignees": [],
     "body": "For launch, the most important addition is capturing stripe_payout_id on payments — it's a single column, populated via the payout.paid Stripe webhook, and it's the one missing link that clubs and your finance team will actually need. The period-close immutability problem is real but can be deferred — most early-stage SaaS platforms operate on trust and audit logs rather than enforced immutability until they have a compliance requirement that forces it.",
-    "closedAt": null,
+    "closedAt": "2026-05-03T16:34:49Z",
     "createdAt": "2026-04-27T05:46:51Z",
     "labels": [
       {
@@ -144,9 +326,9 @@
     ],
     "milestone": null,
     "number": 179,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Stripe_payout_id addition to support reconciliation",
-    "updatedAt": "2026-04-27T05:46:51Z",
+    "updatedAt": "2026-05-03T16:34:49Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/179",
     "sprint": {
       "duration": 14,
@@ -399,14 +581,14 @@
     "milestone": null,
     "number": 155,
     "state": "OPEN",
-    "title": "full end-to-end testing with test data for booking",
-    "updatedAt": "2026-04-19T15:04:13Z",
+    "title": "full end-to-end testing with test data for booking and payments",
+    "updatedAt": "2026-05-09T11:02:47Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/155",
     "sprint": {
       "duration": 14,
-      "iterationId": "3a41d995",
-      "startDate": "2026-04-19",
-      "title": "Sprint 4"
+      "iterationId": "04ba1475",
+      "startDate": "2026-05-03",
+      "title": "Sprint 5"
     }
   },
   {
@@ -856,9 +1038,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/139",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -963,7 +1145,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-09T11:03:23Z",
     "createdAt": "2026-03-25T12:45:55Z",
     "labels": [
       {
@@ -980,9 +1162,9 @@
       "dueOn": null
     },
     "number": 135,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Prepare for payment sprint with design, acceptance criteria",
-    "updatedAt": "2026-03-25T12:45:55Z",
+    "updatedAt": "2026-05-09T11:03:23Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/135",
     "sprint": {
       "duration": 14,
@@ -4269,7 +4451,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-03T08:42:44Z",
     "createdAt": "2026-03-08T13:54:19Z",
     "labels": [
       {
@@ -4292,9 +4474,9 @@
       "dueOn": null
     },
     "number": 30,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: top up wallet via saved or new Stripe card",
-    "updatedAt": "2026-03-24T23:03:50Z",
+    "updatedAt": "2026-05-03T08:42:44Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/30",
     "sprint": {
       "duration": 14,
@@ -4343,7 +4525,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-02T15:35:56Z",
     "createdAt": "2026-03-08T13:54:15Z",
     "labels": [
       {
@@ -4366,9 +4548,9 @@
       "dueOn": null
     },
     "number": 28,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: set a default payment method",
-    "updatedAt": "2026-03-24T23:03:52Z",
+    "updatedAt": "2026-05-02T15:35:56Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/28",
     "sprint": {
       "duration": 14,
@@ -4380,7 +4562,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-06T12:28:35Z",
     "createdAt": "2026-03-08T13:54:13Z",
     "labels": [
       {
@@ -4403,9 +4585,9 @@
       "dueOn": null
     },
     "number": 27,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: view and remove saved payment methods",
-    "updatedAt": "2026-03-24T23:03:53Z",
+    "updatedAt": "2026-05-06T12:28:35Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/27",
     "sprint": {
       "duration": 14,
