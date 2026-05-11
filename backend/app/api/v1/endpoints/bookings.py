@@ -59,6 +59,8 @@ def _build_player_response(bp: BookingPlayer) -> BookingPlayerResponse:
         invite_status=bp.invite_status,
         payment_status=bp.payment_status,
         amount_due=bp.amount_due,
+        discount_amount=bp.discount_amount,
+        discount_source=bp.discount_source,
     )
 
 

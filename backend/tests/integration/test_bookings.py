@@ -2665,6 +2665,212 @@ class TestRespondToInvite:
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 
+    async def test_accept_applies_membership_discount_at_accept_time(
+        self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Membership discount is applied when the player ACCEPTS, not when they are invited."""
+        from datetime import timezone
+        from app.db.models.membership import MembershipCreditLog
+
+        # Invite player2 before they have a membership
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+
+        # Give player2 a 20% discount membership after the invite
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Late Discount Plan",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("30.00"),
+                booking_credits_per_period=0,
+                discount_pct=Decimal("20.00"),
+                is_active=True,
+            )
+            session.add(plan)
+            await session.flush()
+            now = datetime.now(tz=timezone.utc)
+            sub = MembershipSubscription(
+                user_id=player2.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+                credits_remaining=0,
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id = plan.id
+            sub_id = sub.id
+
+        # player2 accepts — discount should now be applied
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 200
+        p2_entry = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+        # Court is 20.00 / 4 players = 5.00; 20% off = 1.00 discount → 4.00 due
+        assert Decimal(p2_entry["discount_amount"]) == Decimal("1.00")
+        assert p2_entry["discount_source"] == "membership"
+        assert Decimal(p2_entry["amount_due"]) == Decimal("4.00")
+
+        async with test_session_factory() as session:
+            await session.execute(sql_delete(MembershipCreditLog).where(MembershipCreditLog.subscription_id == sub_id))
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_accept_with_credit_consumes_credit(
+        self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Accepting with a booking credit zeroes amount_due and decrements credits_remaining."""
+        from datetime import timezone
+        from app.db.models.membership import MembershipCreditLog
+
+        # Invite player2 before they have a membership
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+
+        # Give player2 a credit membership after the invite
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Late Credit Plan",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("50.00"),
+                booking_credits_per_period=4,
+                is_active=True,
+            )
+            session.add(plan)
+            await session.flush()
+            now = datetime.now(tz=timezone.utc)
+            sub = MembershipSubscription(
+                user_id=player2.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+                credits_remaining=3,
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id = plan.id
+            sub_id = sub.id
+
+        # player2 accepts
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "accepted"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 200
+        p2_entry = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+        assert Decimal(p2_entry["amount_due"]) == Decimal("0.00")
+        assert p2_entry["discount_source"] == "membership"
+
+        # Credit must have been consumed
+        async with test_session_factory() as session:
+            refreshed_sub = await session.get(MembershipSubscription, sub_id)
+            assert refreshed_sub.credits_remaining == 2
+
+        async with test_session_factory() as session:
+            await session.execute(sql_delete(MembershipCreditLog).where(MembershipCreditLog.subscription_id == sub_id))
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_decline_does_not_consume_credit(
+        self, client, player_headers, player2_headers, player2, club, court_with_hours, test_session_factory
+    ):
+        """Declining an invite never burns a membership credit."""
+        from datetime import timezone
+        from app.db.models.membership import MembershipCreditLog
+
+        # Give player2 a credit membership before the invite
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Decline Credit Plan",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("50.00"),
+                booking_credits_per_period=4,
+                is_active=True,
+            )
+            session.add(plan)
+            await session.flush()
+            now = datetime.now(tz=timezone.utc)
+            sub = MembershipSubscription(
+                user_id=player2.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+                credits_remaining=2,
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id = plan.id
+            sub_id = sub.id
+
+        start = _future()
+        r = await client.post("/api/v1/bookings", json=_booking_payload(club.id, court_with_hours.id, start), headers=player_headers)
+        booking_id = r.json()["id"]
+        await client.post(
+            f"/api/v1/bookings/{booking_id}/invite?club_id={club.id}",
+            json={"user_id": str(player2.id)},
+            headers=player_headers,
+        )
+
+        # player2 declines — credit must be untouched
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/respond-invite?club_id={club.id}",
+            json={"action": "declined"},
+            headers=player2_headers,
+        )
+        assert resp.status_code == 200
+
+        async with test_session_factory() as session:
+            refreshed_sub = await session.get(MembershipSubscription, sub_id)
+            assert refreshed_sub.credits_remaining == 2
+
+        async with test_session_factory() as session:
+            await session.execute(sql_delete(MembershipCreditLog).where(MembershipCreditLog.subscription_id == sub_id))
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
 
 # ---------------------------------------------------------------------------
 # POST /api/v1/bookings/recurring

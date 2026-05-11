@@ -878,9 +878,6 @@ class BookingService:
         self.db.add(bp)
         await self.db.flush()
 
-        if breakdown and breakdown.credit_consumed:
-            await pricing_svc.consume_credit(breakdown.membership_subscription_id, bp.id)
-
         return await self._load_booking(booking.id)
 
     async def respond_to_invite(
@@ -921,7 +918,25 @@ class BookingService:
 
         bp.invite_status = action
 
+        pricing_svc = PricingService(self.db)
+        breakdown = None
+
         if action == InviteStatus.accepted:
+            # Recalculate pricing at accept time so the player's current membership is applied.
+            breakdown = await pricing_svc.calculate(
+                club_id, booking.start_datetime, booking.max_players, requesting_user.id
+            )
+            if breakdown:
+                bp.amount_due = breakdown.amount_due
+                bp.discount_amount = breakdown.discount_amount
+                bp.discount_source = breakdown.discount_source
+                bp.membership_subscription_id = breakdown.membership_subscription_id
+            else:
+                bp.amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
+                bp.discount_amount = None
+                bp.discount_source = None
+                bp.membership_subscription_id = None
+
             # If the last slot just filled, discard all remaining pending invitations.
             if _accepted_count(booking.players) >= booking.max_players:
                 for other in booking.players:
@@ -932,6 +947,10 @@ class BookingService:
                 booking.status = BookingStatus.confirmed
 
         await self.db.flush()
+
+        if breakdown and breakdown.credit_consumed:
+            await pricing_svc.consume_credit(breakdown.membership_subscription_id, booking.id)
+
         return await self._load_booking(booking.id)
 
     async def cancel_booking(

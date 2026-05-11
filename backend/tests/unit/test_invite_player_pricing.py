@@ -1,9 +1,12 @@
 """
-Unit tests for the invite_player pricing path in BookingService.
+Unit tests for the invite_player and respond_to_invite pricing paths in BookingService.
 
 Strategy: patch BookingPlayer at the module level so the ORM constructor never
 fires (which would require real SQLAlchemy-instrumented objects). We verify what
 kwargs were passed to the constructor instead of inspecting the resulting ORM row.
+
+Key invariant: credits are consumed only at accept time (respond_to_invite), never
+at invite time (invite_player), so a declined invite never burns a membership credit.
 """
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -13,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from app.db.models.booking import BookingStatus, DiscountSource, InviteStatus, PlayerRole
+from app.db.models.booking import BookingStatus, DiscountSource, InviteStatus, PaymentStatus, PlayerRole
 from app.db.models.user import TenantUserRole
 from app.services.pricing_service import PriceBreakdown
 
@@ -174,7 +177,8 @@ class TestInvitePlayerPricingBreakdown:
         MockPS.return_value.consume_credit.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_credit_consumed_calls_consume_credit(self):
+    async def test_credit_flag_does_not_consume_credit_at_invite_time(self):
+        """invite_player never consumes credits — consumption is deferred to accept time."""
         from app.services.booking_service import BookingService
 
         booking = _make_booking()
@@ -195,8 +199,7 @@ class TestInvitePlayerPricingBreakdown:
 
         kw = MockBP.call_args.kwargs
         assert kw["amount_due"] == Decimal("0.00")
-        MockPS.return_value.consume_credit.assert_awaited_once()
-        assert MockPS.return_value.consume_credit.call_args.args[0] == SUB_ID
+        MockPS.return_value.consume_credit.assert_not_called()
 
     @pytest.mark.asyncio
     async def test_no_credit_consumed_skips_consume_credit(self):
@@ -216,4 +219,153 @@ class TestInvitePlayerPricingBreakdown:
 
             await _call_invite(svc, booking)
 
+        MockPS.return_value.consume_credit.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# respond_to_invite — pricing recalculation on accept
+# ---------------------------------------------------------------------------
+
+def _make_invited_bp(user_id, amount_due="5.00"):
+    bp = MagicMock()
+    bp.user_id = user_id
+    bp.role = PlayerRole.player
+    bp.invite_status = InviteStatus.pending
+    bp.payment_status = PaymentStatus.pending
+    bp.amount_due = Decimal(amount_due)
+    bp.discount_amount = None
+    bp.discount_source = None
+    bp.membership_subscription_id = None
+    return bp
+
+
+def _make_booking_for_respond(invited_id, max_players=4, total_price="20.00"):
+    organiser = SimpleNamespace(
+        user_id=USER_ID,
+        role=PlayerRole.organiser,
+        invite_status=InviteStatus.accepted,
+    )
+    bp = _make_invited_bp(invited_id)
+    b = MagicMock()
+    b.id = BOOKING_ID
+    b.club_id = CLUB_ID
+    b.start_datetime = NOW + timedelta(hours=48)
+    b.max_players = max_players
+    b.total_price = Decimal(total_price) if total_price else None
+    b.status = BookingStatus.pending
+    b.players = [organiser, bp]
+    return b, bp
+
+
+def _make_respond_db(booking):
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = booking
+    db = AsyncMock()
+    db.execute = AsyncMock(return_value=result)
+    db.flush = AsyncMock()
+    return db
+
+
+async def _call_respond(svc, booking, action):
+    requesting_user = MagicMock()
+    requesting_user.id = INVITED_ID
+    with patch.object(svc, "_load_booking", AsyncMock(return_value=booking)):
+        await svc.respond_to_invite(
+            booking_id=BOOKING_ID,
+            club_id=CLUB_ID,
+            tenant_id=TENANT_ID,
+            requesting_user=requesting_user,
+            action=action,
+        )
+
+
+class TestRespondToInvitePricing:
+    """Pricing is recalculated at accept time; credits are consumed then, not at invite time."""
+
+    @pytest.mark.asyncio
+    async def test_accept_applies_membership_discount(self):
+        """Accepting recalculates pricing and writes the membership discount onto bp."""
+        from app.services.booking_service import BookingService
+
+        booking, bp = _make_booking_for_respond(INVITED_ID)
+        db = _make_respond_db(booking)
+        svc = BookingService(db)
+
+        bd = _breakdown(amount_due="4.00", discount_amount="1.00",
+                        discount_source=DiscountSource.membership,
+                        membership_subscription_id=SUB_ID)
+
+        with patch("app.services.booking_service.PricingService") as MockPS:
+            MockPS.return_value.calculate = AsyncMock(return_value=bd)
+            MockPS.return_value.consume_credit = AsyncMock()
+
+            await _call_respond(svc, booking, InviteStatus.accepted)
+
+        assert bp.amount_due == Decimal("4.00")
+        assert bp.discount_amount == Decimal("1.00")
+        assert bp.discount_source == DiscountSource.membership
+        assert bp.membership_subscription_id == SUB_ID
+        MockPS.return_value.consume_credit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_accept_with_credit_updates_amount_due_and_consumes_credit(self):
+        """Accepting with a booking credit zeroes amount_due and calls consume_credit after flush."""
+        from app.services.booking_service import BookingService
+
+        booking, bp = _make_booking_for_respond(INVITED_ID)
+        db = _make_respond_db(booking)
+        svc = BookingService(db)
+
+        bd = _breakdown(amount_due="0.00", discount_amount="5.00",
+                        discount_source=DiscountSource.membership,
+                        credit_consumed=True, membership_subscription_id=SUB_ID)
+
+        with patch("app.services.booking_service.PricingService") as MockPS:
+            MockPS.return_value.calculate = AsyncMock(return_value=bd)
+            MockPS.return_value.consume_credit = AsyncMock()
+
+            await _call_respond(svc, booking, InviteStatus.accepted)
+
+        assert bp.amount_due == Decimal("0.00")
+        MockPS.return_value.consume_credit.assert_awaited_once()
+        call_args = MockPS.return_value.consume_credit.call_args.args
+        assert call_args[0] == SUB_ID       # subscription_id
+        assert call_args[1] == BOOKING_ID   # booking.id, not bp.id
+
+    @pytest.mark.asyncio
+    async def test_accept_fallback_when_no_pricing_rule(self):
+        """If no pricing rule matches, amount_due falls back to total_price / max_players."""
+        from app.services.booking_service import BookingService
+
+        booking, bp = _make_booking_for_respond(INVITED_ID, max_players=4, total_price="20.00")
+        db = _make_respond_db(booking)
+        svc = BookingService(db)
+
+        with patch("app.services.booking_service.PricingService") as MockPS:
+            MockPS.return_value.calculate = AsyncMock(return_value=None)
+            MockPS.return_value.consume_credit = AsyncMock()
+
+            await _call_respond(svc, booking, InviteStatus.accepted)
+
+        assert bp.amount_due == Decimal("5.00")   # 20.00 / 4
+        assert bp.discount_amount is None
+        assert bp.discount_source is None
+        MockPS.return_value.consume_credit.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_decline_skips_pricing_calculation(self):
+        """Declining does not trigger a pricing recalculation or credit consumption."""
+        from app.services.booking_service import BookingService
+
+        booking, bp = _make_booking_for_respond(INVITED_ID)
+        db = _make_respond_db(booking)
+        svc = BookingService(db)
+
+        with patch("app.services.booking_service.PricingService") as MockPS:
+            MockPS.return_value.calculate = AsyncMock()
+            MockPS.return_value.consume_credit = AsyncMock()
+
+            await _call_respond(svc, booking, InviteStatus.declined)
+
+        MockPS.return_value.calculate.assert_not_called()
         MockPS.return_value.consume_credit.assert_not_called()
