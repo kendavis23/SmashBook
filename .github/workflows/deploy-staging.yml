@@ -11,7 +11,7 @@ on:
 env:
   REGION: europe-west2
   REGISTRY: europe-west2-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/padel-api
-  CLOUD_SQL_INSTANCE: smashbook-488121:europe-west2:smashbook-staging
+  CLOUD_SQL_INSTANCE: smashbook-488121:europe-west2:smashbook-staging,smashbook-488121:europe-west2:smashbook-staging-replica
 
 jobs:
   # ─────────────────────────────────────────────
