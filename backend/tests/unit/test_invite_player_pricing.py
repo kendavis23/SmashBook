@@ -75,11 +75,8 @@ def _invited_user():
     return SimpleNamespace(id=INVITED_ID, tenant_id=TENANT_ID)
 
 
-def _requesting_user(role="player"):
-    from app.db.models.booking import PlayerRole
-    u = SimpleNamespace(id=USER_ID, tenant_id=TENANT_ID)
-    # Make it look like an organiser already on the booking
-    return u
+def _requesting_user():
+    return SimpleNamespace(id=USER_ID, tenant_id=TENANT_ID)
 
 
 # ---------------------------------------------------------------------------
