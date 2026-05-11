@@ -13,6 +13,7 @@ import type { BookingInput, BookingType, RecurringBookingInput } from "../../typ
 import NewBookingView from "./NewBookingView";
 import type { NewBookingFormState } from "./NewBookingView";
 import { isIndividualLessonBookingType, resolveMaxPlayers } from "./newBookingRules";
+import { getTrainerStaffProfileId } from "./trainerSelect";
 
 type Props = {
     courtId: string;
@@ -104,7 +105,7 @@ export default function NewBookingModalContainer({
         prevTrainerDataRef.current = trainerData;
         if (
             form.staffProfileId &&
-            !trainerData.some((t) => t.staff_profile_id === form.staffProfileId)
+            !trainerData.some((t) => getTrainerStaffProfileId(t) === form.staffProfileId)
         ) {
             setForm((prev) => ({ ...prev, staffProfileId: "" }));
         }

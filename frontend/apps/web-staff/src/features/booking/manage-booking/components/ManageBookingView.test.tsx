@@ -218,6 +218,7 @@ describe("ManageBookingView", () => {
         render(
             <ManageBookingView
                 {...defaultProps}
+                booking={{ ...booking, booking_type: "corporate_event" } as never}
                 onFormChange={onFormChange}
                 onBack={onBack}
                 onCancelBooking={onCancelBooking}
@@ -234,6 +235,13 @@ describe("ManageBookingView", () => {
         expect(onBack).toHaveBeenCalled();
         expect(onCancelBooking).toHaveBeenCalled();
         expect(onSubmit).toHaveBeenCalled();
+    });
+
+    it("hides Event & Contact fields for regular booking type", () => {
+        render(<ManageBookingView {...defaultProps} />);
+
+        expect(screen.queryByLabelText(/event name/i)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/contact name/i)).not.toBeInTheDocument();
     });
 
     it("shows api error and dismisses it", () => {

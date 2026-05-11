@@ -305,6 +305,25 @@ describe("ManageBookingModalView", () => {
         expect(onFormChange).toHaveBeenCalledWith({ notes: "Updated note" });
     });
 
+    it("hides Event & Contact fields for regular booking type", () => {
+        render(<ManageBookingModalView {...defaultProps} />);
+
+        expect(screen.queryByLabelText(/event name/i)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText(/contact name/i)).not.toBeInTheDocument();
+    });
+
+    it("shows Event & Contact fields for corporate event booking type", () => {
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                booking={{ ...booking, booking_type: "corporate_event" } as never}
+            />
+        );
+
+        expect(screen.getByLabelText(/event name/i)).toBeInTheDocument();
+        expect(screen.getByLabelText(/contact name/i)).toBeInTheDocument();
+    });
+
     it("shows existing notes value", () => {
         render(
             <ManageBookingModalView {...defaultProps} form={{ ...form, notes: "Existing note" }} />

@@ -237,6 +237,24 @@ describe("NewBookingView", () => {
         expect(onFormChange).not.toHaveBeenCalledWith({ maxPlayers: "6" });
     });
 
+    it("uses trainer id as fallback when staff profile id is missing", () => {
+        const onFormChange = vi.fn();
+        render(
+            <NewBookingView
+                {...defaultProps}
+                form={{ ...defaultForm, bookingType: "lesson_individual" }}
+                trainers={[{ id: "trainer-id-1", full_name: "Jane Trainer" }]}
+                onFormChange={onFormChange}
+            />
+        );
+
+        fireEvent.change(screen.getByRole("combobox", { name: /select trainer/i }), {
+            target: { value: "trainer-id-1" },
+        });
+
+        expect(onFormChange).toHaveBeenCalledWith({ staffProfileId: "trainer-id-1" });
+    });
+
     it("shows Open Game & Skill Level section for regular booking type", () => {
         render(<NewBookingView {...defaultProps} />);
 
@@ -551,10 +569,10 @@ describe("NewBookingView — modal mode", () => {
         expect(screen.getByLabelText(/Anchor/i)).toBeInTheDocument();
     });
 
-    it("shows Event & Contact fields for regular booking type in modal mode", () => {
+    it("does not show Event & Contact fields for regular booking type in modal mode", () => {
         render(<NewBookingView {...defaultProps} mode="modal" courtName="Court 1" />);
 
-        expect(screen.getByLabelText("Event name")).toBeInTheDocument();
+        expect(screen.queryByLabelText("Event name")).not.toBeInTheDocument();
     });
 
     it("shows Event & Contact fields for corporate_event in modal mode", () => {
