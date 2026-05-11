@@ -1,11 +1,12 @@
 import type { ChangeEvent, FormEvent, JSX } from "react";
 import type { UserResponse, NotificationChannel } from "@repo/auth";
-import type { ProfileTab } from "../../types";
+import type { ProfileTab, MembershipSubscription } from "../../types";
 import type { InfoFormState } from "./ProfileInfoView";
 import { ProfileInfoView } from "./ProfileInfoView";
 import { ProfileNotificationView } from "./ProfileNotificationView";
 import { ProfilePaymentView } from "./ProfilePaymentView";
-import { Bell, CreditCard, User } from "lucide-react";
+import { ProfileMembershipView } from "./ProfileMembershipView";
+import { BadgeCheck, Bell, CreditCard, User } from "lucide-react";
 
 type Props = {
     user: UserResponse;
@@ -17,6 +18,9 @@ type Props = {
     notifChannel: NotificationChannel;
     notifIsPending: boolean;
     notifApiError: string;
+    membership: MembershipSubscription | null;
+    membershipLoading: boolean;
+    membershipError: Error | null;
     onTabChange: (tab: ProfileTab) => void;
     onInfoFormChange: (patch: Partial<InfoFormState>) => void;
     onInfoFileChange: (e: ChangeEvent<HTMLInputElement>) => void;
@@ -37,6 +41,9 @@ export function ProfileView({
     notifChannel,
     notifIsPending,
     notifApiError,
+    membership,
+    membershipLoading,
+    membershipError,
     onTabChange,
     onInfoFormChange,
     onInfoFileChange,
@@ -65,41 +72,47 @@ export function ProfileView({
                     </div>
                 </header>
 
-                {/* Tab — only Payment tab shown; info+notifications are always side-by-side */}
+                {/* Tabs */}
                 <div className="border-b border-border px-5 sm:px-6">
                     <nav className="flex gap-1" aria-label="Profile tabs">
-                        <button
-                            type="button"
-                            onClick={() => onTabChange("info")}
-                            className={`flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-medium transition-colors
-                                ${
-                                    activeTab !== "payment"
-                                        ? "border-cta text-cta"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
-                        >
-                            <User size={14} />
-                            Account
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => onTabChange("payment")}
-                            className={`flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-medium transition-colors
-                                ${
-                                    activeTab === "payment"
-                                        ? "border-cta text-cta"
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                }`}
-                        >
-                            <CreditCard size={14} />
-                            Billing
-                        </button>
+                        {(
+                            [
+                                { id: "info", label: "Account", icon: <User size={14} /> },
+                                { id: "payment", label: "Billing", icon: <CreditCard size={14} /> },
+                                {
+                                    id: "membership",
+                                    label: "Membership",
+                                    icon: <BadgeCheck size={14} />,
+                                },
+                            ] as const
+                        ).map(({ id, label, icon }) => (
+                            <button
+                                key={id}
+                                type="button"
+                                onClick={() => onTabChange(id)}
+                                className={`flex items-center gap-1.5 border-b-2 px-3 py-3 text-sm font-medium transition-colors
+                                    ${
+                                        activeTab === id
+                                            ? "border-cta text-cta"
+                                            : "border-transparent text-muted-foreground hover:text-foreground"
+                                    }`}
+                            >
+                                {icon}
+                                {label}
+                            </button>
+                        ))}
                     </nav>
                 </div>
 
                 <div className="px-5 py-6 sm:px-6">
                     {activeTab === "payment" ? (
                         <ProfilePaymentView />
+                    ) : activeTab === "membership" ? (
+                        <ProfileMembershipView
+                            membership={membership}
+                            isLoading={membershipLoading}
+                            error={membershipError}
+                        />
                     ) : (
                         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
                             <section className="rounded-xl border border-border bg-background p-4 shadow-xs sm:p-5">

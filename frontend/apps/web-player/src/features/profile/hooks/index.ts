@@ -1,1 +1,1 @@
-export { useUpdateMyProfile } from "@repo/player-domain/hooks";
+export { useUpdateMyProfile, useMyMembership } from "@repo/player-domain/hooks";

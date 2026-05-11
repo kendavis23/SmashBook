@@ -28,3 +28,4 @@ export {
     useGetWallet,
     useTopUpWallet,
 } from "./payment.hooks";
+export { useMyMembership } from "./membership.hooks";
