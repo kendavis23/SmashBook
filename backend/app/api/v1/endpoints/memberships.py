@@ -4,17 +4,20 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from app.api.v1.dependencies.auth import require_admin
+from app.api.v1.dependencies.auth import get_current_user, require_admin
 from app.api.v1.dependencies.tenant import get_tenant
 from app.db.models.club import Club
-from app.db.models.membership import MembershipPlan
+from app.db.models.membership import MembershipPlan, MembershipSubscription
 from app.db.models.tenant import Tenant
+from app.db.models.user import User
 from app.db.session import get_db, get_read_db
 from app.schemas.membership import (
     MembershipPlanCreate,
     MembershipPlanResponse,
     MembershipPlanUpdate,
+    MembershipSubscriptionResponse,
 )
 
 router = APIRouter(prefix="/clubs", tags=["memberships"])
@@ -97,6 +100,38 @@ async def get_membership_plan(
     """Get a single membership plan."""
     await _get_club(club_id, tenant.id, db)
     return await _get_plan(plan_id, club_id, db)
+
+
+@router.get(
+    "/{club_id}/memberships/me",
+    response_model=MembershipSubscriptionResponse,
+)
+async def get_my_membership(
+    club_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """Return the calling player's membership subscription for this club."""
+    await _get_club(club_id, tenant.id, db)
+
+    result = await db.execute(
+        select(MembershipSubscription)
+        .where(
+            MembershipSubscription.club_id == club_id,
+            MembershipSubscription.user_id == current_user.id,
+        )
+        .options(selectinload(MembershipSubscription.plan))
+        .order_by(MembershipSubscription.created_at.desc())
+        .limit(1)
+    )
+    subscription = result.scalar_one_or_none()
+    if not subscription:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No membership found for this club",
+        )
+    return subscription
 
 
 @router.patch(

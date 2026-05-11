@@ -51,7 +51,7 @@ from app.db.models.base import Base
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
-from app.db.models.membership import MembershipPlan
+from app.db.models.membership import MembershipCreditLog, MembershipPlan, MembershipSubscription
 from app.db.models.court import CalendarReservation, Court
 from app.db.models.payment import Payment, PlatformFee
 from app.db.models.skill import SkillLevelHistory
@@ -204,6 +204,24 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
             await session.execute(
                 sql_delete(PricingRule).where(PricingRule.club_id.in_(club_ids))
             )
+            sub_ids = (
+                await session.execute(
+                    select(MembershipSubscription.id).where(
+                        MembershipSubscription.club_id.in_(club_ids)
+                    )
+                )
+            ).scalars().all()
+            if sub_ids:
+                await session.execute(
+                    sql_delete(MembershipCreditLog).where(
+                        MembershipCreditLog.subscription_id.in_(sub_ids)
+                    )
+                )
+                await session.execute(
+                    sql_delete(MembershipSubscription).where(
+                        MembershipSubscription.id.in_(sub_ids)
+                    )
+                )
             await session.execute(
                 sql_delete(MembershipPlan).where(MembershipPlan.club_id.in_(club_ids))
             )
@@ -350,6 +368,24 @@ async def _delete_user(user_id: uuid.UUID, session_factory) -> None:
         await session.execute(
             sql_delete(BookingPlayer).where(BookingPlayer.user_id == user_id)
         )
+        user_sub_ids = (
+            await session.execute(
+                select(MembershipSubscription.id).where(
+                    MembershipSubscription.user_id == user_id
+                )
+            )
+        ).scalars().all()
+        if user_sub_ids:
+            await session.execute(
+                sql_delete(MembershipCreditLog).where(
+                    MembershipCreditLog.subscription_id.in_(user_sub_ids)
+                )
+            )
+            await session.execute(
+                sql_delete(MembershipSubscription).where(
+                    MembershipSubscription.id.in_(user_sub_ids)
+                )
+            )
         wallet_ids = (
             await session.execute(
                 select(Wallet.id).where(Wallet.user_id == user_id)
@@ -453,6 +489,24 @@ async def club(tenant, test_session_factory):
         await session.execute(
             sql_delete(PricingRule).where(PricingRule.club_id == c.id)
         )
+        sub_ids = (
+            await session.execute(
+                select(MembershipSubscription.id).where(
+                    MembershipSubscription.club_id == c.id
+                )
+            )
+        ).scalars().all()
+        if sub_ids:
+            await session.execute(
+                sql_delete(MembershipCreditLog).where(
+                    MembershipCreditLog.subscription_id.in_(sub_ids)
+                )
+            )
+            await session.execute(
+                sql_delete(MembershipSubscription).where(
+                    MembershipSubscription.id.in_(sub_ids)
+                )
+            )
         await session.execute(
             sql_delete(MembershipPlan).where(MembershipPlan.club_id == c.id)
         )

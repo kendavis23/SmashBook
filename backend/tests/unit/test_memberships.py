@@ -5,11 +5,13 @@ POST   /clubs/{club_id}/membership-plans  — create plan
 GET    /clubs/{club_id}/membership-plans  — list plans
 GET    /clubs/{club_id}/membership-plans/{plan_id}  — get plan
 PATCH  /clubs/{club_id}/membership-plans/{plan_id}  — update plan
+GET    /clubs/{club_id}/memberships/me    — get calling player's subscription
 
 The database session is mocked — no real Postgres needed.
 """
 
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
@@ -20,10 +22,11 @@ from fastapi import HTTPException
 from app.api.v1.endpoints.memberships import (
     create_membership_plan,
     get_membership_plan,
+    get_my_membership,
     list_membership_plans,
     update_membership_plan,
 )
-from app.db.models.membership import BillingPeriod, MembershipPlan
+from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipStatus
 from app.schemas.membership import MembershipPlanCreate, MembershipPlanUpdate
 
 
@@ -416,3 +419,116 @@ def test_plan_create_valid_minimal():
     assert plan.trial_days == 0
     assert plan.description is None
     assert plan.booking_credits_per_period == 0
+
+
+# ---------------------------------------------------------------------------
+# GET /clubs/{club_id}/memberships/me — get_my_membership
+# ---------------------------------------------------------------------------
+
+SUB_ID = uuid.uuid4()
+PLAYER_ID = uuid.uuid4()
+
+PLAYER_USER = SimpleNamespace(id=PLAYER_ID)
+
+
+def _make_subscription(**kwargs):
+    plan = _make_plan()
+    defaults = dict(
+        id=SUB_ID,
+        user_id=PLAYER_ID,
+        club_id=CLUB_ID,
+        status=MembershipStatus.active,
+        current_period_start=datetime(2026, 5, 1, tzinfo=timezone.utc),
+        current_period_end=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        cancel_at_period_end=False,
+        cancelled_at=None,
+        credits_remaining=8,
+        guest_passes_remaining=1,
+        plan=plan,
+    )
+    defaults.update(kwargs)
+    return SimpleNamespace(**defaults)
+
+
+def _make_sub_read_db(club=None, subscription=None):
+    """DB mock for get_my_membership: club result then subscription result."""
+    db = AsyncMock()
+    club_obj = club if club is not None else _make_club()
+
+    club_result = MagicMock()
+    club_result.scalar_one_or_none.return_value = club_obj
+
+    sub_result = MagicMock()
+    sub_result.scalar_one_or_none.return_value = subscription
+
+    db.execute = AsyncMock(side_effect=[club_result, sub_result])
+    return db
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_returns_subscription():
+    sub = _make_subscription()
+    db = _make_sub_read_db(subscription=sub)
+    result = await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert result.id == SUB_ID
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_returns_active_status():
+    sub = _make_subscription(status=MembershipStatus.active)
+    db = _make_sub_read_db(subscription=sub)
+    result = await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert result.status == MembershipStatus.active
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_returns_trialing_status():
+    sub = _make_subscription(status=MembershipStatus.trialing)
+    db = _make_sub_read_db(subscription=sub)
+    result = await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert result.status == MembershipStatus.trialing
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_includes_plan():
+    sub = _make_subscription()
+    db = _make_sub_read_db(subscription=sub)
+    result = await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert result.plan.name == "Silver"
+    assert result.plan.club_id == CLUB_ID
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_returns_credits_remaining():
+    sub = _make_subscription(credits_remaining=5, guest_passes_remaining=2)
+    db = _make_sub_read_db(subscription=sub)
+    result = await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert result.credits_remaining == 5
+    assert result.guest_passes_remaining == 2
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_returns_cancel_at_period_end_flag():
+    sub = _make_subscription(cancel_at_period_end=True)
+    db = _make_sub_read_db(subscription=sub)
+    result = await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert result.cancel_at_period_end is True
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_raises_404_when_no_subscription():
+    db = _make_sub_read_db(subscription=None)
+    with pytest.raises(HTTPException) as exc_info:
+        await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert exc_info.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_get_my_membership_raises_404_when_club_not_found():
+    db = AsyncMock()
+    db.execute = AsyncMock(
+        return_value=MagicMock(scalar_one_or_none=MagicMock(return_value=None))
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        await get_my_membership(CLUB_ID, PLAYER_USER, TENANT, db)
+    assert exc_info.value.status_code == 404

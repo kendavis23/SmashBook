@@ -29,5 +29,8 @@ variable "disk_size" {
 
 variable "backup_enabled" {
   type    = bool
-  default = false
+  default = true
+  # IMPORTANT: must be true before creating the read replica.
+  # Enabling PITR on a primary that already has a replica forces a replica rebuild,
+  # which breaks the Cloud Run Unix socket until the replica is RUNNABLE again.
 }
