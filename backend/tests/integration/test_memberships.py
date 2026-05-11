@@ -7,9 +7,24 @@ POST   /clubs/{id}/membership-plans         — success, role enforcement, 404 c
 GET    /clubs/{id}/membership-plans         — lists plans, empty, 404 club
 GET    /clubs/{id}/membership-plans/{pid}   — success, 404 plan, 404 club
 PATCH  /clubs/{id}/membership-plans/{pid}   — success, role enforcement, 404 plan
+GET    /clubs/{id}/memberships/me           — success, 404 no sub, tenant isolation, unauthed
 """
 
 import uuid
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
+
+import pytest_asyncio
+from sqlalchemy import delete as sql_delete
+
+from app.core.security import create_access_token
+from app.db.models.membership import (
+    BillingPeriod,
+    MembershipCreditLog,
+    MembershipPlan,
+    MembershipStatus,
+    MembershipSubscription,
+)
 
 
 
@@ -83,7 +98,7 @@ class TestCreateMembershipPlan:
         assert resp.status_code == 201
         body = resp.json()
         assert body["description"] is None
-        assert body["booking_credits_per_period"] is None
+        assert body["booking_credits_per_period"] == 0
         assert body["guest_passes_per_period"] is None
         assert body["discount_pct"] is None
         assert body["priority_booking_days"] is None
@@ -336,3 +351,166 @@ class TestUpdateMembershipPlan:
             headers=admin_headers,
         )
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Fixture: a Silver plan + active subscription for the player fixture
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def membership_subscription(player, club, test_session_factory):
+    async with test_session_factory() as session:
+        plan = MembershipPlan(
+            club_id=club.id,
+            name="Silver",
+            billing_period=BillingPeriod.monthly,
+            price=Decimal("19.99"),
+            booking_credits_per_period=8,
+            guest_passes_per_period=1,
+            discount_pct=Decimal("5.00"),
+        )
+        session.add(plan)
+        await session.flush()
+
+        now = datetime.now(timezone.utc)
+        sub = MembershipSubscription(
+            user_id=player.id,
+            plan_id=plan.id,
+            club_id=club.id,
+            status=MembershipStatus.active,
+            current_period_start=now,
+            current_period_end=now + timedelta(days=30),
+            credits_remaining=8,
+            guest_passes_remaining=1,
+        )
+        session.add(sub)
+        await session.commit()
+        await session.refresh(plan)
+        await session.refresh(sub)
+
+    yield sub, plan
+
+    async with test_session_factory() as session:
+        await session.execute(
+            sql_delete(MembershipCreditLog).where(
+                MembershipCreditLog.subscription_id == sub.id
+            )
+        )
+        obj = await session.get(MembershipSubscription, sub.id)
+        if obj:
+            await session.delete(obj)
+        obj = await session.get(MembershipPlan, plan.id)
+        if obj:
+            await session.delete(obj)
+        await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/clubs/{id}/memberships/me
+# ---------------------------------------------------------------------------
+
+
+class TestGetMyMembership:
+    async def test_success(self, client, player_headers, club, membership_subscription):
+        resp = await client.get(
+            f"/api/v1/clubs/{club.id}/memberships/me",
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["status"] == "active"
+        assert body["credits_remaining"] == 8
+        assert body["guest_passes_remaining"] == 1
+        assert body["cancel_at_period_end"] is False
+        assert body["cancelled_at"] is None
+
+    async def test_includes_plan_details(self, client, player_headers, club, membership_subscription):
+        resp = await client.get(
+            f"/api/v1/clubs/{club.id}/memberships/me",
+            headers=player_headers,
+        )
+        assert resp.status_code == 200
+        plan_body = resp.json()["plan"]
+        assert plan_body["name"] == "Silver"
+        assert plan_body["billing_period"] == "monthly"
+        assert plan_body["price"] == "19.99"
+        assert plan_body["discount_pct"] == "5.00"
+        assert plan_body["guest_passes_per_period"] == 1
+
+    async def test_404_when_no_subscription(self, client, player_headers, club):
+        resp = await client.get(
+            f"/api/v1/clubs/{club.id}/memberships/me",
+            headers=player_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_unknown_club_returns_404(self, client, player_headers, membership_subscription):
+        resp = await client.get(
+            f"/api/v1/clubs/{uuid.uuid4()}/memberships/me",
+            headers=player_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_403(self, client, club):
+        resp = await client.get(f"/api/v1/clubs/{club.id}/memberships/me")
+        assert resp.status_code == 403
+
+    async def test_tenant_isolation(self, client, club, tenant, player, membership_subscription):
+        # Token whose tid doesn't match the resolved tenant → 401
+        wrong_tid = uuid.uuid4()
+        token = create_access_token({"sub": str(player.id), "tid": str(wrong_tid)})
+        headers = {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(tenant.id)}
+        resp = await client.get(
+            f"/api/v1/clubs/{club.id}/memberships/me",
+            headers=headers,
+        )
+        assert resp.status_code == 401
+
+    async def test_admin_can_view_own_membership(self, client, admin_headers, admin, club, test_session_factory):
+        # Admins are also users — they can check their own membership status
+        now = datetime.now(timezone.utc)
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Staff Gold",
+                billing_period=BillingPeriod.annual,
+                price=Decimal("0.00"),
+                booking_credits_per_period=0,
+            )
+            session.add(plan)
+            await session.flush()
+            sub = MembershipSubscription(
+                user_id=admin.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=365),
+                credits_remaining=0,
+            )
+            session.add(sub)
+            await session.commit()
+            sub_id = sub.id
+            plan_id = plan.id
+
+        resp = await client.get(
+            f"/api/v1/clubs/{club.id}/memberships/me",
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["plan"]["name"] == "Staff Gold"
+
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_delete(MembershipCreditLog).where(
+                    MembershipCreditLog.subscription_id == sub_id
+                )
+            )
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()

@@ -1,4 +1,4 @@
-_Last updated: 2026-05-02 00:00 UTC_
+_Last updated: 2026-05-11 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -77,6 +77,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `GET` | `/api/v1/clubs/{club_id}/membership-plans` | List all membership plans for a club |
 | `GET` | `/api/v1/clubs/{club_id}/membership-plans/{plan_id}` | Get a single membership plan |
 | `PATCH` | `/api/v1/clubs/{club_id}/membership-plans/{plan_id}` | Update a membership plan (admin+) |
+| `GET` | `/api/v1/clubs/{club_id}/memberships/me` | Get calling player's membership subscription for this club |
 
 ---
 
