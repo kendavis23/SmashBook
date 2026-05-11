@@ -266,12 +266,9 @@ export default function BookingsContainer(): JSX.Element {
         setSelectedBooking(null);
     }, []);
 
-    const handlePayClick = useCallback(
-        (item: PlayerBookingItem, onSuccess?: () => void): void => {
-            setPayingBooking({ item, onSuccess });
-        },
-        []
-    );
+    const handlePayClick = useCallback((item: PlayerBookingItem, onSuccess?: () => void): void => {
+        setPayingBooking({ item, onSuccess });
+    }, []);
 
     const refreshCurrentBookings = useCallback((): void => {
         const refetch = activeTab === "upcoming" ? refetchUpcoming : refetchPast;

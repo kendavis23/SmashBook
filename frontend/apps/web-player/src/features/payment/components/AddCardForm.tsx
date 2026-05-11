@@ -59,9 +59,7 @@ export function AddCardForm({ onSuccess }: Props): JSX.Element {
             const intent = await createSetupIntent.mutateAsync();
             setClientSecret(intent.client_secret);
         } catch (err) {
-            setInitError(
-                (err as { message?: string })?.message ?? "Unable to start card setup."
-            );
+            setInitError((err as { message?: string })?.message ?? "Unable to start card setup.");
         } finally {
             setIsInit(false);
         }
@@ -73,9 +71,7 @@ export function AddCardForm({ onSuccess }: Props): JSX.Element {
     }, [onSuccess]);
 
     if (done) {
-        return (
-            <p className="text-sm font-medium text-success">Card saved successfully.</p>
-        );
+        return <p className="text-sm font-medium text-success">Card saved successfully.</p>;
     }
 
     if (!clientSecret) {

@@ -208,9 +208,10 @@ export default function NewBookingModalContainer({
 
             const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
 
-            const invitedPlayerIds = form.isOpenGame || form.bookingType === "lesson_individual"
-                ? []
-                : form.playerUserIds.map((id) => id.trim()).filter(Boolean);
+            const invitedPlayerIds =
+                form.isOpenGame || form.bookingType === "lesson_individual"
+                    ? []
+                    : form.playerUserIds.map((id) => id.trim()).filter(Boolean);
             const payload: BookingInput = {
                 club_id: clubId ?? "",
                 court_id: form.courtId,

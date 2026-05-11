@@ -81,9 +81,12 @@ describe("setDefaultPaymentMethodEndpoint", () => {
     it("calls PATCH /api/v1/payments/payment-methods/:methodId/default", async () => {
         mockFetcher.mockResolvedValue({});
         await setDefaultPaymentMethodEndpoint("pm_123");
-        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/payments/payment-methods/pm_123/default", {
-            method: "PATCH",
-        });
+        expect(mockFetcher).toHaveBeenCalledWith(
+            "/api/v1/payments/payment-methods/pm_123/default",
+            {
+                method: "PATCH",
+            }
+        );
     });
 });
 

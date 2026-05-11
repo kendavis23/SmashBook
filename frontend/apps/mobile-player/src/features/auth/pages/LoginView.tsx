@@ -7,7 +7,7 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { Controller, type Control, type FieldErrors } from "react-hook-form";
+import { Controller, type Control } from "react-hook-form";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { LoginFormValues } from "./types";
@@ -73,7 +73,6 @@ export function LoginView({
 
                     {/* Form card */}
                     <View className="flex-1 rounded-t-[32px] bg-white px-6 pb-10 pt-8 shadow-2xl">
-
                         {isError ? (
                             <View
                                 accessibilityRole="alert"
@@ -205,7 +204,9 @@ export function LoginView({
                                             />
                                             <Pressable
                                                 accessibilityLabel={
-                                                    passwordVisible ? "Hide password" : "Show password"
+                                                    passwordVisible
+                                                        ? "Hide password"
+                                                        : "Show password"
                                                 }
                                                 accessibilityRole="button"
                                                 className="ml-2 rounded-xl bg-cta/10 px-3 py-1.5"

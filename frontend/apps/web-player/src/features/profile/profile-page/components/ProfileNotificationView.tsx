@@ -90,7 +90,9 @@ export function ProfileNotificationView({
                                 {icon}
                             </span>
                             <span className="min-w-0 flex-1 space-y-0.5 pr-4">
-                                <span className={`block text-sm font-semibold ${active ? "text-cta" : "text-foreground"}`}>
+                                <span
+                                    className={`block text-sm font-semibold ${active ? "text-cta" : "text-foreground"}`}
+                                >
                                     {label}
                                 </span>
                                 <span className="block text-xs text-muted-foreground">

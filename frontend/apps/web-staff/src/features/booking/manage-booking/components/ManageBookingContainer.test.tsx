@@ -212,6 +212,7 @@ describe("ManageBookingContainer", () => {
     });
 
     it("submits an updated payload", async () => {
+        setupMocks({ data: { ...booking, booking_type: "corporate_event" } });
         render(<ManageBookingContainer />);
 
         await waitFor(() => {
