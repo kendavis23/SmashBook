@@ -28,7 +28,7 @@ import uuid
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-from sqlalchemy import delete as sql_delete, select as sa_select, update as sql_update
+from sqlalchemy import delete as sql_delete, select as sa_select
 
 from app.core.security import create_access_token
 from app.db.models.club import Club
