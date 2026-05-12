@@ -1,4 +1,4 @@
-_Last updated: 2026-05-09 00:00 UTC_
+_Last updated: 2026-05-12 00:00 UTC_
 
 # Booking & Equipment Test Cases
 
@@ -455,3 +455,47 @@ Endpoint: `DELETE /equipment/{id}`
 | 29.12 | No discount and no credit — full base price | `amount_due = price / max_players` |
 | 29.13 | Credit consumed — `credits_remaining` decremented | DB value updated |
 | 29.14 | Missing subscription on consume — silent no-op | No exception |
+
+---
+
+## 30. Wallet — `deduct_wallet` Service (unit: `test_wallet_service.py`)
+
+| # | Test | Expected |
+|---|------|----------|
+| 30.1 | Deduct from wallet with sufficient balance | Returns `balance_after` and `transaction_id`; balance decremented |
+| 30.2 | `source_type` and `source_id` written to `WalletTransaction` | Row has correct enum + UUID |
+| 30.3 | Platform fee computed from `tenant.booking_fee_pct` | `platform_fee_amount = amount × pct / 100` |
+| 30.4 | `booking_fee_pct` is `None` | `platform_fee_amount = 0` |
+| 30.5 | Balance < amount | 402 `Insufficient wallet balance` |
+| 30.6 | No wallet for user | 404 |
+| 30.7 | Club not found | 404 |
+| 30.8 | All writes (wallet, transaction, debt) in one commit | `flush` called once, `commit` called once |
+
+---
+
+## 31. Wallet — `settle_wallet_debts` Service (unit: `test_wallet_service.py`)
+
+| # | Test | Expected |
+|---|------|----------|
+| 31.1 | No unsettled debts | Returns `{settled_count:0, total_transferred:0, skipped_count:0}`; no Stripe call |
+| 31.2 | One unsettled debt, club has Connect account | `stripe.Transfer.create` called; `settled_at` + `stripe_transfer_id` stamped |
+| 31.3 | Net amount excludes `platform_fee_amount` | Transfer amount = `(amount - fee) × 100` pence |
+| 31.4 | Multiple debts for same club | One Stripe transfer for combined net; `settled_count` = number of debts |
+| 31.5 | Club has no `stripe_connect_account_id` | `skipped_count` incremented; no Stripe call |
+| 31.6 | Mixed clubs — one with account, one without | `settled_count=1`, `skipped_count=1` |
+| 31.7 | Stripe raises `StripeError` | 502 |
+| 31.8 | Successful settlement | `commit` called once |
+
+---
+
+## 32. Wallet — `POST /payments/wallet/settle-debts` Endpoint (integration: `test_wallet.py`)
+
+| # | Test | Expected |
+|---|------|----------|
+| 32.1 | Player role | 403 |
+| 32.2 | Staff role | 403 |
+| 32.3 | Unauthenticated | 403 |
+| 32.4 | Token `tenant_id` ≠ `X-Tenant-ID` | 401 |
+| 32.5 | Admin, no unsettled debts | 200; `{settled_count:0, total_transferred:0, skipped_count:0}`; no Stripe call |
+| 32.6 | Admin, club without Connect account | 200; `skipped_count=1`, `settled_count=0`; no Stripe call |
+| 32.7 | Admin, club with Connect account | 200; `settled_count=1`; debt row has `settled_at` + `stripe_transfer_id` |

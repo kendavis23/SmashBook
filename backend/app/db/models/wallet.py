@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, ForeignKey, Numeric, Text, Boolean, Enum
+from sqlalchemy import Column, String, ForeignKey, Numeric, Text, Boolean, Enum, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -46,3 +46,18 @@ class WalletTransaction(Base, UUIDMixin, TimestampMixin):
     source_id = Column(UUID(as_uuid=True), nullable=True)
 
     wallet = relationship("Wallet", back_populates="transactions")
+
+
+class WalletClubDebt(Base, UUIDMixin, TimestampMixin):
+    """Records platform's obligation to transfer wallet-debit funds to the club's Stripe account."""
+    __tablename__ = "wallet_club_debts"
+
+    club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False)
+    wallet_transaction_id = Column(UUID(as_uuid=True), ForeignKey("wallet_transactions.id"), nullable=False, unique=True)
+    amount = Column(Numeric(10, 2), nullable=False)
+    platform_fee_amount = Column(Numeric(10, 2), nullable=False, default=0)
+    stripe_transfer_id = Column(String(255), nullable=True)
+    settled_at = Column(DateTime(timezone=True), nullable=True)
+
+    wallet_transaction = relationship("WalletTransaction")

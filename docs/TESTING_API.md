@@ -1,4 +1,4 @@
-_Last updated: 2026-04-17 00:00 UTC_
+_Last updated: 2026-05-12 00:00 UTC_
 
 # Integration Testing
 
@@ -66,7 +66,8 @@ backend/tests/
     ├── test_players.py          ← player profile, bookings history, match history
     ├── test_memberships.py      ← membership plan CRUD
     ├── test_equipment.py        ← inventory, rentals, retire, cancel-restores-stock
-    └── test_trainers.py         ← list trainers, availability CRUD, trainer bookings
+    ├── test_trainers.py         ← list trainers, availability CRUD, trainer bookings
+    └── test_wallet.py           ← wallet balance, top-up, settle-debts (role + Stripe mock)
 ```
 
 ### Fixture Dependency Chain

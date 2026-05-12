@@ -1,4 +1,4 @@
-_Last updated: 2026-05-11 00:00 UTC_
+_Last updated: 2026-05-12 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -154,6 +154,7 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | `PATCH` | `/api/v1/payments/payment-methods/{method_id}/default` | Set an existing saved card as the player's default payment method |
 | `GET` | `/api/v1/payments/wallet` | Get current player's wallet balance, auto-topup settings, and full transaction history (newest first). 404 if no wallet exists |
 | `POST` | `/api/v1/payments/wallet/top-up` | Create a Stripe PaymentIntent for a wallet top-up. Accepts `amount_pence` (min 100) and optional `payment_method_id` (falls back to saved default). Auto-creates wallet if the player has none. Returns `client_secret` and `payment_intent_id` for frontend confirmation. Webhook `payment_intent.succeeded` (purpose=`wallet_top_up`) credits the balance and records a `WalletTransaction` |
+| `POST` | `/api/v1/payments/wallet/settle-debts` | Admin only. Transfer all unsettled wallet-debit obligations to each club's Stripe Connect account. Groups debits by club, issues one `stripe.Transfer` per club (net of platform fee), stamps `settled_at`. Returns `{settled_count, total_transferred, skipped_count}`. Clubs without a Connect account are skipped. |
 
 ---
 

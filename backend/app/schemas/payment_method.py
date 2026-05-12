@@ -72,3 +72,9 @@ class WalletTopUpResponse(BaseModel):
     payment_intent_id: str
     amount: Decimal  # pounds
     currency: str
+
+
+class WalletSettleDebtsResponse(BaseModel):
+    settled_count: int
+    total_transferred: Decimal
+    skipped_count: int

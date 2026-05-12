@@ -27,7 +27,7 @@ from app.db.models.payment import PaymentMethod as PaymentMethodEnum
 from app.db.models.payment import PaymentState
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import User
-from app.db.models.wallet import Wallet, WalletTransaction, WalletTransactionType
+from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction, WalletTransactionSource, WalletTransactionType
 
 settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -613,16 +613,129 @@ class PaymentService:
             "currency": wallet.currency.lower(),
         }
 
-    async def deduct_wallet(self, user_id: str, amount: float,
-                             reference: str) -> dict:
+    async def deduct_wallet(
+        self,
+        user_id: uuid.UUID,
+        club_id: uuid.UUID,
+        amount: Decimal,
+        source_type: WalletTransactionSource,
+        source_id: uuid.UUID,
+        notes: str = None,
+    ) -> dict:
         """
-        Deduct from wallet balance for a booking payment.
-          1. Check Wallet.balance >= amount
-          2. Create WalletTransaction(type=debit, reference=booking_id)
-          3. Update Wallet.balance
-          4. Set BookingPlayer.payment_status = 'paid'
+        Atomically deduct wallet balance and record a club settlement obligation.
+        Raises 404 if no wallet exists, 402 if balance is insufficient.
+        Returns {balance_after, transaction_id}.
         """
-        pass
+        result = await self.db.execute(sa_select(Wallet).where(Wallet.user_id == user_id))
+        wallet = result.scalar_one_or_none()
+        if not wallet:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
+        if wallet.balance < amount:
+            raise HTTPException(status_code=status.HTTP_402_PAYMENT_REQUIRED, detail="Insufficient wallet balance")
+
+        club_result = await self.db.execute(
+            sa_select(Club, Tenant)
+            .join(Tenant, Club.tenant_id == Tenant.id)
+            .where(Club.id == club_id)
+        )
+        row = club_result.one_or_none()
+        if not row:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+        club, tenant = row
+
+        fee_pct = tenant.booking_fee_pct or Decimal("0")
+        platform_fee = (amount * fee_pct / 100).quantize(Decimal("0.01"))
+
+        wallet.balance -= amount
+        self.db.add(wallet)
+
+        txn = WalletTransaction(
+            wallet_id=wallet.id,
+            transaction_type=WalletTransactionType.debit,
+            amount=amount,
+            balance_after=wallet.balance,
+            source_type=source_type,
+            source_id=source_id,
+            notes=notes,
+        )
+        self.db.add(txn)
+        await self.db.flush()
+
+        debt = WalletClubDebt(
+            club_id=club_id,
+            tenant_id=club.tenant_id,
+            wallet_transaction_id=txn.id,
+            amount=amount,
+            platform_fee_amount=platform_fee,
+        )
+        self.db.add(debt)
+        await self.db.commit()
+
+        return {"balance_after": wallet.balance, "transaction_id": txn.id}
+
+    async def settle_wallet_debts(self) -> dict:
+        """
+        Transfer unsettled wallet-debit funds to each club's Stripe Connect account.
+        Groups by club, issues one Stripe Transfer per club, then stamps settled_at.
+        Clubs without a stripe_connect_account_id are skipped (logged).
+        Returns {settled_count, total_transferred, skipped_count}.
+        """
+        result = await self.db.execute(
+            sa_select(WalletClubDebt, Club)
+            .join(Club, WalletClubDebt.club_id == Club.id)
+            .where(WalletClubDebt.settled_at.is_(None))
+        )
+        rows = result.all()
+
+        by_club: dict[uuid.UUID, list] = {}
+        for debt, club in rows:
+            by_club.setdefault(debt.club_id, []).append((debt, club))
+
+        settled_count = 0
+        skipped_count = 0
+        total_transferred = Decimal("0")
+
+        for club_id, items in by_club.items():
+            _, club = items[0]
+            if not club.stripe_connect_account_id:
+                skipped_count += len(items)
+                continue
+
+            net = sum(d.amount - d.platform_fee_amount for d, _ in items)
+            net_pence = int(net * 100)
+            if net_pence <= 0:
+                skipped_count += len(items)
+                continue
+
+            try:
+                transfer = stripe.Transfer.create(
+                    amount=net_pence,
+                    currency=club.currency.lower(),
+                    destination=club.stripe_connect_account_id,
+                    metadata={"club_id": str(club_id), "debt_count": len(items)},
+                )
+            except stripe.StripeError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail=f"Stripe transfer failed for club {club_id}: {exc.user_message or exc}",
+                )
+
+            now = datetime.now(timezone.utc)
+            for debt, _ in items:
+                debt.stripe_transfer_id = transfer.id
+                debt.settled_at = now
+                self.db.add(debt)
+
+            settled_count += len(items)
+            total_transferred += net
+
+        await self.db.commit()
+        return {
+            "settled_count": settled_count,
+            "total_transferred": total_transferred,
+            "skipped_count": skipped_count,
+        }
 
     async def adjust_wallet(self, user_id: str, amount: float,
                              adjusted_by_staff_id: str, notes: str) -> dict:

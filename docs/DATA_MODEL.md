@@ -496,6 +496,24 @@ One wallet per user, holds a pre-paid credit balance.
 
 ---
 
+#### `wallet_club_debts`
+Platform's obligation to transfer wallet-debit funds to each club's Stripe Connect account. One row per wallet debit. Settled asynchronously via admin-triggered `POST /payments/wallet/settle-debts`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs`, indexed |
+| `tenant_id` | UUID | FK → `tenants` |
+| `wallet_transaction_id` | UUID | FK → `wallet_transactions`, unique |
+| `amount` | NUMERIC(10,2) | Gross amount owed to club |
+| `platform_fee_amount` | NUMERIC(10,2) | Platform's cut (from `tenant.booking_fee_pct`) |
+| `stripe_transfer_id` | VARCHAR(255) | Nullable — filled when settled |
+| `settled_at` | TIMESTAMPTZ | Nullable — null means outstanding |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+---
+
 ### 10. Skill Tracking
 
 #### `skill_level_history`
@@ -644,6 +662,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `17206ff810ef` | G2 — Add `valid_from`, `valid_until` to `operating_hours` for seasonal hour variations |
 | `8582075732fe` | G4 — `payments`: add `club_id`, `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `anomaly_reason`, `dispute_status`; new table `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id` |
 | `80803a6bae79` | Add `source_type` (`wallettransactionsource` enum) and `source_id` (UUID) to `wallet_transactions` |
+| `3a758d32ab8d` | New table `wallet_club_debts` — deferred settlement of wallet debits to club Stripe Connect accounts |
 
 To run migrations:
 ```bash

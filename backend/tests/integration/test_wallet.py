@@ -16,17 +16,25 @@ POST /payments/wallet/top-up
                           — no saved card and no pm_id → 400
                           — unauthenticated → 403
                           — wrong tenant → 401
+POST /payments/wallet/settle-debts
+                          — player → 403
+                          — staff → 403
+                          — admin, no unsettled debts → 200 with zero counts
+                          — admin, unsettled debt with Connect account → 200, transfer created
+                          — admin, club without Connect account → 200, skipped_count=1
+                          — wrong tenant → 401
 """
 import uuid
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-from sqlalchemy import delete as sql_delete
+from sqlalchemy import delete as sql_delete, select as sa_select, update as sql_update
 
 from app.core.security import create_access_token
+from app.db.models.club import Club
 from app.db.models.tenant import Tenant as TenantModel
 from app.db.models.user import User
-from app.db.models.wallet import Wallet, WalletTransaction, WalletTransactionType
+from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction, WalletTransactionType, WalletTransactionSource
 
 STRIPE_CUSTOMER_ID = "cus_testWALLETTOPUP"
 STRIPE_PM_ID = "pm_testWALLETTOPUP"
@@ -76,7 +84,8 @@ async def _create_wallet(session_factory, user_id, *, balance="15.00", currency=
 
 
 async def _create_transaction(session_factory, wallet_id, *, amount, balance_after,
-                               txn_type=WalletTransactionType.top_up, notes=None):
+                               txn_type=WalletTransactionType.top_up, notes=None,
+                               source_type=None, source_id=None):
     async with session_factory() as session:
         t = WalletTransaction(
             wallet_id=wallet_id,
@@ -84,11 +93,39 @@ async def _create_transaction(session_factory, wallet_id, *, amount, balance_aft
             amount=Decimal(amount),
             balance_after=Decimal(balance_after),
             notes=notes,
+            source_type=source_type,
+            source_id=source_id,
         )
         session.add(t)
         await session.commit()
         await session.refresh(t)
     return t
+
+
+async def _create_wallet_club_debt(session_factory, club_id, tenant_id, wallet_transaction_id, *,
+                                    amount="15.00", platform_fee="0.75"):
+    async with session_factory() as session:
+        debt = WalletClubDebt(
+            club_id=club_id,
+            tenant_id=tenant_id,
+            wallet_transaction_id=wallet_transaction_id,
+            amount=Decimal(amount),
+            platform_fee_amount=Decimal(platform_fee),
+        )
+        session.add(debt)
+        await session.commit()
+        await session.refresh(debt)
+    return debt
+
+
+async def _delete_wallet_club_debts(session_factory, wallet_transaction_id):
+    async with session_factory() as session:
+        await session.execute(
+            sql_delete(WalletClubDebt).where(
+                WalletClubDebt.wallet_transaction_id == wallet_transaction_id
+            )
+        )
+        await session.commit()
 
 
 async def _delete_wallet(session_factory, wallet_id):
@@ -345,3 +382,129 @@ class TestWalletTopUp:
                 if obj:
                     await session.delete(obj)
                     await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /payments/wallet/settle-debts
+# ---------------------------------------------------------------------------
+
+STRIPE_TRANSFER_ID = "tr_testSETTLE001"
+
+
+def _mock_transfer():
+    t = MagicMock()
+    t.id = STRIPE_TRANSFER_ID
+    return t
+
+
+class TestSettleWalletDebts:
+
+    async def test_player_cannot_settle(self, client, player_headers):
+        resp = await client.post("/api/v1/payments/wallet/settle-debts", headers=player_headers)
+        assert resp.status_code == 403
+
+    async def test_staff_cannot_settle(self, client, staff_headers):
+        resp = await client.post("/api/v1/payments/wallet/settle-debts", headers=staff_headers)
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_403(self, client, tenant):
+        resp = await client.post(
+            "/api/v1/payments/wallet/settle-debts",
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 403
+
+    async def test_wrong_tenant_returns_401(self, client, admin, tenant, plan, test_session_factory):
+        subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Other Tenant", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.commit()
+            await session.refresh(t2)
+        try:
+            token = create_access_token({"sub": str(admin.id), "tid": str(tenant.id)})
+            resp = await client.post(
+                "/api/v1/payments/wallet/settle-debts",
+                headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2.id)},
+            )
+            assert resp.status_code == 401
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(TenantModel, t2.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()
+
+    async def test_no_unsettled_debts_returns_zero_counts(self, client, admin_headers):
+        with patch("stripe.Transfer.create") as mock_transfer:
+            resp = await client.post("/api/v1/payments/wallet/settle-debts", headers=admin_headers)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["settled_count"] == 0
+        assert body["skipped_count"] == 0
+        assert Decimal(body["total_transferred"]) == Decimal("0")
+        mock_transfer.assert_not_called()
+
+    async def test_club_without_connect_account_is_skipped(
+        self, client, admin_headers, admin, club, tenant, test_session_factory
+    ):
+        wallet = await _create_wallet(test_session_factory, admin.id, balance="30.00")
+        txn = await _create_transaction(
+            test_session_factory, wallet.id, amount="15.00", balance_after="15.00",
+            txn_type=WalletTransactionType.debit, source_type=WalletTransactionSource.booking,
+            source_id=uuid.uuid4(),
+        )
+        await _create_wallet_club_debt(test_session_factory, club.id, tenant.id, txn.id)
+        try:
+            with patch("stripe.Transfer.create") as mock_transfer:
+                resp = await client.post("/api/v1/payments/wallet/settle-debts", headers=admin_headers)
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["skipped_count"] == 1
+            assert body["settled_count"] == 0
+            mock_transfer.assert_not_called()
+        finally:
+            await _delete_wallet_club_debts(test_session_factory, txn.id)
+            await _delete_wallet(test_session_factory, wallet.id)
+
+    async def test_admin_settles_debt_for_club_with_connect_account(
+        self, client, admin_headers, admin, club, tenant, test_session_factory
+    ):
+        async with test_session_factory() as session:
+            c = await session.get(Club, club.id)
+            c.stripe_connect_account_id = "acct_testINTEG"
+            await session.commit()
+
+        wallet = await _create_wallet(test_session_factory, admin.id, balance="30.00")
+        txn = await _create_transaction(
+            test_session_factory, wallet.id, amount="15.00", balance_after="15.00",
+            txn_type=WalletTransactionType.debit, source_type=WalletTransactionSource.booking,
+            source_id=uuid.uuid4(),
+        )
+        await _create_wallet_club_debt(
+            test_session_factory, club.id, tenant.id, txn.id,
+            amount="15.00", platform_fee="0.75",
+        )
+        try:
+            with patch("stripe.Transfer.create", return_value=_mock_transfer()):
+                resp = await client.post("/api/v1/payments/wallet/settle-debts", headers=admin_headers)
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["settled_count"] == 1
+            assert body["skipped_count"] == 0
+            assert Decimal(body["total_transferred"]) == Decimal("14.25")  # 15.00 - 0.75
+
+            async with test_session_factory() as session:
+                result = await session.execute(
+                    sa_select(WalletClubDebt).where(WalletClubDebt.wallet_transaction_id == txn.id)
+                )
+                debt = result.scalar_one()
+                assert debt.settled_at is not None
+                assert debt.stripe_transfer_id == STRIPE_TRANSFER_ID
+        finally:
+            await _delete_wallet_club_debts(test_session_factory, txn.id)
+            await _delete_wallet(test_session_factory, wallet.id)
+            async with test_session_factory() as session:
+                c = await session.get(Club, club.id)
+                c.stripe_connect_account_id = None
+                await session.commit()

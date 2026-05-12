@@ -2,7 +2,7 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select as sa_select
 
-from app.api.v1.dependencies.auth import get_current_user, require_staff
+from app.api.v1.dependencies.auth import get_current_user, require_admin, require_staff
 from app.core.config import get_settings
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club
@@ -14,6 +14,7 @@ from app.schemas.payment_method import (
     SavePaymentMethodRequest,
     SetupIntentResponse,
     WalletResponse,
+    WalletSettleDebtsResponse,
     WalletTopUpRequest,
     WalletTopUpResponse,
 )
@@ -156,6 +157,13 @@ async def top_up_wallet(
     """Create a Stripe PaymentIntent to top up the player's wallet. Returns client_secret for frontend confirmation."""
     svc = PaymentService(db)
     return await svc.top_up_wallet(current_user, body.amount_pence, body.payment_method_id)
+
+
+@router.post("/wallet/settle-debts", response_model=WalletSettleDebtsResponse)
+async def settle_wallet_debts(current_user=Depends(require_admin), db=Depends(get_db)):
+    """Admin: transfer unsettled wallet-debit funds to each club's Stripe Connect account."""
+    svc = PaymentService(db)
+    return await svc.settle_wallet_debts()
 
 
 @router.get("/invoices")

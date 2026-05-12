@@ -1,5 +1,6 @@
 """
-Unit tests for PaymentService wallet methods (get_wallet, top_up_wallet, _handle_wallet_top_up_succeeded).
+Unit tests for PaymentService wallet methods (get_wallet, top_up_wallet,
+_handle_wallet_top_up_succeeded, deduct_wallet, settle_wallet_debts).
 
 All DB interaction is mocked — no database required.
 """
@@ -10,12 +11,16 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+import stripe
 from fastapi import HTTPException
 
+from app.db.models.wallet import WalletTransactionSource
 from app.services.payment_service import PaymentService
 
 WALLET_ID = uuid.uuid4()
 USER_ID = uuid.uuid4()
+CLUB_ID = uuid.uuid4()
+TENANT_ID = uuid.uuid4()
 TXN_ID_1 = uuid.uuid4()
 TXN_ID_2 = uuid.uuid4()
 
@@ -325,3 +330,285 @@ class TestHandleWalletTopUpSucceeded:
         }
         await PaymentService(db).confirm_payment(event)
         db.execute.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Helpers for deduct_wallet tests
+# ---------------------------------------------------------------------------
+
+SOURCE_ID = uuid.uuid4()
+
+
+def _club_obj(*, connect_account="acct_test123", currency="GBP"):
+    return SimpleNamespace(
+        id=CLUB_ID,
+        tenant_id=TENANT_ID,
+        stripe_connect_account_id=connect_account,
+        currency=currency,
+    )
+
+
+def _tenant_obj(*, fee_pct="5.00"):
+    return SimpleNamespace(
+        id=TENANT_ID,
+        booking_fee_pct=Decimal(fee_pct) if fee_pct is not None else None,
+    )
+
+
+def _db_for_deduct(wallet, club_row):
+    """Mock DB with two sequential execute calls: wallet lookup then club+tenant join."""
+    db = AsyncMock()
+    wallet_result = MagicMock()
+    wallet_result.scalar_one_or_none.return_value = wallet
+    club_result = MagicMock()
+    club_result.one_or_none.return_value = club_row
+    db.execute = AsyncMock(side_effect=[wallet_result, club_result])
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+    return db
+
+
+# ---------------------------------------------------------------------------
+# deduct_wallet
+# ---------------------------------------------------------------------------
+
+class TestDeductWallet:
+
+    @pytest.mark.asyncio
+    async def test_happy_path_returns_balance_after_and_transaction_id(self):
+        wallet = _wallet_obj(balance="50.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj(fee_pct="0")))
+        result = await PaymentService(db).deduct_wallet(
+            USER_ID, CLUB_ID, Decimal("15.00"), WalletTransactionSource.booking, SOURCE_ID
+        )
+        assert result["balance_after"] == Decimal("35.00")
+        assert "transaction_id" in result
+
+    @pytest.mark.asyncio
+    async def test_balance_is_decremented(self):
+        wallet = _wallet_obj(balance="30.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj(fee_pct="0")))
+        await PaymentService(db).deduct_wallet(
+            USER_ID, CLUB_ID, Decimal("10.00"), WalletTransactionSource.booking, SOURCE_ID
+        )
+        assert wallet.balance == Decimal("20.00")
+
+    @pytest.mark.asyncio
+    async def test_platform_fee_computed_from_booking_fee_pct(self):
+        wallet = _wallet_obj(balance="100.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj(fee_pct="5.00")))
+        # Capture the WalletClubDebt that was added
+        added = []
+        db.add = MagicMock(side_effect=lambda obj: added.append(obj))
+        await PaymentService(db).deduct_wallet(
+            USER_ID, CLUB_ID, Decimal("20.00"), WalletTransactionSource.booking, SOURCE_ID
+        )
+        # The debt is the last object added (wallet, txn, debt)
+        from app.db.models.wallet import WalletClubDebt
+        debts = [o for o in added if isinstance(o, WalletClubDebt)]
+        assert len(debts) == 1
+        assert debts[0].platform_fee_amount == Decimal("1.00")  # 5% of £20
+
+    @pytest.mark.asyncio
+    async def test_zero_fee_when_booking_fee_pct_is_none(self):
+        wallet = _wallet_obj(balance="50.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj(fee_pct=None)))
+        added = []
+        db.add = MagicMock(side_effect=lambda obj: added.append(obj))
+        await PaymentService(db).deduct_wallet(
+            USER_ID, CLUB_ID, Decimal("20.00"), WalletTransactionSource.booking, SOURCE_ID
+        )
+        from app.db.models.wallet import WalletClubDebt
+        debts = [o for o in added if isinstance(o, WalletClubDebt)]
+        assert debts[0].platform_fee_amount == Decimal("0")
+
+    @pytest.mark.asyncio
+    async def test_source_type_and_source_id_written_to_transaction(self):
+        wallet = _wallet_obj(balance="50.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj(fee_pct="0")))
+        added = []
+        db.add = MagicMock(side_effect=lambda obj: added.append(obj))
+        await PaymentService(db).deduct_wallet(
+            USER_ID, CLUB_ID, Decimal("10.00"), WalletTransactionSource.membership, SOURCE_ID
+        )
+        from app.db.models.wallet import WalletTransaction
+        txns = [o for o in added if isinstance(o, WalletTransaction)]
+        assert txns[0].source_type == WalletTransactionSource.membership
+        assert txns[0].source_id == SOURCE_ID
+
+    @pytest.mark.asyncio
+    async def test_insufficient_balance_raises_402(self):
+        wallet = _wallet_obj(balance="5.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj()))
+        with pytest.raises(HTTPException) as exc_info:
+            await PaymentService(db).deduct_wallet(
+                USER_ID, CLUB_ID, Decimal("10.00"), WalletTransactionSource.booking, SOURCE_ID
+            )
+        assert exc_info.value.status_code == 402
+
+    @pytest.mark.asyncio
+    async def test_wallet_not_found_raises_404(self):
+        wallet_result = MagicMock()
+        wallet_result.scalar_one_or_none.return_value = None
+        db = AsyncMock()
+        db.execute = AsyncMock(return_value=wallet_result)
+        with pytest.raises(HTTPException) as exc_info:
+            await PaymentService(db).deduct_wallet(
+                USER_ID, CLUB_ID, Decimal("10.00"), WalletTransactionSource.booking, SOURCE_ID
+            )
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_club_not_found_raises_404(self):
+        wallet = _wallet_obj(balance="50.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, None)
+        with pytest.raises(HTTPException) as exc_info:
+            await PaymentService(db).deduct_wallet(
+                USER_ID, CLUB_ID, Decimal("10.00"), WalletTransactionSource.booking, SOURCE_ID
+            )
+        assert exc_info.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_all_db_writes_committed_atomically(self):
+        wallet = _wallet_obj(balance="50.00")
+        wallet.id = WALLET_ID
+        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj(fee_pct="0")))
+        await PaymentService(db).deduct_wallet(
+            USER_ID, CLUB_ID, Decimal("10.00"), WalletTransactionSource.booking, SOURCE_ID
+        )
+        db.flush.assert_called_once()
+        db.commit.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# Helpers for settle_wallet_debts tests
+# ---------------------------------------------------------------------------
+
+STRIPE_TRANSFER_ID = "tr_testSETTLE001"
+
+
+def _debt_obj(*, amount="15.00", fee="0.75", club_id=None):
+    return SimpleNamespace(
+        id=uuid.uuid4(),
+        club_id=club_id or CLUB_ID,
+        tenant_id=TENANT_ID,
+        wallet_transaction_id=uuid.uuid4(),
+        amount=Decimal(amount),
+        platform_fee_amount=Decimal(fee),
+        stripe_transfer_id=None,
+        settled_at=None,
+    )
+
+
+def _db_for_settle(rows):
+    db = AsyncMock()
+    result = MagicMock()
+    result.all.return_value = rows
+    db.execute = AsyncMock(return_value=result)
+    db.add = MagicMock()
+    db.commit = AsyncMock()
+    return db
+
+
+def _mock_transfer():
+    t = MagicMock()
+    t.id = STRIPE_TRANSFER_ID
+    return t
+
+
+# ---------------------------------------------------------------------------
+# settle_wallet_debts
+# ---------------------------------------------------------------------------
+
+class TestSettleWalletDebts:
+
+    @pytest.mark.asyncio
+    async def test_returns_zero_counts_when_no_unsettled_debts(self):
+        db = _db_for_settle([])
+        result = await PaymentService(db).settle_wallet_debts()
+        assert result == {"settled_count": 0, "total_transferred": Decimal("0"), "skipped_count": 0}
+
+    @pytest.mark.asyncio
+    async def test_happy_path_stamps_settled_at_and_transfer_id(self):
+        club = _club_obj()
+        debt = _debt_obj(amount="15.00", fee="0.75")
+        db = _db_for_settle([(debt, club)])
+        with patch("stripe.Transfer.create", return_value=_mock_transfer()):
+            await PaymentService(db).settle_wallet_debts()
+        assert debt.stripe_transfer_id == STRIPE_TRANSFER_ID
+        assert debt.settled_at is not None
+
+    @pytest.mark.asyncio
+    async def test_net_amount_excludes_platform_fee(self):
+        club = _club_obj()
+        debt = _debt_obj(amount="20.00", fee="1.00")  # net = £19.00 = 1900p
+        db = _db_for_settle([(debt, club)])
+        with patch("stripe.Transfer.create", return_value=_mock_transfer()) as mock_transfer:
+            await PaymentService(db).settle_wallet_debts()
+        call_kwargs = mock_transfer.call_args[1]
+        assert call_kwargs["amount"] == 1900
+        assert call_kwargs["destination"] == "acct_test123"
+
+    @pytest.mark.asyncio
+    async def test_multiple_debts_for_same_club_in_one_transfer(self):
+        club = _club_obj()
+        debt1 = _debt_obj(amount="10.00", fee="0.50")
+        debt2 = _debt_obj(amount="15.00", fee="0.75")
+        db = _db_for_settle([(debt1, club), (debt2, club)])
+        with patch("stripe.Transfer.create", return_value=_mock_transfer()) as mock_transfer:
+            result = await PaymentService(db).settle_wallet_debts()
+        assert mock_transfer.call_count == 1  # one transfer for both debts
+        assert result["settled_count"] == 2
+        call_kwargs = mock_transfer.call_args[1]
+        assert call_kwargs["amount"] == 2375  # (£10-£0.50) + (£15-£0.75) = £23.75
+
+    @pytest.mark.asyncio
+    async def test_skips_club_without_connect_account(self):
+        club = _club_obj(connect_account=None)
+        debt = _debt_obj()
+        db = _db_for_settle([(debt, club)])
+        with patch("stripe.Transfer.create") as mock_transfer:
+            result = await PaymentService(db).settle_wallet_debts()
+        mock_transfer.assert_not_called()
+        assert result["skipped_count"] == 1
+        assert result["settled_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_returns_correct_counts_with_mixed_clubs(self):
+        club_with_account = _club_obj(connect_account="acct_test")
+        club_without_account = _club_obj(connect_account=None)
+        club_without_account.id = uuid.uuid4()
+        debt1 = _debt_obj(amount="10.00", fee="0", club_id=club_with_account.id)
+        debt2 = _debt_obj(amount="5.00", fee="0", club_id=club_without_account.id)
+        db = _db_for_settle([(debt1, club_with_account), (debt2, club_without_account)])
+        with patch("stripe.Transfer.create", return_value=_mock_transfer()):
+            result = await PaymentService(db).settle_wallet_debts()
+        assert result["settled_count"] == 1
+        assert result["skipped_count"] == 1
+
+    @pytest.mark.asyncio
+    async def test_stripe_error_raises_502(self):
+        club = _club_obj()
+        debt = _debt_obj()
+        db = _db_for_settle([(debt, club)])
+        with patch("stripe.Transfer.create", side_effect=stripe.StripeError("network error")):
+            with pytest.raises(HTTPException) as exc_info:
+                await PaymentService(db).settle_wallet_debts()
+        assert exc_info.value.status_code == 502
+
+    @pytest.mark.asyncio
+    async def test_commit_called_after_settlement(self):
+        club = _club_obj()
+        debt = _debt_obj()
+        db = _db_for_settle([(debt, club)])
+        with patch("stripe.Transfer.create", return_value=_mock_transfer()):
+            await PaymentService(db).settle_wallet_debts()
+        db.commit.assert_called_once()

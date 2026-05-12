@@ -632,6 +632,24 @@ SmashBook's fee ledger per transaction. Enables per-tenant revenue reconciliatio
 
 ---
 
+### `wallet_club_debts` **NEW** ✅ Applied (`3a758d32ab8d`)
+Platform's obligation to transfer wallet-debit funds to club Stripe Connect accounts.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | **NEW** FK → `clubs`, indexed |
+| `tenant_id` | UUID | **NEW** FK → `tenants` |
+| `wallet_transaction_id` | UUID | **NEW** FK → `wallet_transactions`, unique |
+| `amount` | NUMERIC(10,2) | **NEW** Gross amount owed to club |
+| `platform_fee_amount` | NUMERIC(10,2) | **NEW** Platform's cut (`tenant.booking_fee_pct`) |
+| `stripe_transfer_id` | VARCHAR(255) | **NEW** Nullable — filled on settlement |
+| `settled_at` | TIMESTAMPTZ | **NEW** Nullable — null = outstanding |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+---
+
 ## 10. Skill Tracking & Match Results
 
 ### `skill_level_history`

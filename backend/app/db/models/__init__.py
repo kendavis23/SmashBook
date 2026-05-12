@@ -7,7 +7,7 @@ from .staff import StaffProfile, TrainerAvailability
 from .booking import Booking, BookingPlayer, WaitlistEntry
 from .equipment import EquipmentInventory, EquipmentRental
 from .skill import SkillLevelHistory
-from .wallet import Wallet, WalletTransaction, WalletTransactionSource
+from .wallet import Wallet, WalletTransaction, WalletTransactionSource, WalletClubDebt
 from .payment import Payment, PlatformFee
 from .membership import MembershipPlan, MembershipSubscription, MembershipCreditLog
 
@@ -21,7 +21,7 @@ __all__ = [
     "Booking", "BookingPlayer", "WaitlistEntry",
     "EquipmentInventory", "EquipmentRental",
     "SkillLevelHistory",
-    "Wallet", "WalletTransaction", "WalletTransactionSource",
+    "Wallet", "WalletTransaction", "WalletTransactionSource", "WalletClubDebt",
     "Payment", "PlatformFee",
     "MembershipPlan", "MembershipSubscription", "MembershipCreditLog",
 ]
