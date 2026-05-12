@@ -8,7 +8,9 @@ import {
 } from "@repo/player-domain/hooks";
 import { AlertToast, SelectInput, formatCurrency, formatUTCDateTime } from "@repo/ui";
 import type { SelectOption } from "@repo/ui";
-import { ArrowDownToLine, RefreshCw, Wallet } from "lucide-react";
+import { ArrowDownToLine, ChevronLeft, ChevronRight, RefreshCw, Wallet } from "lucide-react";
+
+const PAGE_SIZE = 8;
 import type { PaymentMethod } from "@repo/player-domain/models";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
@@ -145,12 +147,14 @@ export function PaymentWalletView(): JSX.Element {
     const { data: methods = [] } = useListPaymentMethods();
     const [showTopUp, setShowTopUp] = useState(false);
     const [successToast, setSuccessToast] = useState<string | null>(null);
+    const [txPage, setTxPage] = useState(0);
 
     const handleRefresh = useCallback(() => { void refetch(); }, [refetch]);
 
     const handleTopUpSuccess = useCallback(() => {
         setShowTopUp(false);
         setSuccessToast("Wallet topped up successfully.");
+        setTxPage(0);
         void refetch();
     }, [refetch]);
 
@@ -222,42 +226,75 @@ export function PaymentWalletView(): JSX.Element {
             </div>
 
             {/* Transaction history */}
-            {!isLoading && !error && wallet && wallet.transactions.length > 0 && (
-                <div>
-                    <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Recent transactions
-                    </h4>
-                    <div className="divide-y divide-border rounded-xl border border-border bg-card">
-                        {wallet.transactions.map((tx) => (
-                            <div key={tx.id} className="flex items-center justify-between px-3 py-2">
-                                <div className="min-w-0">
-                                    <p className="truncate text-xs font-medium capitalize text-foreground">
-                                        {tx.transaction_type.replace(/_/g, " ")}
-                                    </p>
-                                    <p className="truncate text-[10px] text-muted-foreground">
-                                        {[tx.reference, tx.created_at ? formatUTCDateTime(tx.created_at) : null]
-                                            .filter(Boolean)
-                                            .join(" · ")}
-                                    </p>
+            {!isLoading && !error && wallet && wallet.transactions.length > 0 && (() => {
+                const totalPages = Math.ceil(wallet.transactions.length / PAGE_SIZE);
+                const pageTxs = wallet.transactions.slice(txPage * PAGE_SIZE, (txPage + 1) * PAGE_SIZE);
+                return (
+                    <div>
+                        <div className="mb-1.5 flex items-center justify-between">
+                            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                Recent transactions
+                            </h4>
+                            {totalPages > 1 && (
+                                <span className="text-[10px] text-muted-foreground">
+                                    {txPage + 1} / {totalPages}
+                                </span>
+                            )}
+                        </div>
+                        <div className="divide-y divide-border rounded-xl border border-border bg-card">
+                            {pageTxs.map((tx) => (
+                                <div key={tx.id} className="flex items-center justify-between px-3 py-2">
+                                    <div className="min-w-0">
+                                        <p className="truncate text-xs font-medium capitalize text-foreground">
+                                            {tx.transaction_type.replace(/_/g, " ")}
+                                        </p>
+                                        <p className="truncate text-[10px] text-muted-foreground">
+                                            {[tx.reference, tx.created_at ? formatUTCDateTime(tx.created_at) : null]
+                                                .filter(Boolean)
+                                                .join(" · ")}
+                                        </p>
+                                    </div>
+                                    <div className="ml-3 shrink-0 text-right">
+                                        <p
+                                            className={`text-xs font-semibold ${
+                                                tx.transaction_type === "debit" ? "text-destructive" : "text-success"
+                                            }`}
+                                        >
+                                            {tx.transaction_type === "debit" ? "-" : "+"}
+                                            {formatCurrency(Math.abs(tx.amount))}
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Bal: {formatCurrency(tx.balance_after)}
+                                        </p>
+                                    </div>
                                 </div>
-                                <div className="ml-3 shrink-0 text-right">
-                                    <p
-                                        className={`text-xs font-semibold ${
-                                            tx.transaction_type === "debit" ? "text-destructive" : "text-success"
-                                        }`}
-                                    >
-                                        {tx.transaction_type === "debit" ? "-" : "+"}
-                                        {formatCurrency(Math.abs(tx.amount))}
-                                    </p>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        Bal: {formatCurrency(tx.balance_after)}
-                                    </p>
-                                </div>
+                            ))}
+                        </div>
+                        {totalPages > 1 && (
+                            <div className="mt-2 flex items-center justify-end gap-1">
+                                <button
+                                    type="button"
+                                    disabled={txPage === 0}
+                                    onClick={() => setTxPage((p) => p - 1)}
+                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                                    aria-label="Previous page"
+                                >
+                                    <ChevronLeft size={12} />
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={txPage === totalPages - 1}
+                                    onClick={() => setTxPage((p) => p + 1)}
+                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                                    aria-label="Next page"
+                                >
+                                    <ChevronRight size={12} />
+                                </button>
                             </div>
-                        ))}
+                        )}
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {!isLoading && !error && wallet && wallet.transactions.length === 0 && (
                 <p className="text-xs text-muted-foreground">No transactions yet.</p>

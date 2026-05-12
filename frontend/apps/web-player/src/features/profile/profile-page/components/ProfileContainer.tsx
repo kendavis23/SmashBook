@@ -1,4 +1,5 @@
 import { type ChangeEvent, type FormEvent, type JSX, useCallback, useState } from "react";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import type { NotificationChannel } from "@repo/auth";
 import { useAuthStore } from "@repo/auth";
 import { useUpdateMyProfile, useMyMembership } from "../../hooks";
@@ -7,12 +8,23 @@ import type { ProfileTab } from "../../types";
 import type { InfoFormState } from "./ProfileInfoView";
 import { ProfileView } from "./ProfileView";
 
+const VALID_TABS = new Set<ProfileTab>(["info", "notification", "payment", "membership"]);
+
+function parseTab(value: string | undefined): ProfileTab {
+    return value && VALID_TABS.has(value as ProfileTab) ? (value as ProfileTab) : "info";
+}
+
 export default function ProfileContainer(): JSX.Element {
     const { user, clubId } = useAuth();
     const setUser = useAuthStore((state) => state.setUser);
+    const navigate = useNavigate();
+    const location = useRouterState({ select: (s) => s.location });
+    const searchParams = new URLSearchParams(location.searchStr);
 
-    const [activeTab, setActiveTab] = useState<ProfileTab>("info");
-    const [hasMembershipTabLoaded, setHasMembershipTabLoaded] = useState(false);
+    const activeTab = parseTab(searchParams.get("tab") ?? undefined);
+    const [hasMembershipTabLoaded, setHasMembershipTabLoaded] = useState(
+        activeTab === "membership"
+    );
 
     // Info tab state
     const [infoForm, setInfoForm] = useState<InfoFormState>({
@@ -37,12 +49,26 @@ export default function ProfileContainer(): JSX.Element {
         error: membershipError,
     } = useMyMembership(clubId ?? "", { enabled: hasMembershipTabLoaded });
 
-    const handleTabChange = useCallback((tab: ProfileTab) => {
-        setActiveTab(tab);
-        if (tab === "membership") {
-            setHasMembershipTabLoaded(true);
-        }
-    }, []);
+    const handleTabChange = useCallback(
+        (tab: ProfileTab) => {
+            const next = new URLSearchParams(location.searchStr);
+            if (tab === "info") {
+                next.delete("tab");
+            } else {
+                next.set("tab", tab);
+            }
+            const search = next.toString();
+            void navigate({
+                to: location.pathname,
+                search: search ? Object.fromEntries(next.entries()) : {},
+                replace: true,
+            });
+            if (tab === "membership") {
+                setHasMembershipTabLoaded(true);
+            }
+        },
+        [navigate, location]
+    );
 
     const handleInfoFileChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
