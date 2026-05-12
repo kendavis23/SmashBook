@@ -1,4 +1,4 @@
-_Last updated: 2026-05-11 (added Status column to migration backlog)_
+_Last updated: 2026-05-12_
 
 # SmashBook — Data Model Target State
 
@@ -615,7 +615,6 @@ SmashBook's fee ledger per transaction. Enables per-tenant revenue reconciliatio
 ---
 
 ### `wallet_transactions`
-No changes from current state.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -626,6 +625,8 @@ No changes from current state.
 | `balance_after` | NUMERIC(10,2) | Snapshot |
 | `reference` | VARCHAR(255) | Nullable |
 | `notes` | TEXT | Nullable |
+| `source_type` | ENUM | **NEW** `booking`, `membership`, `invoice`, `manual` — migration `80803a6bae79` ✅ Applied |
+| `source_id` | UUID | **NEW** Nullable — no DB FK; points to the source record — migration `80803a6bae79` ✅ Applied |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -1311,6 +1312,7 @@ All new enums must be created in Alembic migrations **before** the columns that 
 | `PaymentMethod` | `stripe_card`, `wallet`, `cash`, `account_credit` | existing |
 | `PaymentState` | `pending`, `succeeded`, `failed`, `refunded`, `partially_refunded` | existing |
 | `WalletTransactionType` | `top_up`, `debit`, `refund`, `adjustment` | existing |
+| `WalletTransactionSource` | `booking`, `membership`, `invoice`, `manual` | migration `80803a6bae79` ✅ Applied |
 | `ItemType` | `racket`, `ball_tube`, `other` | existing |
 | `ItemCondition` | `good`, `fair`, `damaged`, `retired` | existing |
 | `BillingPeriod` | `monthly`, `annual` — **kept for backwards compatibility; new pricing uses `MembershipInterval`** | existing |

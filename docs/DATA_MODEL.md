@@ -1,4 +1,4 @@
-_Last updated: 2026-05-11 00:00 UTC_
+_Last updated: 2026-05-12 00:00 UTC_
 
 # SmashBook Data Model
 
@@ -489,6 +489,8 @@ One wallet per user, holds a pre-paid credit balance.
 | `balance_after` | NUMERIC(10,2) | Snapshot for audit trail |
 | `reference` | VARCHAR(255) | Nullable — e.g. Stripe Payment Intent ID |
 | `notes` | TEXT | Nullable |
+| `source_type` | ENUM | Nullable — `booking`, `membership`, `invoice`, `manual` |
+| `source_id` | UUID | Nullable — FK to the source record (no DB constraint) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -597,6 +599,7 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 | `PaymentMethod` | `stripe_card`, `wallet`, `cash`, `account_credit` |
 | `PaymentState` | `pending`, `succeeded`, `failed`, `refunded`, `partially_refunded` |
 | `WalletTransactionType` | `top_up`, `debit`, `refund`, `adjustment` |
+| `WalletTransactionSource` | `booking`, `membership`, `invoice`, `manual` |
 | `ItemType` | `racket`, `ball_tube`, `other` |
 | `ItemCondition` | `good`, `fair`, `damaged`, `retired` |
 | `BillingPeriod` | `monthly`, `annual` |
@@ -640,6 +643,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `7f7915bed71a` | G1 — Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` to `users`; add `notificationchannel` enum |
 | `17206ff810ef` | G2 — Add `valid_from`, `valid_until` to `operating_hours` for seasonal hour variations |
 | `8582075732fe` | G4 — `payments`: add `club_id`, `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `anomaly_reason`, `dispute_status`; new table `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id` |
+| `80803a6bae79` | Add `source_type` (`wallettransactionsource` enum) and `source_id` (UUID) to `wallet_transactions` |
 
 To run migrations:
 ```bash

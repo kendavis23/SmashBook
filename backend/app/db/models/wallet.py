@@ -12,6 +12,13 @@ class WalletTransactionType(str, enum.Enum):
     adjustment = "adjustment"
 
 
+class WalletTransactionSource(str, enum.Enum):
+    booking = "booking"
+    membership = "membership"
+    invoice = "invoice"
+    manual = "manual"
+
+
 class Wallet(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "wallets"
 
@@ -35,5 +42,7 @@ class WalletTransaction(Base, UUIDMixin, TimestampMixin):
     balance_after = Column(Numeric(10, 2), nullable=False)
     reference = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
+    source_type = Column(Enum(WalletTransactionSource), nullable=True)
+    source_id = Column(UUID(as_uuid=True), nullable=True)
 
     wallet = relationship("Wallet", back_populates="transactions")
