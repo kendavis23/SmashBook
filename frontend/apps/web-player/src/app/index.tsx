@@ -129,6 +129,9 @@ const myGamesRoute = createRoute({
 const profileRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/profile",
+    validateSearch: (search: Record<string, unknown>) => ({
+        tab: (search.tab as string | undefined) ?? undefined,
+    }),
     component: ProfilePage,
 });
 

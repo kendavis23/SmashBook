@@ -186,7 +186,7 @@ export function ProfileMembershipView({ membership, isLoading, error }: Props): 
                 plan.max_active_members !== null) && (
                 <section className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm shadow-black/5">
                     <SectionHeader icon={<Ticket size={15} />} title="Plan allowances" />
-                    <div className="grid gap-2 p-2 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="p-2">
                         {plan.booking_credits_per_period !== null && (
                             <StatRow
                                 label="Credits per period"

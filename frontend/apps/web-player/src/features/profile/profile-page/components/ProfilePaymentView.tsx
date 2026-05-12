@@ -14,9 +14,29 @@ export function ProfilePaymentView(): JSX.Element {
     const [activeTab, setActiveTab] = useState<BillingTab>("cards");
 
     return (
-        <div className="flex gap-6">
-            {/* Sidebar nav */}
-            <nav className="w-32 shrink-0 space-y-1" aria-label="Billing sections">
+        <div className="flex flex-col gap-4 sm:flex-row sm:gap-6">
+            {/* Mobile: horizontal tab strip / Desktop: sidebar nav */}
+            {/* Mobile: horizontal tab strip */}
+            <nav className="flex shrink-0 flex-row gap-1 sm:hidden" aria-label="Billing sections">
+                {TABS.map(({ id, label, icon }) => (
+                    <button
+                        key={id}
+                        type="button"
+                        onClick={() => setActiveTab(id)}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                            activeTab === id
+                                ? "bg-cta/10 text-cta"
+                                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                        }`}
+                    >
+                        {icon}
+                        {label}
+                    </button>
+                ))}
+            </nav>
+
+            {/* Desktop: fixed-width sidebar */}
+            <nav className="hidden w-32 shrink-0 space-y-1 sm:block" aria-label="Billing sections">
                 {TABS.map(({ id, label, icon }) => (
                     <button
                         key={id}
