@@ -9,6 +9,7 @@ Responsibilities:
   - Reconcile Stripe payouts
   - Apply discounts / promo codes
 """
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -613,6 +614,51 @@ class PaymentService:
             "currency": wallet.currency.lower(),
         }
 
+    async def supersede_pending_stripe_payment(
+        self, booking_id: uuid.UUID, user_id: uuid.UUID
+    ) -> None:
+        """
+        Cancel any in-flight Stripe PaymentIntent for this booking+user and mark
+        the Payment row as failed. Called before alternative payment paths
+        (e.g. wallet) to prevent double-charge if the player already started a
+        card flow.
+
+        Raises 409 if the PaymentIntent has already succeeded on Stripe's side
+        (the card payment went through; do not let the player pay again).
+        """
+        result = await self.db.execute(
+            sa_select(Payment).where(
+                Payment.booking_id == booking_id,
+                Payment.user_id == user_id,
+                Payment.state == PaymentState.pending,
+            )
+        )
+        payment = result.scalar_one_or_none()
+        if not payment:
+            return
+
+        if payment.stripe_payment_intent_id:
+            try:
+                stripe.PaymentIntent.cancel(payment.stripe_payment_intent_id)
+            except stripe.InvalidRequestError:
+                # Likely in a non-cancellable state — fetch and decide.
+                try:
+                    pi = stripe.PaymentIntent.retrieve(payment.stripe_payment_intent_id)
+                    if pi.status == "succeeded":
+                        raise HTTPException(
+                            status_code=status.HTTP_409_CONFLICT,
+                            detail="Booking already paid via card",
+                        )
+                except stripe.StripeError:
+                    pass  # best-effort; fall through to local state update
+            except stripe.StripeError:
+                pass  # network/transient; proceed with local state update
+
+        payment.state = PaymentState.failed
+        payment.failure_reason = "Superseded by wallet payment"
+        self.db.add(payment)
+        await self.db.flush()
+
     async def deduct_wallet(
         self,
         user_id: uuid.UUID,
@@ -626,8 +672,13 @@ class PaymentService:
         Atomically deduct wallet balance and record a club settlement obligation.
         Raises 404 if no wallet exists, 402 if balance is insufficient.
         Returns {balance_after, transaction_id}.
+
+        The wallet row is locked FOR UPDATE so concurrent debits for the same
+        user serialise and balance cannot go negative under contention.
         """
-        result = await self.db.execute(sa_select(Wallet).where(Wallet.user_id == user_id))
+        result = await self.db.execute(
+            sa_select(Wallet).where(Wallet.user_id == user_id).with_for_update()
+        )
         wallet = result.scalar_one_or_none()
         if not wallet:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet not found")
@@ -644,7 +695,8 @@ class PaymentService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
         club, tenant = row
 
-        fee_pct = tenant.booking_fee_pct or Decimal("0")
+        plan = await self.db.get(SubscriptionPlan, tenant.plan_id)
+        fee_pct = plan.booking_fee_pct if plan and plan.booking_fee_pct else Decimal("0")
         platform_fee = (amount * fee_pct / 100).quantize(Decimal("0.01"))
 
         wallet.balance -= amount
@@ -670,7 +722,71 @@ class PaymentService:
             platform_fee_amount=platform_fee,
         )
         self.db.add(debt)
+        await self.db.flush()
+
+        receipt_payload = None
+        if source_type == WalletTransactionSource.booking:
+            payment = Payment(
+                booking_id=source_id,
+                club_id=club_id,
+                user_id=user_id,
+                amount=amount,
+                currency=wallet.currency.upper(),
+                payment_method=PaymentMethodEnum.wallet,
+                state=PaymentState.succeeded,
+            )
+            self.db.add(payment)
+            await self.db.flush()
+
+            if fee_pct:
+                self.db.add(PlatformFee(
+                    tenant_id=club.tenant_id,
+                    payment_id=payment.id,
+                    fee_type=PlatformFeeType.booking_fee,
+                    amount=platform_fee,
+                    pct_applied=fee_pct,
+                    created_at=datetime.now(timezone.utc),
+                ))
+
+            bp_result = await self.db.execute(
+                sa_select(BookingPlayer).where(
+                    BookingPlayer.booking_id == source_id,
+                    BookingPlayer.user_id == user_id,
+                )
+            )
+            bp = bp_result.scalar_one_or_none()
+            if bp:
+                bp.payment_status = PaymentStatus.paid
+                self.db.add(bp)
+
+            all_bp_result = await self.db.execute(
+                sa_select(BookingPlayer).where(BookingPlayer.booking_id == source_id)
+            )
+            all_players = all_bp_result.scalars().all()
+            booking = await self.db.get(Booking, source_id)
+            if booking and booking.status == BookingStatus.pending:
+                max_p = booking.max_players or 4
+                accepted = [p for p in all_players if p.invite_status == InviteStatus.accepted]
+                if len(accepted) >= max_p and all(p.payment_status == PaymentStatus.paid for p in accepted):
+                    booking.status = BookingStatus.confirmed
+                    self.db.add(booking)
+
+            receipt_payload = {
+                "user_id": str(user_id),
+                "booking_id": str(source_id),
+                "payment_id": str(payment.id),
+                "amount": str(amount),
+                "currency": wallet.currency.upper(),
+                "payment_method": "wallet",
+            }
+
         await self.db.commit()
+
+        if receipt_payload:
+            try:
+                publish_notification_event("send_payment_receipt", receipt_payload)
+            except Exception:
+                pass  # notification failure must not affect payment state
 
         return {"balance_after": wallet.balance, "transaction_id": txn.id}
 
@@ -708,12 +824,22 @@ class PaymentService:
                 skipped_count += len(items)
                 continue
 
+            # Deterministic idempotency key over the set of debts being settled.
+            # If a prior run partially committed before raising (e.g. Stripe call
+            # succeeded but DB commit was rolled back), this key lets Stripe
+            # return the cached transfer instead of charging the platform twice.
+            debt_ids_sorted = sorted(str(d.id) for d, _ in items)
+            idempotency_key = "settle-" + hashlib.sha256(
+                ",".join(debt_ids_sorted).encode()
+            ).hexdigest()
+
             try:
                 transfer = stripe.Transfer.create(
                     amount=net_pence,
                     currency=club.currency.lower(),
                     destination=club.stripe_connect_account_id,
                     metadata={"club_id": str(club_id), "debt_count": len(items)},
+                    idempotency_key=idempotency_key,
                 )
             except stripe.StripeError as exc:
                 raise HTTPException(

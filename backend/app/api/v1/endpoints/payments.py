@@ -6,6 +6,7 @@ from app.api.v1.dependencies.auth import get_current_user, require_admin, requir
 from app.core.config import get_settings
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club
+from app.db.models.wallet import WalletTransactionSource
 from app.db.session import get_db, get_read_db
 from app.schemas.payment_method import (
     PaymentIntentRequest,
@@ -13,6 +14,8 @@ from app.schemas.payment_method import (
     PaymentMethodResponse,
     SavePaymentMethodRequest,
     SetupIntentResponse,
+    WalletPayBookingRequest,
+    WalletPayBookingResponse,
     WalletResponse,
     WalletSettleDebtsResponse,
     WalletTopUpRequest,
@@ -157,6 +160,38 @@ async def top_up_wallet(
     """Create a Stripe PaymentIntent to top up the player's wallet. Returns client_secret for frontend confirmation."""
     svc = PaymentService(db)
     return await svc.top_up_wallet(current_user, body.amount_pence, body.payment_method_id)
+
+
+@router.post("/wallet/pay-booking", response_model=WalletPayBookingResponse)
+async def pay_booking_with_wallet(
+    body: WalletPayBookingRequest,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    """Pay for a booking using wallet balance. Deducts the player's amount_due, writes a Payment record, and confirms the booking if all players have paid."""
+    result = await db.execute(
+        sa_select(BookingPlayer).where(
+            BookingPlayer.booking_id == body.booking_id,
+            BookingPlayer.user_id == current_user.id,
+        )
+    )
+    bp = result.scalar_one_or_none()
+    if not bp:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found for this player")
+    if bp.payment_status == "paid":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Booking already paid")
+
+    booking = await db.get(Booking, body.booking_id)
+
+    svc = PaymentService(db)
+    await svc.supersede_pending_stripe_payment(body.booking_id, current_user.id)
+    return await svc.deduct_wallet(
+        user_id=current_user.id,
+        club_id=booking.club_id,
+        amount=bp.amount_due,
+        source_type=WalletTransactionSource.booking,
+        source_id=body.booking_id,
+    )
 
 
 @router.post("/wallet/settle-debts", response_model=WalletSettleDebtsResponse)

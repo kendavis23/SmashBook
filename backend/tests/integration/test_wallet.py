@@ -16,6 +16,15 @@ POST /payments/wallet/top-up
                           — no saved card and no pm_id → 400
                           — unauthenticated → 403
                           — wrong tenant → 401
+POST /payments/wallet/pay-booking
+                          — success: balance decremented, transaction_id returned
+                          — BookingPlayer.payment_status set to paid in DB
+                          — booking auto-confirms when single player fully paid
+                          — insufficient balance → 402
+                          — player not in booking → 404
+                          — already paid → 409
+                          — unauthenticated → 403
+                          — wrong tenant → 401
 POST /payments/wallet/settle-debts
                           — player → 403
                           — staff → 403
@@ -28,10 +37,23 @@ import uuid
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
+from datetime import datetime, timedelta, timezone
+
 from sqlalchemy import delete as sql_delete, select as sa_select
 
 from app.core.security import create_access_token
+from app.db.models.booking import (
+    Booking,
+    BookingPlayer,
+    BookingStatus,
+    BookingType,
+    InviteStatus,
+    PaymentStatus,
+    PlayerRole,
+)
 from app.db.models.club import Club
+from app.db.models.court import Court
+from app.db.models.payment import Payment, PlatformFee
 from app.db.models.tenant import Tenant as TenantModel
 from app.db.models.user import User
 from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction, WalletTransactionType, WalletTransactionSource
@@ -508,3 +530,263 @@ class TestSettleWalletDebts:
                 c = await session.get(Club, club.id)
                 c.stripe_connect_account_id = None
                 await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /payments/wallet/pay-booking — helpers
+# ---------------------------------------------------------------------------
+
+async def _create_court_for_wallet(session_factory, club_id):
+    async with session_factory() as session:
+        c = Court(club_id=club_id, name="Wallet Test Court", surface_type="indoor", is_active=True)
+        session.add(c)
+        await session.commit()
+        await session.refresh(c)
+    return c
+
+
+async def _create_booking_for_wallet(session_factory, club_id, court_id, user_id, *,
+                                      max_players=1, status=BookingStatus.pending):
+    start = datetime.now(tz=timezone.utc) + timedelta(hours=48)
+    end = start + timedelta(minutes=90)
+    async with session_factory() as session:
+        b = Booking(
+            club_id=club_id,
+            court_id=court_id,
+            booking_type=BookingType.regular,
+            status=status,
+            start_datetime=start,
+            end_datetime=end,
+            created_by_user_id=user_id,
+            is_open_game=False,
+            max_players=max_players,
+            total_price=Decimal("20.00"),
+        )
+        session.add(b)
+        await session.commit()
+        await session.refresh(b)
+    return b
+
+
+async def _create_booking_player_for_wallet(session_factory, booking_id, user_id, *,
+                                             amount_due="20.00",
+                                             payment_status=PaymentStatus.pending):
+    async with session_factory() as session:
+        bp = BookingPlayer(
+            booking_id=booking_id,
+            user_id=user_id,
+            role=PlayerRole.organiser,
+            invite_status=InviteStatus.accepted,
+            payment_status=payment_status,
+            amount_due=Decimal(amount_due),
+        )
+        session.add(bp)
+        await session.commit()
+        await session.refresh(bp)
+    return bp
+
+
+async def _delete_booking_for_wallet(session_factory, booking_id):
+    async with session_factory() as session:
+        payment_ids = (
+            await session.execute(sa_select(Payment.id).where(Payment.booking_id == booking_id))
+        ).scalars().all()
+        if payment_ids:
+            await session.execute(sql_delete(PlatformFee).where(PlatformFee.payment_id.in_(payment_ids)))
+            await session.execute(sql_delete(Payment).where(Payment.id.in_(payment_ids)))
+        await session.execute(sql_delete(BookingPlayer).where(BookingPlayer.booking_id == booking_id))
+        await session.execute(sql_delete(Booking).where(Booking.id == booking_id))
+        await session.commit()
+
+
+async def _delete_wallet_with_debts(session_factory, wallet_id):
+    """Delete wallet, transactions, and any club debts that reference those transactions."""
+    async with session_factory() as session:
+        txn_ids = (
+            await session.execute(
+                sa_select(WalletTransaction.id).where(WalletTransaction.wallet_id == wallet_id)
+            )
+        ).scalars().all()
+        if txn_ids:
+            await session.execute(
+                sql_delete(WalletClubDebt).where(WalletClubDebt.wallet_transaction_id.in_(txn_ids))
+            )
+        await session.execute(sql_delete(WalletTransaction).where(WalletTransaction.wallet_id == wallet_id))
+        await session.execute(sql_delete(Wallet).where(Wallet.id == wallet_id))
+        await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# POST /payments/wallet/pay-booking
+# ---------------------------------------------------------------------------
+
+class TestWalletPayBooking:
+
+    async def test_success_returns_balance_after_and_transaction_id(
+        self, client, player, player_headers, club, test_session_factory
+    ):
+        court = await _create_court_for_wallet(test_session_factory, club.id)
+        booking = await _create_booking_for_wallet(test_session_factory, club.id, court.id, player.id)
+        await _create_booking_player_for_wallet(test_session_factory, booking.id, player.id)
+        wallet = await _create_wallet(test_session_factory, player.id, balance="50.00")
+        try:
+            resp = await client.post(
+                "/api/v1/payments/wallet/pay-booking",
+                json={"booking_id": str(booking.id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert Decimal(body["balance_after"]) == Decimal("30.00")  # 50 - 20
+            assert "transaction_id" in body
+        finally:
+            await _delete_booking_for_wallet(test_session_factory, booking.id)
+            await _delete_wallet_with_debts(test_session_factory, wallet.id)
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(Court).where(Court.id == court.id))
+                await session.commit()
+
+    async def test_booking_player_payment_status_set_to_paid(
+        self, client, player, player_headers, club, test_session_factory
+    ):
+        court = await _create_court_for_wallet(test_session_factory, club.id)
+        booking = await _create_booking_for_wallet(test_session_factory, club.id, court.id, player.id)
+        bp = await _create_booking_player_for_wallet(test_session_factory, booking.id, player.id)
+        wallet = await _create_wallet(test_session_factory, player.id, balance="50.00")
+        try:
+            resp = await client.post(
+                "/api/v1/payments/wallet/pay-booking",
+                json={"booking_id": str(booking.id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            async with test_session_factory() as session:
+                updated_bp = await session.get(BookingPlayer, bp.id)
+                assert updated_bp.payment_status == PaymentStatus.paid
+        finally:
+            await _delete_booking_for_wallet(test_session_factory, booking.id)
+            await _delete_wallet_with_debts(test_session_factory, wallet.id)
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(Court).where(Court.id == court.id))
+                await session.commit()
+
+    async def test_booking_confirms_when_all_players_paid(
+        self, client, player, player_headers, club, test_session_factory
+    ):
+        court = await _create_court_for_wallet(test_session_factory, club.id)
+        booking = await _create_booking_for_wallet(
+            test_session_factory, club.id, court.id, player.id, max_players=1
+        )
+        await _create_booking_player_for_wallet(test_session_factory, booking.id, player.id)
+        wallet = await _create_wallet(test_session_factory, player.id, balance="50.00")
+        try:
+            resp = await client.post(
+                "/api/v1/payments/wallet/pay-booking",
+                json={"booking_id": str(booking.id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            async with test_session_factory() as session:
+                updated_booking = await session.get(Booking, booking.id)
+                assert updated_booking.status == BookingStatus.confirmed
+        finally:
+            await _delete_booking_for_wallet(test_session_factory, booking.id)
+            await _delete_wallet_with_debts(test_session_factory, wallet.id)
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(Court).where(Court.id == court.id))
+                await session.commit()
+
+    async def test_insufficient_balance_returns_402(
+        self, client, player, player_headers, club, test_session_factory
+    ):
+        court = await _create_court_for_wallet(test_session_factory, club.id)
+        booking = await _create_booking_for_wallet(test_session_factory, club.id, court.id, player.id)
+        await _create_booking_player_for_wallet(test_session_factory, booking.id, player.id, amount_due="20.00")
+        wallet = await _create_wallet(test_session_factory, player.id, balance="5.00")
+        try:
+            resp = await client.post(
+                "/api/v1/payments/wallet/pay-booking",
+                json={"booking_id": str(booking.id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 402
+        finally:
+            await _delete_booking_for_wallet(test_session_factory, booking.id)
+            await _delete_wallet_with_debts(test_session_factory, wallet.id)
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(Court).where(Court.id == court.id))
+                await session.commit()
+
+    async def test_player_not_in_booking_returns_404(
+        self, client, player, player_headers, club, test_session_factory
+    ):
+        court = await _create_court_for_wallet(test_session_factory, club.id)
+        booking = await _create_booking_for_wallet(test_session_factory, club.id, court.id, player.id)
+        # No BookingPlayer row created for this player
+        wallet = await _create_wallet(test_session_factory, player.id, balance="50.00")
+        try:
+            resp = await client.post(
+                "/api/v1/payments/wallet/pay-booking",
+                json={"booking_id": str(booking.id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 404
+        finally:
+            await _delete_booking_for_wallet(test_session_factory, booking.id)
+            await _delete_wallet_with_debts(test_session_factory, wallet.id)
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(Court).where(Court.id == court.id))
+                await session.commit()
+
+    async def test_already_paid_returns_409(
+        self, client, player, player_headers, club, test_session_factory
+    ):
+        court = await _create_court_for_wallet(test_session_factory, club.id)
+        booking = await _create_booking_for_wallet(test_session_factory, club.id, court.id, player.id)
+        await _create_booking_player_for_wallet(
+            test_session_factory, booking.id, player.id, payment_status=PaymentStatus.paid
+        )
+        wallet = await _create_wallet(test_session_factory, player.id, balance="50.00")
+        try:
+            resp = await client.post(
+                "/api/v1/payments/wallet/pay-booking",
+                json={"booking_id": str(booking.id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 409
+        finally:
+            await _delete_booking_for_wallet(test_session_factory, booking.id)
+            await _delete_wallet_with_debts(test_session_factory, wallet.id)
+            async with test_session_factory() as session:
+                await session.execute(sql_delete(Court).where(Court.id == court.id))
+                await session.commit()
+
+    async def test_unauthenticated_returns_403(self, client, tenant):
+        resp = await client.post(
+            "/api/v1/payments/wallet/pay-booking",
+            json={"booking_id": str(uuid.uuid4())},
+            headers={"X-Tenant-ID": str(tenant.id)},
+        )
+        assert resp.status_code == 403
+
+    async def test_wrong_tenant_returns_401(self, client, player, tenant, plan, test_session_factory):
+        subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Other Tenant", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.commit()
+            await session.refresh(t2)
+        try:
+            token = create_access_token({"sub": str(player.id), "tid": str(tenant.id)})
+            resp = await client.post(
+                "/api/v1/payments/wallet/pay-booking",
+                json={"booking_id": str(uuid.uuid4())},
+                headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2.id)},
+            )
+            assert resp.status_code == 401
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(TenantModel, t2.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()
