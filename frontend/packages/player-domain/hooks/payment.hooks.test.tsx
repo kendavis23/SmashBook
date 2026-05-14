@@ -12,6 +12,7 @@ vi.mock("@repo/api-client/modules/share", () => ({
     setDefaultPaymentMethodEndpoint: vi.fn(),
     getWalletEndpoint: vi.fn(),
     topUpWalletEndpoint: vi.fn(),
+    payBookingWithWalletEndpoint: vi.fn(),
 }));
 
 import * as shareApi from "@repo/api-client/modules/share";
@@ -25,6 +26,7 @@ import {
     useSetDefaultPaymentMethod,
     useGetWallet,
     useTopUpWallet,
+    usePayBookingWithWallet,
 } from "./payment.hooks";
 
 function makeWrapper() {
@@ -214,6 +216,25 @@ describe("useTopUpWallet", () => {
             amount_pence: 1000,
             payment_method_id: "pm_123",
         });
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["player", "wallet"] })
+        );
+    });
+});
+
+describe("usePayBookingWithWallet", () => {
+    it("calls payBookingWithWalletEndpoint and invalidates wallet", async () => {
+        const mockResult = { balance_after: 4000, transaction_id: "txn-123" };
+        vi.mocked(shareApi.payBookingWithWalletEndpoint).mockResolvedValue(mockResult);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => usePayBookingWithWallet(), { wrapper: Wrapper });
+        result.current.mutate({ booking_id: "booking-1" });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(shareApi.payBookingWithWalletEndpoint).toHaveBeenCalledWith({
+            booking_id: "booking-1",
+        });
+        expect(result.current.data).toEqual(mockResult);
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["player", "wallet"] })
         );

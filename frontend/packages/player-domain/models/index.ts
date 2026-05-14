@@ -40,6 +40,8 @@ export type {
     Wallet,
     WalletTopUpInput,
     WalletTopUp,
+    WalletPayBookingInput,
+    WalletPayBookingResult,
 } from "./payment.model";
 export type {
     BillingPeriod,

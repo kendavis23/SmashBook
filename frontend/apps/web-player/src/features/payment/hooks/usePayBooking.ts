@@ -58,7 +58,7 @@ export function usePayBooking(booking: PlayerBookingItem) {
         // amount/currency are available on the PaymentIntent; we pass them from the modal
         // This is signalled to the parent via onSuccess callback instead
         void paymentElement;
-        setStep({ id: "success", amount: booking.amount_due, currency: "gbp" });
+        setStep({ id: "success", amount: booking.amount_due, currency: "gbp", method: "card" });
     }, [stripe, elements, clientSecret, queryClient, booking.amount_due]);
 
     return { step, setStep, clientSecret, initPayment, confirmPayment };

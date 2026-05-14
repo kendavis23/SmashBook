@@ -8,6 +8,7 @@ import {
     useListPaymentMethods,
     useCreatePaymentIntent,
     useCreateSetupIntent,
+    usePayBookingWithWallet,
 } from "@repo/player-domain/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import type { PaymentMethod } from "../types";
@@ -15,12 +16,12 @@ import type { PaymentModalProps, PaymentStep } from "../types";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { PaymentSuccessStep } from "./PaymentSuccessStep";
 import { PaymentErrorBanner } from "./PaymentErrorBanner";
-import { SelectMethodStep } from "./SelectMethodStep";
+import { ChooseMethodStep } from "./ChooseMethodStep";
 import { useSaveCard } from "../hooks/useSaveCard";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
-// ─── Save-card form (setup intent) — shown when user has no saved cards ──────
+// ─── Save-card form (setup intent) — shown when user selects new card ────────
 
 function SaveCardForm({
     setupClientSecret,
@@ -62,7 +63,7 @@ function SaveCardForm({
     );
 }
 
-// ─── Saved-card confirm — backend already attached the payment_method to the intent ──
+// ─── Saved-card confirm ───────────────────────────────────────────────────────
 
 function SavedCardConfirm({
     clientSecret,
@@ -209,65 +210,21 @@ function SavedCardConfirm({
     );
 }
 
+// ─── Step meta ────────────────────────────────────────────────────────────────
+
+function getStepMeta(step: PaymentStep): { title: string } {
+    if (step.id === "choose_method" || step.id === "loading") {
+        return { title: "Secure checkout" };
+    }
+    if (step.id === "save_card") return { title: "Add a card" };
+    if (step.id === "select_method" || step.id === "confirming") {
+        return { title: "Confirm payment" };
+    }
+    if (step.id === "success") return { title: "Payment complete" };
+    return { title: "Secure checkout" };
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
-
-function getStepMeta(step: PaymentStep): { title: string; active: number } {
-    if (step.id === "choose_card" || step.id === "loading") {
-        return { title: "Choose payment method", active: 1 };
-    }
-    if (step.id === "save_card") {
-        return { title: "Save a card", active: 2 };
-    }
-    if (step.id === "select_method" || step.id === "new_card" || step.id === "confirming") {
-        return {
-            title: step.id === "new_card" ? "Enter card details" : "Confirm payment",
-            active: 2,
-        };
-    }
-    if (step.id === "success") {
-        return { title: "Payment complete", active: 3 };
-    }
-    return { title: "Pay for booking", active: 1 };
-}
-
-function PaymentStepIndicator({ active }: { active: number }): JSX.Element {
-    const steps = ["Method", "Details", "Done"];
-
-    return (
-        <div className="px-5 pb-4 sm:px-6">
-            <div
-                className="grid grid-cols-3 gap-2"
-                role="progressbar"
-                aria-label="Payment progress"
-                aria-valuemin={1}
-                aria-valuemax={3}
-                aria-valuenow={active}
-            >
-                {steps.map((label, index) => {
-                    const stepNumber = index + 1;
-                    const isActive = stepNumber <= active;
-
-                    return (
-                        <div key={label} className="min-w-0">
-                            <div
-                                className={`h-1.5 rounded-full transition-colors ${
-                                    isActive ? "bg-cta" : "bg-muted"
-                                }`}
-                            />
-                            <p
-                                className={`mt-2 truncate text-[11px] font-medium ${
-                                    isActive ? "text-foreground" : "text-muted-foreground"
-                                }`}
-                            >
-                                {label}
-                            </p>
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
-    );
-}
 
 export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps): JSX.Element {
     const [step, setStep] = useState<PaymentStep>({ id: "loading" });
@@ -278,11 +235,14 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
     const { data: paymentMethods, isLoading: methodsLoading } = useListPaymentMethods();
     const createPaymentIntent = useCreatePaymentIntent();
     const createSetupIntent = useCreateSetupIntent();
+    const payWithWallet = usePayBookingWithWallet();
     const queryClient = useQueryClient();
     const initRan = useRef(false);
 
+    const isDataLoading = methodsLoading;
+
     useEffect(() => {
-        if (methodsLoading || initRan.current) return;
+        if (isDataLoading || initRan.current) return;
         initRan.current = true;
 
         if (context.type !== "booking") {
@@ -290,13 +250,12 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
             return;
         }
 
-        if ((paymentMethods?.length ?? 0) === 0) {
-            void initSaveCard();
-        } else {
-            setStep({ id: "choose_card", methods: paymentMethods ?? [] });
-        }
+        setStep({
+            id: "choose_method",
+            methods: paymentMethods ?? [],
+        });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [methodsLoading]);
+    }, [isDataLoading]);
 
     async function initSaveCard() {
         setStep({ id: "loading" });
@@ -332,7 +291,6 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
             let chosenCard = cardOverride ?? freshMethods.find((m) => m.id === methodId);
 
             if (!chosenCard) {
-                // methods list is stale (just saved a new card) — reuse the already-invalidated query
                 await queryClient.refetchQueries({ queryKey: ["player", "payment-methods"] });
                 freshMethods =
                     queryClient.getQueryData<PaymentMethod[]>(["player", "payment-methods"]) ?? [];
@@ -358,7 +316,33 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
         }
     }
 
-    const handleCardChosen = useCallback(
+    const handlePayWithWallet = useCallback(() => {
+        if (context.type !== "booking") return;
+        payWithWallet.mutate(
+            { booking_id: context.booking.booking_id },
+            {
+                onSuccess: () => {
+                    onSuccess?.();
+                    setStep({
+                        id: "success",
+                        amount: context.booking.amount_due,
+                        currency: "gbp",
+                        method: "wallet",
+                    });
+                },
+                onError: (err) => {
+                    setStep({
+                        id: "error",
+                        message:
+                            (err as { message?: string })?.message ??
+                            "Wallet payment failed — please try again.",
+                    });
+                },
+            }
+        );
+    }, [context, payWithWallet, onSuccess]);
+
+    const handlePayWithCard = useCallback(
         (methodId: string | null) => {
             if (context.type !== "booking") return;
             if (methodId) {
@@ -382,10 +366,10 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
 
     const handleStripeSuccess = useCallback(() => {
         onSuccess?.();
-        setStep({ id: "success", amount, currency });
+        setStep({ id: "success", amount, currency, method: "card" });
     }, [amount, currency, onSuccess]);
 
-    const { title, active } = getStepMeta(step);
+    const { title } = getStepMeta(step);
 
     return (
         <div
@@ -395,35 +379,29 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
             aria-label={title}
         >
             <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
                 aria-hidden="true"
             />
-            <div className="relative z-10 flex h-[700px] max-h-[calc(100vh-2rem)] w-full max-w-[580px] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-                <div className="border-b border-border bg-card">
-                    <div className="flex items-start justify-between gap-4 px-5 py-5 sm:px-6">
-                        <div className="min-w-0">
-                            <div className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-cta/20 bg-cta/10 px-2.5 py-1 text-xs font-semibold text-cta">
-                                <LockKeyhole size={12} />
-                                Secure checkout
-                            </div>
-                            <h2 className="truncate text-xl font-semibold tracking-tight text-foreground">
-                                {title}
-                            </h2>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-                            aria-label="Close"
-                        >
-                            <X size={18} />
-                        </button>
+            <div className="relative z-10 flex max-h-[calc(100vh-2rem)] w-full max-w-[480px] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+                <div className="flex items-center justify-between border-b border-border px-6 py-4">
+                    <div className="flex items-center gap-2.5">
+                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-cta/10 text-cta">
+                            <LockKeyhole size={14} />
+                        </span>
+                        <h2 className="text-base font-semibold text-foreground">{title}</h2>
                     </div>
-                    {step.id !== "save_card" && <PaymentStepIndicator active={active} />}
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                        aria-label="Close"
+                    >
+                        <X size={16} />
+                    </button>
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background/30">
+                <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-background/20">
                     {step.id === "loading" ? (
                         <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
                             <span className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card shadow-sm">
@@ -434,7 +412,7 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                                     Preparing payment
                                 </p>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    Setting up a secure Stripe session…
+                                    Setting up a secure session…
                                 </p>
                             </div>
                         </div>
@@ -453,7 +431,18 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                         <PaymentSuccessStep
                             amount={step.amount}
                             currency={step.currency}
+                            method={step.method}
                             onClose={onClose}
+                        />
+                    ) : step.id === "choose_method" ? (
+                        <ChooseMethodStep
+                            methods={step.methods}
+                            amountDue={
+                                context.type === "booking" ? (context.booking.amount_due ?? 0) : 0
+                            }
+                            isLoading={payWithWallet.isPending || createPaymentIntent.isPending}
+                            onPayWithWallet={handlePayWithWallet}
+                            onPayWithCard={handlePayWithCard}
                         />
                     ) : step.id === "save_card" ? (
                         <Elements
@@ -475,15 +464,6 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                                 onError={(msg) => setStep({ id: "error", message: msg })}
                             />
                         </Elements>
-                    ) : step.id === "choose_card" ? (
-                        <SelectMethodStep
-                            methods={step.methods}
-                            amount={
-                                context.type === "booking" ? (context.booking.amount_due ?? 0) : 0
-                            }
-                            isLoading={createPaymentIntent.isPending}
-                            onConfirm={handleCardChosen}
-                        />
                     ) : step.id === "select_method" && clientSecret ? (
                         <SavedCardConfirm
                             clientSecret={clientSecret}

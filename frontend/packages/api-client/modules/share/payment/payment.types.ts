@@ -61,3 +61,12 @@ export interface WalletTopUpResponse {
     amount: number;
     currency: string;
 }
+
+export interface WalletPayBookingRequest {
+    booking_id: UUID;
+}
+
+export interface WalletPayBookingResponse {
+    balance_after: number;
+    transaction_id: UUID;
+}

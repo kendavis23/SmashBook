@@ -8,6 +8,7 @@ import {
     setDefaultPaymentMethodEndpoint,
     getWalletEndpoint,
     topUpWalletEndpoint,
+    payBookingWithWalletEndpoint,
 } from "@repo/api-client/modules/share";
 import type {
     PaymentIntent,
@@ -18,6 +19,8 @@ import type {
     Wallet,
     WalletTopUp,
     WalletTopUpInput,
+    WalletPayBookingInput,
+    WalletPayBookingResult,
 } from "../models";
 
 const paymentKeys = {
@@ -77,10 +80,11 @@ export function useSetDefaultPaymentMethod() {
     });
 }
 
-export function useGetWallet() {
+export function useGetWallet(options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: paymentKeys.wallet(),
         queryFn: (): Promise<Wallet> => getWalletEndpoint(),
+        enabled: options?.enabled ?? true,
     });
 }
 
@@ -88,6 +92,16 @@ export function useTopUpWallet() {
     const queryClient = useQueryClient();
     return useMutation<WalletTopUp, Error, WalletTopUpInput>({
         mutationFn: (data: WalletTopUpInput) => topUpWalletEndpoint(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: paymentKeys.wallet() });
+        },
+    });
+}
+
+export function usePayBookingWithWallet() {
+    const queryClient = useQueryClient();
+    return useMutation<WalletPayBookingResult, Error, WalletPayBookingInput>({
+        mutationFn: (data: WalletPayBookingInput) => payBookingWithWalletEndpoint(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: paymentKeys.wallet() });
         },
