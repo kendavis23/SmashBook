@@ -1,14 +1,17 @@
 import type { JSX } from "react";
-import { CheckCircle2, CreditCard } from "lucide-react";
+import { CheckCircle2, CreditCard, Wallet } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 
 interface Props {
     amount: number;
     currency: string;
+    method: "card" | "wallet";
     onClose: () => void;
 }
 
-export function PaymentSuccessStep({ amount, currency, onClose }: Props): JSX.Element {
+export function PaymentSuccessStep({ amount, currency, method, onClose }: Props): JSX.Element {
+    const isWallet = method === "wallet";
+
     return (
         <div className="flex flex-1 flex-col items-center justify-center px-6 pb-6 pt-8 text-center">
             <div className="flex h-24 w-24 items-center justify-center rounded-full bg-success/10 ring-8 ring-success/5">
@@ -19,14 +22,15 @@ export function PaymentSuccessStep({ amount, currency, onClose }: Props): JSX.El
                     Payment successful
                 </p>
                 <p className="text-base text-muted-foreground">
-                    {formatCurrency(amount)} has been charged to your card.
+                    {formatCurrency(amount)} has been deducted from your{" "}
+                    {isWallet ? "wallet" : "card"}.
                 </p>
             </div>
 
             <div className="mt-8 flex w-full max-w-sm items-center justify-between rounded-xl border border-border/70 bg-muted/25 px-4 py-3 text-left">
                 <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-card text-cta shadow-sm">
-                        <CreditCard size={18} />
+                        {isWallet ? <Wallet size={18} /> : <CreditCard size={18} />}
                     </span>
                     <div>
                         <p className="text-sm font-semibold text-foreground">Total paid</p>

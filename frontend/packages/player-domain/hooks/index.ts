@@ -27,5 +27,6 @@ export {
     useSetDefaultPaymentMethod,
     useGetWallet,
     useTopUpWallet,
+    usePayBookingWithWallet,
 } from "./payment.hooks";
 export { useMyMembership } from "./membership.hooks";

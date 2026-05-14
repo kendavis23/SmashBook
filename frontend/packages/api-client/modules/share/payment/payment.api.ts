@@ -5,6 +5,8 @@ import type {
     PaymentMethodResponse,
     SavePaymentMethodRequest,
     SetupIntentResponse,
+    WalletPayBookingRequest,
+    WalletPayBookingResponse,
     WalletResponse,
     WalletTopUpRequest,
     WalletTopUpResponse,
@@ -64,6 +66,16 @@ export function getWalletEndpoint(): Promise<WalletResponse> {
 
 export function topUpWalletEndpoint(data: WalletTopUpRequest): Promise<WalletTopUpResponse> {
     return fetcher<WalletTopUpResponse>("/api/v1/payments/wallet/top-up", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(data),
+    });
+}
+
+export function payBookingWithWalletEndpoint(
+    data: WalletPayBookingRequest
+): Promise<WalletPayBookingResponse> {
+    return fetcher<WalletPayBookingResponse>("/api/v1/payments/wallet/pay-booking", {
         method: "POST",
         headers: JSON_HEADERS,
         body: JSON.stringify(data),

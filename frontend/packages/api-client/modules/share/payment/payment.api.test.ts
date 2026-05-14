@@ -8,6 +8,7 @@ import {
     setDefaultPaymentMethodEndpoint,
     getWalletEndpoint,
     topUpWalletEndpoint,
+    payBookingWithWalletEndpoint,
 } from "./payment.api";
 
 vi.mock("../../../core/fetcher", () => ({ fetcher: vi.fn() }));
@@ -104,6 +105,19 @@ describe("topUpWalletEndpoint", () => {
         const data = { amount_pence: 1000, payment_method_id: "pm_123" };
         await topUpWalletEndpoint(data);
         expect(mockFetcher).toHaveBeenCalledWith("/api/v1/payments/wallet/top-up", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+    });
+});
+
+describe("payBookingWithWalletEndpoint", () => {
+    it("calls POST /api/v1/payments/wallet/pay-booking with body", async () => {
+        mockFetcher.mockResolvedValue({});
+        const data = { booking_id: "booking-1" };
+        await payBookingWithWalletEndpoint(data);
+        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/payments/wallet/pay-booking", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),

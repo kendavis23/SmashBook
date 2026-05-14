@@ -1,11 +1,7 @@
 import { type JSX, useState, useCallback } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { config } from "@repo/config";
-import {
-    useGetWallet,
-    useTopUpWallet,
-    useListPaymentMethods,
-} from "@repo/player-domain/hooks";
+import { useGetWallet, useTopUpWallet, useListPaymentMethods } from "@repo/player-domain/hooks";
 import { AlertToast, SelectInput, formatCurrency, formatUTCDateTime } from "@repo/ui";
 import type { SelectOption } from "@repo/ui";
 import { ArrowDownToLine, ChevronLeft, ChevronRight, RefreshCw, Wallet } from "lucide-react";
@@ -73,43 +69,52 @@ function TopUpPanel({
                 </div>
             )}
 
-            <div className="flex items-end gap-2">
-                {/* Amount */}
-                <div className="w-28 shrink-0">
-                    <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Amount</p>
-                    <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
-                        <input
-                            type="number"
-                            min="1"
-                            step="0.01"
-                            placeholder="0.00"
-                            value={amountInput}
-                            onChange={(e) => setAmountInput(e.target.value)}
-                            className="w-full rounded-lg border border-border bg-background py-1.5 pl-6 pr-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-cta focus:outline-none"
-                        />
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:gap-2">
+                {/* Amount + Card picker row */}
+                <div className="flex flex-1 gap-2">
+                    {/* Amount */}
+                    <div className="w-28 shrink-0">
+                        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                            Amount
+                        </p>
+                        <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                                £
+                            </span>
+                            <input
+                                type="number"
+                                min="1"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={amountInput}
+                                onChange={(e) => setAmountInput(e.target.value)}
+                                className="w-full rounded-lg border border-border bg-background py-1.5 pl-6 pr-2 text-xs font-semibold text-foreground placeholder:text-muted-foreground focus:border-cta focus:outline-none"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Card picker */}
+                    <div className="min-w-0 flex-1">
+                        <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                            Pay with
+                        </p>
+                        {methods.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground">No saved cards.</p>
+                        ) : (
+                            <SelectInput
+                                name="card"
+                                value={selectedMethodId}
+                                options={cardOptions}
+                                onValueChange={(v) => setSelectedMethodId(v)}
+                                placeholder="Select card"
+                                className="input-base py-1.5 text-xs"
+                            />
+                        )}
                     </div>
                 </div>
 
-                {/* Card picker */}
-                <div className="min-w-0 flex-1">
-                    <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Pay with</p>
-                    {methods.length === 0 ? (
-                        <p className="text-[10px] text-muted-foreground">No saved cards.</p>
-                    ) : (
-                        <SelectInput
-                            name="card"
-                            value={selectedMethodId}
-                            options={cardOptions}
-                            onValueChange={(v) => setSelectedMethodId(v)}
-                            placeholder="Select card"
-                            className="input-base py-1.5 text-xs"
-                        />
-                    )}
-                </div>
-
                 {/* Actions */}
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex shrink-0 items-center justify-end gap-1.5">
                     <button
                         type="button"
                         onClick={onCancel}
@@ -120,7 +125,12 @@ function TopUpPanel({
                     </button>
                     <button
                         type="button"
-                        disabled={topUp.isPending || !selectedMethodId || methods.length === 0 || !amountValid}
+                        disabled={
+                            topUp.isPending ||
+                            !selectedMethodId ||
+                            methods.length === 0 ||
+                            !amountValid
+                        }
                         onClick={() => void handleTopUp()}
                         className="btn-cta flex items-center gap-1.5 px-3 py-1.5 text-xs"
                     >
@@ -149,7 +159,9 @@ export function PaymentWalletView(): JSX.Element {
     const [successToast, setSuccessToast] = useState<string | null>(null);
     const [txPage, setTxPage] = useState(0);
 
-    const handleRefresh = useCallback(() => { void refetch(); }, [refetch]);
+    const handleRefresh = useCallback(() => {
+        void refetch();
+    }, [refetch]);
 
     const handleTopUpSuccess = useCallback(() => {
         setShowTopUp(false);
@@ -182,7 +194,9 @@ export function PaymentWalletView(): JSX.Element {
                                 <span className="text-xs text-muted-foreground">Loading…</span>
                             </div>
                         ) : error ? (
-                            <p className="mt-0.5 text-xs text-destructive">Failed to load wallet.</p>
+                            <p className="mt-0.5 text-xs text-destructive">
+                                Failed to load wallet.
+                            </p>
                         ) : (
                             <p className="mt-0.5 text-xl font-bold tracking-tight text-foreground">
                                 {formatCurrency(wallet?.balance ?? 0)}
@@ -226,75 +240,92 @@ export function PaymentWalletView(): JSX.Element {
             </div>
 
             {/* Transaction history */}
-            {!isLoading && !error && wallet && wallet.transactions.length > 0 && (() => {
-                const totalPages = Math.ceil(wallet.transactions.length / PAGE_SIZE);
-                const pageTxs = wallet.transactions.slice(txPage * PAGE_SIZE, (txPage + 1) * PAGE_SIZE);
-                return (
-                    <div>
-                        <div className="mb-1.5 flex items-center justify-between">
-                            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Recent transactions
-                            </h4>
+            {!isLoading &&
+                !error &&
+                wallet &&
+                wallet.transactions.length > 0 &&
+                (() => {
+                    const totalPages = Math.ceil(wallet.transactions.length / PAGE_SIZE);
+                    const pageTxs = wallet.transactions.slice(
+                        txPage * PAGE_SIZE,
+                        (txPage + 1) * PAGE_SIZE
+                    );
+                    return (
+                        <div>
+                            <div className="mb-1.5 flex items-center justify-between">
+                                <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Recent transactions
+                                </h4>
+                                {totalPages > 1 && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                        {txPage + 1} / {totalPages}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="divide-y divide-border rounded-xl border border-border bg-card">
+                                {pageTxs.map((tx) => (
+                                    <div
+                                        key={tx.id}
+                                        className="flex items-center justify-between px-3 py-2"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="truncate text-xs font-medium capitalize text-foreground">
+                                                {tx.transaction_type.replace(/_/g, " ")}
+                                            </p>
+                                            {tx.reference && (
+                                                <p className="truncate text-[10px] text-muted-foreground">
+                                                    {tx.reference}
+                                                </p>
+                                            )}
+                                            {tx.created_at && (
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {formatUTCDateTime(tx.created_at)}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="ml-3 shrink-0 text-right">
+                                            <p
+                                                className={`text-xs font-semibold ${
+                                                    tx.transaction_type === "debit"
+                                                        ? "text-destructive"
+                                                        : "text-success"
+                                                }`}
+                                            >
+                                                {tx.transaction_type === "debit" ? "-" : "+"}
+                                                {formatCurrency(Math.abs(tx.amount))}
+                                            </p>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Bal: {formatCurrency(tx.balance_after)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                             {totalPages > 1 && (
-                                <span className="text-[10px] text-muted-foreground">
-                                    {txPage + 1} / {totalPages}
-                                </span>
+                                <div className="mt-2 flex items-center justify-end gap-1">
+                                    <button
+                                        type="button"
+                                        disabled={txPage === 0}
+                                        onClick={() => setTxPage((p) => p - 1)}
+                                        className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                                        aria-label="Previous page"
+                                    >
+                                        <ChevronLeft size={12} />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={txPage === totalPages - 1}
+                                        onClick={() => setTxPage((p) => p + 1)}
+                                        className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
+                                        aria-label="Next page"
+                                    >
+                                        <ChevronRight size={12} />
+                                    </button>
+                                </div>
                             )}
                         </div>
-                        <div className="divide-y divide-border rounded-xl border border-border bg-card">
-                            {pageTxs.map((tx) => (
-                                <div key={tx.id} className="flex items-center justify-between px-3 py-2">
-                                    <div className="min-w-0">
-                                        <p className="truncate text-xs font-medium capitalize text-foreground">
-                                            {tx.transaction_type.replace(/_/g, " ")}
-                                        </p>
-                                        <p className="truncate text-[10px] text-muted-foreground">
-                                            {[tx.reference, tx.created_at ? formatUTCDateTime(tx.created_at) : null]
-                                                .filter(Boolean)
-                                                .join(" · ")}
-                                        </p>
-                                    </div>
-                                    <div className="ml-3 shrink-0 text-right">
-                                        <p
-                                            className={`text-xs font-semibold ${
-                                                tx.transaction_type === "debit" ? "text-destructive" : "text-success"
-                                            }`}
-                                        >
-                                            {tx.transaction_type === "debit" ? "-" : "+"}
-                                            {formatCurrency(Math.abs(tx.amount))}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                            Bal: {formatCurrency(tx.balance_after)}
-                                        </p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        {totalPages > 1 && (
-                            <div className="mt-2 flex items-center justify-end gap-1">
-                                <button
-                                    type="button"
-                                    disabled={txPage === 0}
-                                    onClick={() => setTxPage((p) => p - 1)}
-                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
-                                    aria-label="Previous page"
-                                >
-                                    <ChevronLeft size={12} />
-                                </button>
-                                <button
-                                    type="button"
-                                    disabled={txPage === totalPages - 1}
-                                    onClick={() => setTxPage((p) => p + 1)}
-                                    className="flex h-6 w-6 items-center justify-center rounded-md border border-border text-muted-foreground transition hover:bg-muted disabled:opacity-40"
-                                    aria-label="Next page"
-                                >
-                                    <ChevronRight size={12} />
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                );
-            })()}
+                    );
+                })()}
 
             {!isLoading && !error && wallet && wallet.transactions.length === 0 && (
                 <p className="text-xs text-muted-foreground">No transactions yet.</p>

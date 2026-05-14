@@ -5,12 +5,14 @@ export type { PaymentMethod };
 
 export type PaymentStep =
     | { id: "loading" }
+    | { id: "choose_method"; methods: PaymentMethod[] }
     | { id: "choose_card"; methods: PaymentMethod[] }
     | { id: "select_method"; methods: PaymentMethod[]; chosenCard: PaymentMethod }
     | { id: "new_card" }
     | { id: "save_card"; setupClientSecret: string }
     | { id: "confirming" }
-    | { id: "success"; amount: number; currency: string }
+    | { id: "wallet_pay"; walletBalance: number; amountDue: number }
+    | { id: "success"; amount: number; currency: string; method: "card" | "wallet" }
     | { id: "error"; message: string };
 
 export type PaymentModalContext =
