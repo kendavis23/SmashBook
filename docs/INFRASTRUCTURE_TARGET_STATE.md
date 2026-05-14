@@ -1,4 +1,4 @@
-_Last updated: 2026-05-10 20:00 UTC_
+_Last updated: 2026-05-13 00:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -245,6 +245,25 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - `google_service_account.cloud_scheduler` — `cloud-scheduler@PROJECT.iam.gserviceaccount.com`
 - The SA gets `roles/run.invoker` granted per-job in later stages (not project-wide)
 
+### 2.6 Wallet settlement cron
+
+**Why:** `POST /payments/wallet/settle-debts` transfers accumulated `WalletClubDebt` rows to each club's Stripe Connect account. Today it is admin-triggered only — clubs do not receive their wallet-paid bookings until someone remembers to hit the endpoint. Production must run this automatically on a schedule. Without it, a club's wallet receivables grow indefinitely and we have a quiet liability on the platform balance.
+
+**Resources:**
+- `google_cloud_scheduler_job.wallet_settle_debts`
+  - Schedule: `0 2 * * *` (daily 02:00 UTC — low-traffic window)
+  - Target: HTTPS POST to `https://<padel-api-url>/api/v1/payments/wallet/settle-debts`
+  - Auth: OIDC token, audience = padel-api URL, SA = `cloud-scheduler`
+  - Headers: `X-Tenant-ID: <platform-admin-tenant>` (settlement is platform-wide, not tenant-scoped, but the admin user lives in a specific tenant)
+  - Retry: `retry_count = 3`, `max_backoff_duration = 600s`
+- The Cloud Scheduler SA needs `roles/run.invoker` on `padel-api`
+- The endpoint stays admin-only; the scheduler authenticates as a service-account-backed admin user (or we add a separate `require_internal_scheduler` dependency)
+
+**Operational notes:**
+- Daily cadence is the floor. If a club asks for faster settlement, lower to hourly — the underlying Stripe `Transfer.create` is already idempotency-keyed per debt set, so re-running is safe.
+- Alert on consecutive failures (the Stage 2.3 alert policy on Cloud Run 5xx will catch this, but consider adding a Cloud Scheduler-specific alert on `state = FAILED` for two consecutive runs).
+- Until this lands, document a manual runbook step: ops admin calls `/wallet/settle-debts` at least weekly.
+
 ### Stage 2 deliverables checklist
 
 - [ ] VPC connector live and attached to all Cloud Run services
@@ -252,6 +271,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - [ ] At minimum 6 monitoring alert policies firing to a real notification channel
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`
 - [ ] Cloud Scheduler SA exists
+- [ ] Wallet settlement cron live, hitting `/payments/wallet/settle-debts` daily
 
 ---
 

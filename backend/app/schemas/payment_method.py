@@ -78,3 +78,12 @@ class WalletSettleDebtsResponse(BaseModel):
     settled_count: int
     total_transferred: Decimal
     skipped_count: int
+
+
+class WalletPayBookingRequest(BaseModel):
+    booking_id: uuid.UUID
+
+
+class WalletPayBookingResponse(BaseModel):
+    balance_after: Decimal
+    transaction_id: uuid.UUID
