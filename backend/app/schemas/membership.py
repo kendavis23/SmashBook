@@ -8,6 +8,23 @@ from pydantic import BaseModel
 from app.db.models.membership import BillingPeriod, MembershipStatus
 
 
+class MembershipSubscribeRequest(BaseModel):
+    plan_id: uuid.UUID
+    payment_method_id: Optional[str] = None
+
+
+class MembershipSubscribeResponse(BaseModel):
+    subscription_id: uuid.UUID
+    stripe_subscription_id: str
+    status: MembershipStatus
+    current_period_start: datetime
+    current_period_end: datetime
+    credits_remaining: int
+    guest_passes_remaining: Optional[int] = None
+    # Present for non-trial plans — frontend must confirm payment with Stripe.js
+    client_secret: Optional[str] = None
+
+
 class MembershipPlanCreate(BaseModel):
     name: str
     description: Optional[str] = None
