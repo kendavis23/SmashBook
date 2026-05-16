@@ -99,3 +99,62 @@ async def cancel_subscription(*, subscription_id: str) -> dict:
     """Cancel a subscription immediately. Used by suspend."""
     sub = await stripe.Subscription.cancel_async(subscription_id)
     return {"id": sub.id, "status": sub.status}
+
+
+async def get_subscription(*, subscription_id: str) -> dict:
+    """Retrieve a Stripe Subscription. Returns key fields for the org's view."""
+    sub = await stripe.Subscription.retrieve_async(subscription_id)
+    return {
+        "id": sub.id,
+        "status": sub.status,
+        "current_period_end": sub.current_period_end,
+        "cancel_at_period_end": sub.cancel_at_period_end,
+    }
+
+
+async def list_invoices(*, customer_id: str, limit: int = 20) -> list[dict]:
+    """List recent invoices for a customer in most-recent-first order."""
+    invoices = await stripe.Invoice.list_async(customer=customer_id, limit=limit)
+    return [
+        {
+            "id": inv.id,
+            "number": inv.number,
+            "status": inv.status,
+            "amount_due": inv.amount_due,
+            "amount_paid": inv.amount_paid,
+            "currency": inv.currency,
+            "created": inv.created,
+            "period_start": inv.period_start,
+            "period_end": inv.period_end,
+            "hosted_invoice_url": inv.hosted_invoice_url,
+            "invoice_pdf": inv.invoice_pdf,
+        }
+        for inv in invoices.data
+    ]
+
+
+async def create_setup_intent(*, customer_id: str) -> dict:
+    """Create a SetupIntent for saving a card to the customer.
+
+    The frontend uses ``client_secret`` with Stripe Elements to collect card
+    details and confirm the SetupIntent.  Once confirmed, the resulting
+    ``payment_method`` ID is sent back to PUT /subscription/payment-method.
+    """
+    intent = await stripe.SetupIntent.create_async(
+        customer=customer_id,
+        payment_method_types=["card"],
+        usage="off_session",
+    )
+    return {"id": intent.id, "client_secret": intent.client_secret}
+
+
+async def set_default_payment_method(
+    *, customer_id: str, payment_method_id: str
+) -> str:
+    """Attach the PM to the customer and set it as the invoice default."""
+    await stripe.PaymentMethod.attach_async(payment_method_id, customer=customer_id)
+    await stripe.Customer.modify_async(
+        customer_id,
+        invoice_settings={"default_payment_method": payment_method_id},
+    )
+    return payment_method_id

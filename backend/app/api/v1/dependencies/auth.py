@@ -17,6 +17,7 @@ _STAFF_ROLES = {
 }
 _OPS_LEAD_ROLES = {TenantUserRole.owner, TenantUserRole.admin, TenantUserRole.ops_lead}
 _ADMIN_ROLES = {TenantUserRole.owner, TenantUserRole.admin}
+_OWNER_ROLES = {TenantUserRole.owner}
 
 
 async def get_current_user(
@@ -70,3 +71,7 @@ async def require_ops_lead(current_user: User = Depends(get_current_user)) -> Us
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return _require_role(current_user, _ADMIN_ROLES)
+
+
+async def require_owner(current_user: User = Depends(get_current_user)) -> User:
+    return _require_role(current_user, _OWNER_ROLES)

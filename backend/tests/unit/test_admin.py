@@ -14,7 +14,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-import stripe
 from fastapi import HTTPException
 
 from app.api.v1.endpoints.admin import (

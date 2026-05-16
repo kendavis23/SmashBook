@@ -39,6 +39,19 @@ All endpoints require the shared `X-Platform-Key` header. Used by SmashBook inte
 
 ---
 
+## Subscription (org-facing) — `/api/v1/subscription`
+
+JWT-protected; **owner role only**. Scoped to the authenticated user's tenant. This is the SmashBook → org billing relationship — distinct from the org's own Stripe Connect on `/clubs/{id}/stripe/connect`.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/subscription` | View plan, limits, current usage (clubs / courts / staff), feature flags, billing status, `current_period_end`, and whether a payment method is on file |
+| `GET` | `/api/v1/subscription/invoices` | List up to the 20 most recent invoices from Stripe (id, status, amount, hosted invoice URL, PDF link) |
+| `POST` | `/api/v1/subscription/setup-intent` | Create a Stripe SetupIntent so the frontend can collect card details via Stripe Elements. Auto-creates the Stripe Customer if not yet present |
+| `PUT` | `/api/v1/subscription/payment-method` | Attach the payment method (returned by Stripe Elements) and set it as the customer's default for invoices |
+
+---
+
 ## Clubs — `CRUD /api/v1/clubs`
 
 | Method | Path | Description |

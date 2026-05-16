@@ -16,7 +16,7 @@ Three concern areas live here:
 import secrets
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List
 
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, status
