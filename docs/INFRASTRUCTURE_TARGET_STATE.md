@@ -85,7 +85,8 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - `padel-database-read-replica-url` (declared, no replica yet to point it at)
 - `padel-secret-key`
 - `stripe-secret-key`
-- `stripe-webhook-secret`
+- `stripe-webhook-secret` (Connect-account events: org → player)
+- `stripe-billing-webhook-secret` (platform-account events: SmashBook → org subscription)
 - `sendgrid-api-key`
 - `padel-platform-api-key`
 
@@ -202,19 +203,31 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 
 ### 1.10 Inbound Webhooks (Stripe)
 
-**Why:** Stripe pushes payment lifecycle events to a single endpoint on `padel-api`. The secret (`stripe-webhook-secret`) is already provisioned, but the endpoint behaviour for each event type is not explicitly tracked. Without this catalog it is easy to ship Stripe Connect and miss that `account.updated` and `payout.paid` need handlers.
+**Why:** Stripe pushes payment lifecycle events to two separate endpoints on `padel-api` — one for events on connected accounts (org→player), one for events on SmashBook's own account (SmashBook→org subscription billing). They cannot share a URL because event types like `customer.subscription.*` and `invoice.payment_*` fire on both account types and only the signing secret can disambiguate.
 
-**Infrastructure:** no new GCP resources — webhook receipt is handled inline by `padel-api`. The table below tracks handler implementation status per event type.
+**Infrastructure:** no new GCP resources — webhook receipt is handled inline by `padel-api`. Two Stripe Dashboard webhook entries are required: one registered as "Events on Connected accounts" pointing at `/payments/stripe/webhook`, and one registered as "Events on your account" pointing at `/webhooks/stripe-billing`. Each generates its own signing secret, stored in the corresponding GCP Secret Manager entry.
 
-| Stripe event | Receiver endpoint | Action | Status |
-|---|---|---|---|
-| `payment_intent.succeeded` | `POST /api/v1/stripe/webhook` | Mark booking paid; publish to `payment-events` for confirmation flow | ✅ Implemented |
-| `payment_intent.payment_failed` | same | Flag payment failed; notify staff; publish to `payment-events` | ✅ Implemented |
-| `charge.dispute.created` | same | Set `payments.dispute_status = 'open'`; queue for manual review | ❌ Not implemented |
-| `account.updated` | same | Sync `clubs.stripe_connect_status`; block bookings if account deactivated | ❌ Not implemented |
-| `payout.paid` | same | Populate `payments.stripe_payout_id` for affected transfers | ✅ Implemented |
+**Connected-account events** (verified with `stripe-webhook-secret` → `/api/v1/payments/stripe/webhook`):
 
-**Security note:** every handler must verify the `Stripe-Signature` header using `stripe-webhook-secret` before processing. Any unverified event must return 400 and be discarded.
+| Stripe event | Action | Status |
+|---|---|---|
+| `payment_intent.succeeded` | Mark booking paid; publish to `payment-events` for confirmation flow | ✅ Implemented |
+| `payment_intent.payment_failed` | Flag payment failed; notify staff; publish to `payment-events` | ✅ Implemented |
+| `charge.dispute.created` | Set `payments.dispute_status = 'open'`; queue for manual review | ❌ Not implemented |
+| `account.updated` | Sync `clubs.stripe_connect_status`; block bookings if account deactivated | ❌ Not implemented |
+| `payout.paid` | Populate `payments.stripe_payout_id` for affected transfers | ✅ Implemented |
+| `customer.subscription.*` / `invoice.*` (memberships on connect accounts) | Sync membership subscription state | ✅ Implemented |
+
+**Platform-account events** (verified with `stripe-billing-webhook-secret` → `/api/v1/webhooks/stripe-billing`):
+
+| Stripe event | Action | Status |
+|---|---|---|
+| `invoice.payment_succeeded` | Set `tenants.subscription_status = 'active'` (skip if already `suspended`) | ✅ Implemented |
+| `invoice.payment_failed` | Set `tenants.subscription_status = 'past_due'` (skip if already `suspended`) | ✅ Implemented |
+| `customer.subscription.updated` | Sync `tenants.subscription_status` from Stripe (skip if `suspended`) | ✅ Implemented |
+| `customer.subscription.deleted` | Set `is_active = false`, `subscription_status = 'canceled'` (preserves `suspended`), clear `stripe_subscription_id` | ✅ Implemented |
+
+**Security note:** every handler must verify the `Stripe-Signature` header against its own signing secret before processing. Any unverified event must return 400 and be discarded.
 
 ### Stage 1 deliverables checklist
 

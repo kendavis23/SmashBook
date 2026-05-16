@@ -29,7 +29,10 @@ class Settings(BaseSettings):
 
     # Stripe
     STRIPE_SECRET_KEY: str = "placeholder-not-used-in-migrations"
+    # Connect-account events (org → player payments, memberships)
     STRIPE_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
+    # Platform-account events (SmashBook → org subscription billing)
+    STRIPE_BILLING_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
     STRIPE_API_VERSION: str = "2024-12-18.acacia"
 
     # Platform admin

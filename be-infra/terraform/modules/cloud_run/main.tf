@@ -121,6 +121,16 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name = "STRIPE_BILLING_WEBHOOK_SECRET"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["stripe-billing-webhook-secret"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
         name = "SENDGRID_API_KEY"
         value_source {
           secret_key_ref {

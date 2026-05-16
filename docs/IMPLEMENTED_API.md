@@ -52,6 +52,19 @@ JWT-protected; **owner role only**. Scoped to the authenticated user's tenant. T
 
 ---
 
+## Stripe Webhooks — `/api/v1/webhooks`
+
+Two separate webhook URLs receive Stripe events. They must remain separate because event types like `customer.subscription.*` and `invoice.payment_*` fire on both account types, and only the URL + signing secret can disambiguate which Stripe relationship the event belongs to.
+
+| Method | Path | Stripe scope | Signing secret | Handlers |
+|---|---|---|---|---|
+| `POST` | `/api/v1/payments/stripe/webhook` | Connected accounts (org → player) | `STRIPE_WEBHOOK_SECRET` | `payment_intent.*`, `payout.paid`, membership-tier `customer.subscription.*` and `invoice.*` events for player memberships |
+| `POST` | `/api/v1/webhooks/stripe-billing` | Your account (SmashBook → org) | `STRIPE_BILLING_WEBHOOK_SECRET` | `invoice.payment_succeeded/failed` (sync `subscription_status`), `customer.subscription.updated/deleted` (sync status, preserves `suspended` set by `/admin/.../suspend`) |
+
+Both handlers verify the `Stripe-Signature` header against the relevant secret and return 400 on signature mismatch; unhandled event types are acked with 2xx.
+
+---
+
 ## Clubs — `CRUD /api/v1/clubs`
 
 | Method | Path | Description |

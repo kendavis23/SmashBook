@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from .endpoints import admin, auth, players, courts, bookings, payments, clubs, memberships, staff, trainers, reports, support, equipment, calendar_reservations, subscription
+from .endpoints import admin, auth, players, courts, bookings, payments, clubs, memberships, staff, trainers, reports, support, equipment, calendar_reservations, subscription, webhooks
 
 api_router = APIRouter()
 api_router.include_router(admin.router)
@@ -17,3 +17,4 @@ api_router.include_router(support.router)
 api_router.include_router(equipment.router)
 api_router.include_router(calendar_reservations.router)
 api_router.include_router(subscription.router)
+api_router.include_router(webhooks.router)

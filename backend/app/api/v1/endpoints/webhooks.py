@@ -1,0 +1,124 @@
+"""Stripe webhook handler for SmashBook → org subscription billing.
+
+**This is one of two Stripe webhook endpoints in the platform.** It receives
+*platform-account* events (subscriptions on SmashBook's main Stripe account)
+and is verified with ``STRIPE_BILLING_WEBHOOK_SECRET``.
+
+Connect-account events (org → player payments, membership subscriptions on
+connected accounts) are handled by ``POST /payments/stripe/webhook`` using
+``STRIPE_WEBHOOK_SECRET``.  The two endpoints must remain separate because
+event types like ``invoice.payment_succeeded`` and ``customer.subscription.*``
+fire on both accounts, and only the URL + signing secret can disambiguate
+which relationship the event belongs to.
+
+Events handled here:
+    invoice.payment_succeeded        → status = active
+    invoice.payment_failed           → status = past_due
+    customer.subscription.updated    → sync status from Stripe
+    customer.subscription.deleted    → is_active=false, status=canceled
+                                       (preserves 'suspended' if already set)
+"""
+
+from typing import Optional
+
+import stripe
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.config import get_settings
+from app.db.models.tenant import SubscriptionStatus, Tenant
+from app.db.session import get_db
+from app.services import stripe_billing_service as stripe_billing
+
+router = APIRouter(prefix="/webhooks", tags=["webhooks"])
+
+
+async def _tenant_by_customer(db: AsyncSession, customer_id: str) -> Optional[Tenant]:
+    result = await db.execute(
+        select(Tenant).where(Tenant.stripe_customer_id == customer_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _tenant_by_subscription(db: AsyncSession, subscription_id: str) -> Optional[Tenant]:
+    result = await db.execute(
+        select(Tenant).where(Tenant.stripe_subscription_id == subscription_id)
+    )
+    return result.scalar_one_or_none()
+
+
+@router.post(
+    "/stripe-billing",
+    summary="Stripe webhook for SmashBook → org subscription billing events",
+)
+async def stripe_billing_webhook(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, get_settings().STRIPE_BILLING_WEBHOOK_SECRET,
+        )
+    except stripe.StripeError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid Stripe signature",
+        )
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid payload",
+        )
+
+    event_type = event["type"]
+    obj = event["data"]["object"]
+
+    if event_type == "invoice.payment_succeeded":
+        customer_id = obj.get("customer")
+        if customer_id:
+            tenant = await _tenant_by_customer(db, customer_id)
+            if tenant and tenant.subscription_status != SubscriptionStatus.suspended:
+                tenant.subscription_status = SubscriptionStatus.active
+
+    elif event_type == "invoice.payment_failed":
+        customer_id = obj.get("customer")
+        if customer_id:
+            tenant = await _tenant_by_customer(db, customer_id)
+            if tenant and tenant.subscription_status != SubscriptionStatus.suspended:
+                tenant.subscription_status = SubscriptionStatus.past_due
+
+    elif event_type == "customer.subscription.updated":
+        sub_id = obj.get("id")
+        if sub_id:
+            tenant = await _tenant_by_subscription(db, sub_id)
+            if tenant and tenant.subscription_status != SubscriptionStatus.suspended:
+                tenant.subscription_status = stripe_billing.map_stripe_status(
+                    obj.get("status")
+                )
+
+    elif event_type == "customer.subscription.deleted":
+        sub_id = obj.get("id")
+        customer_id = obj.get("customer")
+
+        tenant = None
+        if sub_id:
+            tenant = await _tenant_by_subscription(db, sub_id)
+        if tenant is None and customer_id:
+            tenant = await _tenant_by_customer(db, customer_id)
+
+        if tenant:
+            # If SmashBook explicitly suspended this tenant, don't clobber the
+            # 'suspended' status — that signal carries more meaning than the
+            # downstream 'canceled' echo from Stripe.
+            if tenant.subscription_status != SubscriptionStatus.suspended:
+                tenant.subscription_status = SubscriptionStatus.canceled
+                tenant.is_active = False
+            tenant.stripe_subscription_id = None
+
+    # Stripe expects a 2xx for any unhandled event types too. Returning the
+    # event id makes log correlation simple.
+    return {"received": True, "event_id": event.get("id")}

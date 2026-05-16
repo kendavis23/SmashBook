@@ -1,4 +1,4 @@
-_Last updated: 2026-05-09 12:00 UTC_
+_Last updated: 2026-05-16 12:00 UTC_
 
 # SmashBook — Architecture
 
@@ -349,7 +349,16 @@ Platform fee rates are stored on `subscription_plans` (`platform_fee_pct`). All 
 
 ### Webhook handling
 
-Stripe sends events to `/webhooks/stripe`. Critical events handled:
+SmashBook has **two Stripe relationships** and therefore **two separate webhook endpoints**, each with its own signing secret. They cannot share a URL because event types like `customer.subscription.*` and `invoice.payment_*` fire on both account types, and only the signing secret can disambiguate which relationship the event belongs to.
+
+| Endpoint | Stripe scope | Signing secret | Purpose |
+|---|---|---|---|
+| `POST /api/v1/payments/stripe/webhook` | Connected accounts (org → players) | `stripe-webhook-secret` | Booking payments, payouts, disputes, player-membership subscriptions on connected Stripe accounts |
+| `POST /api/v1/webhooks/stripe-billing` | Platform account (SmashBook → orgs) | `stripe-billing-webhook-secret` | The SmashBook subscription each org pays for — syncs `tenants.subscription_status` and `is_active` |
+
+In the Stripe Dashboard the two webhooks are registered as **"Events on Connected accounts"** and **"Events on your account"** respectively.
+
+**Connected-account events handled:**
 
 | Event | Action |
 |-------|--------|
@@ -357,8 +366,18 @@ Stripe sends events to `/webhooks/stripe`. Critical events handled:
 | `payment_intent.payment_failed` | Flag booking as unpaid, notify staff |
 | `charge.dispute.created` | Queue for manual review |
 | `account.updated` | Sync connected account status |
+| `customer.subscription.*` / `invoice.*` | Sync player-membership subscription state |
 
-Webhooks are verified using Stripe signature validation before any processing occurs.
+**Platform-account events handled (SmashBook → org billing):**
+
+| Event | Action |
+|-------|--------|
+| `invoice.payment_succeeded` | `tenants.subscription_status → active` (preserves `suspended`) |
+| `invoice.payment_failed` | `tenants.subscription_status → past_due` (preserves `suspended`) |
+| `customer.subscription.updated` | Sync `subscription_status` from Stripe (preserves `suspended`) |
+| `customer.subscription.deleted` | `is_active=false`, `subscription_status → canceled` (preserves `suspended`); clear `stripe_subscription_id` |
+
+Both handlers verify the `Stripe-Signature` header against their respective signing secret before any processing occurs; any unverified event returns 400 and is discarded.
 
 ---
 
