@@ -372,12 +372,24 @@ class MembershipService:
 
         sub.status = _stripe_status_to_local(stripe_sub["status"])
         sub.cancel_at_period_end = _sget(stripe_sub, "cancel_at_period_end", False)
-        sub.current_period_start = datetime.fromtimestamp(
-            stripe_sub["current_period_start"], tz=timezone.utc
-        )
-        sub.current_period_end = datetime.fromtimestamp(
-            stripe_sub["current_period_end"], tz=timezone.utc
-        )
+
+        # Period fields are not guaranteed in every update event (e.g. cancel_at_period_end
+        # toggle). Fall back to a Stripe retrieve if either is absent.
+        period_start = _sget(stripe_sub, "current_period_start")
+        period_end = _sget(stripe_sub, "current_period_end")
+        if period_start is None or period_end is None:
+            try:
+                fresh = _to_dict(stripe.Subscription.retrieve(stripe_sub["id"]))
+                period_start = fresh.get("current_period_start", period_start)
+                period_end = fresh.get("current_period_end", period_end)
+            except stripe.StripeError:
+                pass
+
+        if period_start is not None:
+            sub.current_period_start = datetime.fromtimestamp(period_start, tz=timezone.utc)
+        if period_end is not None:
+            sub.current_period_end = datetime.fromtimestamp(period_end, tz=timezone.utc)
+
         self.db.add(sub)
         await self.db.commit()
 
