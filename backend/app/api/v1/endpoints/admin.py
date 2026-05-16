@@ -347,6 +347,7 @@ async def update_tenant(
         setattr(tenant, field, value)
 
     await db.flush()
+    await db.refresh(tenant)
     return await _tenant_detail_row(tenant, plan.name, club_count)
 
 
@@ -436,6 +437,7 @@ async def activate_tenant(
         tenant.subscription_start_date = datetime.now(tz=timezone.utc)
 
     await db.flush()
+    await db.refresh(tenant)
     return await _tenant_detail_row(tenant, plan.name, club_count)
 
 
@@ -475,6 +477,7 @@ async def suspend_tenant(
     tenant.stripe_subscription_id = None
 
     await db.flush()
+    await db.refresh(tenant)
     return await _tenant_detail_row(tenant, plan.name, club_count)
 
 
@@ -524,4 +527,5 @@ async def change_tenant_plan(
     tenant.plan_id = new_plan.id
 
     await db.flush()
+    await db.refresh(tenant)
     return await _tenant_detail_row(tenant, new_plan.name, club_count)

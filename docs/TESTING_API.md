@@ -1,4 +1,4 @@
-_Last updated: 2026-05-12 00:00 UTC_
+_Last updated: 2026-05-16 00:00 UTC_
 
 # Integration Testing
 
@@ -58,14 +58,20 @@ backend/tests/
 │   ├── test_player_service.py
 │   └── test_tenant_middleware.py
 └── integration/
-    ├── conftest.py              ← engine, session factory, client, seed fixtures
+    ├── conftest.py              ← engine, session factory, client, seed fixtures, stripe_billing_mock
+    ├── test_admin.py            ← platform-admin: onboard, plans CRUD, tenants list/get/patch, activate/suspend/change-plan
     ├── test_auth.py             ← register, login (incl. clubs payload), refresh, cross-tenant
+    ├── test_subscription.py     ← org billing: view, invoices, setup-intent, payment-method (owner role)
+    ├── test_booking_payments.py ← payment intents, confirm, webhook handling, platform fees
+    ├── test_bookings.py         ← full booking lifecycle, open games, calendar, on-behalf-of, invites
+    ├── test_calendar_reservations.py ← maintenance/skill-filter/training blocks CRUD
     ├── test_clubs.py            ← CRUD, operating hours, pricing rules, plan limits
     ├── test_courts.py           ← create/update/list, availability slots, tenant isolation
-    ├── test_bookings.py         ← full booking lifecycle, open games, calendar, on-behalf-of, invites
-    ├── test_players.py          ← player profile, bookings history, match history
-    ├── test_memberships.py      ← membership plan CRUD
     ├── test_equipment.py        ← inventory, rentals, retire, cancel-restores-stock
+    ├── test_memberships.py      ← membership plan CRUD, get-my-membership
+    ├── test_password_reset.py   ← request, confirm (token validation + expiry)
+    ├── test_payment_methods.py  ← setup-intent, save / list / delete / set-default
+    ├── test_players.py          ← player profile, bookings history, match history, skill updates
     ├── test_trainers.py         ← list trainers, availability CRUD, trainer bookings
     └── test_wallet.py           ← wallet balance, top-up, settle-debts (role + Stripe mock)
 ```
@@ -163,6 +169,31 @@ def admin_headers(admin, tenant):
     token = create_access_token({"sub": str(admin.id), "tid": str(tenant.id)})
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(tenant.id)}
 ```
+
+### Mocking Stripe billing calls
+
+The admin and (future) subscription endpoints call into
+`app.services.stripe_billing_service`. The shared `stripe_billing_mock`
+fixture in `conftest.py` replaces every async function on that module with
+an `AsyncMock` that returns a sensible-looking success payload. Tests
+override per-call behaviour via the returned namespace:
+
+```python
+async def test_activate(client, stripe_billing_mock, ...):
+    stripe_billing_mock.create_customer.return_value = "cus_new"
+    stripe_billing_mock.create_subscription.return_value = {
+        "id": "sub_new", "status": "trialing",
+    }
+    resp = await client.post(...)
+    stripe_billing_mock.create_customer.assert_awaited_once()
+```
+
+To simulate a Stripe failure, set `side_effect` to a `stripe.StripeError`.
+
+Payment / wallet tests in `test_payment_methods.py`, `test_wallet.py`, and
+`test_booking_payments.py` use a different mocking style — they
+`unittest.mock.patch("stripe.X.Y.create", …)` directly because those
+endpoints call the raw Stripe SDK rather than the billing service.
 
 ### Option B — Real Login (used by auth endpoint tests)
 
@@ -355,14 +386,21 @@ pytest -v
 | Domain | File | Status |
 |--------|------|--------|
 | Auth (register, login, refresh, clubs payload, cross-tenant) | `test_auth.py` | ✅ Complete |
+| Password reset (request, confirm, token validation) | `test_password_reset.py` | ✅ Complete |
+| Platform admin (onboard, plans CRUD, tenants list/get/patch, activate/suspend/change-plan) | `test_admin.py` | ✅ Complete |
 | Clubs (CRUD, settings, operating hours, pricing rules, plan limits) | `test_clubs.py` | ✅ Complete |
 | Courts (CRUD, list, availability slots, tenant isolation) | `test_courts.py` | ✅ Complete |
-| Bookings (create, list, open games, join, invite, cancel, calendar, on-behalf-of, update, respond-to-invite) | `test_bookings.py` | ✅ Complete |
-| Players (profile, bookings, match history) | `test_players.py` | ✅ Complete |
-| Membership plans (CRUD) | `test_memberships.py` | ✅ Complete |
+| Bookings (create, list, open games, join, invite, cancel, calendar, on-behalf-of, update, respond-to-invite, recurring) | `test_bookings.py` | ✅ Complete |
+| Calendar reservations (maintenance, skill-filter, training blocks) | `test_calendar_reservations.py` | ✅ Complete |
+| Players (profile, bookings, match history, skill updates, search) | `test_players.py` | ✅ Complete |
+| Membership plans (CRUD, get-my-membership) | `test_memberships.py` | 🚧 Subscribe/cancel not yet covered |
 | Equipment (inventory, rentals, retire, cancel-restores-stock) | `test_equipment.py` | ✅ Complete |
-| Trainers (list, availability CRUD, trainer bookings) | `test_trainers.py` | ✅ Complete |
-| Payments / Wallet | — | ⬜ Not yet written |
+| Trainers (list, availability CRUD, trainer bookings, open slots) | `test_trainers.py` | ✅ Complete |
+| Payment methods (setup-intent, save, list, delete, set-default) | `test_payment_methods.py` | ✅ Complete |
+| Booking payments (payment intent, confirm, webhook, platform fees) | `test_booking_payments.py` | ✅ Complete |
+| Wallet (balance, top-up, pay-booking, settle-debts) | `test_wallet.py` | ✅ Complete |
+| Org subscription (view, invoices, setup-intent, payment-method) | `test_subscription.py` | ✅ Complete |
+| Billing webhook (`/webhooks/stripe-billing`) | — | ⬜ Not yet written |
 | Notifications | — | ⬜ Not yet written |
 
 ---

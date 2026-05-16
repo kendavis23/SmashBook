@@ -220,6 +220,11 @@ async def create_setup_intent(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(exc.user_message or exc),
             )
+        # `tenant` came from TenantMiddleware's independent session, so we must
+        # mutate the row through this request's `db` session for the change to
+        # persist.  Keep the in-memory copy in sync for the rest of the handler.
+        db_tenant = await db.get(Tenant, tenant.id)
+        db_tenant.stripe_customer_id = customer_id
         tenant.stripe_customer_id = customer_id
         await db.flush()
 

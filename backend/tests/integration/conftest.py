@@ -33,6 +33,8 @@ extend _cleanup_tenant below to delete those FK children before deleting Club/Us
 import os
 import uuid
 from decimal import Decimal
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -127,6 +129,64 @@ async def client(test_session_factory):
         yield ac
 
     app.dependency_overrides.clear()
+
+
+# ---------------------------------------------------------------------------
+# Shared Stripe-billing mock
+# ---------------------------------------------------------------------------
+#
+# The admin and subscription endpoints call into
+# `app.services.stripe_billing_service`.  This fixture replaces every async
+# function on that module with an AsyncMock that returns a sensible-looking
+# success payload.  Tests can override individual mocks via the returned
+# namespace, e.g.::
+#
+#     async def test_x(client, stripe_billing_mock, ...):
+#         stripe_billing_mock.create_customer.return_value = "cus_custom"
+#         ...
+#         stripe_billing_mock.create_subscription.assert_awaited_once()
+#
+# To simulate a Stripe error::
+#
+#     import stripe
+#     stripe_billing_mock.create_customer.side_effect = stripe.StripeError("boom")
+
+
+@pytest.fixture
+def stripe_billing_mock(monkeypatch):
+    from app.services import stripe_billing_service as sbs
+
+    mocks = SimpleNamespace(
+        create_customer=AsyncMock(return_value="cus_test_default"),
+        create_subscription=AsyncMock(
+            return_value={"id": "sub_test_default", "status": "active"}
+        ),
+        update_subscription_price=AsyncMock(
+            return_value={"id": "sub_test_default", "status": "active"}
+        ),
+        cancel_subscription=AsyncMock(
+            return_value={"id": "sub_test_default", "status": "canceled"}
+        ),
+        get_subscription=AsyncMock(
+            return_value={
+                "id": "sub_test_default",
+                "status": "active",
+                "current_period_end": 0,
+                "cancel_at_period_end": False,
+            }
+        ),
+        list_invoices=AsyncMock(return_value=[]),
+        create_setup_intent=AsyncMock(
+            return_value={
+                "id": "seti_test_default",
+                "client_secret": "seti_test_default_secret",
+            }
+        ),
+        set_default_payment_method=AsyncMock(return_value="pm_test_default"),
+    )
+    for name, mock in vars(mocks).items():
+        monkeypatch.setattr(sbs, name, mock)
+    yield mocks
 
 
 # ---------------------------------------------------------------------------
@@ -449,6 +509,15 @@ async def admin(tenant, test_session_factory):
     await _delete_user(user.id, test_session_factory)
 
 
+@pytest_asyncio.fixture
+async def owner(tenant, test_session_factory):
+    user = await _create_user(
+        tenant.id, "owner", "Test Owner", TenantUserRole.owner, test_session_factory
+    )
+    yield user
+    await _delete_user(user.id, test_session_factory)
+
+
 # ---------------------------------------------------------------------------
 # Auth header helpers  (synchronous: pre-signed JWT, skips login round-trip)
 # ---------------------------------------------------------------------------
@@ -469,6 +538,12 @@ def staff_headers(staff, tenant):
 @pytest.fixture
 def admin_headers(admin, tenant):
     token = create_access_token({"sub": str(admin.id), "tid": str(tenant.id)})
+    return {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(tenant.id)}
+
+
+@pytest.fixture
+def owner_headers(owner, tenant):
+    token = create_access_token({"sub": str(owner.id), "tid": str(tenant.id)})
     return {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(tenant.id)}
 
 

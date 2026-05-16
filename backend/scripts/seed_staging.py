@@ -923,7 +923,7 @@ async def seed():
             db, club_id=north.id, item_type=ItemType.racket,
             name="Loaner racket", quantity_total=8, rental_price=Decimal("4.00"),
         )
-        balls = await _upsert_equipment(
+        await _upsert_equipment(
             db, club_id=north.id, item_type=ItemType.ball_tube,
             name="Ball tube (3-pack)", quantity_total=20, rental_price=Decimal("6.00"),
             condition=ItemCondition.good,
@@ -948,7 +948,7 @@ async def seed():
                     payment_status=BookingPaymentStatus.paid,
                 ))
                 await db.flush()
-        print(f"  Equipment: 2 items (Loaner racket ×8, Ball tube ×20), 1 rental")
+        print("  Equipment: 2 items (Loaner racket ×8, Ball tube ×20), 1 rental")
 
         # ---- Waitlist entry ---------------------------------------------
         await _upsert_waitlist_entry(
