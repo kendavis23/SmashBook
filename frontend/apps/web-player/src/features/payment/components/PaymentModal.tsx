@@ -287,7 +287,7 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
     const bookingInfo: BookingInfo | null = (() => {
         if (!fullBooking || !profile || context.type !== "booking") return null;
         const me = fullBooking.players.find((p) => p.user_id === profile.id);
-        const amountDue = context.booking.amount_due;
+        const amountDue = Number(context.booking.amount_due);
         const discountAmount = parseDiscountAmount(me?.discount_amount);
         const hasDiscount = discountAmount > 0;
         const originalPrice = hasDiscount
