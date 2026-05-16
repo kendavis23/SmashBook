@@ -383,6 +383,43 @@ describe("ManageBookingModalView", () => {
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
     });
 
+    it("shows payment status and amount due only for accepted players", () => {
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                booking={
+                    {
+                        ...booking,
+                        players: [
+                            {
+                                id: "p1",
+                                full_name: "Alex Doe",
+                                role: "player",
+                                invite_status: "accepted",
+                                payment_status: "paid",
+                                amount_due: 0,
+                            },
+                            {
+                                id: "p2",
+                                full_name: "Sam Pending",
+                                role: "player",
+                                invite_status: "pending",
+                                payment_status: "pending",
+                                amount_due: 10,
+                            },
+                        ],
+                    } as never
+                }
+            />
+        );
+
+        expect(screen.getAllByText(/Payment:/)).toHaveLength(1);
+        expect(screen.getByText("Paid")).toBeInTheDocument();
+        expect(screen.getByText("£0.00")).toBeInTheDocument();
+        expect(screen.queryByText("£10.00")).not.toBeInTheDocument();
+        expect(screen.getByText("Sam Pending")).toBeInTheDocument();
+    });
+
     it("date picker has min set to today", () => {
         render(<ManageBookingModalView {...defaultProps} />);
 

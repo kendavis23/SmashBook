@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo } from "react";
-import { X } from "lucide-react";
+import { CalendarDays, Clock, MapPin, Tag, X } from "lucide-react";
 import {
     AlertToast,
     DatePicker,
@@ -27,16 +27,37 @@ const labelCls = "mb-1 block text-xs font-medium text-foreground";
 const dividerCls = "border-t-2 border-border/20 pt-3";
 const sectionCls = `space-y-2 ${dividerCls}`;
 
-function DetailItem({ label, value }: { label: string; value: string }): JSX.Element {
+function DetailItem({
+    icon,
+    label,
+    value,
+    color,
+    bg,
+    ring,
+}: {
+    icon: JSX.Element;
+    label: string;
+    value: string;
+    color: string;
+    bg: string;
+    ring: string;
+}): JSX.Element {
     return (
-        <li className="min-w-0 bg-muted/15 px-3 py-2">
-            <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
-                {label}
-            </span>
-            <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
-                {value}
-            </span>
-        </li>
+        <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
+            <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${bg} ${color} ${ring}`}
+            >
+                {icon}
+            </div>
+            <div className="min-w-0 flex flex-col gap-0.5">
+                <span className="text-[9px] font uppercase tracking-wider text-muted-foreground">
+                    {label}
+                </span>
+                <span className="break-words text-sm font leading-tight text-foreground">
+                    {value}
+                </span>
+            </div>
+        </div>
     );
 }
 
@@ -151,18 +172,43 @@ export function ManageReservationModalView({
                     />
                 ) : null}
 
-                <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 sm:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2">
                     <DetailItem
+                        icon={<Tag size={13} />}
                         label="Type"
                         value={
                             RESERVATION_TYPE_LABELS[reservation.reservation_type] ??
                             reservation.reservation_type
                         }
+                        color="text-cta"
+                        bg="bg-cta/10"
+                        ring="ring-cta/15"
                     />
-                    <DetailItem label="Court" value={courtName} />
-                    <DetailItem label="Date" value={formatUTCDate(reservation.start_datetime)} />
-                    <DetailItem label="Time" value={formattedTimeRange} />
-                </ul>
+                    <DetailItem
+                        icon={<MapPin size={13} />}
+                        label="Court"
+                        value={courtName}
+                        color="text-violet-600"
+                        bg="bg-violet-500/10"
+                        ring="ring-violet-500/15"
+                    />
+                    <DetailItem
+                        icon={<CalendarDays size={13} />}
+                        label="Date"
+                        value={formatUTCDate(reservation.start_datetime)}
+                        color="text-blue-600"
+                        bg="bg-blue-500/10"
+                        ring="ring-blue-500/15"
+                    />
+                    <DetailItem
+                        icon={<Clock size={13} />}
+                        label="Time"
+                        value={formattedTimeRange}
+                        color="text-amber-600"
+                        bg="bg-amber-500/10"
+                        ring="ring-amber-500/15"
+                    />
+                </div>
 
                 {/* Edit form — only when editable */}
                 {canEdit ? (

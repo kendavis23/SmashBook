@@ -141,12 +141,12 @@ describe("NewBookingModalView", () => {
         expect(screen.getAllByText("Court 1").length).toBeGreaterThan(0);
     });
 
-    it("renders date, start time, and price stat pills", () => {
+    it("renders date, time, and total detail items", () => {
         render(<NewBookingModalView {...defaultProps} />);
 
         expect(screen.getByText("Date")).toBeInTheDocument();
-        expect(screen.getByText("Start Time")).toBeInTheDocument();
-        expect(screen.getByText("Price")).toBeInTheDocument();
+        expect(screen.getByText("Time")).toBeInTheDocument();
+        expect(screen.getByText("Total")).toBeInTheDocument();
     });
 
     it("calls onClose when X button is clicked", () => {

@@ -209,6 +209,43 @@ describe("ManageBookingView", () => {
         expect(screen.queryByText("End")).not.toBeInTheDocument();
     });
 
+    it("shows payment status and amount due only for accepted players", () => {
+        render(
+            <ManageBookingView
+                {...defaultProps}
+                booking={
+                    {
+                        ...booking,
+                        players: [
+                            {
+                                id: "player-1",
+                                full_name: "Alex Doe",
+                                role: "player",
+                                invite_status: "accepted",
+                                payment_status: "paid",
+                                amount_due: 0,
+                            },
+                            {
+                                id: "player-2",
+                                full_name: "Sam Pending",
+                                role: "player",
+                                invite_status: "pending",
+                                payment_status: "pending",
+                                amount_due: 10,
+                            },
+                        ],
+                    } as never
+                }
+            />
+        );
+
+        expect(screen.getAllByText(/Payment:/)).toHaveLength(1);
+        expect(screen.getByText("paid")).toBeInTheDocument();
+        expect(screen.getByText("£0.00")).toBeInTheDocument();
+        expect(screen.queryByText("£10.00")).not.toBeInTheDocument();
+        expect(screen.getByText("Sam Pending")).toBeInTheDocument();
+    });
+
     it("calls edit and navigation callbacks", () => {
         const onFormChange = vi.fn();
         const onBack = vi.fn();

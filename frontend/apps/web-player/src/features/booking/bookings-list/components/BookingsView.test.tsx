@@ -81,7 +81,6 @@ const defaultProps = {
     pastTo: "2026-05-03",
     onTabChange: vi.fn(),
     onRefresh: vi.fn(),
-    onCreateClick: vi.fn(),
     onManageClick: vi.fn(),
     onPayClick: vi.fn(),
     onInvitePlayer: vi.fn().mockResolvedValue(undefined),
@@ -176,10 +175,8 @@ describe("BookingsView — header", () => {
     });
 
     it("does not render a New Booking button in the bookings header", () => {
-        const onCreateClick = vi.fn();
-        render(<BookingsView {...defaultProps} onCreateClick={onCreateClick} />);
+        render(<BookingsView {...defaultProps} />);
         expect(screen.queryByRole("button", { name: /new booking/i })).not.toBeInTheDocument();
-        expect(onCreateClick).not.toHaveBeenCalled();
     });
 
     it("shows total count badge when bookings exist", () => {

@@ -16,7 +16,6 @@ type Props = {
     pastTo: string;
     onTabChange: (tab: BookingTab) => void;
     onRefresh: () => void;
-    onCreateClick: () => void;
     onManageClick: (item: PlayerBookingItem) => void;
     onPayClick: (item: PlayerBookingItem) => void;
     onInvitePlayer: (item: PlayerBookingItem, userId: string) => Promise<void>;
@@ -39,7 +38,6 @@ export default function BookingsView({
     pastTo,
     onTabChange,
     onRefresh,
-    onCreateClick: _onCreateClick,
     onManageClick,
     onPayClick,
     onInvitePlayer,

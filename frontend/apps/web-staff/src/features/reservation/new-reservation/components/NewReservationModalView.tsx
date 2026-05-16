@@ -1,5 +1,5 @@
 import type { FormEvent, JSX } from "react";
-import { CalendarRange, X } from "lucide-react";
+import { CalendarDays, CalendarRange, Clock, MapPin, Tag, X } from "lucide-react";
 import { AlertToast, RecurrencePicker, SelectInput, TimeInput, formatUTCDate } from "@repo/ui";
 import type { CalendarReservationType } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
@@ -22,16 +22,37 @@ const BOOKING_TYPE_OPTIONS = [
 
 const typeOptions = RESERVATION_TYPE_OPTIONS.filter((o) => o.value !== "");
 
-function DetailItem({ label, value }: { label: string; value: string }): JSX.Element {
+function DetailItem({
+    icon,
+    label,
+    value,
+    color,
+    bg,
+    ring,
+}: {
+    icon: JSX.Element;
+    label: string;
+    value: string;
+    color: string;
+    bg: string;
+    ring: string;
+}): JSX.Element {
     return (
-        <li className="min-w-0 bg-muted/15 px-3 py-2">
-            <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
-                {label}
-            </span>
-            <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
-                {value}
-            </span>
-        </li>
+        <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
+            <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${bg} ${color} ${ring}`}
+            >
+                {icon}
+            </div>
+            <div className="min-w-0 flex flex-col gap-0.5">
+                <span className="text-[9px] font uppercase tracking-wider text-muted-foreground">
+                    {label}
+                </span>
+                <span className="break-words text-sm font leading-tight text-foreground">
+                    {value}
+                </span>
+            </div>
+        </div>
     );
 }
 
@@ -83,6 +104,9 @@ export function NewReservationModalView({
     onDismissError,
 }: Props): JSX.Element {
     const formattedDate = lockedDate ? formatUTCDate(lockedDate + "T00:00:00Z") : "—";
+    const reservationTypeLabel =
+        typeOptions.find((option) => option.value === form.reservationType)?.label ??
+        form.reservationType;
 
     const toggleBookingType = (val: string): void => {
         const next = form.allowedBookingTypes.includes(val)
@@ -118,14 +142,40 @@ export function NewReservationModalView({
                     <AlertToast title={apiError} variant="error" onClose={onDismissError} />
                 ) : null}
 
-                <ul className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70">
-                    <DetailItem label="Court" value={lockedCourtName ?? "—"} />
-                    <DetailItem label="Date" value={formattedDate} />
+                <div className="grid grid-cols-2 gap-2">
                     <DetailItem
+                        icon={<MapPin size={13} />}
+                        label="Court"
+                        value={lockedCourtName ?? "—"}
+                        color="text-violet-600"
+                        bg="bg-violet-500/10"
+                        ring="ring-violet-500/15"
+                    />
+                    <DetailItem
+                        icon={<CalendarDays size={13} />}
+                        label="Date"
+                        value={formattedDate}
+                        color="text-blue-600"
+                        bg="bg-blue-500/10"
+                        ring="ring-blue-500/15"
+                    />
+                    <DetailItem
+                        icon={<Clock size={13} />}
                         label="Time"
                         value={formatTimeRange(lockedStartTime, lockedEndTime)}
+                        color="text-amber-600"
+                        bg="bg-amber-500/10"
+                        ring="ring-amber-500/15"
                     />
-                </ul>
+                    <DetailItem
+                        icon={<Tag size={13} />}
+                        label="Type"
+                        value={reservationTypeLabel}
+                        color="text-cta"
+                        bg="bg-cta/10"
+                        ring="ring-cta/15"
+                    />
+                </div>
 
                 <section className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${dividerCls}`}>
                     <div className="sm:col-span-2">

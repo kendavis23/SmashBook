@@ -14,8 +14,6 @@ import { DashboardLayout } from "../layout/dashboard";
 
 const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
 const DashboardPage = lazy(() => import("../features/dashboard/pages/DashboardPage"));
-const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
-const NewBookingPage = lazy(() => import("../features/booking/new-booking/pages/NewBookingPage"));
 const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
 const ProfilePage = lazy(() => import("../features/profile/pages/ProfilePage"));
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
@@ -108,18 +106,6 @@ const bookingsRoute = createRoute({
     component: BookingsPage,
 });
 
-const manageBookingRoute = createRoute({
-    getParentRoute: () => dashboardLayoutRoute,
-    path: "/bookings/$bookingId",
-    component: ManageBookingPage,
-});
-
-const newBookingRoute = createRoute({
-    getParentRoute: () => dashboardLayoutRoute,
-    path: "/bookings/new",
-    component: NewBookingPage,
-});
-
 const myGamesRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/my-games",
@@ -145,8 +131,6 @@ const routeTree = rootRoute.addChildren([
     dashboardLayoutRoute.addChildren([
         dashboardRoute,
         bookingsRoute,
-        newBookingRoute,
-        manageBookingRoute,
         myGamesRoute,
         profileRoute,
     ]),
