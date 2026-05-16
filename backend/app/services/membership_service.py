@@ -34,8 +34,19 @@ stripe.api_version = settings.STRIPE_API_VERSION
 
 
 def _to_dict(obj) -> dict:
-    """Normalise a StripeObject or plain dict to a plain dict."""
+    """Normalise a StripeObject or plain dict to a plain dict.
+    Used only for API response objects (e.g. Subscription.create return value)
+    where to_dict() is reliable. Do NOT use on webhook event payloads."""
     return obj.to_dict() if hasattr(obj, "to_dict") else obj
+
+
+def _sget(obj, key, default=None):
+    """Safe .get() that works on both plain dicts and StripeObjects.
+    StripeObject supports [] access but not .get(), so we normalise here."""
+    try:
+        return obj[key]
+    except KeyError:
+        return default
 
 
 def _stripe_status_to_local(stripe_status: str) -> MembershipStatus:
@@ -354,13 +365,13 @@ class MembershipService:
 
     async def handle_subscription_updated(self, event: dict) -> None:
         """customer.subscription.updated — sync status, period dates, and cancel flag."""
-        stripe_sub = _to_dict(event["data"]["object"])
+        stripe_sub = event["data"]["object"]  # raw StripeObject — use [] directly
         sub = await self._find_subscription(stripe_sub["id"])
         if not sub:
             return
 
         sub.status = _stripe_status_to_local(stripe_sub["status"])
-        sub.cancel_at_period_end = stripe_sub.get("cancel_at_period_end", False)
+        sub.cancel_at_period_end = _sget(stripe_sub, "cancel_at_period_end", False)
         sub.current_period_start = datetime.fromtimestamp(
             stripe_sub["current_period_start"], tz=timezone.utc
         )
@@ -372,7 +383,7 @@ class MembershipService:
 
     async def handle_subscription_deleted(self, event: dict) -> None:
         """customer.subscription.deleted — Stripe has cancelled the subscription."""
-        stripe_sub = _to_dict(event["data"]["object"])
+        stripe_sub = event["data"]["object"]  # raw StripeObject — use [] directly
         sub = await self._find_subscription(stripe_sub["id"])
         if not sub:
             return
@@ -389,8 +400,8 @@ class MembershipService:
         On the first invoice (subscription_create), credits were already allocated at
         subscribe time so we only need to activate the subscription.
         """
-        invoice = _to_dict(event["data"]["object"])
-        stripe_sub_id = invoice.get("subscription")
+        invoice = event["data"]["object"]  # raw StripeObject — use [] / _sget directly
+        stripe_sub_id = _sget(invoice, "subscription")
         if not stripe_sub_id:
             return
 
@@ -403,10 +414,11 @@ class MembershipService:
             return
 
         now = datetime.now(timezone.utc)
-        billing_reason = invoice.get("billing_reason", "")
+        billing_reason = _sget(invoice, "billing_reason", "")
 
         if billing_reason == "subscription_cycle":
-            # Renewal — fetch fresh period dates from Stripe and reset credits
+            # Renewal — fetch fresh period dates from Stripe and reset credits.
+            # Retrieve returns a direct API StripeObject so _to_dict() is safe here.
             try:
                 stripe_sub = _to_dict(stripe.Subscription.retrieve(stripe_sub_id))
                 sub.current_period_start = datetime.fromtimestamp(
@@ -445,8 +457,8 @@ class MembershipService:
                 "user_id": str(sub.user_id),
                 "club_id": str(sub.club_id),
                 "subscription_id": str(sub.id),
-                "amount": str(Decimal(str(invoice.get("amount_paid", 0))) / 100),
-                "currency": invoice.get("currency", "gbp"),
+                "amount": str(Decimal(str(_sget(invoice, "amount_paid", 0))) / 100),
+                "currency": _sget(invoice, "currency", "gbp"),
                 "period_end": sub.current_period_end.isoformat(),
             })
         except Exception:
@@ -457,8 +469,8 @@ class MembershipService:
         invoice.payment_failed — notify the player to update their payment method.
         Stripe manages retry logic; the subscription remains active (past_due).
         """
-        invoice = _to_dict(event["data"]["object"])
-        stripe_sub_id = invoice.get("subscription")
+        invoice = event["data"]["object"]  # raw StripeObject — use [] / _sget directly
+        stripe_sub_id = _sget(invoice, "subscription")
         if not stripe_sub_id:
             return
 
@@ -471,8 +483,8 @@ class MembershipService:
                 "user_id": str(sub.user_id),
                 "club_id": str(sub.club_id),
                 "subscription_id": str(sub.id),
-                "amount": str(Decimal(str(invoice.get("amount_due", 0))) / 100),
-                "currency": invoice.get("currency", "gbp"),
+                "amount": str(Decimal(str(_sget(invoice, "amount_due", 0))) / 100),
+                "currency": _sget(invoice, "currency", "gbp"),
             })
         except Exception:
             pass
