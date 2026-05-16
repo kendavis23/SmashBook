@@ -36,3 +36,20 @@ export interface MembershipSubscription {
     guest_passes_remaining: number | null;
     plan: MembershipPlan;
 }
+
+export interface MembershipSubscribeInput {
+    plan_id: UUID;
+    payment_method_id?: string | null;
+}
+
+export interface MembershipSubscribeResult {
+    subscription_id: UUID;
+    stripe_subscription_id: string;
+    status: MembershipStatus;
+    current_period_start: string;
+    current_period_end: string;
+    credits_remaining: number;
+    guest_passes_remaining: number | null;
+    /** Present for non-trial plans — must be confirmed with Stripe.js */
+    client_secret: string | null;
+}

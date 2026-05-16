@@ -12,3 +12,5 @@ export * from "./player/player.api";
 export type { PlayerSearchParams, PlayerSearchResult } from "./player/player.types";
 export * from "./payment/payment.api";
 export * from "./payment/payment.types";
+export * from "./membership/membership.api";
+export * from "./membership/membership.types";

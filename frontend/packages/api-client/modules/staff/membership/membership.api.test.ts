@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
     createMembershipPlanEndpoint,
-    listMembershipPlansEndpoint,
     getMembershipPlanEndpoint,
     updateMembershipPlanEndpoint,
 } from "./membership.api";
@@ -30,14 +29,6 @@ describe("createMembershipPlanEndpoint", () => {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(data),
         });
-    });
-});
-
-describe("listMembershipPlansEndpoint", () => {
-    it("calls GET /api/v1/clubs/:clubId/membership-plans", async () => {
-        mockFetcher.mockResolvedValue([]);
-        await listMembershipPlansEndpoint("club-1");
-        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/clubs/club-1/membership-plans");
     });
 });
 

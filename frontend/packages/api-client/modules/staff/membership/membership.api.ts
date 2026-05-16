@@ -5,6 +5,8 @@ import type {
     MembershipPlanResponse,
 } from "./membership.types";
 
+export { listMembershipPlansEndpoint } from "../../share/membership/membership.api";
+
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 export function createMembershipPlanEndpoint(
@@ -16,10 +18,6 @@ export function createMembershipPlanEndpoint(
         headers: JSON_HEADERS,
         body: JSON.stringify(data),
     });
-}
-
-export function listMembershipPlansEndpoint(clubId: string): Promise<MembershipPlanResponse[]> {
-    return fetcher<MembershipPlanResponse[]>(`/api/v1/clubs/${clubId}/membership-plans`);
 }
 
 export function getMembershipPlanEndpoint(

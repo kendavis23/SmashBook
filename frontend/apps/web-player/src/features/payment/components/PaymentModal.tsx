@@ -255,6 +255,12 @@ interface BookingInfo {
     amountDue: number;
 }
 
+function parseDiscountAmount(value?: string | null): number {
+    if (!value) return 0;
+    const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(parsed) ? Math.abs(parsed) : 0;
+}
+
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
 export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps): JSX.Element {
@@ -282,17 +288,18 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
         if (!fullBooking || !profile || context.type !== "booking") return null;
         const me = fullBooking.players.find((p) => p.user_id === profile.id);
         const amountDue = context.booking.amount_due;
-        const discountAmount = me?.discount_amount
-            ? Math.abs(Number(me.discount_amount.replace(/[^0-9.-]/g, "")))
-            : 0;
-        const originalPrice = amountDue + discountAmount;
+        const discountAmount = parseDiscountAmount(me?.discount_amount);
+        const hasDiscount = discountAmount > 0;
+        const originalPrice = hasDiscount
+            ? Number((amountDue + discountAmount).toFixed(2))
+            : amountDue;
         return {
             courtName: fullBooking.court_name,
             startDatetime: fullBooking.start_datetime,
             endDatetime: fullBooking.end_datetime,
             originalPrice,
-            discountAmount,
-            discountSource: me?.discount_source ?? null,
+            discountAmount: hasDiscount ? discountAmount : 0,
+            discountSource: hasDiscount ? (me?.discount_source ?? null) : null,
             amountDue,
         };
     })();
