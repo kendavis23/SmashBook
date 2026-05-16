@@ -33,6 +33,11 @@ stripe.api_key = settings.STRIPE_SECRET_KEY
 stripe.api_version = settings.STRIPE_API_VERSION
 
 
+def _to_dict(obj) -> dict:
+    """Normalise a StripeObject or plain dict to a plain dict."""
+    return obj.to_dict() if hasattr(obj, "to_dict") else obj
+
+
 def _stripe_status_to_local(stripe_status: str) -> MembershipStatus:
     return {
         "trialing": MembershipStatus.trialing,
@@ -349,7 +354,7 @@ class MembershipService:
 
     async def handle_subscription_updated(self, event: dict) -> None:
         """customer.subscription.updated — sync status, period dates, and cancel flag."""
-        stripe_sub = event["data"]["object"]
+        stripe_sub = _to_dict(event["data"]["object"])
         sub = await self._find_subscription(stripe_sub["id"])
         if not sub:
             return
@@ -367,7 +372,7 @@ class MembershipService:
 
     async def handle_subscription_deleted(self, event: dict) -> None:
         """customer.subscription.deleted — Stripe has cancelled the subscription."""
-        stripe_sub = event["data"]["object"]
+        stripe_sub = _to_dict(event["data"]["object"])
         sub = await self._find_subscription(stripe_sub["id"])
         if not sub:
             return
@@ -384,7 +389,7 @@ class MembershipService:
         On the first invoice (subscription_create), credits were already allocated at
         subscribe time so we only need to activate the subscription.
         """
-        invoice = event["data"]["object"]
+        invoice = _to_dict(event["data"]["object"])
         stripe_sub_id = invoice.get("subscription")
         if not stripe_sub_id:
             return
@@ -403,7 +408,7 @@ class MembershipService:
         if billing_reason == "subscription_cycle":
             # Renewal — fetch fresh period dates from Stripe and reset credits
             try:
-                stripe_sub = stripe.Subscription.retrieve(stripe_sub_id)
+                stripe_sub = _to_dict(stripe.Subscription.retrieve(stripe_sub_id))
                 sub.current_period_start = datetime.fromtimestamp(
                     stripe_sub["current_period_start"], tz=timezone.utc
                 )
@@ -452,7 +457,7 @@ class MembershipService:
         invoice.payment_failed — notify the player to update their payment method.
         Stripe manages retry logic; the subscription remains active (past_due).
         """
-        invoice = event["data"]["object"]
+        invoice = _to_dict(event["data"]["object"])
         stripe_sub_id = invoice.get("subscription")
         if not stripe_sub_id:
             return
