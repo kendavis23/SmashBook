@@ -13,7 +13,7 @@ import stripe
 import pytest
 from fastapi import HTTPException
 
-from app.db.models.membership import BillingPeriod, MembershipStatus
+from app.db.models.membership import MembershipStatus
 from app.services.membership_service import MembershipService, _stripe_status_to_local
 
 
