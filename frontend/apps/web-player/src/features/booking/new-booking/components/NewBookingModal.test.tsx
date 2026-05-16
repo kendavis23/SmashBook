@@ -47,7 +47,7 @@ describe("NewBookingModal", () => {
         expect(screen.getByText("10:00")).toBeInTheDocument();
     });
 
-    it("closes on backdrop click and maps success to the court name", () => {
+    it("forwards close and maps success to the court name", () => {
         const onClose = vi.fn();
         const onSuccess = vi.fn();
         render(
@@ -61,10 +61,7 @@ describe("NewBookingModal", () => {
             />
         );
 
-        const backdrop = screen.getByText("Court One").closest(".fixed");
-        if (!backdrop) throw new Error("Expected modal backdrop");
-
-        fireEvent.click(backdrop);
+        fireEvent.click(screen.getByRole("button", { name: "Close child" }));
         fireEvent.click(screen.getByRole("button", { name: "Success child" }));
 
         expect(onClose).toHaveBeenCalledOnce();

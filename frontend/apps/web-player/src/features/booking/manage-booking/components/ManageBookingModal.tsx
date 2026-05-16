@@ -13,9 +13,6 @@ export function ManageBookingModal({ bookingId, clubId, onClose, onSuccess }: Pr
     return createPortal(
         <div
             className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-4 backdrop-blur-sm"
-            onClick={(e) => {
-                if (e.target === e.currentTarget) onClose();
-            }}
         >
             {/*
               IMPORTANT: flex flex-col + NO overflow-y-auto + NO padding here.
