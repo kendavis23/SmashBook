@@ -1,4 +1,4 @@
-_Last updated: 2026-05-12 00:00 UTC_
+_Last updated: 2026-05-16 00:00 UTC_
 
 # SmashBook Data Model
 
@@ -69,6 +69,7 @@ Controls feature gating and limits per tenant.
 | `third_party_revenue_share_pct` | NUMERIC(5,2) | Nullable — % of lessons/retail/etc |
 | `overage_fee_per_booking` | NUMERIC(10,2) | Nullable — flat fee beyond plan limits |
 | `max_api_calls_per_month` | INTEGER | Nullable — `NULL` = unlimited |
+| `stripe_price_id` | VARCHAR(255) | Nullable — Stripe Price object for SmashBook → org billing |
 
 **Relationships:** `tenants` (1:many)
 
@@ -86,6 +87,9 @@ Top-level organizational unit. Each tenant is a sports club operator.
 | `plan_id` | UUID | FK → `subscription_plans` |
 | `is_active` | BOOLEAN | |
 | `subscription_start_date` | TIMESTAMPTZ | Nullable — `NULL` until tenant goes live |
+| `stripe_customer_id` | VARCHAR(255) | Nullable — SmashBook's Stripe Customer for billing this org (distinct from `users.stripe_customer_id` which is for players) |
+| `stripe_subscription_id` | VARCHAR(255) | Nullable — Stripe Subscription ID |
+| `subscription_status` | ENUM | Nullable — `trialing`, `active`, `past_due`, `canceled`, `suspended` (synced from Stripe; `suspended` is SmashBook's own state) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -663,6 +667,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `8582075732fe` | G4 — `payments`: add `club_id`, `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `anomaly_reason`, `dispute_status`; new table `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id` |
 | `80803a6bae79` | Add `source_type` (`wallettransactionsource` enum) and `source_id` (UUID) to `wallet_transactions` |
 | `3a758d32ab8d` | New table `wallet_club_debts` — deferred settlement of wallet debits to club Stripe Connect accounts |
+| `0fcac3948b73` | Add `stripe_price_id` to `subscription_plans`; add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` (`subscriptionstatus` enum) to `tenants` for SmashBook → org subscription billing |
 
 To run migrations:
 ```bash

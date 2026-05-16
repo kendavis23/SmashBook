@@ -1,4 +1,4 @@
-_Last updated: 2026-05-12_
+_Last updated: 2026-05-16_
 
 # SmashBook — Data Model Target State
 
@@ -177,6 +177,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | `third_party_revenue_share_pct` | NUMERIC(5,2) | Nullable |
 | `overage_fee_per_booking` | NUMERIC(10,2) | Nullable |
 | `max_api_calls_per_month` | INTEGER | Nullable |
+| `stripe_price_id` | VARCHAR(255) | Nullable — Stripe Price object for SmashBook → org billing |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -185,7 +186,7 @@ Update the **Status** column when a migration has been applied and verified. The
 ---
 
 ### `tenants`
-No changes from current state.
+**Changes from current:** Add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` for SmashBook → org subscription billing.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -196,6 +197,9 @@ No changes from current state.
 | `plan_id` | UUID | FK → `subscription_plans` |
 | `is_active` | BOOLEAN | |
 | `subscription_start_date` | TIMESTAMPTZ | Nullable |
+| `stripe_customer_id` | VARCHAR(255) | Nullable — SmashBook's Stripe Customer for billing this org (distinct from `users.stripe_customer_id` which is for players) |
+| `stripe_subscription_id` | VARCHAR(255) | Nullable — Stripe Subscription ID |
+| `subscription_status` | ENUM | Nullable — `trialing`, `active`, `past_due`, `canceled`, `suspended` (synced from Stripe; `suspended` is SmashBook's own state) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 

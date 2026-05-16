@@ -1,7 +1,16 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Numeric, DateTime
+import enum
+from sqlalchemy import Column, String, Boolean, ForeignKey, Integer, Numeric, DateTime, Enum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
+
+
+class SubscriptionStatus(str, enum.Enum):
+    trialing = "trialing"
+    active = "active"
+    past_due = "past_due"
+    canceled = "canceled"
+    suspended = "suspended"
 
 
 class SubscriptionPlan(Base, UUIDMixin):
@@ -30,6 +39,9 @@ class SubscriptionPlan(Base, UUIDMixin):
     # API / integration limits
     max_api_calls_per_month = Column(Integer, nullable=True)         # NULL = unlimited
 
+    # Stripe — links this plan to a Stripe Price object for SmashBook → org billing
+    stripe_price_id = Column(String(255), nullable=True)
+
     tenants = relationship("Tenant", back_populates="plan")
 
 
@@ -42,6 +54,12 @@ class Tenant(Base, UUIDMixin, TimestampMixin):
     plan_id = Column(UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
     subscription_start_date = Column(DateTime(timezone=True), nullable=True)  # NULL until tenant goes live
+
+    # Stripe — SmashBook → org subscription billing
+    # (distinct from users.stripe_customer_id which is for player payments)
+    stripe_customer_id = Column(String(255), nullable=True)
+    stripe_subscription_id = Column(String(255), nullable=True)
+    subscription_status = Column(Enum(SubscriptionStatus), nullable=True)
 
     plan = relationship("SubscriptionPlan", back_populates="tenants")
     clubs = relationship("Club", back_populates="tenant")
