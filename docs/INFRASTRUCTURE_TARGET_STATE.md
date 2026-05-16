@@ -1,4 +1,4 @@
-_Last updated: 2026-05-13 00:00 UTC_
+_Last updated: 2026-05-14 00:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -178,6 +178,44 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - Add `dead_letter_policy { dead_letter_topic = ... max_delivery_attempts = 5 }` to each existing subscription
 - Grant Pub/Sub service agent `roles/pubsub.publisher` on each DLQ topic
 
+### 1.8 Scheduled Jobs (Cron)
+
+MVP-era cron jobs that must run before production go-live. `payment-retry` and `waitlist-offer-expiry` are high-frequency sweeper jobs — they can share a single lightweight Cloud Run Job (`padel-sweeper-job`) triggered by Cloud Scheduler, or run as separate jobs. The Cloud Scheduler SA from Stage 2.5 is needed for the OIDC-authenticated targets; if Stage 2 has not landed yet, create a minimal SA here as a placeholder.
+
+| Job | Schedule | Purpose | Status |
+|---|---|---|---|
+| `db-migration` | CI/CD (not Cloud Scheduler) | `alembic upgrade head` before each Cloud Run revision receives traffic — wired into the GitHub Actions deploy pipeline | ✅ Implemented |
+| `payment-retry-job` | `*/15 * * * *` | Retry failed payments where `next_retry_at <= NOW()` and `retry_count < max`; publishes to `payment-events` on success | ❌ Not implemented |
+| `waitlist-offer-expiry-job` | `*/5 * * * *` | Expire slot offers where `offer_expires_at <= NOW()`; update `waitlist_entries.status = 'expired'`; publish expiry notifications | ❌ Not implemented |
+
+### 1.9 Additional Pub/Sub topic — `booking-cancelled`
+
+**Why:** `booking-events` carries all booking lifecycle messages but cancellations need independent fan-out at MVP: the booking worker must release waitlist slots immediately when a booking is cancelled, and in Stage 3 the gap detection worker needs cancellations to re-evaluate court utilisation. Keeping these as a single message type in `booking-events` means the gap detection worker would have to subscribe to all booking traffic and filter — noisy and wasteful. A dedicated topic is cleaner.
+
+**Design:** `padel-api` publishes to `booking-cancelled` at the point of cancellation (in addition to the existing `booking-events` publish). The booking worker subscribes to `booking-cancelled` for waitlist logic; the gap detection worker (Stage 3) adds a second subscription.
+
+**Resources:**
+- `google_pubsub_topic.booking_cancelled`
+- `google_pubsub_topic.booking_cancelled_dlq`
+- Push subscription for `padel-booking-worker` on `booking-cancelled`
+- Dead-letter policy: max 5 attempts, same pattern as Stage 1.7
+
+### 1.10 Inbound Webhooks (Stripe)
+
+**Why:** Stripe pushes payment lifecycle events to a single endpoint on `padel-api`. The secret (`stripe-webhook-secret`) is already provisioned, but the endpoint behaviour for each event type is not explicitly tracked. Without this catalog it is easy to ship Stripe Connect and miss that `account.updated` and `payout.paid` need handlers.
+
+**Infrastructure:** no new GCP resources — webhook receipt is handled inline by `padel-api`. The table below tracks handler implementation status per event type.
+
+| Stripe event | Receiver endpoint | Action | Status |
+|---|---|---|---|
+| `payment_intent.succeeded` | `POST /api/v1/stripe/webhook` | Mark booking paid; publish to `payment-events` for confirmation flow | ✅ Implemented |
+| `payment_intent.payment_failed` | same | Flag payment failed; notify staff; publish to `payment-events` | ✅ Implemented |
+| `charge.dispute.created` | same | Set `payments.dispute_status = 'open'`; queue for manual review | ❌ Not implemented |
+| `account.updated` | same | Sync `clubs.stripe_connect_status`; block bookings if account deactivated | ❌ Not implemented |
+| `payout.paid` | same | Populate `payments.stripe_payout_id` for affected transfers | ❌ Not implemented |
+
+**Security note:** every handler must verify the `Stripe-Signature` header using `stripe-webhook-secret` before processing. Any unverified event must return 400 and be discarded.
+
 ### Stage 1 deliverables checklist
 
 - [x] GCS state backend live, local state migrated
@@ -187,6 +225,8 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - [x] Production environment scaffold merged _(delivered 2026-05-10: `be-infra/terraform/prod/` with prod-tuned settings — HA, backups, `db-custom-2-4096`; no GCP project yet)_
 - [x] Backups and point-in-time recovery enabled on Cloud SQL _(delivered 2026-05-10: 15 retained, 19:00 UTC window, 7-day PITR)_
 - [x] DLQ topics + policies on three MVP subscriptions _(delivered 2026-05-10: `booking-events-dlq`, `payment-events-dlq`, `notification-events-dlq`; max 5 attempts; Pub/Sub service agent publisher granted)_
+- [ ] `booking-cancelled` topic + DLQ + booking worker subscription live (§1.9)
+- [ ] Stripe webhook handlers for `charge.dispute.created`, `account.updated`, `payout.paid` implemented (§1.10)
 
 ---
 
@@ -264,6 +304,37 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - Alert on consecutive failures (the Stage 2.3 alert policy on Cloud Run 5xx will catch this, but consider adding a Cloud Scheduler-specific alert on `state = FAILED` for two consecutive runs).
 - Until this lands, document a manual runbook step: ops admin calls `/wallet/settle-debts` at least weekly.
 
+### 2.7 Additional Scheduled Jobs
+
+Production-readiness cron jobs beyond wallet settlement. All follow the same Cloud Scheduler → OIDC → `padel-api` HTTP target pattern established in §2.6. `wallet-settle-debts` is listed here for completeness; its full resource spec is in §2.6.
+
+| Job | Schedule | Purpose | Status |
+|---|---|---|---|
+| `wallet-settle-debts` | `0 2 * * *` (daily 02:00 UTC) | Settle accumulated `wallet_club_debts` to club Stripe Connect accounts (see §2.6 for full resource spec) | ❌ Not implemented |
+| `membership-renewal-job` | `0 1 * * *` (daily 01:00 UTC) | Renew active subscriptions at `current_period_end`; reset membership credits; flag lapsed subscriptions | ❌ Not implemented |
+| `announcement-expiry-job` | `0 3 * * *` (daily 03:00 UTC) | Soft-hide announcements where `expires_at <= NOW()` | ❌ Not implemented |
+| `promo-code-expiry-job` | `0 3 * * *` (daily 03:00 UTC) | Disable promo codes where `valid_until <= NOW()` | ❌ Not implemented |
+
+### 2.8 Inbound Webhooks (SendGrid)
+
+**Why:** SendGrid pushes delivery events (delivered, opened, clicked, bounced, unsubscribed, spam report) to a webhook endpoint. Without this endpoint the `message_deliveries` status tracking is permanently stuck at `sent` — no opened/clicked/bounced/converted data, no campaign analytics, no re-engagement logic. This is the delivery-side equivalent of the Stripe webhook and is equally load-bearing for production.
+
+**Resources:**
+- New endpoint on `padel-api`: `POST /api/v1/sendgrid/webhook`
+- New secret: `sendgrid-webhook-secret` (SendGrid signs payloads with an ECDSA key — different from the API key)
+- No new GCP infrastructure needed — `padel-api` receives the events and publishes to `notification-events` for the notification worker to update `message_deliveries` rows
+
+| SendGrid event | Action | `message_deliveries.status` transition | Status |
+|---|---|---|---|
+| `delivered` | Record delivery timestamp | `sent` → `delivered` | ❌ Not implemented |
+| `open` | Record open timestamp | `delivered` → `opened` | ❌ Not implemented |
+| `click` | Record click timestamp + URL | `opened` → `clicked` | ❌ Not implemented |
+| `bounce` | Record bounce reason | any → `bounced` | ❌ Not implemented |
+| `unsubscribe` | Set player comms opt-out flag | any → `unsubscribed` | ❌ Not implemented |
+| `spamreport` | Set player comms opt-out flag; alert staff | any → `unsubscribed` | ❌ Not implemented |
+
+**Security note:** verify the `X-Twilio-Email-Event-Webhook-Signature` header using the SendGrid ECDSA public key before processing any event.
+
 ### Stage 2 deliverables checklist
 
 - [ ] VPC connector live and attached to all Cloud Run services
@@ -272,6 +343,8 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`
 - [ ] Cloud Scheduler SA exists
 - [ ] Wallet settlement cron live, hitting `/payments/wallet/settle-debts` daily
+- [ ] SendGrid webhook endpoint live, signature verification passing, `message_deliveries` rows updating (§2.8)
+- [ ] `sendgrid-webhook-secret` secret created and value set
 
 ---
 
@@ -292,7 +365,7 @@ Add both to the `pubsub_topics` local in `pubsub.tf`. Each DLQ follows the Stage
 
 | Service | Image | Subscribes to |
 |---|---|---|
-| `padel-gap-detection-worker` | `padel-worker` | `utilisation-snapshots` |
+| `padel-gap-detection-worker` | `padel-worker` | `utilisation-snapshots`, `booking-cancelled` (Stage 1 topic — cancellations re-trigger gap evaluation) |
 | `padel-campaign-worker` | `padel-worker` | `gap-detected` (more topics added in Stage 4) |
 
 Both follow the existing worker pattern: `google_cloud_run_v2_service` + push subscription + `pubsub.serviceAgent` invoker binding + DLQ.
@@ -306,15 +379,20 @@ Both follow the existing worker pattern: `google_cloud_run_v2_service` + push su
 
 ### 3.4 Cloud Run Jobs (scheduled)
 
-| Job | Schedule | Purpose |
-|---|---|---|
-| `utilisation-snapshot-job` | hourly | Compute snapshots, publish to `utilisation-snapshots` |
-| `revenue-forecast-job` | daily | Vertex AI revenue forecast |
-| `dashboard-insights-job` | daily | Anthropic-generated club insight summaries |
-| `materialized-view-refresh-job-hourly` | hourly | `REFRESH MATERIALIZED VIEW CONCURRENTLY` for hourly views |
-| `materialized-view-refresh-job-nightly` | nightly | Same, for nightly views |
-| `ai-inference-log-partition-job` | monthly (25th) | Create next month's partition on `ai_inference_log` |
-| `ai-inference-log-archive-job` | nightly | Archive payloads >90 days to `padel-ai-archive-staging` |
+| Job | Schedule | Purpose | Status |
+|---|---|---|---|
+| `utilisation-snapshot-job` | Hourly | Compute snapshots, publish to `utilisation-snapshots` | ❌ Not implemented |
+| `revenue-forecast-job` | Daily | Vertex AI revenue forecast | ❌ Not implemented |
+| `dashboard-insights-job` | Daily | Anthropic-generated club insight summaries | ❌ Not implemented |
+| `materialized-view-refresh-job-hourly` | Hourly | `REFRESH MATERIALIZED VIEW CONCURRENTLY` for hourly views | ❌ Not implemented |
+| `materialized-view-refresh-job-nightly` | Nightly | Same, for nightly views | ❌ Not implemented |
+| `ai-inference-log-partition-job` | Monthly (25th) | Create next month's partition on `ai_inference_log` | ❌ Not implemented |
+| `ai-inference-log-archive-job` | Nightly | Archive payloads >90 days to `padel-ai-archive-staging` | ❌ Not implemented |
+| `worker-event-dedup-cleanup-job` | Daily | `DELETE FROM worker_event_dedup WHERE processed_at < now() - interval '24 hours'` (see §3.6) | ❌ Not implemented |
+| `weather-alert-check-job` | Hourly | Fetch weather for clubs with `weather_alerts_enabled`; dispatch alerts if rain/extreme conditions predicted | ❌ Not implemented |
+| `gap-offer-expiry-job` | `*/5 * * * *` | Mark `gap_detection_events.status = 'expired'` where `offer_expires_at <= NOW()` | ❌ Not implemented |
+| `campaign-send-job` | Dynamic (per `campaigns.scheduled_at`) | Fire `scheduled` campaigns; Anthropic draft generation; dispatch via SendGrid/Firebase | ❌ Not implemented |
+| `campaign-expiry-job` | Daily | Mark campaigns `completed` where `sent_at` is set and send window has passed | ❌ Not implemented |
 
 Each is `google_cloud_run_v2_job` + `google_cloud_scheduler_job` (with `http_target` invoking the job's `:run` endpoint) + `roles/run.invoker` granted to the Cloud Scheduler SA on the job.
 
@@ -356,7 +434,7 @@ CREATE INDEX idx_worker_event_dedup_processed_at
 
 **Cleanup:**
 - New scheduled job `worker-event-dedup-cleanup-job` (daily) — `DELETE FROM worker_event_dedup WHERE processed_at < now() - interval '24 hours'`
-- Add to the Stage 3.4 jobs table (now eight jobs total, not seven)
+- Already included in the Stage 3.4 jobs table (12 jobs total)
 
 **Resources:** none in Terraform. The table is an Alembic migration; the cleanup job follows the Stage 3.4 pattern. Listed here only because the design choice is load-bearing for AI worker correctness.
 
@@ -365,7 +443,7 @@ CREATE INDEX idx_worker_event_dedup_processed_at
 - [ ] Two new topics + DLQs live
 - [ ] Two new worker services deployed and consuming
 - [ ] Notification worker subscribed to `gap-detected`
-- [ ] Eight scheduled jobs running on their cadences (seven from §3.4 plus dedup cleanup)
+- [ ] 12 scheduled jobs running on their cadences (see §3.4 table)
 - [ ] `worker_event_dedup` table created and used by every AI worker
 - [ ] First successful `ai_inference_log` write observed in production
 
@@ -383,6 +461,7 @@ CREATE INDEX idx_worker_event_dedup_processed_at
 | `segment-assigned` | yes | `padel-segmentation-worker` | `padel-campaign-worker` |
 | `recommendation-created` | yes | `ai_recommendation_service` | `padel-notification-worker` |
 | `campaign-triggered` | yes | `campaign_service` | `padel-notification-worker` |
+| `match-result-recorded` | yes | `padel-api` (staff score entry) | new `padel-skill-worker` (ELO update + training recommendation generation) |
 
 ### 4.2 New Cloud Run worker services
 
@@ -406,23 +485,31 @@ Add subscriptions for `recommendation-created` and `campaign-triggered` pointing
 
 ### 4.5 Cloud Run Jobs (scheduled)
 
-| Job | Schedule | Purpose |
-|---|---|---|
-| `cancellation-prediction-job` | every 6h | Score upcoming bookings within 24h |
-| `churn-scoring-job` | daily | Score every active player |
-| `embedding-refresh-job` | nightly | Refresh `player_profiles.embedding` (pgvector) |
-| `equipment-prediction-job` | weekly | Score replacement needs |
-| `maintenance-scheduling-job` | weekly | Generate maintenance recommendations |
-| `staffing-recommendation-job` | weekly | Generate staffing recommendations |
+| Job | Schedule | Purpose | Status |
+|---|---|---|---|
+| `cancellation-prediction-job` | Every 6h | Score upcoming bookings within 24h; write `cancellation_predictions` | ❌ Not implemented |
+| `churn-scoring-job` | Daily | Score every active player; write `player_engagement_scores` | ❌ Not implemented |
+| `embedding-refresh-job` | Nightly | Refresh `player_profiles.embedding` (pgvector) from booking history | ❌ Not implemented |
+| `equipment-prediction-job` | Weekly | Score equipment replacement needs; write `equipment_replacement_predictions` | ❌ Not implemented |
+| `maintenance-scheduling-job` | Weekly | Generate court/equipment maintenance recommendations | ❌ Not implemented |
+| `staffing-recommendation-job` | Weekly | Generate staffing recommendations from demand forecasts | ❌ Not implemented |
+| `wallet-auto-topup-job` | `*/30 * * * *` | Trigger Stripe charge for wallets where `balance <= auto_topup_threshold` | ❌ Not implemented |
+| `skill-rating-update-job` | Nightly batch | Compute ELO deltas from `match_results`; update `skill_level`; write `skill_level_history` | ❌ Not implemented |
+| `cancellation-prompts-job` | Daily | Identify high-risk bookings from `cancellation_predictions`; prompt players to confirm or release; write `player_prompted_at` | ❌ Not implemented |
+| `tournament-status-advance-job` | Daily | Auto-advance tournament status at registration deadline, start date, and end date | ❌ Not implemented |
+| `support-ticket-sla-job` | Hourly | Escalate support tickets nearing SLA breach; flag for staff review | ❌ Not implemented |
+| `maintenance-reminders-job` | Daily | Notify staff of upcoming `equipment_maintenance_log` entries | ❌ Not implemented |
+| `equipment-reorder-check-job` | Weekly | Flag inventory where `quantity_available <= reorder_threshold`; create AI purchase recommendations | ❌ Not implemented |
 
 Same pattern as Stage 3.4.
 
 ### Stage 4 deliverables checklist
 
-- [ ] Four new topics + DLQs live
-- [ ] Two new worker services deployed
+- [ ] Five new topics + DLQs live (including `match-result-recorded`)
+- [ ] Three new worker services deployed (churn, segmentation, skill)
 - [ ] Campaign and notification workers consuming all assigned topics
-- [ ] Six new scheduled jobs running
+- [ ] `padel-skill-worker` consuming `match-result-recorded`, writing ELO deltas and training recommendations
+- [ ] 13 new scheduled jobs running (see §4.5 table)
 
 ---
 
