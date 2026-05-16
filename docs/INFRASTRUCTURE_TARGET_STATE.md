@@ -1,4 +1,4 @@
-_Last updated: 2026-05-14 00:00 UTC_
+_Last updated: 2026-05-16 00:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -180,13 +180,13 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 
 ### 1.8 Scheduled Jobs (Cron)
 
-MVP-era cron jobs that must run before production go-live. `payment-retry` and `waitlist-offer-expiry` are high-frequency sweeper jobs — they can share a single lightweight Cloud Run Job (`padel-sweeper-job`) triggered by Cloud Scheduler, or run as separate jobs. The Cloud Scheduler SA from Stage 2.5 is needed for the OIDC-authenticated targets; if Stage 2 has not landed yet, create a minimal SA here as a placeholder.
+MVP-era cron jobs that must run before production go-live. The Cloud Scheduler SA from Stage 2.5 is needed for the OIDC-authenticated targets; if Stage 2 has not landed yet, create a minimal SA here as a placeholder.
+
+`payment-retry-job` and `waitlist-offer-expiry-job` were originally scoped to Stage 1 but have been moved to Stage 2 (§2.7) — they depend on the Cloud Scheduler SA and VPC connector from Stage 2, and deferring keeps Stage 1 focused on structural hardening.
 
 | Job | Schedule | Purpose | Status |
 |---|---|---|---|
 | `db-migration` | CI/CD (not Cloud Scheduler) | `alembic upgrade head` before each Cloud Run revision receives traffic — wired into the GitHub Actions deploy pipeline | ✅ Implemented |
-| `payment-retry-job` | `*/15 * * * *` | Retry failed payments where `next_retry_at <= NOW()` and `retry_count < max`; publishes to `payment-events` on success | ❌ Not implemented |
-| `waitlist-offer-expiry-job` | `*/5 * * * *` | Expire slot offers where `offer_expires_at <= NOW()`; update `waitlist_entries.status = 'expired'`; publish expiry notifications | ❌ Not implemented |
 
 ### 1.9 Additional Pub/Sub topic — `booking-cancelled`
 
@@ -212,7 +212,7 @@ MVP-era cron jobs that must run before production go-live. `payment-retry` and `
 | `payment_intent.payment_failed` | same | Flag payment failed; notify staff; publish to `payment-events` | ✅ Implemented |
 | `charge.dispute.created` | same | Set `payments.dispute_status = 'open'`; queue for manual review | ❌ Not implemented |
 | `account.updated` | same | Sync `clubs.stripe_connect_status`; block bookings if account deactivated | ❌ Not implemented |
-| `payout.paid` | same | Populate `payments.stripe_payout_id` for affected transfers | ❌ Not implemented |
+| `payout.paid` | same | Populate `payments.stripe_payout_id` for affected transfers | ✅ Implemented |
 
 **Security note:** every handler must verify the `Stripe-Signature` header using `stripe-webhook-secret` before processing. Any unverified event must return 400 and be discarded.
 
@@ -226,7 +226,8 @@ MVP-era cron jobs that must run before production go-live. `payment-retry` and `
 - [x] Backups and point-in-time recovery enabled on Cloud SQL _(delivered 2026-05-10: 15 retained, 19:00 UTC window, 7-day PITR)_
 - [x] DLQ topics + policies on three MVP subscriptions _(delivered 2026-05-10: `booking-events-dlq`, `payment-events-dlq`, `notification-events-dlq`; max 5 attempts; Pub/Sub service agent publisher granted)_
 - [ ] `booking-cancelled` topic + DLQ + booking worker subscription live (§1.9)
-- [ ] Stripe webhook handlers for `charge.dispute.created`, `account.updated`, `payout.paid` implemented (§1.10)
+- [x] `payout.paid` webhook handler implemented (§1.10)
+- [ ] Stripe webhook handlers for `charge.dispute.created`, `account.updated` implemented (§1.10)
 
 ---
 
@@ -314,6 +315,8 @@ Production-readiness cron jobs beyond wallet settlement. All follow the same Clo
 | `membership-renewal-job` | `0 1 * * *` (daily 01:00 UTC) | Renew active subscriptions at `current_period_end`; reset membership credits; flag lapsed subscriptions | ❌ Not implemented |
 | `announcement-expiry-job` | `0 3 * * *` (daily 03:00 UTC) | Soft-hide announcements where `expires_at <= NOW()` | ❌ Not implemented |
 | `promo-code-expiry-job` | `0 3 * * *` (daily 03:00 UTC) | Disable promo codes where `valid_until <= NOW()` | ❌ Not implemented |
+| `payment-retry-job` | `*/15 * * * *` | Retry failed payments where `next_retry_at <= NOW()` and `retry_count < max`; publishes to `payment-events` on success | ❌ Not implemented |
+| `waitlist-offer-expiry-job` | `*/5 * * * *` | Expire slot offers where `offer_expires_at <= NOW()`; update `waitlist_entries.status = 'expired'`; publish expiry notifications | ❌ Not implemented |
 
 ### 2.8 Inbound Webhooks (SendGrid)
 
