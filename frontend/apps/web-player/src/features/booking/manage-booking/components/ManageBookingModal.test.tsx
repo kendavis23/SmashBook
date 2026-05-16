@@ -25,19 +25,13 @@ vi.mock("./ManageBookingModalContainer", () => ({
 
 describe("ManageBookingModal", () => {
     it("renders modal container props through a portal", () => {
-        render(
-            <ManageBookingModal
-                bookingId="booking-1"
-                clubId="club-1"
-                onClose={vi.fn()}
-            />
-        );
+        render(<ManageBookingModal bookingId="booking-1" clubId="club-1" onClose={vi.fn()} />);
 
         expect(screen.getByText("booking-1")).toBeInTheDocument();
         expect(screen.getByText("club-1")).toBeInTheDocument();
     });
 
-    it("closes on backdrop click and forwards success", () => {
+    it("forwards close and success", () => {
         const onClose = vi.fn();
         const onSuccess = vi.fn();
         render(
@@ -49,10 +43,7 @@ describe("ManageBookingModal", () => {
             />
         );
 
-        const backdrop = screen.getByText("booking-1").closest(".fixed");
-        if (!backdrop) throw new Error("Expected modal backdrop");
-
-        fireEvent.click(backdrop);
+        fireEvent.click(screen.getByRole("button", { name: "Close child" }));
         fireEvent.click(screen.getByRole("button", { name: "Success child" }));
 
         expect(onClose).toHaveBeenCalledOnce();

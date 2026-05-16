@@ -10,6 +10,7 @@ import {
 import { Controller, type Control } from "react-hook-form";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { ReactNode } from "react";
 import type { LoginFormValues } from "./types";
 
 type Props = {
@@ -22,6 +23,26 @@ type Props = {
     onTogglePassword: () => void;
 };
 
+function InputField({
+    label,
+    error,
+    children,
+}: {
+    label: string;
+    error?: string;
+    children: ReactNode;
+}) {
+    return (
+        <View>
+            <Text className="mb-1.5 text-sm font-semibold text-[#1e293b]">{label}</Text>
+            {children}
+            {error ? (
+                <Text className="mt-1 text-xs font-medium text-destructive">{error}</Text>
+            ) : null}
+        </View>
+    );
+}
+
 export function LoginView({
     control,
     onSubmit,
@@ -32,8 +53,8 @@ export function LoginView({
     onTogglePassword,
 }: Props) {
     return (
-        <SafeAreaView className="flex-1 bg-[#0f172a]">
-            <StatusBar style="light" />
+        <SafeAreaView className="flex-1 bg-white">
+            <StatusBar style="dark" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
                 className="flex-1"
@@ -44,161 +65,142 @@ export function LoginView({
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Hero section */}
-                    <View className="items-center px-6 pb-10 pt-12">
-                        {/* Logo badge */}
-                        <View className="mb-8 flex-row items-center gap-3">
-                            <View className="h-10 w-10 items-center justify-center rounded-xl bg-cta shadow-lg">
-                                <Text className="text-lg font-black text-white">S</Text>
-                            </View>
-                            <Text className="text-2xl font-black tracking-tight text-white">
+                    {/* Header */}
+                    <View className="px-7 pb-6 pt-10">
+                        {/* Wordmark */}
+                        <View className="mb-10 flex-row items-center gap-2">
+                            <Text className="text-lg font-black tracking-tight text-[#0f172a]">
                                 Smash<Text className="text-cta">Book</Text>
                             </Text>
                         </View>
 
-                        {/* Sport icon decoration */}
-                        <View className="mb-6 h-24 w-24 items-center justify-center rounded-full bg-white/5">
-                            <View className="h-16 w-16 items-center justify-center rounded-full bg-cta/20">
-                                <Text className="text-4xl">🎾</Text>
-                            </View>
-                        </View>
-
-                        <Text className="text-center text-3xl font-bold text-white">
+                        {/* Headline */}
+                        <Text className="text-[30px] font-bold leading-snug text-[#0f172a]">
                             Welcome back
                         </Text>
-                        <Text className="mt-2 text-center text-base text-white/50">
-                            Book courts · Join games · Track your game
+                        <Text className="mt-1.5 text-[15px] text-[#64748b]">
+                            Sign in to your player account
                         </Text>
                     </View>
 
-                    {/* Form card */}
-                    <View className="flex-1 rounded-t-[32px] bg-white px-6 pb-10 pt-8 shadow-2xl">
+                    {/* Form */}
+                    <View className="flex-1 px-7 pb-10">
                         {isError ? (
                             <View
                                 accessibilityRole="alert"
-                                className="mb-5 flex-row items-center gap-3 rounded-2xl border border-destructive/20 bg-destructive/8 px-4 py-3"
+                                className="mb-5 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3"
                             >
-                                <Text className="text-base">⚠️</Text>
-                                <Text className="flex-1 text-sm font-medium text-destructive">
+                                <Text className="text-sm font-medium text-destructive">
                                     {errorMessage}
                                 </Text>
                             </View>
                         ) : null}
 
-                        <View className="gap-5">
-                            {/* Club field */}
+                        <View className="gap-4">
+                            {/* Club */}
                             <Controller
                                 control={control}
                                 name="tenant_subdomain"
                                 render={({ field, fieldState }) => (
-                                    <View>
-                                        <Text className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#64748b]">
-                                            Club
-                                        </Text>
-                                        <View
-                                            className={`flex-row items-center rounded-2xl border-2 bg-[#f8fafc] px-4 ${
+                                    <InputField label="Club" error={fieldState.error?.message}>
+                                        <TextInput
+                                            accessibilityLabel="Club"
+                                            autoCapitalize="none"
+                                            autoCorrect={false}
+                                            className={`h-12 rounded-xl border px-4 py-0 text-base text-[#0f172a] ${
                                                 fieldState.error
-                                                    ? "border-destructive"
-                                                    : "border-transparent"
+                                                    ? "border-destructive bg-destructive/5"
+                                                    : "border-[#e2e8f0] bg-[#f8fafc]"
                                             }`}
-                                        >
-                                            <Text className="mr-3 text-lg">🏟️</Text>
-                                            <TextInput
-                                                accessibilityLabel="Club"
-                                                autoCapitalize="none"
-                                                autoCorrect={false}
-                                                className="h-14 flex-1 text-base font-medium text-[#0f172a]"
-                                                editable={!isPending}
-                                                onBlur={field.onBlur}
-                                                onChangeText={field.onChange}
-                                                placeholder="your-club"
-                                                placeholderTextColor="#94a3b8"
-                                                returnKeyType="next"
-                                                value={field.value}
-                                            />
-                                        </View>
-                                        {fieldState.error ? (
-                                            <Text className="mt-1.5 ml-1 text-xs font-medium text-destructive">
-                                                {fieldState.error.message}
-                                            </Text>
-                                        ) : null}
-                                    </View>
+                                            editable={!isPending}
+                                            onBlur={field.onBlur}
+                                            onChangeText={field.onChange}
+                                            placeholder="your-club"
+                                            placeholderTextColor="#94a3b8"
+                                            returnKeyType="next"
+                                            style={{
+                                                includeFontPadding: false,
+                                                lineHeight: 20,
+                                                paddingBottom: 4,
+                                                paddingTop: 0,
+                                                textAlignVertical: "center",
+                                            }}
+                                            value={field.value}
+                                        />
+                                    </InputField>
                                 )}
                             />
 
-                            {/* Email field */}
+                            {/* Email */}
                             <Controller
                                 control={control}
                                 name="email"
                                 render={({ field, fieldState }) => (
-                                    <View>
-                                        <Text className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#64748b]">
-                                            Email
-                                        </Text>
-                                        <View
-                                            className={`flex-row items-center rounded-2xl border-2 bg-[#f8fafc] px-4 ${
+                                    <InputField label="Email" error={fieldState.error?.message}>
+                                        <TextInput
+                                            accessibilityLabel="Email"
+                                            autoCapitalize="none"
+                                            autoComplete="email"
+                                            autoCorrect={false}
+                                            className={`h-12 rounded-xl border px-4 py-0 text-base text-[#0f172a] ${
                                                 fieldState.error
-                                                    ? "border-destructive"
-                                                    : "border-transparent"
+                                                    ? "border-destructive bg-destructive/5"
+                                                    : "border-[#e2e8f0] bg-[#f8fafc]"
                                             }`}
-                                        >
-                                            <Text className="mr-3 text-lg">✉️</Text>
-                                            <TextInput
-                                                accessibilityLabel="Email"
-                                                autoCapitalize="none"
-                                                autoComplete="email"
-                                                autoCorrect={false}
-                                                className="h-14 flex-1 text-base font-medium text-[#0f172a]"
-                                                editable={!isPending}
-                                                inputMode="email"
-                                                keyboardType="email-address"
-                                                onBlur={field.onBlur}
-                                                onChangeText={field.onChange}
-                                                placeholder="you@example.com"
-                                                placeholderTextColor="#94a3b8"
-                                                returnKeyType="next"
-                                                textContentType="emailAddress"
-                                                value={field.value}
-                                            />
-                                        </View>
-                                        {fieldState.error ? (
-                                            <Text className="mt-1.5 ml-1 text-xs font-medium text-destructive">
-                                                {fieldState.error.message}
-                                            </Text>
-                                        ) : null}
-                                    </View>
+                                            editable={!isPending}
+                                            inputMode="email"
+                                            keyboardType="email-address"
+                                            onBlur={field.onBlur}
+                                            onChangeText={field.onChange}
+                                            placeholder="you@example.com"
+                                            placeholderTextColor="#94a3b8"
+                                            returnKeyType="next"
+                                            style={{
+                                                includeFontPadding: false,
+                                                lineHeight: 20,
+                                                paddingBottom: 4,
+                                                paddingTop: 0,
+                                                textAlignVertical: "center",
+                                            }}
+                                            textContentType="emailAddress"
+                                            value={field.value}
+                                        />
+                                    </InputField>
                                 )}
                             />
 
-                            {/* Password field */}
+                            {/* Password */}
                             <Controller
                                 control={control}
                                 name="password"
                                 render={({ field, fieldState }) => (
-                                    <View>
-                                        <Text className="mb-2 text-xs font-semibold uppercase tracking-widest text-[#64748b]">
-                                            Password
-                                        </Text>
+                                    <InputField label="Password" error={fieldState.error?.message}>
                                         <View
-                                            className={`flex-row items-center rounded-2xl border-2 bg-[#f8fafc] px-4 ${
+                                            className={`h-12 flex-row items-center rounded-xl border px-4 ${
                                                 fieldState.error
-                                                    ? "border-destructive"
-                                                    : "border-transparent"
+                                                    ? "border-destructive bg-destructive/5"
+                                                    : "border-[#e2e8f0] bg-[#f8fafc]"
                                             }`}
                                         >
-                                            <Text className="mr-3 text-lg">🔒</Text>
                                             <TextInput
                                                 accessibilityLabel="Password"
                                                 autoCapitalize="none"
                                                 autoComplete="password"
-                                                className="h-14 flex-1 text-base font-medium text-[#0f172a]"
+                                                className="h-12 flex-1 py-0 text-base text-[#0f172a]"
                                                 editable={!isPending}
                                                 onBlur={field.onBlur}
                                                 onChangeText={field.onChange}
-                                                placeholder="Enter password"
+                                                placeholder="Enter your password"
                                                 placeholderTextColor="#94a3b8"
                                                 returnKeyType="done"
                                                 secureTextEntry={!passwordVisible}
+                                                style={{
+                                                    includeFontPadding: false,
+                                                    lineHeight: 20,
+                                                    paddingBottom: 4,
+                                                    paddingTop: 0,
+                                                    textAlignVertical: "center",
+                                                }}
                                                 textContentType="password"
                                                 value={field.value}
                                             />
@@ -209,21 +211,16 @@ export function LoginView({
                                                         : "Show password"
                                                 }
                                                 accessibilityRole="button"
-                                                className="ml-2 rounded-xl bg-cta/10 px-3 py-1.5"
                                                 disabled={isPending}
+                                                hitSlop={8}
                                                 onPress={onTogglePassword}
                                             >
-                                                <Text className="text-xs font-bold text-cta">
+                                                <Text className="text-xs font-bold tracking-wide text-cta">
                                                     {passwordVisible ? "HIDE" : "SHOW"}
                                                 </Text>
                                             </Pressable>
                                         </View>
-                                        {fieldState.error ? (
-                                            <Text className="mt-1.5 ml-1 text-xs font-medium text-destructive">
-                                                {fieldState.error.message}
-                                            </Text>
-                                        ) : null}
-                                    </View>
+                                    </InputField>
                                 )}
                             />
                         </View>
@@ -232,38 +229,22 @@ export function LoginView({
                         <Pressable
                             accessibilityLabel="Sign in"
                             accessibilityRole="button"
-                            className={`mt-8 h-[58px] items-center justify-center rounded-2xl bg-cta shadow-lg ${
-                                isPending ? "opacity-60" : "active:scale-[0.98] opacity-100"
+                            className={`mt-8 h-[52px] items-center justify-center rounded-xl bg-cta ${
+                                isPending ? "opacity-60" : "active:opacity-80"
                             }`}
                             disabled={isPending}
                             onPress={onSubmit}
                         >
-                            <View className="flex-row items-center gap-2">
-                                {isPending ? (
-                                    <>
-                                        <Text className="text-base font-bold tracking-wide text-white">
-                                            Signing in…
-                                        </Text>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Text className="text-base font-bold tracking-wide text-white">
-                                            Sign in
-                                        </Text>
-                                        <Text className="text-base text-white/80">→</Text>
-                                    </>
-                                )}
-                            </View>
+                            <Text className="text-base font-bold text-white">
+                                {isPending ? "Signing in…" : "Sign in"}
+                            </Text>
                         </Pressable>
 
-                        {/* Footer trust badge */}
-                        <View className="mt-8 items-center gap-1.5">
-                            <View className="flex-row items-center gap-1.5">
-                                <View className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                                <Text className="text-xs font-medium text-[#94a3b8]">
-                                    Secure · Encrypted · Player portal
-                                </Text>
-                            </View>
+                        {/* Footer */}
+                        <View className="mt-auto pt-12 items-center">
+                            <Text className="text-xs text-[#cbd5e1]">
+                                SmashBook · Player Portal
+                            </Text>
                         </View>
                     </View>
                 </ScrollView>

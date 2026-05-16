@@ -48,4 +48,6 @@ export type {
     MembershipStatus,
     MembershipPlan,
     MembershipSubscription,
+    MembershipSubscribeInput,
+    MembershipSubscribeResult,
 } from "./membership.model";

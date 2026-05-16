@@ -115,7 +115,15 @@ const defaultProps = {
     trainers: [],
     trainersLoading: false,
     trainersError: false,
-    slots: [{ start_time: "10:00", end_time: "11:00", is_available: true, price: 24, price_label: null }],
+    slots: [
+        {
+            start_time: "10:00",
+            end_time: "11:00",
+            is_available: true,
+            price: 24,
+            price_label: null,
+        },
+    ],
     slotsLoading: false,
     form,
     courtError: "",

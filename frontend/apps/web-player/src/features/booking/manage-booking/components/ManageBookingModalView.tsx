@@ -58,9 +58,9 @@ function formatDateRange(start: string, end: string): { date: string; time: stri
 function formatStatus(value?: string | null): string {
     return value
         ? value
-            .split("_")
-            .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-            .join(" ")
+              .split("_")
+              .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+              .join(" ")
         : "-";
 }
 
@@ -102,18 +102,18 @@ function PlayersTable({
             myUserId != null && a.user_id === myUserId
                 ? 0
                 : a.role === "organiser"
-                    ? 1
-                    : a.invite_status === "accepted"
-                        ? 2
-                        : 3;
+                  ? 1
+                  : a.invite_status === "accepted"
+                    ? 2
+                    : 3;
         const rankB =
             myUserId != null && b.user_id === myUserId
                 ? 0
                 : b.role === "organiser"
-                    ? 1
-                    : b.invite_status === "accepted"
-                        ? 2
-                        : 3;
+                  ? 1
+                  : b.invite_status === "accepted"
+                    ? 2
+                    : 3;
         return rankA - rankB;
     });
     const filtered = search.trim()
@@ -164,14 +164,14 @@ function PlayersTable({
                         const inviteBadgeCls = isAccepted
                             ? "bg-success/10 text-success"
                             : p.invite_status === "pending"
-                                ? "bg-warning/10 text-warning"
-                                : "bg-muted text-muted-foreground";
+                              ? "bg-warning/10 text-warning"
+                              : "bg-muted text-muted-foreground";
 
                         const payBadgeCls = isPaid
                             ? "bg-success/10 text-success"
                             : p.payment_status === "pending"
-                                ? "bg-warning/10 text-warning"
-                                : "bg-muted text-muted-foreground";
+                              ? "bg-warning/10 text-warning"
+                              : "bg-muted text-muted-foreground";
 
                         return (
                             <div
@@ -184,12 +184,13 @@ function PlayersTable({
 
                                 {/* Avatar */}
                                 <span
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font ring-1 ring-inset ${isMe
-                                        ? "bg-cta/15 text-cta ring-cta/20"
-                                        : isAccepted
-                                            ? "bg-success/10 text-success ring-success/20"
-                                            : "bg-muted text-muted-foreground ring-border"
-                                        }`}
+                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font ring-1 ring-inset ${
+                                        isMe
+                                            ? "bg-cta/15 text-cta ring-cta/20"
+                                            : isAccepted
+                                              ? "bg-success/10 text-success ring-success/20"
+                                              : "bg-muted text-muted-foreground ring-border"
+                                    }`}
                                 >
                                     {getInitials(p.full_name)}
                                 </span>
@@ -301,19 +302,19 @@ export function ManageBookingModalView({
     const payableBooking: PlayerBookingItem | null =
         myInfo && myInviteStatus === "accepted" && myPaymentStatus === "pending"
             ? {
-                booking_id: booking.id,
-                club_id: booking.club_id,
-                court_id: booking.court_id,
-                court_name: booking.court_name,
-                booking_type: booking.booking_type,
-                status: booking.status,
-                start_datetime: booking.start_datetime,
-                end_datetime: booking.end_datetime,
-                role: myInfo.role,
-                invite_status: myInfo.inviteStatus,
-                payment_status: myInfo.paymentStatus,
-                amount_due: myInfo.amountDue,
-            }
+                  booking_id: booking.id,
+                  club_id: booking.club_id,
+                  court_id: booking.court_id,
+                  court_name: booking.court_name,
+                  booking_type: booking.booking_type,
+                  status: booking.status,
+                  start_datetime: booking.start_datetime,
+                  end_datetime: booking.end_datetime,
+                  role: myInfo.role,
+                  invite_status: myInfo.inviteStatus,
+                  payment_status: myInfo.paymentStatus,
+                  amount_due: myInfo.amountDue,
+              }
             : null;
     const showPayCta = payableBooking != null && onPayClick != null;
     const bookingTypeLabel =

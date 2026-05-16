@@ -128,12 +128,7 @@ const routeTree = rootRoute.addChildren([
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
-    dashboardLayoutRoute.addChildren([
-        dashboardRoute,
-        bookingsRoute,
-        myGamesRoute,
-        profileRoute,
-    ]),
+    dashboardLayoutRoute.addChildren([dashboardRoute, bookingsRoute, myGamesRoute, profileRoute]),
 ]);
 
 const router = createRouter({ routeTree });

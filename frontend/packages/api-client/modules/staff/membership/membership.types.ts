@@ -1,7 +1,11 @@
 import type { UUID } from "../common";
 export type { UUID };
 
-export type BillingPeriod = "monthly" | "annual";
+export type {
+    BillingPeriod,
+    MembershipPlanResponse,
+} from "../../share/membership/membership.types";
+import type { BillingPeriod } from "../../share/membership/membership.types";
 
 export type MembershipStatus = "trialing" | "active" | "paused" | "cancelled" | "expired";
 
@@ -36,23 +40,4 @@ export interface MembershipPlanUpdate {
     max_active_members?: number | null;
     is_active?: boolean;
     stripe_price_id?: string | null;
-}
-
-export interface MembershipPlanResponse {
-    id: UUID;
-    club_id: UUID;
-    name: string;
-    description: string | null;
-    billing_period: BillingPeriod;
-    price: number;
-    trial_days: number;
-    booking_credits_per_period: number | null;
-    guest_passes_per_period: number | null;
-    discount_pct: number | null;
-    priority_booking_days: number | null;
-    max_active_members: number | null;
-    is_active: boolean;
-    stripe_price_id: string | null;
-    created_at: string;
-    updated_at: string;
 }

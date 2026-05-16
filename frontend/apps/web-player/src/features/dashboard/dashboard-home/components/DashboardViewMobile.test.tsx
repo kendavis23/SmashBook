@@ -84,12 +84,7 @@ vi.mock("@repo/ui", () => ({
         value: string;
         onChange: (event: { target: { value: string } }) => void;
     }) => (
-        <input
-            type="time"
-            aria-label="time"
-            value={value}
-            onChange={(event) => onChange(event)}
-        />
+        <input type="time" aria-label="time" value={value} onChange={(event) => onChange(event)} />
     ),
     formatCurrency: (value: number | string | null) => (value == null ? "—" : `£${value}`),
     formatUTCDate: (value: string) => value.slice(0, 10),

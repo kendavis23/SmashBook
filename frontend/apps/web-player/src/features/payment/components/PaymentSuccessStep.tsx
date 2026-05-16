@@ -40,7 +40,7 @@ export function PaymentSuccessStep({ amount, currency, method, onClose }: Props)
                 <p className="text-lg font-semibold text-foreground">{formatCurrency(amount)}</p>
             </div>
 
-            <button type="button" onClick={onClose} className="btn-cta mt-auto min-h-11 w-full">
+            <button type="button" onClick={onClose} className="btn-cta mt-6 min-h-11 w-full">
                 Done
             </button>
         </div>

@@ -1,33 +1,17 @@
-import type { UUID } from "../../staff/common";
-export type { UUID };
+export type { UUID } from "../../staff/common";
 
-export type BillingPeriod = "monthly" | "annual";
+export type {
+    BillingPeriod,
+    MembershipPlanResponse,
+} from "../../share/membership/membership.types";
+import type { MembershipPlanResponse } from "../../share/membership/membership.types";
 
 export type MembershipStatus = "trialing" | "active" | "paused" | "cancelled" | "expired";
 
-export interface MembershipPlanResponse {
-    id: UUID;
-    club_id: UUID;
-    name: string;
-    description: string | null;
-    billing_period: BillingPeriod;
-    price: number;
-    trial_days: number;
-    booking_credits_per_period: number | null;
-    guest_passes_per_period: number | null;
-    discount_pct: number | null;
-    priority_booking_days: number | null;
-    max_active_members: number | null;
-    is_active: boolean;
-    stripe_price_id: string | null;
-    created_at: string;
-    updated_at: string;
-}
-
 export interface MembershipSubscriptionResponse {
-    id: UUID;
-    user_id: UUID;
-    club_id: UUID;
+    id: string;
+    user_id: string;
+    club_id: string;
     status: MembershipStatus;
     current_period_start: string;
     current_period_end: string;
@@ -36,4 +20,20 @@ export interface MembershipSubscriptionResponse {
     credits_remaining: number;
     guest_passes_remaining: number | null;
     plan: MembershipPlanResponse;
+}
+
+export interface MembershipSubscribeRequest {
+    plan_id: string;
+    payment_method_id?: string | null;
+}
+
+export interface MembershipSubscribeResponse {
+    subscription_id: string;
+    stripe_subscription_id: string;
+    status: MembershipStatus;
+    current_period_start: string;
+    current_period_end: string;
+    credits_remaining: number;
+    guest_passes_remaining: number | null;
+    client_secret: string | null;
 }

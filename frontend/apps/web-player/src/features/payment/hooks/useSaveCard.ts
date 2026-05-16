@@ -29,7 +29,7 @@ export function useSaveCard() {
 
             await savePaymentMethod.mutateAsync({
                 payment_method_id: paymentMethodId,
-                set_as_default: true,
+                set_as_default: false,
             });
 
             // invalidateQueries is handled by useSavePaymentMethod.onSuccess — no duplicate needed

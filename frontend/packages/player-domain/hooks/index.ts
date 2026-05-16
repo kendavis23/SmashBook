@@ -29,4 +29,9 @@ export {
     useTopUpWallet,
     usePayBookingWithWallet,
 } from "./payment.hooks";
-export { useMyMembership } from "./membership.hooks";
+export {
+    useListMembershipPlans,
+    useMyMembership,
+    useSubscribeToMembership,
+    useCancelMyMembership,
+} from "./membership.hooks";

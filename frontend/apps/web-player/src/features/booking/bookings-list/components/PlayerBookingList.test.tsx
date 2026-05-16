@@ -77,11 +77,7 @@ describe("PlayerBookingList", () => {
         const onManageClick = vi.fn();
         const booking = makeBooking({ court_name: "Court Bravo" });
         render(
-            <PlayerBookingList
-                {...defaultProps}
-                items={[booking]}
-                onManageClick={onManageClick}
-            />
+            <PlayerBookingList {...defaultProps} items={[booking]} onManageClick={onManageClick} />
         );
 
         expect(screen.getAllByText("Court Bravo")).not.toHaveLength(0);

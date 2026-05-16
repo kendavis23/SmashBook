@@ -26,9 +26,7 @@ describe("booking hooks barrel", () => {
         expect(bookingHooks.useListCourts).toBe(domainHooks.useListCourts);
         expect(bookingHooks.useGetCourtAvailability).toBe(domainHooks.useGetCourtAvailability);
         expect(bookingHooks.useListTrainers).toBe(domainHooks.useListTrainers);
-        expect(bookingHooks.useListAvailableTrainers).toBe(
-            domainHooks.useListAvailableTrainers
-        );
+        expect(bookingHooks.useListAvailableTrainers).toBe(domainHooks.useListAvailableTrainers);
         expect(bookingHooks.useSearchPlayers).toBe(domainHooks.useSearchPlayers);
     });
 });

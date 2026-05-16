@@ -71,10 +71,14 @@ vi.mock("./DashboardView", () => ({
             <button onClick={() => (props.onClubChange as (id: string) => void)("club-2")}>
                 Change club
             </button>
-            <button onClick={() => (props.onJoinFilterDateChange as (v: string) => void)("2026-05-21")}>
+            <button
+                onClick={() => (props.onJoinFilterDateChange as (v: string) => void)("2026-05-21")}
+            >
                 Join date
             </button>
-            <button onClick={() => (props.onBookFilterDateChange as (v: string) => void)("2026-05-22")}>
+            <button
+                onClick={() => (props.onBookFilterDateChange as (v: string) => void)("2026-05-22")}
+            >
                 Book date
             </button>
             <button onClick={() => (props.onCheckAvailability as (id: string) => void)("court-1")}>
@@ -83,9 +87,7 @@ vi.mock("./DashboardView", () => ({
             <button onClick={() => (props.onRefreshOpenGames as () => void)()}>
                 Refresh open games
             </button>
-            <button onClick={() => (props.onRefreshCourts as () => void)()}>
-                Refresh courts
-            </button>
+            <button onClick={() => (props.onRefreshCourts as () => void)()}>Refresh courts</button>
             <button onClick={() => (props.onJoinGame as (id: string) => void)("game-1")}>
                 Join game
             </button>
@@ -230,9 +232,7 @@ describe("DashboardContainer", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Join game" }));
 
-        await waitFor(() =>
-            expect(screen.getByText("joinError:Join failed")).toBeInTheDocument()
-        );
+        await waitFor(() => expect(screen.getByText("joinError:Join failed")).toBeInTheDocument());
         fireEvent.click(screen.getByRole("button", { name: "Dismiss join error" }));
         expect(screen.getByText("joinError:")).toBeInTheDocument();
     });
