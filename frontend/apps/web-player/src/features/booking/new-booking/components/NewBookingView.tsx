@@ -385,6 +385,7 @@ export default function NewBookingView({
     );
 
     if (mode === "modal") {
+        const selectedSlot = slots.find((s) => s.start_time === form.startTime);
         return (
             <NewBookingModalView
                 courtName={courtName ?? form.courtId}
@@ -396,6 +397,7 @@ export default function NewBookingView({
                 apiError={apiError}
                 isPending={isPending}
                 selectedPrice={selectedPrice}
+                endTime={selectedSlot?.end_time ?? ""}
                 clubId={clubId}
                 onFormChange={onFormChange}
                 onSubmit={onSubmit}

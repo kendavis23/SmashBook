@@ -1,4 +1,4 @@
-import type { FormEvent, JSX } from "react";
+import type { FormEvent } from "react";
 import { useState } from "react";
 import { CalendarDays, Clock, MapPin, Users, X } from "lucide-react";
 import { AlertToast, NumberInput, SelectInput, formatCurrency, formatUTCDate } from "@repo/ui";
@@ -20,26 +20,6 @@ const typeOptions = BOOKING_TYPE_OPTIONS.filter(
     (o) => o.value === "regular" || o.value === "lesson_individual"
 );
 
-function MatchInfoCard({
-    icon,
-    label,
-    value,
-}: {
-    icon: JSX.Element;
-    label: string;
-    value: string;
-}): JSX.Element {
-    return (
-        <div className={`flex flex-col gap-1.5 rounded-xl p-3 border border-border/60 bg-muted/15`}>
-            <div className={`flex items-center gap-1.5 text-muted-foreground`}>
-                {icon}
-                <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
-            </div>
-            <span className={`text-sm font-semibold leading-tight text-foreground`}>{value}</span>
-        </div>
-    );
-}
-
 type Trainer = TrainerOptionSource;
 
 type Props = {
@@ -52,6 +32,7 @@ type Props = {
     apiError: string;
     isPending: boolean;
     selectedPrice: number | string | null;
+    endTime?: string;
     clubId?: string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
     onSubmit: (e: FormEvent) => void;
@@ -70,15 +51,16 @@ export function NewBookingModalView({
     apiError,
     isPending,
     selectedPrice,
+    endTime,
     clubId,
     onFormChange,
     onSubmit,
     onCancel,
     onDismissError,
     onClose,
-}: Props): JSX.Element {
+}: Props) {
     const [invitePlayerId, setInvitePlayerId] = useState("");
-    const [invitedPlayerNames, setInvitedPlayerNames] = useState<Record<string, string>>({});
+    const [invitedPlayerInfo, setInvitedPlayerInfo] = useState<Record<string, { name: string; skill?: number | null }>>({});
     const isIndividualLesson = form.bookingType === "lesson_individual";
     const isLessonType =
         form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
@@ -86,7 +68,11 @@ export function NewBookingModalView({
     const trainerOptions = buildTrainerOptions(trainers);
 
     const formattedDate = form.bookingDate ? formatUTCDate(form.bookingDate + "T00:00:00Z") : "—";
-    const formattedTime = form.startTime ? formatSlotTime(form.startTime) : "—";
+    const formattedTime = form.startTime
+        ? endTime
+            ? `${formatSlotTime(form.startTime)} – ${formatSlotTime(endTime)}`
+            : formatSlotTime(form.startTime)
+        : "—";
     const formattedPrice = form.startTime ? (formatCurrency(selectedPrice) ?? "—") : "—";
 
     return (
@@ -123,27 +109,23 @@ export function NewBookingModalView({
                 {/* Match Information */}
                 <div className="space-y-2">
                     <p className={labelCls}>Match Information</p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                        <MatchInfoCard
-                            icon={<MapPin size={11} />}
-                            label="Court"
-                            value={courtName}
-                        />
-                        <MatchInfoCard
-                            icon={<CalendarDays size={11} />}
-                            label="Date"
-                            value={formattedDate}
-                        />
-                        <MatchInfoCard
-                            icon={<Clock size={11} />}
-                            label="Time"
-                            value={formattedTime}
-                        />
-                        <MatchInfoCard
-                            icon={<span className="text-[11px] font-bold">£</span>}
-                            label="Price"
-                            value={formattedPrice}
-                        />
+                    <div className="grid grid-cols-2 gap-2">
+                        {[
+                            { icon: <MapPin size={13} />, label: "Court", value: courtName, color: "text-violet-500", bg: "bg-violet-500/10" },
+                            { icon: <CalendarDays size={13} />, label: "Date", value: formattedDate, color: "text-blue-500", bg: "bg-blue-500/10" },
+                            { icon: <Clock size={13} />, label: "Time", value: formattedTime, color: "text-amber-500", bg: "bg-amber-500/10" },
+                            { icon: <span className="text-xs font-bold leading-none">£</span>, label: "Price", value: formattedPrice, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                        ].map(({ icon, label, value, color, bg }) => (
+                            <div key={label} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
+                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bg} ${color}`}>
+                                    {icon}
+                                </div>
+                                <div className="min-w-0 flex flex-col gap-0.5">
+                                    <span className="text-[9px] font uppercase tracking-wider text-muted-foreground">{label}</span>
+                                    <span className="truncate text-sm font text-foreground leading-tight">{value}</span>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -244,9 +226,9 @@ export function NewBookingModalView({
                             placeholder="Search and add player..."
                             onChange={setInvitePlayerId}
                             onSelect={(player) => {
-                                setInvitedPlayerNames((names) => ({
-                                    ...names,
-                                    [player.id]: player.full_name,
+                                setInvitedPlayerInfo((info) => ({
+                                    ...info,
+                                    [player.id]: { name: player.full_name, skill: player.skill_level },
                                 }));
                                 if (!form.playerUserIds.includes(player.id)) {
                                     onFormChange({
@@ -262,31 +244,32 @@ export function NewBookingModalView({
 
                         {invitedCount > 0 ? (
                             <div className="mt-2 grid grid-cols-2 gap-2">
-                                {form.playerUserIds.filter(Boolean).map((uid, index) => (
-                                    <div
-                                        key={`${uid}-${index}`}
-                                        className="flex items-center justify-between gap-2 rounded-xl border border-border/60 bg-muted/20 px-3 py-2.5"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="truncate text-sm text-foreground">
-                                                {invitedPlayerNames[uid] ?? `Player ${index + 1}`}
-                                            </p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            aria-label={`Remove ${invitedPlayerNames[uid] ?? `player ${index + 1}`}`}
-                                            onClick={() => {
-                                                const next = form.playerUserIds.filter(
-                                                    (_, i) => i !== index
-                                                );
-                                                onFormChange({ playerUserIds: next });
-                                            }}
-                                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                {form.playerUserIds.filter(Boolean).map((uid, index) => {
+                                    const info = invitedPlayerInfo[uid];
+                                    const displayName = info?.name ?? `Player ${index + 1}`;
+                                    const label = info?.skill ? `${displayName} (${info.skill})` : displayName;
+                                    return (
+                                        <div
+                                            key={`${uid}-${index}`}
+                                            className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
                                         >
-                                            <X size={12} />
-                                        </button>
-                                    </div>
-                                ))}
+                                            <p className="min-w-0 truncate text-sm text-foreground">{label}</p>
+                                            <button
+                                                type="button"
+                                                aria-label={`Remove ${displayName}`}
+                                                onClick={() => {
+                                                    const next = form.playerUserIds.filter(
+                                                        (_, i) => i !== index
+                                                    );
+                                                    onFormChange({ playerUserIds: next });
+                                                }}
+                                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                            >
+                                                <X size={11} />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         ) : null}
                     </div>
