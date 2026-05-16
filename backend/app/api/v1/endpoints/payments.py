@@ -21,6 +21,7 @@ from app.schemas.payment_method import (
     WalletTopUpRequest,
     WalletTopUpResponse,
 )
+from app.services.membership_service import MembershipService
 from app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -43,15 +44,24 @@ async def stripe_webhook(request: Request, db=Depends(get_db)):
     except stripe.StripeError:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
 
-    svc = PaymentService(db)
+    payment_svc = PaymentService(db)
+    membership_svc = MembershipService(db)
     event_type = event["type"]
 
     if event_type == "payment_intent.succeeded":
-        await svc.confirm_payment(event)
+        await payment_svc.confirm_payment(event)
     elif event_type == "payment_intent.payment_failed":
-        await svc.handle_payment_failed(event)
+        await payment_svc.handle_payment_failed(event)
     elif event_type == "payout.paid":
-        await svc.handle_payout_paid(event)
+        await payment_svc.handle_payout_paid(event)
+    elif event_type == "customer.subscription.updated":
+        await membership_svc.handle_subscription_updated(event)
+    elif event_type == "customer.subscription.deleted":
+        await membership_svc.handle_subscription_deleted(event)
+    elif event_type == "invoice.payment_succeeded":
+        await membership_svc.handle_invoice_payment_succeeded(event)
+    elif event_type == "invoice.payment_failed":
+        await membership_svc.handle_invoice_payment_failed(event)
 
     return {"received": True}
 
@@ -106,9 +116,14 @@ async def save_payment_method(
 ):
     """Save a Stripe payment method to the player's account."""
     svc = PaymentService(db)
-    return await svc.save_payment_method(
+    result = await svc.save_payment_method(
         current_user, body.payment_method_id, body.set_as_default
     )
+    if body.set_as_default:
+        await MembershipService(db).sync_payment_method_to_subscriptions(
+            current_user.id, body.payment_method_id
+        )
+    return result
 
 
 @router.get("/payment-methods", response_model=list[PaymentMethodResponse])
@@ -141,7 +156,11 @@ async def set_default_payment_method(
 ):
     """Set default payment method."""
     svc = PaymentService(db)
-    return await svc.set_default_payment_method(current_user, method_id)
+    result = await svc.set_default_payment_method(current_user, method_id)
+    await MembershipService(db).sync_payment_method_to_subscriptions(
+        current_user.id, method_id
+    )
+    return result
 
 
 @router.get("/wallet", response_model=WalletResponse)

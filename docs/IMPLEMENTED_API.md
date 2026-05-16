@@ -1,4 +1,4 @@
-_Last updated: 2026-05-13 00:00 UTC_
+_Last updated: 2026-05-16 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -77,7 +77,15 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `GET` | `/api/v1/clubs/{club_id}/membership-plans` | List all membership plans for a club |
 | `GET` | `/api/v1/clubs/{club_id}/membership-plans/{plan_id}` | Get a single membership plan |
 | `PATCH` | `/api/v1/clubs/{club_id}/membership-plans/{plan_id}` | Update a membership plan (admin+) |
+| `POST` | `/api/v1/clubs/{club_id}/memberships/subscribe` | Player: subscribe to a membership plan. Stripe Product+Price provisioned lazily on first subscribe. Returns `client_secret` for non-trial plans (frontend must confirm with Stripe.js). Enforces duplicate-subscription and enrollment-cap guards. |
 | `GET` | `/api/v1/clubs/{club_id}/memberships/me` | Get calling player's membership subscription for this club |
+| `POST` | `/api/v1/clubs/{club_id}/memberships/me/cancel` | Player: cancel active membership at period end. Benefits continue until period end. Stripe `cancel_at_period_end=True` set immediately. |
+
+**Webhook events now handled** (via `POST /api/v1/payments/stripe/webhook`):
+- `customer.subscription.updated` — syncs status, period dates, cancel flag
+- `customer.subscription.deleted` — marks subscription cancelled
+- `invoice.payment_succeeded` — on renewal, resets credits and guest passes for the new period; on first payment, activates subscription
+- `invoice.payment_failed` — fires `membership_payment_failed` notification so player can update payment method
 
 ---
 

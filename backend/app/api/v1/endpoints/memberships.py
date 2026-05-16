@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.api.v1.dependencies.auth import get_current_user, require_admin
 from app.api.v1.dependencies.tenant import get_tenant
 from app.db.models.club import Club
-from app.db.models.membership import MembershipPlan, MembershipSubscription
+from app.db.models.membership import MembershipPlan, MembershipStatus, MembershipSubscription
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.db.session import get_db, get_read_db
@@ -17,8 +17,11 @@ from app.schemas.membership import (
     MembershipPlanCreate,
     MembershipPlanResponse,
     MembershipPlanUpdate,
+    MembershipSubscribeRequest,
+    MembershipSubscribeResponse,
     MembershipSubscriptionResponse,
 )
+from app.services.membership_service import MembershipService
 
 router = APIRouter(prefix="/clubs", tags=["memberships"])
 
@@ -102,6 +105,69 @@ async def get_membership_plan(
     return await _get_plan(plan_id, club_id, db)
 
 
+@router.patch(
+    "/{club_id}/membership-plans/{plan_id}",
+    response_model=MembershipPlanResponse,
+)
+async def update_membership_plan(
+    club_id: uuid.UUID,
+    plan_id: uuid.UUID,
+    body: MembershipPlanUpdate,
+    current_user=Depends(require_admin),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update a membership plan's details."""
+    await _get_club(club_id, tenant.id, db)
+    plan = await _get_plan(plan_id, club_id, db)
+
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(plan, field, value)
+
+    await db.flush()
+    return plan
+
+
+@router.post(
+    "/{club_id}/memberships/subscribe",
+    response_model=MembershipSubscribeResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def subscribe_to_plan(
+    club_id: uuid.UUID,
+    body: MembershipSubscribeRequest,
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Subscribe the calling player to a membership plan.
+
+    For plans without a trial period the response includes a `client_secret`
+    that the frontend must use with Stripe.js to confirm the first payment.
+    For trial plans no immediate payment is required and `client_secret` is null.
+
+    Automatically renews monthly or annually until the player cancels via
+    POST /clubs/{club_id}/memberships/me/cancel.
+    """
+    club = await _get_club(club_id, tenant.id, db)
+    plan = await _get_plan(body.plan_id, club_id, db)
+
+    if not plan.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This membership plan is no longer available",
+        )
+
+    svc = MembershipService(db)
+    return await svc.subscribe(
+        user=current_user,
+        plan=plan,
+        club=club,
+        payment_method_id=body.payment_method_id,
+    )
+
+
 @router.get(
     "/{club_id}/memberships/me",
     response_model=MembershipSubscriptionResponse,
@@ -134,24 +200,50 @@ async def get_my_membership(
     return subscription
 
 
-@router.patch(
-    "/{club_id}/membership-plans/{plan_id}",
-    response_model=MembershipPlanResponse,
+@router.post(
+    "/{club_id}/memberships/me/cancel",
+    response_model=MembershipSubscriptionResponse,
 )
-async def update_membership_plan(
+async def cancel_my_membership(
     club_id: uuid.UUID,
-    plan_id: uuid.UUID,
-    body: MembershipPlanUpdate,
-    current_user=Depends(require_admin),
+    current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update a membership plan's details."""
+    """
+    Cancel the calling player's active membership at this club.
+
+    The subscription is marked to cancel at the end of the current billing
+    period. The player retains all membership benefits until then.
+    This is the only cancellation path — immediate mid-period termination
+    is not supported.
+    """
     await _get_club(club_id, tenant.id, db)
-    plan = await _get_plan(plan_id, club_id, db)
 
-    for field, value in body.model_dump(exclude_none=True).items():
-        setattr(plan, field, value)
+    result = await db.execute(
+        select(MembershipSubscription)
+        .where(
+            MembershipSubscription.club_id == club_id,
+            MembershipSubscription.user_id == current_user.id,
+            MembershipSubscription.status.in_([
+                MembershipStatus.active,
+                MembershipStatus.trialing,
+            ]),
+        )
+        .options(selectinload(MembershipSubscription.plan))
+        .order_by(MembershipSubscription.created_at.desc())
+        .limit(1)
+    )
+    subscription = result.scalar_one_or_none()
+    if not subscription:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active membership found for this club",
+        )
 
-    await db.flush()
-    return plan
+    svc = MembershipService(db)
+    updated = await svc.cancel_subscription(subscription)
+
+    # Reload plan relationship after commit (it was loaded before the commit)
+    await db.refresh(updated, ["plan"])
+    return updated
