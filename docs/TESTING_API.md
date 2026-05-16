@@ -62,13 +62,14 @@ backend/tests/
     ├── test_admin.py            ← platform-admin: onboard, plans CRUD, tenants list/get/patch, activate/suspend/change-plan
     ├── test_auth.py             ← register, login (incl. clubs payload), refresh, cross-tenant
     ├── test_subscription.py     ← org billing: view, invoices, setup-intent, payment-method (owner role)
+    ├── test_webhooks.py         ← /webhooks/stripe-billing: signature, payment / subscription events, suspended preservation
     ├── test_booking_payments.py ← payment intents, confirm, webhook handling, platform fees
     ├── test_bookings.py         ← full booking lifecycle, open games, calendar, on-behalf-of, invites
     ├── test_calendar_reservations.py ← maintenance/skill-filter/training blocks CRUD
     ├── test_clubs.py            ← CRUD, operating hours, pricing rules, plan limits
     ├── test_courts.py           ← create/update/list, availability slots, tenant isolation
     ├── test_equipment.py        ← inventory, rentals, retire, cancel-restores-stock
-    ├── test_memberships.py      ← membership plan CRUD, get-my-membership
+    ├── test_memberships.py      ← membership plan CRUD, get-my-membership, subscribe / cancel
     ├── test_password_reset.py   ← request, confirm (token validation + expiry)
     ├── test_payment_methods.py  ← setup-intent, save / list / delete / set-default
     ├── test_players.py          ← player profile, bookings history, match history, skill updates
@@ -393,14 +394,14 @@ pytest -v
 | Bookings (create, list, open games, join, invite, cancel, calendar, on-behalf-of, update, respond-to-invite, recurring) | `test_bookings.py` | ✅ Complete |
 | Calendar reservations (maintenance, skill-filter, training blocks) | `test_calendar_reservations.py` | ✅ Complete |
 | Players (profile, bookings, match history, skill updates, search) | `test_players.py` | ✅ Complete |
-| Membership plans (CRUD, get-my-membership) | `test_memberships.py` | 🚧 Subscribe/cancel not yet covered |
+| Membership plans (CRUD, get-my-membership, subscribe, cancel) | `test_memberships.py` | ✅ Complete |
 | Equipment (inventory, rentals, retire, cancel-restores-stock) | `test_equipment.py` | ✅ Complete |
 | Trainers (list, availability CRUD, trainer bookings, open slots) | `test_trainers.py` | ✅ Complete |
 | Payment methods (setup-intent, save, list, delete, set-default) | `test_payment_methods.py` | ✅ Complete |
 | Booking payments (payment intent, confirm, webhook, platform fees) | `test_booking_payments.py` | ✅ Complete |
 | Wallet (balance, top-up, pay-booking, settle-debts) | `test_wallet.py` | ✅ Complete |
 | Org subscription (view, invoices, setup-intent, payment-method) | `test_subscription.py` | ✅ Complete |
-| Billing webhook (`/webhooks/stripe-billing`) | — | ⬜ Not yet written |
+| Billing webhook (`/webhooks/stripe-billing`) | `test_webhooks.py` | ✅ Complete |
 | Notifications | — | ⬜ Not yet written |
 
 ---

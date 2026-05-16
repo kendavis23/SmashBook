@@ -858,8 +858,11 @@ class BookingService:
         )
         if breakdown:
             amount_due = breakdown.amount_due
-            discount_amount = breakdown.discount_amount
             discount_source = breakdown.discount_source
+            # discount_amount and discount_source travel together; PricingService
+            # uses Decimal("0.00") internally as the no-discount default, but the
+            # persisted contract is (None, None) when no discount was actually applied.
+            discount_amount = breakdown.discount_amount if discount_source else None
         else:
             amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
             discount_amount = None
@@ -928,8 +931,12 @@ class BookingService:
             )
             if breakdown:
                 bp.amount_due = breakdown.amount_due
-                bp.discount_amount = breakdown.discount_amount
                 bp.discount_source = breakdown.discount_source
+                # Normalize: (None, None) when no discount actually applied —
+                # see invite_player for the same contract.
+                bp.discount_amount = (
+                    breakdown.discount_amount if breakdown.discount_source else None
+                )
                 bp.membership_subscription_id = breakdown.membership_subscription_id
             else:
                 bp.amount_due = (Decimal(str(booking.total_price)) / booking.max_players) if booking.total_price else Decimal("0.00")
