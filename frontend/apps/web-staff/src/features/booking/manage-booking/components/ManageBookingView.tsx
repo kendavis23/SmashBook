@@ -84,12 +84,6 @@ type Props = {
 
 const PAGE_SIZE = 4;
 
-function statusPillClass(status: string): string {
-    if (status === "accepted" || status === "paid") return "bg-success/15 text-success";
-    if (status === "declined" || status === "unpaid") return "bg-destructive/15 text-destructive";
-    return "bg-warning/15 text-warning";
-}
-
 function initials(name: string): string {
     return name
         .split(" ")
@@ -162,14 +156,6 @@ export default function ManageBookingView({
                     </dd>
                 </div>
                 <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
-                    <dt className="text-xs font-medium text-muted-foreground">Slots available</dt>
-                    <dd
-                        className={`mt-0.5 text-sm ${booking.slots_available === 0 ? "text-destructive" : "text-foreground"}`}
-                    >
-                        {booking.slots_available}
-                    </dd>
-                </div>
-                <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
                     <dt className="text-xs font-medium text-muted-foreground">Date</dt>
                     <dd className="mt-0.5 text-sm text-foreground">
                         {formatUTCDate(booking.start_datetime)}
@@ -194,7 +180,7 @@ export default function ManageBookingView({
                     </dd>
                 </div>
                 {booking.min_skill_level != null || booking.max_skill_level != null ? (
-                    <div className="sm:col-span-2 rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
+                    <div className="rounded-lg border border-border/70 bg-background/70 px-3 py-2.5">
                         <dt className="text-xs font-medium text-muted-foreground">Skill range</dt>
                         <dd className="mt-0.5 text-sm text-foreground">
                             {booking.min_skill_level ?? "—"} &ndash;{" "}
@@ -266,9 +252,6 @@ export default function ManageBookingView({
             </section>
         ) : null;
 
-    const acceptedPlayers = booking.players.filter((p) => p.invite_status === "accepted");
-    const pendingPlayers = booking.players.filter((p) => p.invite_status === "pending");
-
     const sortedPlayers = [...booking.players].sort((a, b) => {
         const rankA = a.role === "organiser" ? 0 : a.invite_status === "accepted" ? 1 : 2;
         const rankB = b.role === "organiser" ? 0 : b.invite_status === "accepted" ? 1 : 2;
@@ -289,110 +272,99 @@ export default function ManageBookingView({
 
     const playersSection =
         booking.players.length > 0 ? (
-            <section className={sectionShellCls}>
-                <div className={sectionHeaderCls}>
-                    <div>
-                        <p className={sectionKickerCls}>Participants</p>
-                        <h3 className="mt-1 text-base font-semibold text-foreground">Players</h3>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                            {acceptedPlayers.length} accepted, {pendingPlayers.length} pending.
-                        </p>
+            <section className="overflow-hidden rounded-xl border border-border/80 bg-card/95 shadow-sm shadow-black/5">
+                <div className="flex flex-col gap-3 border-b border-border/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+                    <div className="flex items-center gap-3">
+                        <UsersRound size={18} className="text-muted-foreground" />
+                        <h3 className="text-base font-semibold text-foreground">Player details</h3>
                     </div>
-                    <UsersRound size={18} className="mt-1 text-muted-foreground" />
+                    <label className="relative block w-full sm:w-64">
+                        <Search
+                            size={14}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                        />
+                        <input
+                            type="text"
+                            placeholder="Search..."
+                            value={playerSearch}
+                            onChange={(e) => {
+                                setPlayerSearch(e.target.value);
+                                setPlayerPage(0);
+                            }}
+                            className="w-full rounded-lg border border-border bg-background py-2 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta/50"
+                        />
+                    </label>
                 </div>
-                <div className="relative mb-3">
-                    <Search
-                        size={14}
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    />
-                    <input
-                        type="text"
-                        placeholder="Search by name…"
-                        value={playerSearch}
-                        onChange={(e) => {
-                            setPlayerSearch(e.target.value);
-                            setPlayerPage(0);
-                        }}
-                        className="w-full rounded-lg border border-border bg-background py-2 pl-8 pr-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta/50"
-                    />
-                </div>
-                <div className="space-y-2">
+                <ul className="divide-y divide-border/70">
                     {pagedPlayers.length === 0 ? (
-                        <p className="py-4 text-center text-sm text-muted-foreground">
+                        <li className="px-4 py-5 text-center text-sm text-muted-foreground sm:px-5">
                             No players found.
-                        </p>
+                        </li>
                     ) : (
                         pagedPlayers.map((player) => {
                             const isAccepted = player.invite_status === "accepted";
                             return (
-                                <div
+                                <li
                                     key={player.id}
-                                    className={`relative flex items-center gap-3 rounded-lg border px-3 py-3 ${
-                                        isAccepted
-                                            ? "border-success/30 bg-success/8"
-                                            : "border-border/70 bg-background/70"
-                                    }`}
+                                    className="flex items-center gap-4 px-4 py-5 sm:px-5"
                                 >
-                                    <div
-                                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ${
+                                    <span
+                                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold ring-1 ${
                                             isAccepted
                                                 ? "bg-success/15 text-success ring-success/30"
                                                 : "bg-secondary text-secondary-foreground ring-border"
                                         }`}
                                     >
                                         {initials(player.full_name)}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="truncate text-sm font-medium text-foreground">
-                                            {player.full_name}
-                                        </p>
-                                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
-                                                {player.role}
+                                    </span>
+                                    <p className="min-w-0 flex-1">
+                                        <span className="block truncate text-base font-semibold text-foreground">
+                                            {player.full_name}{" "}
+                                            <span className="font-normal capitalize text-muted-foreground">
+                                                ({player.role})
                                             </span>
-                                            <span
-                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.invite_status)}`}
-                                            >
-                                                <span className="font-semibold uppercase tracking-wide">
-                                                    Invite:
-                                                </span>
-                                                <span className="capitalize">
+                                        </span>
+                                        <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                                            <span>
+                                                Invite:{" "}
+                                                <span className="capitalize text-foreground/80">
                                                     {player.invite_status}
                                                 </span>
                                             </span>
-                                            <span
-                                                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusPillClass(player.payment_status)}`}
-                                            >
-                                                <span className="font-semibold uppercase tracking-wide">
-                                                    Payment:
-                                                </span>
-                                                <span className="capitalize">
-                                                    {player.payment_status}
-                                                </span>
-                                            </span>
-                                            {player.discount_amount ? (
-                                                <span className="inline-flex items-center gap-1 rounded-full bg-cta/10 px-2 py-0.5 text-[11px] font-medium text-cta">
-                                                    <span className="font-semibold uppercase tracking-wide">
-                                                        Discount:
-                                                    </span>
-                                                    <span>{player.discount_amount}</span>
-                                                    {player.discount_source ? (
-                                                        <span className="opacity-70">
-                                                            ({player.discount_source})
+                                            {isAccepted ? (
+                                                <>
+                                                    <span aria-hidden="true">·</span>
+                                                    <span>
+                                                        Payment:{" "}
+                                                        <span className="capitalize text-foreground/80">
+                                                            {player.payment_status}
                                                         </span>
-                                                    ) : null}
-                                                </span>
+                                                    </span>
+                                                </>
                                             ) : null}
-                                        </div>
-                                    </div>
-                                    <div className="shrink-0 text-right text-sm font-semibold text-foreground">
-                                        {formatCurrency(player.amount_due)}
-                                    </div>
-                                </div>
+                                            {player.discount_amount ? (
+                                                <>
+                                                    <span aria-hidden="true">·</span>
+                                                    <span className="text-cta">
+                                                        Discount: {player.discount_amount}
+                                                        {player.discount_source
+                                                            ? ` (${player.discount_source})`
+                                                            : ""}
+                                                    </span>
+                                                </>
+                                            ) : null}
+                                        </span>
+                                    </p>
+                                    {isAccepted ? (
+                                        <span className="shrink-0 text-base font-semibold text-foreground">
+                                            {formatCurrency(player.amount_due)}
+                                        </span>
+                                    ) : null}
+                                </li>
                             );
                         })
                     )}
-                </div>
+                </ul>
                 {totalPlayerPages > 1 && (
                     <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3">
                         <span className="text-xs text-muted-foreground">
@@ -526,8 +498,15 @@ export default function ManageBookingView({
                         ) : null}
 
                         {isEditable ? (
-                            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,0.85fr)]">
-                                {/* Left — edit form */}
+                            <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(22rem,0.85fr)]">
+                                {/* Left — overview + invite + players */}
+                                <div className="space-y-5">
+                                    {overviewSection}
+                                    {inviteSection}
+                                    {playersSection}
+                                </div>
+
+                                {/* Right — edit form */}
                                 <div>
                                     <form onSubmit={onSubmit} noValidate>
                                         <section className={sectionShellCls}>
@@ -788,13 +767,6 @@ export default function ManageBookingView({
                                             </button>
                                         </div>
                                     </form>
-                                </div>
-
-                                {/* Right — overview + invite + players */}
-                                <div className="space-y-5">
-                                    {overviewSection}
-                                    {inviteSection}
-                                    {playersSection}
                                 </div>
                             </div>
                         ) : (

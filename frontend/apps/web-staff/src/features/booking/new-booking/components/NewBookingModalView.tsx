@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
-import { CalendarDays, UsersRound, X } from "lucide-react";
+import { CalendarDays, Clock, MapPin, UsersRound, X } from "lucide-react";
 import {
     AlertToast,
     NumberInput,
@@ -43,16 +43,37 @@ const sectionCls = `space-y-2 ${dividerCls}`;
 
 const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
 
-function DetailItem({ label, value }: { label: string; value: string }): JSX.Element {
+function DetailItem({
+    icon,
+    label,
+    value,
+    color,
+    bg,
+    ring,
+}: {
+    icon: JSX.Element;
+    label: string;
+    value: string;
+    color: string;
+    bg: string;
+    ring: string;
+}): JSX.Element {
     return (
-        <li className="min-w-0 bg-muted/15 px-3 py-2">
-            <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
-                {label}
-            </span>
-            <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
-                {value}
-            </span>
-        </li>
+        <div className="flex min-w-0 items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
+            <div
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${bg} ${color} ${ring}`}
+            >
+                {icon}
+            </div>
+            <div className="min-w-0 flex flex-col gap-0.5">
+                <span className="text-[9px] font uppercase tracking-wider text-muted-foreground">
+                    {label}
+                </span>
+                <span className="break-words text-sm font leading-tight text-foreground">
+                    {value}
+                </span>
+            </div>
+        </div>
     );
 }
 
@@ -139,12 +160,40 @@ export function NewBookingModalView({
                     <AlertToast title={apiError} variant="error" onClose={onDismissError} />
                 ) : null}
 
-                <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 sm:grid-cols-4">
-                    <DetailItem label="Court" value={courtName} />
-                    <DetailItem label="Date" value={formattedDate} />
-                    <DetailItem label="Start Time" value={formattedTime} />
-                    <DetailItem label="Price" value={formattedPrice} />
-                </ul>
+                <div className="grid grid-cols-2 gap-2">
+                    <DetailItem
+                        icon={<MapPin size={13} />}
+                        label="Court"
+                        value={courtName}
+                        color="text-violet-600"
+                        bg="bg-violet-500/10"
+                        ring="ring-violet-500/15"
+                    />
+                    <DetailItem
+                        icon={<CalendarDays size={13} />}
+                        label="Date"
+                        value={formattedDate}
+                        color="text-blue-600"
+                        bg="bg-blue-500/10"
+                        ring="ring-blue-500/15"
+                    />
+                    <DetailItem
+                        icon={<Clock size={13} />}
+                        label="Time"
+                        value={formattedTime}
+                        color="text-amber-600"
+                        bg="bg-amber-500/10"
+                        ring="ring-amber-500/15"
+                    />
+                    <DetailItem
+                        icon={<span className="text-xs font-bold leading-none">£</span>}
+                        label="Total"
+                        value={formattedPrice}
+                        color="text-emerald-600"
+                        bg="bg-emerald-500/10"
+                        ring="ring-emerald-500/15"
+                    />
+                </div>
 
                 <section className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${dividerCls}`}>
                     <div>

@@ -196,6 +196,24 @@ describe("ManageBookingModalView", () => {
         expect(screen.getByRole("button", { name: "Decline" })).toBeInTheDocument();
     });
 
+    it("does not show payment information until the current invite is accepted", () => {
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                playerRole="player"
+                myInfo={{
+                    role: "player",
+                    inviteStatus: "pending",
+                    paymentStatus: "pending",
+                    amountDue: 10,
+                }}
+            />
+        );
+
+        expect(screen.queryByText("Payment Information")).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Pay now" })).not.toBeInTheDocument();
+    });
+
     it("calls onRespondInvite with accepted when Accept is clicked", () => {
         const onRespondInvite = vi.fn();
         const bookingPending = {
@@ -322,6 +340,36 @@ describe("ManageBookingModalView", () => {
         expect(screen.getByText("Alex Doe")).toBeInTheDocument();
     });
 
+    it("hides player payment status until that player's invite is accepted", () => {
+        const bookingWithPlayers = {
+            ...booking,
+            players: [
+                {
+                    id: "p1",
+                    full_name: "Alice Hartley",
+                    role: "player",
+                    invite_status: "pending",
+                    payment_status: "pending",
+                    amount_due: 10,
+                },
+                {
+                    id: "p2",
+                    full_name: "Frank Mueller",
+                    role: "organiser",
+                    invite_status: "accepted",
+                    payment_status: "paid",
+                    amount_due: 0,
+                },
+            ],
+        };
+
+        render(<ManageBookingModalView {...defaultProps} booking={bookingWithPlayers as never} />);
+
+        expect(screen.getByText("Invite: Pending")).toBeInTheDocument();
+        expect(screen.queryByText("Payment: Pending")).not.toBeInTheDocument();
+        expect(screen.getByText("Payment: Paid")).toBeInTheDocument();
+    });
+
     it("calls onPayClick from the current player's pending payment row", () => {
         const onPayClick = vi.fn();
         const bookingWithPlayers = {
@@ -364,6 +412,83 @@ describe("ManageBookingModalView", () => {
                 payment_status: "pending",
             })
         );
+    });
+
+    it("shows original price as amount due plus discount when discount exists", () => {
+        const bookingWithDiscount = {
+            ...booking,
+            players: [
+                {
+                    id: "p1",
+                    booking_id: "booking-1",
+                    user_id: "user-1",
+                    full_name: "Alex Doe",
+                    role: "player",
+                    invite_status: "accepted",
+                    payment_status: "paid",
+                    amount_due: 5.85,
+                    discount_amount: "0.65",
+                    discount_source: "Membership",
+                },
+            ],
+        };
+
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                booking={bookingWithDiscount as never}
+                myUserId="user-1"
+                myInfo={{
+                    role: "player",
+                    inviteStatus: "accepted",
+                    paymentStatus: "paid",
+                    amountDue: 5.85,
+                }}
+            />
+        );
+
+        expect(screen.getByText("Original price")).toBeInTheDocument();
+        expect(screen.getByText("£6.50")).toBeInTheDocument();
+        expect(screen.getByText("Membership")).toBeInTheDocument();
+        expect(screen.getByText("-£0.65")).toBeInTheDocument();
+        expect(screen.getByText("£5.85")).toBeInTheDocument();
+    });
+
+    it("uses the absolute discount amount when discount is formatted as a negative currency string", () => {
+        const bookingWithDiscount = {
+            ...booking,
+            players: [
+                {
+                    id: "p1",
+                    booking_id: "booking-1",
+                    user_id: "user-1",
+                    full_name: "Alex Doe",
+                    role: "player",
+                    invite_status: "accepted",
+                    payment_status: "paid",
+                    amount_due: 5.85,
+                    discount_amount: "-£0.65",
+                    discount_source: "Membership",
+                },
+            ],
+        };
+
+        render(
+            <ManageBookingModalView
+                {...defaultProps}
+                booking={bookingWithDiscount as never}
+                myUserId="user-1"
+                myInfo={{
+                    role: "player",
+                    inviteStatus: "accepted",
+                    paymentStatus: "paid",
+                    amountDue: 5.85,
+                }}
+            />
+        );
+
+        expect(screen.getByText("£6.50")).toBeInTheDocument();
+        expect(screen.getByText("-£0.65")).toBeInTheDocument();
     });
 
     it("does not render players section when booking has no players", () => {

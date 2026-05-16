@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
 import type { JSX } from "react";
-import { useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { invitePlayerEndpoint } from "@repo/api-client/modules/share";
 import { respondInviteEndpoint } from "@repo/api-client/modules/player";
@@ -161,7 +160,6 @@ function BookingModal({
 }
 
 export default function BookingsContainer(): JSX.Element {
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
     const [pastTabVisited, setPastTabVisited] = useState(false);
@@ -207,7 +205,6 @@ export default function BookingsContainer(): JSX.Element {
         setActiveTab(tab);
         if (tab === "past") setPastTabVisited(true);
     }, []);
-    const handleCreateClick = useCallback(() => void navigate({ to: "/bookings/new" }), [navigate]);
 
     const inviteMutation = useMutation({
         mutationFn: ({
@@ -319,7 +316,6 @@ export default function BookingsContainer(): JSX.Element {
                 pastTo={pastTo}
                 onTabChange={handleTabChange}
                 onRefresh={handleRefresh}
-                onCreateClick={handleCreateClick}
                 onManageClick={handleManageClick}
                 onPayClick={handlePayClick}
                 onInvitePlayer={handleInvitePlayer}

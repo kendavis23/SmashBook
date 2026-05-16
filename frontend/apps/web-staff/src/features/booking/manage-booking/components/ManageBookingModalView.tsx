@@ -1,12 +1,14 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
 import {
+    CalendarDays,
     ChevronLeft,
     ChevronRight,
     RefreshCw,
     RotateCcw,
     Search,
     UserRound,
+    Users,
     X,
 } from "lucide-react";
 import {
@@ -33,16 +35,37 @@ const labelCls = "mb-1 block text-xs font-medium text-foreground";
 const dividerCls = "border-t-2 border-border/20 pt-3";
 const sectionCls = `space-y-2 ${dividerCls}`;
 
-function DetailItem({ label, value }: { label: string; value: string }): JSX.Element {
+function DetailItem({
+    icon,
+    label,
+    value,
+    color,
+    bg,
+    ring,
+}: {
+    icon: JSX.Element;
+    label: string;
+    value: string;
+    color: string;
+    bg: string;
+    ring: string;
+}): JSX.Element {
     return (
-        <li className="min-w-0 bg-muted/15 px-3 py-2">
-            <span className="block text-[10px] font-semibold uppercase text-muted-foreground">
-                {label}
-            </span>
-            <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
-                {value}
-            </span>
-        </li>
+        <div className="flex min-w-0 items-center rounded-xl border border-border/50 bg-muted/20 px-2 py-2.5 sm:gap-3 sm:px-3">
+            <div
+                className={`hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset sm:flex ${bg} ${color} ${ring}`}
+            >
+                {icon}
+            </div>
+            <div className="min-w-0 flex flex-col gap-0.5">
+                <span className="text-[9px] font uppercase tracking-wider text-muted-foreground">
+                    {label}
+                </span>
+                <span className="break-words text-sm font leading-tight text-foreground">
+                    {value}
+                </span>
+            </div>
+        </div>
     );
 }
 
@@ -67,6 +90,12 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                   .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
                   .join(" ")
             : "—";
+
+    const parseDiscountAmount = (value?: string | null): number => {
+        if (!value) return 0;
+        const parsed = Number(value.replace(/[^0-9.-]/g, ""));
+        return Number.isFinite(parsed) ? Math.abs(parsed) : 0;
+    };
 
     const sorted = [...players].sort((a, b) => {
         const rankA = a.role === "organiser" ? 0 : a.invite_status === "accepted" ? 1 : 2;
@@ -113,10 +142,13 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                 ) : (
                     paged.map((p) => {
                         const isAccepted = p.invite_status === "accepted";
+                        const discountAmount = parseDiscountAmount(p.discount_amount);
+                        const hasDiscount = discountAmount > 0;
+
                         return (
                             <div
                                 key={p.id}
-                                className={`flex items-center gap-3 px-3 py-2.5 ${isAccepted ? "bg-success/8" : ""}`}
+                                className={`grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1.5 px-3 py-2.5 ${isAccepted ? "bg-success/8" : ""}`}
                             >
                                 <span
                                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
@@ -128,28 +160,33 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                                     {getInitials(p.full_name)}
                                 </span>
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-medium text-foreground">
-                                        {p.full_name}
-                                    </p>
-                                    <p className="text-[11px] text-muted-foreground">
-                                        <span className="capitalize">{formatStatus(p.role)}</span>
-                                        <span className="mx-1.5 opacity-40">&middot;</span>
-                                        <span className="text-muted-foreground/60">
-                                            Invite:
-                                        </span>{" "}
+                                    <div className="flex min-w-0 items-baseline gap-1.5">
+                                        <span className="truncate text-sm font-medium leading-tight text-foreground">
+                                            {p.full_name}
+                                        </span>
+                                        <span className="shrink-0 text-[11px] capitalize text-muted-foreground">
+                                            ({formatStatus(p.role)})
+                                        </span>
+                                    </div>
+                                    <p className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+                                        <span className="text-muted-foreground/60">Invite:</span>{" "}
                                         <span className="capitalize">
                                             {formatStatus(p.invite_status)}
                                         </span>
-                                        <span className="mx-1.5 opacity-40">&middot;</span>
-                                        <span className="text-muted-foreground/60">
-                                            Payment:
-                                        </span>{" "}
-                                        <span className="capitalize">
-                                            {formatStatus(p.payment_status)}
-                                        </span>
-                                        {p.discount_amount ? (
+                                        {isAccepted ? (
                                             <>
-                                                <span className="mx-1.5 opacity-40">&middot;</span>
+                                                <span className="opacity-40">&middot;</span>
+                                                <span className="text-muted-foreground/60">
+                                                    Payment:
+                                                </span>{" "}
+                                                <span className="capitalize">
+                                                    {formatStatus(p.payment_status)}
+                                                </span>
+                                            </>
+                                        ) : null}
+                                        {hasDiscount ? (
+                                            <>
+                                                <span className="opacity-40">&middot;</span>
                                                 <span className="text-cta">
                                                     Discount: {p.discount_amount}
                                                     {p.discount_source
@@ -160,9 +197,11 @@ function PlayersTable({ players }: { players: Booking["players"] }): JSX.Element
                                         ) : null}
                                     </p>
                                 </div>
-                                <span className="shrink-0 text-sm font-medium text-foreground">
-                                    {formatCurrency(p.amount_due)}
-                                </span>
+                                {isAccepted ? (
+                                    <span className="col-start-3 row-span-2 shrink-0 self-center text-sm font-medium text-foreground">
+                                        {formatCurrency(p.amount_due)}
+                                    </span>
+                                ) : null}
                             </div>
                         );
                     })
@@ -321,35 +360,36 @@ export function ManageBookingModalView({
                     />
                 ) : null}
 
-                <ul
-                    className={`grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-border/70 bg-border/70 ${
-                        booking.is_open_game ? "sm:grid-cols-4" : "sm:grid-cols-3"
-                    }`}
-                >
+                <div className="grid grid-cols-3 gap-2">
                     <DetailItem
+                        icon={<CalendarDays size={13} />}
                         label="Type"
                         value={BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type}
+                        color="text-cta"
+                        bg="bg-cta/10"
+                        ring="ring-cta/15"
                     />
                     <DetailItem
+                        icon={<Users size={13} />}
                         label="Players"
                         value={
                             booking.max_players != null
                                 ? `${booking.max_players - booking.slots_available} / ${booking.max_players}`
                                 : String(booking.players.length)
                         }
+                        color="text-pink-600"
+                        bg="bg-pink-500/10"
+                        ring="ring-pink-500/15"
                     />
-                    <DetailItem label="Total" value={formatCurrency(booking.total_price)} />
-                    {booking.is_open_game ? (
-                        <DetailItem
-                            label="Open Game"
-                            value={
-                                booking.min_skill_level != null || booking.max_skill_level != null
-                                    ? `Skill ${booking.min_skill_level ?? "—"} – ${booking.max_skill_level ?? "—"}`
-                                    : "Open"
-                            }
-                        />
-                    ) : null}
-                </ul>
+                    <DetailItem
+                        icon={<span className="text-xs font-bold leading-none">£</span>}
+                        label="Total"
+                        value={formatCurrency(booking.total_price)}
+                        color="text-emerald-600"
+                        bg="bg-emerald-500/10"
+                        ring="ring-emerald-500/15"
+                    />
+                </div>
 
                 {/* Invite Player — only for pending open games */}
                 {booking.is_open_game && booking.status === "pending" ? (
