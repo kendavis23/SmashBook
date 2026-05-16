@@ -9,6 +9,8 @@
         "./modules/share/*": "./modules/share/*.ts",
         "./modules/player": "./modules/player/index.ts",
         "./modules/player/*": "./modules/player/*.ts",
+        "./modules/admin": "./modules/admin/index.ts",
+        "./modules/admin/*": "./modules/admin/*.ts",
         "./core/*": "./core/*.ts"
     },
     "dependencies": {

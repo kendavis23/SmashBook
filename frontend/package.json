@@ -7,6 +7,7 @@
         "dev:staff": "turbo dev --filter=@repo/web-staff",
         "dev:player": "turbo dev --filter=@repo/web-player",
         "dev:website": "turbo dev --filter=@repo/website",
+        "dev:admin": "turbo dev --filter=@repo/web-admin",
         "lint": "turbo lint",
         "test": "turbo test",
         "type-check": "turbo type-check",

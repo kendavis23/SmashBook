@@ -29,3 +29,6 @@ export {
 
 // Profile endpoints
 export { updateProfileEndpoint } from "./modules/share/profile/profile.api";
+
+// Admin endpoints
+export * from "./modules/admin";

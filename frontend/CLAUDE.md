@@ -12,9 +12,10 @@ pnpm install
 
 # Development
 pnpm dev                          # all apps
+pnpm --filter @repo/web-admin dev # platform admin portal only (port 3000)
 pnpm --filter web-staff dev       # staff portal only (port 3001)
 pnpm --filter web-player dev      # player portal only (port 3002)
-pnpm --filter website dev      # player portal only (port 3003)
+pnpm --filter @repo/website dev   # public website only (port 3003)
 pnpm --filter mobile-player start # mobile app
 
 # Build
@@ -43,7 +44,7 @@ pnpm dlx shadcn@2.1.8 add <component> --cwd packages/ui
 
 ## Architecture Overview
 
-This is a **Turborepo + pnpm monorepo** with three apps and shared packages.
+This is a **Turborepo + pnpm monorepo** with five apps and shared packages.
 
 ### Core principle: Apps are thin shells. Packages are powerful.
 
@@ -56,6 +57,8 @@ packages/      → all logic, UI, and configuration
 
 | App             | Description                                          |
 | --------------- | ---------------------------------------------------- |
+| `website`       | Public website (React + Vite, port 3003)             |
+| `web-admin`     | Platform admin portal (React + Vite, port 3000)      |
 | `web-staff`     | Staff/club operator portal (React + Vite, port 3001) |
 | `web-player`    | Player-facing web portal (React + Vite, port 3002)   |
 | `mobile-player` | Player mobile app (Expo Router / React Native)       |
@@ -65,6 +68,7 @@ packages/      → all logic, UI, and configuration
 | Package               | Owns                                                                     |
 | --------------------- | ------------------------------------------------------------------------ |
 | `@repo/api-client`    | All HTTP calls, `fetcher.ts`, query keys, `ApiError` type — nothing else |
+| `@repo/admin-domain`  | Platform admin business logic, Zustand store, validators, types          |
 | `@repo/staff-domain`  | Staff business logic, Zustand store, validators, types                   |
 | `@repo/player-domain` | Player business logic, Zustand store, validators, types                  |
 | `@repo/auth`          | Tokens, session, login/logout, `useAuth()` hook                          |

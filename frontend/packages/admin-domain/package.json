@@ -1,0 +1,35 @@
+{
+    "name": "@repo/admin-domain",
+    "version": "0.0.0",
+    "private": true,
+    "exports": {
+        "./hooks": "./hooks/index.ts",
+        "./models": "./models/index.ts",
+        "./store": "./store/index.ts"
+    },
+    "dependencies": {
+        "@repo/api-client": "workspace:*",
+        "@repo/auth": "workspace:*",
+        "@tanstack/react-query": "5.62.9",
+        "zustand": "4.5.5"
+    },
+    "peerDependencies": {
+        "react": "^19.0.0"
+    },
+    "scripts": {
+        "test": "vitest run --passWithNoTests",
+        "test:watch": "vitest"
+    },
+    "devDependencies": {
+        "@repo/tsconfig": "workspace:*",
+        "@testing-library/jest-dom": "^6.4.0",
+        "@testing-library/react": "^16.0.0",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "@vitejs/plugin-react": "^4.3.0",
+        "jsdom": "^25.0.0",
+        "react-dom": "19.1.0",
+        "typescript": "5.6.3",
+        "vitest": "^2.0.0"
+    }
+}
