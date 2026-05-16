@@ -25,13 +25,7 @@ vi.mock("./ManageBookingModalContainer", () => ({
 
 describe("ManageBookingModal", () => {
     it("renders modal container props through a portal", () => {
-        render(
-            <ManageBookingModal
-                bookingId="booking-1"
-                clubId="club-1"
-                onClose={vi.fn()}
-            />
-        );
+        render(<ManageBookingModal bookingId="booking-1" clubId="club-1" onClose={vi.fn()} />);
 
         expect(screen.getByText("booking-1")).toBeInTheDocument();
         expect(screen.getByText("club-1")).toBeInTheDocument();

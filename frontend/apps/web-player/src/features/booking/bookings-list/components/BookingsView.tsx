@@ -1,10 +1,12 @@
 import type { JSX } from "react";
+import { useMemo } from "react";
 import { Breadcrumb, AlertToast } from "@repo/ui";
 import { CalendarDays, RefreshCw } from "lucide-react";
 import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
 import { BOOKING_TABS } from "../../types";
 import PlayerBookingList from "./PlayerBookingList";
 import PlayerPastFilter from "./PlayerPastFilter";
+import PlayerUpcomingFilter from "./PlayerUpcomingFilter";
 
 type Props = {
     upcoming: PlayerBookingItem[];
@@ -26,6 +28,11 @@ type Props = {
     onPastFilterChange: (patch: { pastFrom?: string; pastTo?: string }) => void;
     onPastFilterApply: () => void;
     onPastFilterClear: () => void;
+    upcomingSearch: string;
+    upcomingFilterDate: string;
+    onUpcomingSearchChange: (v: string) => void;
+    onUpcomingDateChange: (v: string) => void;
+    onUpcomingFilterClear: () => void;
 };
 
 export default function BookingsView({
@@ -45,8 +52,24 @@ export default function BookingsView({
     onPastFilterChange,
     onPastFilterApply,
     onPastFilterClear,
+    upcomingSearch,
+    upcomingFilterDate,
+    onUpcomingSearchChange,
+    onUpcomingDateChange,
+    onUpcomingFilterClear,
 }: Props): JSX.Element {
-    const items = activeTab === "upcoming" ? upcoming : past;
+    const filteredUpcoming = useMemo(() => {
+        const term = upcomingSearch.trim().toLowerCase();
+        return upcoming.filter((item) => {
+            const matchesCourt = term === "" || item.court_name.toLowerCase().includes(term);
+            const matchesDate =
+                upcomingFilterDate === "" ||
+                item.start_datetime.slice(0, 10) === upcomingFilterDate;
+            return matchesCourt && matchesDate;
+        });
+    }, [upcoming, upcomingSearch, upcomingFilterDate]);
+
+    const items = activeTab === "upcoming" ? filteredUpcoming : past;
     const emptyMessage = activeTab === "upcoming" ? "No upcoming bookings." : "No past bookings.";
 
     return (
@@ -122,6 +145,17 @@ export default function BookingsView({
                             </button>
                         ))}
                     </div>
+
+                    {/* Upcoming filter bar */}
+                    {activeTab === "upcoming" ? (
+                        <PlayerUpcomingFilter
+                            search={upcomingSearch}
+                            filterDate={upcomingFilterDate}
+                            onSearchChange={onUpcomingSearchChange}
+                            onDateChange={onUpcomingDateChange}
+                            onClear={onUpcomingFilterClear}
+                        />
+                    ) : null}
 
                     {/* Past filter bar */}
                     {activeTab === "past" ? (

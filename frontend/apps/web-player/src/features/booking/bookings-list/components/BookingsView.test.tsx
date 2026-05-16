@@ -88,6 +88,11 @@ const defaultProps = {
     onPastFilterChange: vi.fn(),
     onPastFilterApply: vi.fn(),
     onPastFilterClear: vi.fn(),
+    upcomingSearch: "",
+    upcomingFilterDate: "",
+    onUpcomingSearchChange: vi.fn(),
+    onUpcomingDateChange: vi.fn(),
+    onUpcomingFilterClear: vi.fn(),
 };
 
 describe("BookingsView — loading state", () => {

@@ -60,7 +60,9 @@ export function NewBookingModalView({
     onClose,
 }: Props) {
     const [invitePlayerId, setInvitePlayerId] = useState("");
-    const [invitedPlayerInfo, setInvitedPlayerInfo] = useState<Record<string, { name: string; skill?: number | null }>>({});
+    const [invitedPlayerInfo, setInvitedPlayerInfo] = useState<
+        Record<string, { name: string; skill?: number | null }>
+    >({});
     const isIndividualLesson = form.bookingType === "lesson_individual";
     const isLessonType =
         form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
@@ -111,18 +113,51 @@ export function NewBookingModalView({
                     <p className={labelCls}>Match Information</p>
                     <div className="grid grid-cols-2 gap-2">
                         {[
-                            { icon: <MapPin size={13} />, label: "Court", value: courtName, color: "text-violet-500", bg: "bg-violet-500/10" },
-                            { icon: <CalendarDays size={13} />, label: "Date", value: formattedDate, color: "text-blue-500", bg: "bg-blue-500/10" },
-                            { icon: <Clock size={13} />, label: "Time", value: formattedTime, color: "text-amber-500", bg: "bg-amber-500/10" },
-                            { icon: <span className="text-xs font-bold leading-none">£</span>, label: "Price", value: formattedPrice, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                            {
+                                icon: <MapPin size={13} />,
+                                label: "Court",
+                                value: courtName,
+                                color: "text-violet-500",
+                                bg: "bg-violet-500/10",
+                            },
+                            {
+                                icon: <CalendarDays size={13} />,
+                                label: "Date",
+                                value: formattedDate,
+                                color: "text-blue-500",
+                                bg: "bg-blue-500/10",
+                            },
+                            {
+                                icon: <Clock size={13} />,
+                                label: "Time",
+                                value: formattedTime,
+                                color: "text-amber-500",
+                                bg: "bg-amber-500/10",
+                            },
+                            {
+                                icon: <span className="text-xs font-bold leading-none">£</span>,
+                                label: "Price",
+                                value: formattedPrice,
+                                color: "text-emerald-500",
+                                bg: "bg-emerald-500/10",
+                            },
                         ].map(({ icon, label, value, color, bg }) => (
-                            <div key={label} className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5">
-                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bg} ${color}`}>
+                            <div
+                                key={label}
+                                className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5"
+                            >
+                                <div
+                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bg} ${color}`}
+                                >
                                     {icon}
                                 </div>
                                 <div className="min-w-0 flex flex-col gap-0.5">
-                                    <span className="text-[9px] font uppercase tracking-wider text-muted-foreground">{label}</span>
-                                    <span className="truncate text-sm font text-foreground leading-tight">{value}</span>
+                                    <span className="text-[9px] font uppercase tracking-wider text-muted-foreground">
+                                        {label}
+                                    </span>
+                                    <span className="truncate text-sm font text-foreground leading-tight">
+                                        {value}
+                                    </span>
                                 </div>
                             </div>
                         ))}
@@ -228,7 +263,10 @@ export function NewBookingModalView({
                             onSelect={(player) => {
                                 setInvitedPlayerInfo((info) => ({
                                     ...info,
-                                    [player.id]: { name: player.full_name, skill: player.skill_level },
+                                    [player.id]: {
+                                        name: player.full_name,
+                                        skill: player.skill_level,
+                                    },
                                 }));
                                 if (!form.playerUserIds.includes(player.id)) {
                                     onFormChange({
@@ -247,13 +285,17 @@ export function NewBookingModalView({
                                 {form.playerUserIds.filter(Boolean).map((uid, index) => {
                                     const info = invitedPlayerInfo[uid];
                                     const displayName = info?.name ?? `Player ${index + 1}`;
-                                    const label = info?.skill ? `${displayName} (${info.skill})` : displayName;
+                                    const label = info?.skill
+                                        ? `${displayName} (${info.skill})`
+                                        : displayName;
                                     return (
                                         <div
                                             key={`${uid}-${index}`}
                                             className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
                                         >
-                                            <p className="min-w-0 truncate text-sm text-foreground">{label}</p>
+                                            <p className="min-w-0 truncate text-sm text-foreground">
+                                                {label}
+                                            </p>
                                             <button
                                                 type="button"
                                                 aria-label={`Remove ${displayName}`}

@@ -11,9 +11,7 @@ type Props = {
 
 export function ManageBookingModal({ bookingId, clubId, onClose, onSuccess }: Props): JSX.Element {
     return createPortal(
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-4 backdrop-blur-sm"
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-4 backdrop-blur-sm">
             {/*
               IMPORTANT: flex flex-col + NO overflow-y-auto + NO padding here.
               Overflow and padding live inside ManageBookingModalView.

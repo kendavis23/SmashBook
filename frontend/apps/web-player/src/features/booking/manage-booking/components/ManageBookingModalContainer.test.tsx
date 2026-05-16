@@ -159,32 +159,20 @@ describe("ManageBookingModalContainer", () => {
     it("renders loading and error states", () => {
         setupBooking({ data: undefined, isLoading: true });
         const { rerender } = render(
-            <ManageBookingModalContainer
-                bookingId="booking-1"
-                clubId="club-1"
-                onClose={vi.fn()}
-            />
+            <ManageBookingModalContainer bookingId="booking-1" clubId="club-1" onClose={vi.fn()} />
         );
         expect(screen.getByText("Loading booking…")).toBeInTheDocument();
 
         setupBooking({ data: undefined, isLoading: false, error: new Error("Missing booking") });
         rerender(
-            <ManageBookingModalContainer
-                bookingId="booking-1"
-                clubId="club-1"
-                onClose={vi.fn()}
-            />
+            <ManageBookingModalContainer bookingId="booking-1" clubId="club-1" onClose={vi.fn()} />
         );
         expect(screen.getByText("Missing booking")).toBeInTheDocument();
     });
 
     it("passes booking and current player role to the view", () => {
         render(
-            <ManageBookingModalContainer
-                bookingId="booking-1"
-                clubId="club-1"
-                onClose={vi.fn()}
-            />
+            <ManageBookingModalContainer bookingId="booking-1" clubId="club-1" onClose={vi.fn()} />
         );
 
         expect(screen.getByText("Court One")).toBeInTheDocument();
@@ -206,10 +194,7 @@ describe("ManageBookingModalContainer", () => {
         );
 
         fireEvent.click(screen.getByRole("button", { name: "Invite player" }));
-        expect(mockInviteMutate).toHaveBeenCalledWith(
-            { user_id: "player-2" },
-            expect.any(Object)
-        );
+        expect(mockInviteMutate).toHaveBeenCalledWith({ user_id: "player-2" }, expect.any(Object));
         expect(screen.getByRole("alert")).toHaveTextContent("Invite failed");
 
         fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));

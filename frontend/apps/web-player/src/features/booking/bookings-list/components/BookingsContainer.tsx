@@ -176,6 +176,9 @@ export default function BookingsContainer(): JSX.Element {
     const [appliedFrom, setAppliedFrom] = useState(defaultFromIso);
     const [appliedTo, setAppliedTo] = useState(defaultToIso);
 
+    const [upcomingSearch, setUpcomingSearch] = useState("");
+    const [upcomingFilterDate, setUpcomingFilterDate] = useState("");
+
     const {
         data: upcomingData,
         isLoading: isUpcomingLoading,
@@ -304,6 +307,11 @@ export default function BookingsContainer(): JSX.Element {
         setAppliedTo("");
     }, []);
 
+    const handleUpcomingFilterClear = useCallback((): void => {
+        setUpcomingSearch("");
+        setUpcomingFilterDate("");
+    }, []);
+
     return (
         <>
             <BookingsView
@@ -323,6 +331,11 @@ export default function BookingsContainer(): JSX.Element {
                 onPastFilterChange={handlePastFilterChange}
                 onPastFilterApply={handlePastFilterApply}
                 onPastFilterClear={handlePastFilterClear}
+                upcomingSearch={upcomingSearch}
+                upcomingFilterDate={upcomingFilterDate}
+                onUpcomingSearchChange={setUpcomingSearch}
+                onUpcomingDateChange={setUpcomingFilterDate}
+                onUpcomingFilterClear={handleUpcomingFilterClear}
             />
             {selectedBooking ? (
                 <BookingModal

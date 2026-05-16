@@ -20,9 +20,7 @@ export function NewBookingModal({
     onSuccess,
 }: Props): JSX.Element {
     return createPortal(
-        <div
-            className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-4 backdrop-blur-sm"
-        >
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-4 backdrop-blur-sm">
             <div
                 className="flex w-full max-w-2xl flex-col rounded-2xl border border-border bg-card shadow-2xl"
                 style={{ height: "min(90vh, 90dvh)", maxHeight: "100%" }}

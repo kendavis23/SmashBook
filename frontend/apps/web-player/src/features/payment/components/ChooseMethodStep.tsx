@@ -23,9 +23,7 @@ export function ChooseMethodStep({
 }: Props): JSX.Element {
     const defaultCard = methods.find((m) => m.is_default) ?? methods[0];
     const [selectedMethod, setSelectedMethod] = useState<MethodType>("wallet");
-    const [selectedCardId, setSelectedCardId] = useState<string | null>(
-        defaultCard?.id ?? null
-    );
+    const [selectedCardId, setSelectedCardId] = useState<string | null>(defaultCard?.id ?? null);
     const [cardExpanded, setCardExpanded] = useState(false);
 
     const { data: wallet, isLoading: walletLoading } = useGetWallet();
@@ -205,7 +203,9 @@ export function ChooseMethodStep({
                                     <Plus size={14} />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-foreground">Add new card</p>
+                                    <p className="text-sm font-medium text-foreground">
+                                        Add new card
+                                    </p>
                                     <p className="text-xs text-muted-foreground">
                                         Securely saved for future use
                                     </p>
@@ -228,7 +228,8 @@ export function ChooseMethodStep({
                                             •••• {selectedCard.last4}
                                         </span>
                                         <span className="text-xs text-muted-foreground">
-                                            Exp {selectedCard.exp_month.toString().padStart(2, "0")}/{selectedCard.exp_year}
+                                            Exp {selectedCard.exp_month.toString().padStart(2, "0")}
+                                            /{selectedCard.exp_year}
                                         </span>
                                     </div>
                                     <button
@@ -241,7 +242,9 @@ export function ChooseMethodStep({
                                 </div>
                             ) : (
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm text-muted-foreground">Add a new card</span>
+                                    <span className="text-sm text-muted-foreground">
+                                        Add a new card
+                                    </span>
                                     {methods.length > 0 && (
                                         <button
                                             type="button"

@@ -148,11 +148,7 @@ function SavedCardConfirm({
             </div>
 
             <div className="mt-auto flex gap-3 pt-6">
-                <button
-                    type="button"
-                    onClick={onCancel}
-                    className="btn-outline min-h-11 flex-1"
-                >
+                <button type="button" onClick={onCancel} className="btn-outline min-h-11 flex-1">
                     Cancel
                 </button>
                 <button
@@ -329,7 +325,11 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
         }
     }
 
-    async function createIntentThenShow(bkId: string, methodId: string, cardOverride?: PaymentMethod) {
+    async function createIntentThenShow(
+        bkId: string,
+        methodId: string,
+        cardOverride?: PaymentMethod
+    ) {
         setStep({ id: "loading" });
         try {
             const intent = await createPaymentIntent.mutateAsync({
@@ -351,7 +351,10 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
             }
 
             if (!chosenCard) {
-                setStep({ id: "error", message: "Could not load card details — please try again." });
+                setStep({
+                    id: "error",
+                    message: "Could not load card details — please try again.",
+                });
                 return;
             }
 
@@ -431,14 +434,10 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
             aria-label={title}
         >
             {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-                aria-hidden="true"
-            />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
 
             {/* Dialog shell — two-column on md+, single column on mobile */}
             <div className="relative z-10 flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl overflow-hidden rounded-2xl border border-border bg-background shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
-
                 {/* ── LEFT PANEL: Booking info — always visible on md+ ── */}
                 <div className="hidden md:flex md:w-[42%] md:shrink-0 flex-col border-r border-border/60 bg-muted/10 px-6 py-6">
                     {bookingInfo ? (
@@ -485,17 +484,23 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                             </p>
                             <div className="flex items-center justify-between">
                                 <p className="text-xs text-muted-foreground">
-                                    {new Date(bookingInfo.startDatetime).toLocaleDateString("en-GB", {
-                                        day: "numeric",
-                                        month: "short",
-                                        timeZone: "UTC",
-                                    })}
+                                    {new Date(bookingInfo.startDatetime).toLocaleDateString(
+                                        "en-GB",
+                                        {
+                                            day: "numeric",
+                                            month: "short",
+                                            timeZone: "UTC",
+                                        }
+                                    )}
                                     {" · "}
-                                    {new Date(bookingInfo.startDatetime).toLocaleTimeString("en-GB", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        timeZone: "UTC",
-                                    })}
+                                    {new Date(bookingInfo.startDatetime).toLocaleTimeString(
+                                        "en-GB",
+                                        {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            timeZone: "UTC",
+                                        }
+                                    )}
                                     {" – "}
                                     {new Date(bookingInfo.endDatetime).toLocaleTimeString("en-GB", {
                                         hour: "2-digit",
