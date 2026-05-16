@@ -165,9 +165,7 @@ function ConfirmingStep(): JSX.Element {
                 <span className="h-7 w-7 animate-spin rounded-full border-4 border-border border-t-cta" />
             </div>
             <div>
-                <p className="text-base font-semibold text-foreground">
-                    Confirming subscription…
-                </p>
+                <p className="text-base font-semibold text-foreground">Confirming subscription…</p>
                 <p className="mt-1 text-sm text-muted-foreground">
                     Authorizing your payment securely
                 </p>

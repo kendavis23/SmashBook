@@ -1,4 +1,4 @@
-_Last updated: 2026-05-10 00:00 UTC_
+_Last updated: 2026-05-17 00:00 UTC_
 
 # Frontend Deployment
 
@@ -287,20 +287,23 @@ git add -A && git commit -m "chore(infra): offboard <slug> from <env>"
 
 ## CI/CD Pipelines
 
-Two workflows — one per app (`web-staff`, `web-player`). No cross-triggering.
+Three workflows — one per app (`web-staff`, `web-player`, `web-admin`). No cross-triggering.
 
 ### Trigger rules
 
-| Changed path                                                     | web-staff | web-player |
-| ---------------------------------------------------------------- | --------- | ---------- |
-| `apps/web-staff/**`                                              | ✓         |            |
-| `apps/web-player/**`                                             |           | ✓          |
-| `packages/staff-domain/**`                                       | ✓         |            |
-| `packages/player-domain/**`                                      |           | ✓          |
-| `packages/api-client/modules/staff/**`                           | ✓         |            |
-| `packages/api-client/modules/player/**`                          |           | ✓          |
-| `packages/api-client/modules/share/**`                           | ✓         | ✓          |
-| `packages/{auth,ui,design-system,config,shared,i18n,testing}/**` | ✓         | ✓          |
+| Changed path                                                     | web-staff | web-player | web-admin |
+| ---------------------------------------------------------------- | --------- | ---------- | --------- |
+| `apps/web-staff/**`                                              | ✓         |            |           |
+| `apps/web-player/**`                                             |           | ✓          |           |
+| `apps/web-admin/**`                                              |           |            | ✓         |
+| `packages/staff-domain/**`                                       | ✓         |            |           |
+| `packages/player-domain/**`                                      |           | ✓          |           |
+| `packages/admin-domain/**`                                       |           |            | ✓         |
+| `packages/api-client/modules/staff/**`                           | ✓         |            |           |
+| `packages/api-client/modules/player/**`                          |           | ✓          |           |
+| `packages/api-client/modules/admin/**`                           |           |            | ✓         |
+| `packages/api-client/modules/share/**`                           | ✓         | ✓          | ✓         |
+| `packages/{auth,ui,design-system,config,shared,i18n,testing}/**` | ✓         | ✓          | ✓         |
 
 ### Pipeline stages
 
@@ -459,10 +462,51 @@ To roll back: trigger `workflow_dispatch` on `deploy-frontend-website` with a kn
 
 ---
 
+## Admin Deployment
+
+The platform admin portal (`admin.smashbook.app`) uses the same architecture as the website — its own isolated Terraform root with no client-layer separation.
+
+```
+fe-infra/admin-terraform/
+  main.tf / variables.tf / outputs.tf / backend.tf
+```
+
+```bash
+export TF_VAR_project_id=<PROJECT_ID>
+export TF_VAR_admin_bucket_name=smashbook-admin-frontend
+
+export TF_VAR_cloudflare_zone_id=$(gcloud secrets versions access latest \
+  --secret=CF_ZONE_ID --project=$TF_VAR_project_id)
+export TF_VAR_cloudflare_api_token=$(gcloud secrets versions access latest \
+  --secret=CF_API_TOKEN --project=$TF_VAR_project_id)
+export TF_VAR_origin_cert_pem=$(gcloud secrets versions access latest \
+  --secret=CERTIFICATE --project=$TF_VAR_project_id)
+export TF_VAR_origin_key_pem=$(gcloud secrets versions access latest \
+  --secret=PRIVATE_KEY --project=$TF_VAR_project_id)
+
+bash fe-infra/setup/admin-provision-infra.sh apply
+```
+
+The Cloudflare DNS `A` record for `admin.smashbook.app` is managed by Terraform directly (no manual DNS step required after `apply`).
+
+CI/CD pipeline: `secrets → lint → test → build → deploy → smoke` (same as `web-staff` / `web-player`).
+
+To roll back: trigger `workflow_dispatch` on `deploy-frontend-admin` with a known-good SHA.
+
+### GCP Secrets
+
+| Secret                    | Used for                                   |
+| ------------------------- | ------------------------------------------ |
+| `FRONTEND_ADMIN_BUCKET`   | deploy — GCS bucket name                   |
+| `FRONTEND_ADMIN_SITE_URL` | smoke test — `https://admin.smashbook.app` |
+
+---
+
 ## Package Names (Turborepo filter)
 
 | App          | Package name       |
 | ------------ | ------------------ |
 | `web-staff`  | `@repo/web-staff`  |
 | `web-player` | `@repo/web-player` |
+| `web-admin`  | `@repo/web-admin`  |
 | `website`    | `@repo/website`    |

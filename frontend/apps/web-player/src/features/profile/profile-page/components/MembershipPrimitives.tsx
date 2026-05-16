@@ -17,13 +17,7 @@ export function StatRow({
     );
 }
 
-export function SectionHeader({
-    icon,
-    title,
-}: {
-    icon: JSX.Element;
-    title: string;
-}): JSX.Element {
+export function SectionHeader({ icon, title }: { icon: JSX.Element; title: string }): JSX.Element {
     return (
         <div className="flex items-center gap-2.5 border-b border-border px-4 py-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-muted-foreground">
