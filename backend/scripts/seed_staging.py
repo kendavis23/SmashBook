@@ -3,21 +3,28 @@ Staging environment seed script.
 
 Creates a realistic multi-tenant dataset for integration testing and demo use:
 
-  Tenant 1: "Ace Club Group"  (subdomain: ace, plan: Pro)
+  Tenant 1: "Ace Club Group"  (subdomain: ace, plan: Pro, subscription: active)
     Club 1: Ace Padel North   — 4 courts, full pricing + operating hours, 2 staff profiles
-                                10 past + 2 cancelled + 5 upcoming (1 pre-paid) + 2 open-game bookings
-                                Payments: mix of cash / stripe_card / wallet
+                                10 past + 2 cancelled + 1 failed + 1 anomaly + 5 upcoming
+                                (1 pre-paid) + 2 open-game bookings = 21 total
+                                2 calendar reservations (maintenance, training block)
+                                Equipment: loaner rackets + ball tubes, 1 rental
+                                1 waitlist entry
+                                Payments: mix of cash / stripe_card (incl. failed + anomaly) / wallet
+                                Wallet debits also create matching WalletClubDebt settlement rows.
                                 Membership plans: Basic (£0/mo), Gold (£15/mo, 10% off)
+                                Gold organisers' bookings carry discount_amount + membership_subscription_id.
     Club 2: Ace Padel South   — 2 courts, basic pricing
                                 4 past + 2 upcoming bookings
                                 Membership plans: Basic (£0/mo), Gold (£15/mo, 10% off)
     Users: 1 owner, 1 admin, 1 trainer, 1 front-desk, 8 named players
-    Wallets: alice £100 pre-loaded, diana £75 pre-loaded
+    Wallets: alice £100 (auto-topup enabled), diana £75
     Memberships: alice/bob/diana/frank=Gold, charlie/emily/grace/harry=Basic (both clubs)
 
-  Tenant 2: "Rally Sports"    (subdomain: rally, plan: Starter)
+  Tenant 2: "Rally Sports"    (subdomain: rally, plan: Starter, subscription: trialing)
     Club:   Rally Padel Club  — 2 courts, basic pricing
                                 3 past + 1 cancelled + 2 upcoming bookings
+                                1 calendar reservation (maintenance)
                                 Membership plans: Basic (£0/mo), Gold (£10/mo, 10% off)
     Users: 1 admin, 4 players
     Wallets: rp2 £60 pre-loaded
@@ -25,7 +32,17 @@ Creates a realistic multi-tenant dataset for integration testing and demo use:
 
 All user passwords: Staging1234
 
-Script is idempotent — safe to run multiple times.
+Idempotence / re-run behavior:
+  - Bookings are keyed by a marker in Booking.notes ('seed:<key>'). Re-runs find
+    seeded rows by marker, refresh start/end timestamps to anchor "now", and
+    leave manually-created bookings untouched.
+  - Calendar reservations are keyed by title; re-runs refresh start/end.
+  - Membership subscriptions refresh current_period_start/end on re-run.
+  - All other upserts (users, clubs, courts, plans, equipment, waitlist) are
+    insert-only and never mutate an existing row, so any Stripe IDs set by
+    setup_stripe_test_accounts.py or by real Stripe webhooks are preserved.
+  - Synthetic Stripe IDs use the pi_seed_* / ch_seed_* prefix so they cannot
+    collide with real Stripe payment_intent / charge IDs on staging.
 
 Usage (via Cloud SQL proxy):
     cloud-sql-proxy smashbook-488121:europe-west2:smashbook-staging &
@@ -63,18 +80,22 @@ from app.db.models.booking import (
     BookingPlayer,
     BookingStatus,
     BookingType,
+    DiscountSource,
     InviteStatus,
     PaymentStatus as BookingPaymentStatus,
     PlayerRole,
+    WaitlistEntry,
+    WaitlistStatus,
 )
 from app.db.models.club import Club, OperatingHours, PricingRule
-from app.db.models.court import Court, SurfaceType
+from app.db.models.court import CalendarReservation, CalendarReservationType, Court, SurfaceType
+from app.db.models.equipment import EquipmentInventory, EquipmentRental, ItemCondition, ItemType
 from app.db.models.payment import Payment, PaymentMethod, PaymentState, PlatformFee, PlatformFeeType
 from app.db.models.staff import StaffProfile, StaffRole
-from app.db.models.tenant import SubscriptionPlan, Tenant
+from app.db.models.tenant import SubscriptionPlan, SubscriptionStatus, Tenant
 from app.db.models.user import User, TenantUserRole
 from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipStatus, MembershipSubscription
-from app.db.models.wallet import Wallet, WalletTransaction, WalletTransactionType
+from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction, WalletTransactionSource, WalletTransactionType
 
 # ---------------------------------------------------------------------------
 # Setup
@@ -228,8 +249,18 @@ async def _top_up_wallet(
     await db.flush()
 
 
-async def _create_booking(
+SEED_MARKER_PREFIX = "seed:"
+
+
+def _booking_marker(key: str) -> str:
+    """Stable identifier embedded in Booking.notes so re-runs find seeded rows."""
+    return f"{SEED_MARKER_PREFIX}{key}"
+
+
+async def _upsert_booking(
     db: AsyncSession,
+    *,
+    marker_key: str,
     club_id,
     court: Court,
     organiser: User,
@@ -244,18 +275,44 @@ async def _create_booking(
     tenant_id=None,
     fee_pct: Decimal = Decimal("0"),
     prepaid: bool = False,
+    discount_amount: Optional[Decimal] = None,
+    discount_source: Optional[DiscountSource] = None,
+    membership_subscription_id=None,
+    payment_state_override: Optional[PaymentState] = None,
+    payment_failure_reason: Optional[str] = None,
+    payment_anomaly_reason: Optional[str] = None,
 ) -> Booking:
     """
-    Create a booking with players, payment, platform fee, and wallet transaction as appropriate.
+    Idempotent booking creation, keyed by a seed marker stored in Booking.notes.
 
-    - status=completed          → payment succeeded
-    - status=cancelled          → payment refunded (if pay_method not None)
-    - status=confirmed, prepaid → payment succeeded (pre-paid card/wallet)
-    - status=confirmed          → no payment record (pending collection)
+    On first run: creates booking + players + payment + platform fee + wallet tx + club debt.
+    On re-run: refreshes start/end timestamps and status so the seeded
+    dataset stays anchored to "now" instead of drifting into the past.
+
+    Payment state derivation (unless overridden):
+      - status=completed           → succeeded
+      - status=cancelled           → refunded
+      - status=confirmed + prepaid → succeeded
+      - status=confirmed           → no payment row
     """
+    marker = _booking_marker(marker_key)
     end_dt = start_dt + timedelta(minutes=duration_mins)
     all_players = [organiser] + co_players
-    per_head = (total_price / len(all_players)).quantize(Decimal("0.01"))
+    discounted_total = total_price - (discount_amount or Decimal("0"))
+    per_head = (discounted_total / len(all_players)).quantize(Decimal("0.01"))
+
+    # Look up by marker — preserves any manually-created bookings, refreshes seeded ones.
+    result = await db.execute(
+        select(Booking).where(Booking.club_id == club_id, Booking.notes == marker)
+    )
+    booking = result.scalar_one_or_none()
+
+    if booking:
+        booking.start_datetime = start_dt
+        booking.end_datetime = end_dt
+        booking.status = status
+        await db.flush()
+        return booking
 
     is_complete = status == BookingStatus.completed
     is_cancelled = status == BookingStatus.cancelled
@@ -272,6 +329,10 @@ async def _create_booking(
         total_price=total_price,
         is_open_game=is_open_game,
         max_players=4,
+        notes=marker,
+        discount_amount=discount_amount,
+        discount_source=discount_source,
+        membership_subscription_id=membership_subscription_id,
     )
     db.add(booking)
     await db.flush()
@@ -294,25 +355,38 @@ async def _create_booking(
         ))
 
     if has_payment:
-        p_state = PaymentState.refunded if is_cancelled else PaymentState.succeeded
+        if payment_state_override is not None:
+            p_state = payment_state_override
+        elif is_cancelled:
+            p_state = PaymentState.refunded
+        else:
+            p_state = PaymentState.succeeded
+
         payment = Payment(
             booking_id=booking.id,
             club_id=club_id,
             user_id=organiser.id,
-            amount=total_price,
+            amount=discounted_total,
             currency="GBP",
             payment_method=pay_method,
             state=p_state,
-            refund_amount=total_price if is_cancelled else None,
+            refund_amount=discounted_total if is_cancelled else None,
             stripe_payment_intent_id=stripe_pi_id,
-            stripe_charge_id=stripe_pi_id.replace("pi_", "ch_") if stripe_pi_id else None,
+            stripe_charge_id=stripe_pi_id.replace("pi_seed_", "ch_seed_") if stripe_pi_id else None,
+            notes=marker,
+            failure_reason=payment_failure_reason,
+            anomaly_flagged=payment_anomaly_reason is not None,
+            anomaly_reason=payment_anomaly_reason,
         )
         db.add(payment)
         await db.flush()
 
         # Platform fee on stripe_card payments
-        if pay_method == PaymentMethod.stripe_card and tenant_id is not None and fee_pct > 0:
-            fee_amount = (total_price * fee_pct / Decimal("100")).quantize(Decimal("0.01"))
+        if (pay_method == PaymentMethod.stripe_card
+                and p_state == PaymentState.succeeded
+                and tenant_id is not None
+                and fee_pct > 0):
+            fee_amount = (discounted_total * fee_pct / Decimal("100")).quantize(Decimal("0.01"))
             db.add(PlatformFee(
                 tenant_id=tenant_id,
                 payment_id=payment.id,
@@ -322,24 +396,42 @@ async def _create_booking(
                 created_at=start_dt,
             ))
 
-        # Wallet debit or refund
+        # Wallet debit/refund + matching club debt for the platform settlement worker
         if pay_method == PaymentMethod.wallet:
             w_result = await db.execute(select(Wallet).where(Wallet.user_id == organiser.id))
             wallet = w_result.scalar_one_or_none()
             if wallet:
                 if is_cancelled:
-                    wallet.balance += total_price
+                    wallet.balance += discounted_total
                     tx_type = WalletTransactionType.refund
                 else:
-                    wallet.balance -= total_price
+                    wallet.balance -= discounted_total
                     tx_type = WalletTransactionType.debit
-                db.add(WalletTransaction(
+                tx = WalletTransaction(
                     wallet_id=wallet.id,
                     transaction_type=tx_type,
-                    amount=total_price,
+                    amount=discounted_total,
                     balance_after=wallet.balance,
                     reference=f"booking:{booking.id}",
-                ))
+                    source_type=WalletTransactionSource.booking,
+                    source_id=booking.id,
+                )
+                db.add(tx)
+                await db.flush()
+
+                # Mirror the platform's obligation to settle to the club.
+                if tx_type == WalletTransactionType.debit and tenant_id is not None:
+                    fee_amount = (
+                        (discounted_total * fee_pct / Decimal("100")).quantize(Decimal("0.01"))
+                        if fee_pct > 0 else Decimal("0.00")
+                    )
+                    db.add(WalletClubDebt(
+                        club_id=club_id,
+                        tenant_id=tenant_id,
+                        wallet_transaction_id=tx.id,
+                        amount=discounted_total - fee_amount,
+                        platform_fee_amount=fee_amount,
+                    ))
 
     await db.flush()
     return booking
@@ -353,26 +445,24 @@ async def _upsert_membership_plan(
     discount_pct: Optional[Decimal],
     description: str,
 ) -> MembershipPlan:
+    """Insert-only. Existing plans are returned unchanged — never overwrite
+    price/description/etc, since a real Stripe Price may be tied to them."""
     result = await db.execute(
         select(MembershipPlan).where(MembershipPlan.club_id == club_id, MembershipPlan.name == name)
     )
     plan = result.scalar_one_or_none()
-    if not plan:
-        plan = MembershipPlan(
-            club_id=club_id,
-            name=name,
-            description=description,
-            billing_period=BillingPeriod.monthly,
-            price=price,
-            discount_pct=discount_pct,
-            is_active=True,
-        )
-        db.add(plan)
-    else:
-        plan.description = description
-        plan.price = price
-        plan.discount_pct = discount_pct
-        plan.is_active = True
+    if plan:
+        return plan
+    plan = MembershipPlan(
+        club_id=club_id,
+        name=name,
+        description=description,
+        billing_period=BillingPeriod.monthly,
+        price=price,
+        discount_pct=discount_pct,
+        is_active=True,
+    )
+    db.add(plan)
     await db.flush()
     return plan
 
@@ -383,31 +473,139 @@ async def _upsert_subscription(
     plan: MembershipPlan,
     club_id,
 ) -> MembershipSubscription:
+    """Insert-only. Refresh the period window so re-runs keep `active` realistic,
+    but never touch stripe_subscription_id."""
     result = await db.execute(
         select(MembershipSubscription).where(
             MembershipSubscription.user_id == user.id,
             MembershipSubscription.club_id == club_id,
         )
     )
-    if result.scalar_one_or_none():
-        return
+    sub = result.scalar_one_or_none()
     now = datetime.now(UTC)
-    db.add(MembershipSubscription(
+    if sub:
+        sub.current_period_start = now - timedelta(days=15)
+        sub.current_period_end = now + timedelta(days=15)
+        await db.flush()
+        return sub
+    sub = MembershipSubscription(
         user_id=user.id,
         plan_id=plan.id,
         club_id=club_id,
         status=MembershipStatus.active,
         current_period_start=now - timedelta(days=15),
         current_period_end=now + timedelta(days=15),
+    )
+    db.add(sub)
+    await db.flush()
+    return sub
+
+
+async def _upsert_calendar_reservation(
+    db: AsyncSession,
+    *,
+    club_id,
+    court: Optional[Court],
+    reservation_type: CalendarReservationType,
+    title: str,
+    start_dt: datetime,
+    end_dt: datetime,
+    created_by: User,
+) -> None:
+    """Idempotent by (club_id, title) — re-runs refresh the time window."""
+    result = await db.execute(
+        select(CalendarReservation).where(
+            CalendarReservation.club_id == club_id,
+            CalendarReservation.title == title,
+        )
+    )
+    res = result.scalar_one_or_none()
+    if res:
+        res.start_datetime = start_dt
+        res.end_datetime = end_dt
+        await db.flush()
+        return
+    db.add(CalendarReservation(
+        club_id=club_id,
+        court_id=court.id if court else None,
+        reservation_type=reservation_type,
+        title=title,
+        start_datetime=start_dt,
+        end_datetime=end_dt,
+        created_by=created_by.id,
     ))
     await db.flush()
 
 
-async def _bookings_exist(db: AsyncSession, club_id) -> bool:
+async def _upsert_equipment(
+    db: AsyncSession,
+    *,
+    club_id,
+    item_type: ItemType,
+    name: str,
+    quantity_total: int,
+    rental_price: Decimal,
+    condition: ItemCondition = ItemCondition.good,
+) -> EquipmentInventory:
     result = await db.execute(
-        select(Booking).where(Booking.club_id == club_id).limit(1)
+        select(EquipmentInventory).where(
+            EquipmentInventory.club_id == club_id,
+            EquipmentInventory.name == name,
+        )
     )
-    return result.scalar_one_or_none() is not None
+    eq = result.scalar_one_or_none()
+    if eq:
+        return eq
+    eq = EquipmentInventory(
+        club_id=club_id,
+        item_type=item_type,
+        name=name,
+        quantity_total=quantity_total,
+        quantity_available=quantity_total,
+        rental_price=rental_price,
+        condition=condition,
+    )
+    db.add(eq)
+    await db.flush()
+    return eq
+
+
+async def _upsert_waitlist_entry(
+    db: AsyncSession,
+    *,
+    marker_reference_user: User,
+    club_id,
+    court: Optional[Court],
+    desired_date,
+    desired_start: Optional[time] = None,
+    desired_end: Optional[time] = None,
+) -> None:
+    """Idempotent by (club_id, user_id, desired_date)."""
+    from sqlalchemy import and_
+    result = await db.execute(
+        select(WaitlistEntry).where(and_(
+            WaitlistEntry.club_id == club_id,
+            WaitlistEntry.user_id == marker_reference_user.id,
+            WaitlistEntry.desired_date == desired_date,
+        ))
+    )
+    if result.scalar_one_or_none():
+        return
+    db.add(WaitlistEntry(
+        club_id=club_id,
+        court_id=court.id if court else None,
+        user_id=marker_reference_user.id,
+        desired_date=desired_date,
+        desired_start_time=desired_start,
+        desired_end_time=desired_end,
+        status=WaitlistStatus.waiting,
+    ))
+    await db.flush()
+
+
+def _gold_discount(price: Decimal) -> Decimal:
+    """10% off, rounded to pence."""
+    return (price * Decimal("0.10")).quantize(Decimal("0.01"))
 
 
 # ---------------------------------------------------------------------------
@@ -449,11 +647,23 @@ async def seed():
         result = await db.execute(select(Tenant).where(Tenant.subdomain == "ace"))
         ace = result.scalar_one_or_none()
         if not ace:
-            ace = Tenant(name="Ace Club Group", subdomain="ace", plan_id=plans["Pro"].id, is_active=True)
+            ace = Tenant(
+                name="Ace Club Group",
+                subdomain="ace",
+                plan_id=plans["Pro"].id,
+                is_active=True,
+                subscription_status=SubscriptionStatus.active,
+                subscription_start_date=datetime.now(UTC) - timedelta(days=90),
+            )
             db.add(ace)
             await db.flush()
             print(f"  + tenant created ({ace.id})")
         else:
+            # Backfill subscription_status / start_date if missing — never overwrite Stripe IDs.
+            if ace.subscription_status is None:
+                ace.subscription_status = SubscriptionStatus.active
+            if ace.subscription_start_date is None:
+                ace.subscription_start_date = datetime.now(UTC) - timedelta(days=90)
             print(f"  ~ tenant exists  ({ace.id})")
 
         ACE_FEE_PCT = Decimal("1.50")  # Pro plan booking fee
@@ -478,7 +688,16 @@ async def seed():
         await _top_up_wallet(db, alice, Decimal("50.00"), "topup-ace-alice-1")
         await _top_up_wallet(db, alice, Decimal("50.00"), "topup-ace-alice-2")
         await _top_up_wallet(db, diana, Decimal("75.00"), "topup-ace-diana-1")
-        print("    alice: £100  diana: £75")
+
+        # Auto-topup enabled on alice so the auto-topup worker has data to exercise.
+        alice_wallet_result = await db.execute(select(Wallet).where(Wallet.user_id == alice.id))
+        alice_wallet = alice_wallet_result.scalar_one_or_none()
+        if alice_wallet and not alice_wallet.auto_topup_enabled:
+            alice_wallet.auto_topup_enabled = True
+            alice_wallet.auto_topup_threshold = Decimal("20.00")
+            alice_wallet.auto_topup_amount = Decimal("50.00")
+            await db.flush()
+        print("    alice: £100 (auto-topup: threshold £20 → +£50)  diana: £75")
 
         # ---- Club 1: Ace Padel North -------------------------------------
         print("\n  --- Ace Padel North ---")
@@ -538,68 +757,207 @@ async def seed():
         ace_north_tiers = {alice: north_gold, bob: north_gold, charlie: north_basic,
                            diana: north_gold, emily: north_basic, frank: north_gold,
                            grace: north_basic, harry: north_basic}
+        north_subs: dict[User, MembershipSubscription] = {}
         for player, plan in ace_north_tiers.items():
-            await _upsert_subscription(db, player, plan, north.id)
+            north_subs[player] = await _upsert_subscription(db, player, plan, north.id)
         print("  Memberships: alice/bob/diana/frank=Gold  charlie/emily/grace/harry=Basic")
 
-        # Bookings
-        if not await _bookings_exist(db, north.id):
-            kw = dict(tenant_id=ace.id, fee_pct=ACE_FEE_PCT)
+        def _north_discount(organiser: User, price: Decimal):
+            """Returns (discount_amount, discount_source, subscription_id) tuple, or all-None."""
+            if ace_north_tiers.get(organiser) is north_gold:
+                return (
+                    _gold_discount(price),
+                    DiscountSource.membership,
+                    north_subs[organiser].id,
+                )
+            return (None, None, None)
 
-            # 10 past completed bookings — mixed payment methods
-            past = [
-                # organiser, co_players,              days, hr, court,  price,          method,                    stripe_pi
-                (alice,   [bob, charlie, diana],   -28, 10, nc[0], Decimal("20.00"), PaymentMethod.cash,        None),
-                (bob,     [alice, charlie, emily], -25, 12, nc[1], Decimal("20.00"), PaymentMethod.stripe_card, "pi_test_aceN_0001"),
-                (charlie, [alice, bob, frank],     -22, 17, nc[0], Decimal("28.00"), PaymentMethod.stripe_card, "pi_test_aceN_0002"),
-                (diana,   [emily, frank, grace],   -21, 14, nc[2], Decimal("20.00"), PaymentMethod.wallet,      None),
-                (emily,   [alice, diana, harry],   -18, 10, nc[1], Decimal("20.00"), PaymentMethod.cash,        None),
-                (frank,   [bob, charlie, diana],   -15, 19, nc[0], Decimal("28.00"), PaymentMethod.stripe_card, "pi_test_aceN_0003"),
-                (grace,   [emily, frank, harry],   -12, 11, nc[3], Decimal("20.00"), PaymentMethod.cash,        None),
-                (harry,   [alice, bob, charlie],   -10, 16, nc[0], Decimal("20.00"), PaymentMethod.stripe_card, "pi_test_aceN_0004"),
-                (alice,   [diana, emily, frank],    -7, 10, nc[1], Decimal("20.00"), PaymentMethod.wallet,      None),
-                (bob,     [charlie, grace, harry],  -3, 19, nc[2], Decimal("28.00"), PaymentMethod.cash,        None),
-            ]
-            for org, players, day, hr, court, price, method, pi in past:
-                await _create_booking(db, north.id, court, org, players,
-                                      _dt(day, hr), price,
-                                      status=BookingStatus.completed,
-                                      pay_method=method, stripe_pi_id=pi, **kw)
+        # Bookings — marker-based idempotence (Booking.notes = 'seed:aceN-<key>')
+        kw = dict(tenant_id=ace.id, fee_pct=ACE_FEE_PCT)
 
-            # 2 cancelled bookings with refunded payments
-            cancelled = [
-                (charlie, [alice, bob, diana],   -35, 14, nc[1], Decimal("20.00"), PaymentMethod.stripe_card, "pi_test_aceN_c001"),
-                (emily,   [frank, grace, harry],  -5, 10, nc[2], Decimal("20.00"), PaymentMethod.cash,        None),
-            ]
-            for org, players, day, hr, court, price, method, pi in cancelled:
-                await _create_booking(db, north.id, court, org, players,
-                                      _dt(day, hr), price,
-                                      status=BookingStatus.cancelled,
-                                      pay_method=method, stripe_pi_id=pi, **kw)
+        # 10 past completed bookings — mixed payment methods.
+        # Gold organisers automatically receive 10% off via _north_discount().
+        past = [
+            # key,     organiser, co_players,             days, hr, court,  price,          method,                    stripe_pi
+            ("p01", alice,   [bob, charlie, diana],   -28, 10, nc[0], Decimal("20.00"), PaymentMethod.cash,        None),
+            ("p02", bob,     [alice, charlie, emily], -25, 12, nc[1], Decimal("20.00"), PaymentMethod.stripe_card, "pi_seed_aceN_0001"),
+            ("p03", charlie, [alice, bob, frank],     -22, 17, nc[0], Decimal("28.00"), PaymentMethod.stripe_card, "pi_seed_aceN_0002"),
+            ("p04", diana,   [emily, frank, grace],   -21, 14, nc[2], Decimal("20.00"), PaymentMethod.wallet,      None),
+            ("p05", emily,   [alice, diana, harry],   -18, 10, nc[1], Decimal("20.00"), PaymentMethod.cash,        None),
+            ("p06", frank,   [bob, charlie, diana],   -15, 19, nc[0], Decimal("28.00"), PaymentMethod.stripe_card, "pi_seed_aceN_0003"),
+            ("p07", grace,   [emily, frank, harry],   -12, 11, nc[3], Decimal("20.00"), PaymentMethod.cash,        None),
+            ("p08", harry,   [alice, bob, charlie],   -10, 16, nc[0], Decimal("20.00"), PaymentMethod.stripe_card, "pi_seed_aceN_0004"),
+            ("p09", alice,   [diana, emily, frank],    -7, 10, nc[1], Decimal("20.00"), PaymentMethod.wallet,      None),
+            ("p10", bob,     [charlie, grace, harry],  -3, 19, nc[2], Decimal("28.00"), PaymentMethod.cash,        None),
+        ]
+        for key, org, players, day, hr, court, price, method, pi in past:
+            d_amt, d_src, sub_id = _north_discount(org, price)
+            await _upsert_booking(
+                db,
+                marker_key=f"aceN-{key}",
+                club_id=north.id,
+                court=court, organiser=org, co_players=players,
+                start_dt=_dt(day, hr), total_price=price,
+                status=BookingStatus.completed,
+                pay_method=method, stripe_pi_id=pi,
+                discount_amount=d_amt, discount_source=d_src,
+                membership_subscription_id=sub_id,
+                **kw,
+            )
 
-            # 5 upcoming confirmed bookings — one pre-paid by card, rest pending
-            await _create_booking(db, north.id, nc[0], alice,   [bob, charlie, diana],
-                                  _dt(1, 10), Decimal("20.00"), status=BookingStatus.confirmed, **kw)
-            await _create_booking(db, north.id, nc[1], charlie, [emily, frank, grace],
-                                  _dt(2, 17), Decimal("28.00"), status=BookingStatus.confirmed,
-                                  pay_method=PaymentMethod.stripe_card, stripe_pi_id="pi_test_aceN_up001",
-                                  prepaid=True, **kw)
-            await _create_booking(db, north.id, nc[2], diana,   [alice, harry, emily],
-                                  _dt(4, 11), Decimal("20.00"), status=BookingStatus.confirmed, **kw)
-            await _create_booking(db, north.id, nc[3], emily,   [bob, frank, grace],
-                                  _dt(7, 14), Decimal("20.00"), status=BookingStatus.confirmed, **kw)
-            await _create_booking(db, north.id, nc[0], frank,   [alice, charlie, harry],
-                                  _dt(10, 10), Decimal("20.00"), status=BookingStatus.confirmed, **kw)
+        # 2 cancelled bookings with refunded payments
+        cancelled = [
+            ("c01", charlie, [alice, bob, diana],   -35, 14, nc[1], Decimal("20.00"), PaymentMethod.stripe_card, "pi_seed_aceN_c001"),
+            ("c02", emily,   [frank, grace, harry],  -5, 10, nc[2], Decimal("20.00"), PaymentMethod.cash,        None),
+        ]
+        for key, org, players, day, hr, court, price, method, pi in cancelled:
+            d_amt, d_src, sub_id = _north_discount(org, price)
+            await _upsert_booking(
+                db,
+                marker_key=f"aceN-{key}",
+                club_id=north.id,
+                court=court, organiser=org, co_players=players,
+                start_dt=_dt(day, hr), total_price=price,
+                status=BookingStatus.cancelled,
+                pay_method=method, stripe_pi_id=pi,
+                discount_amount=d_amt, discount_source=d_src,
+                membership_subscription_id=sub_id,
+                **kw,
+            )
 
-            # 2 upcoming open games (only 2 players confirmed)
-            await _create_booking(db, north.id, nc[1], grace, [harry],
-                                  _dt(3, 10), Decimal("20.00"), status=BookingStatus.confirmed, is_open_game=True, **kw)
-            await _create_booking(db, north.id, nc[2], bob, [diana],
-                                  _dt(5, 19), Decimal("28.00"), status=BookingStatus.confirmed, is_open_game=True, **kw)
+        # G4 payment-reliability variety: 1 failed payment, 1 anomaly-flagged success.
+        await _upsert_booking(
+            db,
+            marker_key="aceN-fail01",
+            club_id=north.id,
+            court=nc[0], organiser=harry, co_players=[bob, charlie, frank],
+            start_dt=_dt(-8, 18), total_price=Decimal("28.00"),
+            status=BookingStatus.cancelled,
+            pay_method=PaymentMethod.stripe_card, stripe_pi_id="pi_seed_aceN_fail01",
+            payment_state_override=PaymentState.failed,
+            payment_failure_reason="card_declined: insufficient_funds",
+            **kw,
+        )
+        await _upsert_booking(
+            db,
+            marker_key="aceN-anom01",
+            club_id=north.id,
+            court=nc[2], organiser=frank, co_players=[alice, diana, grace],
+            start_dt=_dt(-6, 19), total_price=Decimal("28.00"),
+            status=BookingStatus.completed,
+            pay_method=PaymentMethod.stripe_card, stripe_pi_id="pi_seed_aceN_anom01",
+            payment_anomaly_reason="unusual_geo: card_country=US, club_country=GB",
+            discount_amount=_gold_discount(Decimal("28.00")),
+            discount_source=DiscountSource.membership,
+            membership_subscription_id=north_subs[frank].id,
+            **kw,
+        )
 
-            print("  Bookings: 19 created (10 past + 2 cancelled + 5 upcoming + 2 open games)")
-        else:
-            print("  Bookings: already exist, skipped")
+        # 5 upcoming confirmed bookings — one pre-paid by card, rest pending
+        for key, court, org, players, day, hr, price, prepaid, method, pi in [
+            ("u01", nc[0], alice,   [bob, charlie, diana],     1, 10, Decimal("20.00"), False, PaymentMethod.cash,        None),
+            ("u02", nc[1], charlie, [emily, frank, grace],     2, 17, Decimal("28.00"), True,  PaymentMethod.stripe_card, "pi_seed_aceN_up01"),
+            ("u03", nc[2], diana,   [alice, harry, emily],     4, 11, Decimal("20.00"), False, PaymentMethod.cash,        None),
+            ("u04", nc[3], emily,   [bob, frank, grace],       7, 14, Decimal("20.00"), False, PaymentMethod.cash,        None),
+            ("u05", nc[0], frank,   [alice, charlie, harry],  10, 10, Decimal("20.00"), False, PaymentMethod.cash,        None),
+        ]:
+            d_amt, d_src, sub_id = _north_discount(org, price)
+            await _upsert_booking(
+                db,
+                marker_key=f"aceN-{key}",
+                club_id=north.id,
+                court=court, organiser=org, co_players=players,
+                start_dt=_dt(day, hr), total_price=price,
+                status=BookingStatus.confirmed,
+                pay_method=method, stripe_pi_id=pi, prepaid=prepaid,
+                discount_amount=d_amt, discount_source=d_src,
+                membership_subscription_id=sub_id,
+                **kw,
+            )
+
+        # 2 upcoming open games (only 2 players confirmed)
+        await _upsert_booking(
+            db,
+            marker_key="aceN-og01",
+            club_id=north.id,
+            court=nc[1], organiser=grace, co_players=[harry],
+            start_dt=_dt(3, 10), total_price=Decimal("20.00"),
+            status=BookingStatus.confirmed, is_open_game=True, **kw,
+        )
+        await _upsert_booking(
+            db,
+            marker_key="aceN-og02",
+            club_id=north.id,
+            court=nc[2], organiser=bob, co_players=[diana],
+            start_dt=_dt(5, 19), total_price=Decimal("28.00"),
+            status=BookingStatus.confirmed, is_open_game=True,
+            discount_amount=_gold_discount(Decimal("28.00")),
+            discount_source=DiscountSource.membership,
+            membership_subscription_id=north_subs[bob].id,
+            **kw,
+        )
+
+        print("  Bookings: 21 seeded (10 past + 2 cancelled + 1 failed + 1 anomaly + 5 upcoming + 2 open games)")
+
+        # ---- Calendar reservations (maintenance + training block) -------
+        await _upsert_calendar_reservation(
+            db,
+            club_id=north.id, court=nc[0],
+            reservation_type=CalendarReservationType.maintenance,
+            title="Court 1 resurfacing",
+            start_dt=_dt(8, 6), end_dt=_dt(8, 10),
+            created_by=ace_fd,
+        )
+        await _upsert_calendar_reservation(
+            db,
+            club_id=north.id, court=nc[3],
+            reservation_type=CalendarReservationType.training_block,
+            title="Junior coaching — Carlos",
+            start_dt=_dt(2, 16), end_dt=_dt(2, 18),
+            created_by=ace_trainer,
+        )
+        print("  Calendar reservations: 2 (maintenance, training block)")
+
+        # ---- Equipment + a rental tied to a past booking ----------------
+        racket = await _upsert_equipment(
+            db, club_id=north.id, item_type=ItemType.racket,
+            name="Loaner racket", quantity_total=8, rental_price=Decimal("4.00"),
+        )
+        balls = await _upsert_equipment(
+            db, club_id=north.id, item_type=ItemType.ball_tube,
+            name="Ball tube (3-pack)", quantity_total=20, rental_price=Decimal("6.00"),
+            condition=ItemCondition.good,
+        )
+
+        rental_booking = await db.execute(
+            select(Booking).where(Booking.club_id == north.id, Booking.notes == _booking_marker("aceN-p02"))
+        )
+        rb = rental_booking.scalar_one_or_none()
+        if rb:
+            existing = await db.execute(
+                select(EquipmentRental).where(
+                    EquipmentRental.booking_id == rb.id,
+                    EquipmentRental.equipment_id == racket.id,
+                )
+            )
+            if not existing.scalar_one_or_none():
+                db.add(EquipmentRental(
+                    booking_id=rb.id, equipment_id=racket.id, user_id=bob.id,
+                    quantity=2, charge=Decimal("8.00"),
+                    returned_at=rb.end_datetime,
+                    payment_status=BookingPaymentStatus.paid,
+                ))
+                await db.flush()
+        print(f"  Equipment: 2 items (Loaner racket ×8, Ball tube ×20), 1 rental")
+
+        # ---- Waitlist entry ---------------------------------------------
+        await _upsert_waitlist_entry(
+            db, marker_reference_user=harry,
+            club_id=north.id, court=None,
+            desired_date=(datetime.now(UTC) + timedelta(days=6)).date(),
+            desired_start=time(18, 0), desired_end=time(20, 0),
+        )
+        print("  Waitlist: 1 entry (harry, +6 days, evening)")
 
         # ---- Club 2: Ace Padel South -------------------------------------
         print("\n  --- Ace Padel South ---")
@@ -633,27 +991,44 @@ async def seed():
         ace_south_tiers = {alice: south_gold, bob: south_gold, charlie: south_basic,
                            diana: south_gold, emily: south_basic, frank: south_gold,
                            grace: south_basic, harry: south_basic}
+        south_subs: dict[User, MembershipSubscription] = {}
         for player, plan in ace_south_tiers.items():
-            await _upsert_subscription(db, player, plan, south.id)
+            south_subs[player] = await _upsert_subscription(db, player, plan, south.id)
         print("  Memberships: alice/bob/diana/frank=Gold  charlie/emily/grace/harry=Basic")
 
-        if not await _bookings_exist(db, south.id):
-            kw = dict(tenant_id=ace.id, fee_pct=ACE_FEE_PCT)
-            south_bookings = [
-                (alice,   [bob, charlie, diana],  -20,  9, sc[0], Decimal("20.00"), BookingStatus.completed, PaymentMethod.cash,        None),
-                (emily,   [frank, grace, harry],  -14, 15, sc[1], Decimal("20.00"), BookingStatus.completed, PaymentMethod.stripe_card, "pi_test_aceS_0001"),
-                (bob,     [alice, grace, harry],   -8, 11, sc[0], Decimal("20.00"), BookingStatus.completed, PaymentMethod.cash,        None),
-                (charlie, [diana, emily, frank],   -5, 17, sc[1], Decimal("26.00"), BookingStatus.completed, PaymentMethod.stripe_card, "pi_test_aceS_0002"),
-                (diana,   [alice, bob, emily],      3, 10, sc[0], Decimal("20.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
-                (grace,   [charlie, frank, harry],  6, 15, sc[1], Decimal("20.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
-            ]
-            for org, players, day, hr, court, price, status, method, pi in south_bookings:
-                await _create_booking(db, south.id, court, org, players,
-                                      _dt(day, hr), price, status=status,
-                                      pay_method=method, stripe_pi_id=pi, **kw)
-            print("  Bookings: 6 created (4 past + 2 upcoming)")
-        else:
-            print("  Bookings: already exist, skipped")
+        def _south_discount(organiser: User, price: Decimal):
+            if ace_south_tiers.get(organiser) is south_gold:
+                return (
+                    _gold_discount(price),
+                    DiscountSource.membership,
+                    south_subs[organiser].id,
+                )
+            return (None, None, None)
+
+        kw = dict(tenant_id=ace.id, fee_pct=ACE_FEE_PCT)
+        south_bookings = [
+            # key,   organiser, co_players,            days, hr, court,  price,          status,                   method,                    stripe_pi
+            ("p01", alice,   [bob, charlie, diana],  -20,  9, sc[0], Decimal("20.00"), BookingStatus.completed, PaymentMethod.cash,        None),
+            ("p02", emily,   [frank, grace, harry],  -14, 15, sc[1], Decimal("20.00"), BookingStatus.completed, PaymentMethod.stripe_card, "pi_seed_aceS_0001"),
+            ("p03", bob,     [alice, grace, harry],   -8, 11, sc[0], Decimal("20.00"), BookingStatus.completed, PaymentMethod.cash,        None),
+            ("p04", charlie, [diana, emily, frank],   -5, 17, sc[1], Decimal("26.00"), BookingStatus.completed, PaymentMethod.stripe_card, "pi_seed_aceS_0002"),
+            ("u01", diana,   [alice, bob, emily],      3, 10, sc[0], Decimal("20.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
+            ("u02", grace,   [charlie, frank, harry],  6, 15, sc[1], Decimal("20.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
+        ]
+        for key, org, players, day, hr, court, price, status, method, pi in south_bookings:
+            d_amt, d_src, sub_id = _south_discount(org, price)
+            await _upsert_booking(
+                db,
+                marker_key=f"aceS-{key}",
+                club_id=south.id,
+                court=court, organiser=org, co_players=players,
+                start_dt=_dt(day, hr), total_price=price, status=status,
+                pay_method=method, stripe_pi_id=pi,
+                discount_amount=d_amt, discount_source=d_src,
+                membership_subscription_id=sub_id,
+                **kw,
+            )
+        print("  Bookings: 6 seeded (4 past + 2 upcoming)")
 
         await db.commit()
 
@@ -665,17 +1040,28 @@ async def seed():
         result = await db.execute(select(Tenant).where(Tenant.subdomain == "rally"))
         rally = result.scalar_one_or_none()
         if not rally:
-            rally = Tenant(name="Rally Sports", subdomain="rally", plan_id=plans["Starter"].id, is_active=True)
+            rally = Tenant(
+                name="Rally Sports",
+                subdomain="rally",
+                plan_id=plans["Starter"].id,
+                is_active=True,
+                subscription_status=SubscriptionStatus.trialing,
+                subscription_start_date=datetime.now(UTC) - timedelta(days=10),
+            )
             db.add(rally)
             await db.flush()
             print(f"  + tenant created ({rally.id})")
         else:
+            if rally.subscription_status is None:
+                rally.subscription_status = SubscriptionStatus.trialing
+            if rally.subscription_start_date is None:
+                rally.subscription_start_date = datetime.now(UTC) - timedelta(days=10)
             print(f"  ~ tenant exists  ({rally.id})")
 
         RALLY_FEE_PCT = Decimal("1.00")  # Starter plan booking fee
 
         print("  Users:")
-        await _upsert_user(db, rally.id, "admin@rally.staging",   "Priya Nair",    TenantUserRole.admin)
+        rally_admin = await _upsert_user(db, rally.id, "admin@rally.staging",   "Priya Nair",    TenantUserRole.admin)
         rp1 = await _upsert_user(db, rally.id, "player1@rally.staging", "Tom Walsh",    TenantUserRole.player, skill_level=Decimal("3.0"))
         rp2 = await _upsert_user(db, rally.id, "player2@rally.staging", "Zoe Adams",    TenantUserRole.player, skill_level=Decimal("3.5"))
         rp3 = await _upsert_user(db, rally.id, "player3@rally.staging", "Leon Fischer", TenantUserRole.player, skill_level=Decimal("4.0"))
@@ -713,34 +1099,67 @@ async def seed():
         rally_gold  = await _upsert_membership_plan(db, rally_club.id, "Gold",  Decimal("10.00"), Decimal("10.00"),   "Gold membership — 10% off all court bookings.")
         print("  Membership plans: Basic, Gold")
         rally_tiers = {rp1: rally_basic, rp2: rally_gold, rp3: rally_gold, rp4: rally_basic}
+        rally_subs: dict[User, MembershipSubscription] = {}
         for player, plan in rally_tiers.items():
-            await _upsert_subscription(db, player, plan, rally_club.id)
+            rally_subs[player] = await _upsert_subscription(db, player, plan, rally_club.id)
         print("  Memberships: rp2/rp3=Gold  rp1/rp4=Basic")
 
-        if not await _bookings_exist(db, rally_club.id):
-            kw = dict(tenant_id=rally.id, fee_pct=RALLY_FEE_PCT)
-            rally_bookings = [
-                # organiser, co_players,          days,  hr, court,  price,          status,                   method,                    stripe_pi
-                (rp1, [rp2, rp3, rp4], -21, 10, rc[0], Decimal("16.00"), BookingStatus.completed, PaymentMethod.cash,        None),
-                (rp2, [rp1, rp3, rp4], -14, 17, rc[1], Decimal("24.00"), BookingStatus.completed, PaymentMethod.wallet,      None),
-                (rp3, [rp1, rp2, rp4],  -7, 12, rc[0], Decimal("16.00"), BookingStatus.completed, PaymentMethod.stripe_card, "pi_test_rally_0001"),
-                (rp1, [rp2, rp3, rp4],   2, 10, rc[0], Decimal("16.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
-                (rp4, [rp1, rp2, rp3],   5, 14, rc[1], Decimal("16.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
-            ]
-            for org, players, day, hr, court, price, status, method, pi in rally_bookings:
-                await _create_booking(db, rally_club.id, court, org, players,
-                                      _dt(day, hr), price, status=status,
-                                      pay_method=method, stripe_pi_id=pi, **kw)
+        def _rally_discount(organiser: User, price: Decimal):
+            if rally_tiers.get(organiser) is rally_gold:
+                return (
+                    _gold_discount(price),
+                    DiscountSource.membership,
+                    rally_subs[organiser].id,
+                )
+            return (None, None, None)
 
-            # 1 cancelled booking with stripe refund
-            await _create_booking(db, rally_club.id, rc[0], rp1, [rp2, rp3, rp4],
-                                  _dt(-30, 10), Decimal("16.00"),
-                                  status=BookingStatus.cancelled,
-                                  pay_method=PaymentMethod.stripe_card, stripe_pi_id="pi_test_rally_c001", **kw)
+        kw = dict(tenant_id=rally.id, fee_pct=RALLY_FEE_PCT)
+        rally_bookings = [
+            # key,   organiser, co_players,        days,  hr, court,  price,          status,                   method,                    stripe_pi
+            ("p01", rp1, [rp2, rp3, rp4], -21, 10, rc[0], Decimal("16.00"), BookingStatus.completed, PaymentMethod.cash,        None),
+            ("p02", rp2, [rp1, rp3, rp4], -14, 17, rc[1], Decimal("24.00"), BookingStatus.completed, PaymentMethod.wallet,      None),
+            ("p03", rp3, [rp1, rp2, rp4],  -7, 12, rc[0], Decimal("16.00"), BookingStatus.completed, PaymentMethod.stripe_card, "pi_seed_rally_0001"),
+            ("u01", rp1, [rp2, rp3, rp4],   2, 10, rc[0], Decimal("16.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
+            ("u02", rp4, [rp1, rp2, rp3],   5, 14, rc[1], Decimal("16.00"), BookingStatus.confirmed, PaymentMethod.cash,        None),
+        ]
+        for key, org, players, day, hr, court, price, status, method, pi in rally_bookings:
+            d_amt, d_src, sub_id = _rally_discount(org, price)
+            await _upsert_booking(
+                db,
+                marker_key=f"rally-{key}",
+                club_id=rally_club.id,
+                court=court, organiser=org, co_players=players,
+                start_dt=_dt(day, hr), total_price=price, status=status,
+                pay_method=method, stripe_pi_id=pi,
+                discount_amount=d_amt, discount_source=d_src,
+                membership_subscription_id=sub_id,
+                **kw,
+            )
 
-            print("  Bookings: 6 created (3 past + 1 cancelled + 2 upcoming)")
-        else:
-            print("  Bookings: already exist, skipped")
+        # 1 cancelled booking with stripe refund
+        await _upsert_booking(
+            db,
+            marker_key="rally-c01",
+            club_id=rally_club.id,
+            court=rc[0], organiser=rp1, co_players=[rp2, rp3, rp4],
+            start_dt=_dt(-30, 10), total_price=Decimal("16.00"),
+            status=BookingStatus.cancelled,
+            pay_method=PaymentMethod.stripe_card, stripe_pi_id="pi_seed_rally_c001",
+            **kw,
+        )
+
+        print("  Bookings: 6 seeded (3 past + 1 cancelled + 2 upcoming)")
+
+        # Rally — 1 calendar reservation (maintenance)
+        await _upsert_calendar_reservation(
+            db,
+            club_id=rally_club.id, court=rc[1],
+            reservation_type=CalendarReservationType.maintenance,
+            title="Court 2 net replacement",
+            start_dt=_dt(9, 9), end_dt=_dt(9, 11),
+            created_by=rally_admin,
+        )
+        print("  Calendar reservations: 1 (maintenance)")
 
         await db.commit()
 
@@ -754,30 +1173,34 @@ async def seed():
         print(f"  PASSWORD (all users): {STAGING_PASSWORD}")
         print()
         print("  TENANT 1 — Ace Club Group  (X-Tenant-Subdomain: ace)")
-        print(f"    tenant_id    : {ace.id}")
+        print(f"    tenant_id    : {ace.id}  subscription: active")
         print("    owner        : owner@ace.staging")
         print("    admin        : admin@ace.staging")
         print("    trainer      : trainer@ace.staging")
         print("    front desk   : frontdesk@ace.staging")
         print("    players      : alice/bob/charlie/diana/emily/frank/grace/harry @ace.staging")
-        print("    wallets      : alice £100, diana £75 pre-loaded")
+        print("    wallets      : alice £100 (auto-topup ON), diana £75")
         print("    memberships  : alice/bob/diana/frank=Gold (10% off), charlie/emily/grace/harry=Basic")
-        print(f"    Club 1 id    : {north.id}  (Ace Padel North — 4 courts, 19 bookings)")
+        print(f"    Club 1 id    : {north.id}  (Ace Padel North — 4 courts, 21 bookings, 2 calendar reservations, equipment + rental, 1 waitlist)")
         print(f"    Club 2 id    : {south.id}  (Ace Padel South — 2 courts,  6 bookings)")
         print()
         print("  TENANT 2 — Rally Sports  (X-Tenant-Subdomain: rally)")
-        print(f"    tenant_id    : {rally.id}")
+        print(f"    tenant_id    : {rally.id}  subscription: trialing")
         print("    admin        : admin@rally.staging")
         print("    players      : player1/player2/player3/player4 @rally.staging")
         print("    wallets      : player2 (Zoe Adams) £60 pre-loaded")
         print("    memberships  : rp2/rp3=Gold (10% off), rp1/rp4=Basic")
-        print(f"    Club id      : {rally_club.id}  (Rally Padel Club — 2 courts, 6 bookings)")
+        print(f"    Club id      : {rally_club.id}  (Rally Padel Club — 2 courts, 6 bookings, 1 calendar reservation)")
         print()
         print("  PAYMENT METHODS seeded:")
         print("    cash         — Ace North ×4, Ace South ×2, Rally ×2")
-        print("    stripe_card  — Ace North ×5 (+ 1 cancelled + 1 pre-paid), Ace South ×2, Rally ×1 (+ 1 cancelled)")
-        print("    wallet       — Ace North ×2 (diana, alice), Rally ×1 (rp2)")
-        print("    platform fees— on all stripe_card payments (Pro 1.5%, Starter 1.0%)")
+        print("    stripe_card  — Ace North ×5 (+ 1 cancelled + 1 pre-paid + 1 failed + 1 anomaly), Ace South ×2, Rally ×1 (+ 1 cancelled)")
+        print("    wallet       — Ace North ×2 (diana, alice) + WalletClubDebt rows, Rally ×1 (rp2)")
+        print("    platform fees— on all succeeded stripe_card payments (Pro 1.5%, Starter 1.0%)")
+        print()
+        print("  All seeded bookings carry Booking.notes='seed:<key>' for idempotent re-runs.")
+        print("  Synthetic Stripe IDs are namespaced pi_seed_* / ch_seed_* to avoid clashing")
+        print("  with real Stripe webhook deliveries on the same staging environment.")
         print("=" * 70)
 
 
