@@ -191,13 +191,18 @@ class MembershipService:
             )
 
         now = datetime.now(timezone.utc)
+        # Normalise to a plain dict once — StripeObject in production,
+        # plain dict in tests/mocks. All field access below uses dict.get().
+        sub_dict = stripe_sub.to_dict() if hasattr(stripe_sub, "to_dict") else stripe_sub
+
         period_start = datetime.fromtimestamp(
-            stripe_sub["current_period_start"], tz=timezone.utc
+            sub_dict["current_period_start"], tz=timezone.utc
         )
         period_end = datetime.fromtimestamp(
-            stripe_sub["current_period_end"], tz=timezone.utc
+            sub_dict["current_period_end"], tz=timezone.utc
         )
-        local_status = _stripe_status_to_local(stripe_sub["status"])
+
+        local_status = _stripe_status_to_local(sub_dict["status"])
 
         subscription = MembershipSubscription(
             user_id=user.id,
@@ -206,10 +211,10 @@ class MembershipService:
             status=local_status,
             current_period_start=period_start,
             current_period_end=period_end,
-            cancel_at_period_end=stripe_sub.get("cancel_at_period_end", False),
+            cancel_at_period_end=sub_dict.get("cancel_at_period_end", False),
             credits_remaining=plan.booking_credits_per_period,
             guest_passes_remaining=plan.guest_passes_per_period,
-            stripe_subscription_id=stripe_sub["id"],
+            stripe_subscription_id=sub_dict["id"],
         )
         self.db.add(subscription)
         await self.db.flush()
@@ -227,14 +232,16 @@ class MembershipService:
         await self.db.commit()
         await self.db.refresh(subscription)
 
-        # Extract client_secret from the first invoice's PaymentIntent (if any)
+        # Extract client_secret from the first invoice's PaymentIntent (if any).
         client_secret = None
         try:
-            latest_invoice = stripe_sub.get("latest_invoice") or {}
-            if isinstance(latest_invoice, dict):
-                pi = latest_invoice.get("payment_intent") or {}
-                if isinstance(pi, dict):
-                    client_secret = pi.get("client_secret")
+            latest_invoice = sub_dict.get("latest_invoice") or {}
+            if hasattr(latest_invoice, "to_dict"):
+                latest_invoice = latest_invoice.to_dict()
+            pi = latest_invoice.get("payment_intent") or {}
+            if hasattr(pi, "to_dict"):
+                pi = pi.to_dict()
+            client_secret = pi.get("client_secret")
         except Exception:
             pass
 
