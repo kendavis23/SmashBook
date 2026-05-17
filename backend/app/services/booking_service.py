@@ -453,6 +453,12 @@ class BookingService:
                 if (breakdown and breakdown.credit_consumed)
                 else PaymentStatus.pending
             )
+            # Normalize to (None, None) when no discount applied — matches the
+            # contract used by invite_player / respond_to_invite.
+            organiser_discount_source = breakdown.discount_source if breakdown else None
+            organiser_discount_amount = (
+                breakdown.discount_amount if (breakdown and organiser_discount_source) else None
+            )
             organiser_bp = BookingPlayer(
                 booking=booking,
                 user=organiser_user,
@@ -460,6 +466,8 @@ class BookingService:
                 invite_status=InviteStatus.accepted,
                 payment_status=organiser_payment_status,
                 amount_due=amount_due,
+                discount_amount=organiser_discount_amount,
+                discount_source=organiser_discount_source,
             )
             self.db.add(organiser_bp)
             created_players.append(organiser_bp)

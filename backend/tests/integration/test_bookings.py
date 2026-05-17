@@ -498,6 +498,83 @@ class TestCreateBooking:
                 await session.delete(obj2)
             await session.commit()
 
+    async def test_organiser_discount_fields_populated_on_create(
+        self, client, player, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Regression: organiser's BookingPlayer row exposes discount_amount/discount_source
+        in the create response when a membership discount applies. Previously these were null
+        because the fields were only set on the Booking, not on the organiser BookingPlayer."""
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Organiser Discount Plan",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("30.00"),
+                booking_credits_per_period=0,
+                discount_pct=Decimal("20.00"),
+                is_active=True,
+            )
+            session.add(plan)
+            await session.flush()
+
+            now = datetime.now(tz=timezone.utc)
+            sub = MembershipSubscription(
+                user_id=player.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+                credits_remaining=0,
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id, sub_id = plan.id, sub.id
+
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        body = resp.json()
+
+        organiser = next(p for p in body["players"] if p["role"] == "organiser")
+        # 20.00 / 4 players = 5.00 per player; 20% off = 1.00 discount → 4.00 due
+        assert Decimal(organiser["discount_amount"]) == Decimal("1.00")
+        assert organiser["discount_source"] == "membership"
+        assert Decimal(organiser["amount_due"]) == Decimal("4.00")
+
+        # Delete bookings first — booking.membership_subscription_id references sub.
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+        async with test_session_factory() as session:
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+    async def test_organiser_discount_fields_null_without_membership(
+        self, client, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Baseline: when the organiser has no membership, both discount fields are null
+        (not 0.00) — matches the (None, None) contract used by invite/accept paths."""
+        start = _future()
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        organiser = next(p for p in resp.json()["players"] if p["role"] == "organiser")
+        assert organiser["discount_amount"] is None
+        assert organiser["discount_source"] is None
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
 
 # ---------------------------------------------------------------------------
 # GET /api/v1/bookings
