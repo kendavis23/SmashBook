@@ -157,9 +157,9 @@ async def _upsert_user(
 
 async def _upsert_club(db: AsyncSession, tenant_id, name: str, **kwargs) -> Club:
     result = await db.execute(
-        select(Club).where(Club.tenant_id == tenant_id, Club.name == name)
+        select(Club).where(Club.tenant_id == tenant_id, Club.name == name).limit(1)
     )
-    club = result.scalar_one_or_none()
+    club = result.scalars().first()
     if not club:
         club = Club(tenant_id=tenant_id, name=name, **kwargs)
         db.add(club)
@@ -179,9 +179,9 @@ async def _upsert_court(
     lighting_surcharge: Optional[Decimal] = None,
 ) -> Court:
     result = await db.execute(
-        select(Court).where(Court.club_id == club_id, Court.name == name)
+        select(Court).where(Court.club_id == club_id, Court.name == name).limit(1)
     )
-    court = result.scalar_one_or_none()
+    court = result.scalars().first()
     if not court:
         court = Court(
             club_id=club_id,
@@ -302,12 +302,30 @@ async def _upsert_booking(
     per_head = (discounted_total / len(all_players)).quantize(Decimal("0.01"))
 
     # Look up by marker — preserves any manually-created bookings, refreshes seeded ones.
+    # .limit(1): defends against the (highly unlikely) case of a real user typing the
+    # marker text into their booking notes.
     result = await db.execute(
-        select(Booking).where(Booking.club_id == club_id, Booking.notes == marker)
+        select(Booking).where(Booking.club_id == club_id, Booking.notes == marker).limit(1)
     )
-    booking = result.scalar_one_or_none()
+    booking = result.scalars().first()
 
     if booking:
+        # Hands off if real activity has happened on this seed booking. Signals:
+        #   (a) any Payment row with a non-synthetic Stripe PI (real money flowed)
+        #   (b) status has diverged from the seeded expectation (someone mutated
+        #       it via the API — e.g. a tester cancelled it to validate a flow)
+        real_payment = await db.execute(
+            select(Payment.id)
+            .where(
+                Payment.booking_id == booking.id,
+                Payment.stripe_payment_intent_id.isnot(None),
+                Payment.stripe_payment_intent_id.notlike("pi_seed_%"),
+            )
+            .limit(1)
+        )
+        if real_payment.scalar() is not None or booking.status != status:
+            return booking
+
         booking.start_datetime = start_dt
         booking.end_datetime = end_dt
         booking.status = status
@@ -448,9 +466,11 @@ async def _upsert_membership_plan(
     """Insert-only. Existing plans are returned unchanged — never overwrite
     price/description/etc, since a real Stripe Price may be tied to them."""
     result = await db.execute(
-        select(MembershipPlan).where(MembershipPlan.club_id == club_id, MembershipPlan.name == name)
+        select(MembershipPlan)
+        .where(MembershipPlan.club_id == club_id, MembershipPlan.name == name)
+        .limit(1)
     )
-    plan = result.scalar_one_or_none()
+    plan = result.scalars().first()
     if plan:
         return plan
     plan = MembershipPlan(
@@ -473,17 +493,41 @@ async def _upsert_subscription(
     plan: MembershipPlan,
     club_id,
 ) -> MembershipSubscription:
-    """Insert-only. Refresh the period window so re-runs keep `active` realistic,
-    but never touch stripe_subscription_id."""
+    """Stripe-aware idempotent upsert.
+
+    Behavior:
+      - If ANY existing sub for (user, club) has a real stripe_subscription_id,
+        treat Stripe as source of truth: return that row unchanged (don't touch
+        period dates, status, or anything else). If multiple Stripe-linked rows
+        exist, prefer the newest but still leave them all untouched.
+      - Otherwise, treat the row(s) as seed-managed: keep the newest, refresh
+        its period to anchor 'active', cancel any older seed duplicates left
+        behind by buggy prior versions of this script.
+      - If no row exists, create a new seed subscription (stripe_subscription_id
+        left NULL — real Stripe linking is the testing flow's job)."""
     result = await db.execute(
-        select(MembershipSubscription).where(
+        select(MembershipSubscription)
+        .where(
             MembershipSubscription.user_id == user.id,
             MembershipSubscription.club_id == club_id,
         )
+        .order_by(MembershipSubscription.created_at.desc())
     )
-    sub = result.scalar_one_or_none()
+    subs = result.scalars().all()
     now = datetime.now(UTC)
-    if sub:
+
+    # If any Stripe-linked sub exists, hands off — Stripe is source of truth.
+    stripe_linked = [s for s in subs if s.stripe_subscription_id]
+    if stripe_linked:
+        return stripe_linked[0]
+
+    # All remaining rows are seed-only; safe to mutate.
+    if subs:
+        sub = subs[0]
+        for stale in subs[1:]:
+            if stale.status != MembershipStatus.cancelled:
+                stale.status = MembershipStatus.cancelled
+                stale.cancelled_at = now
         sub.current_period_start = now - timedelta(days=15)
         sub.current_period_end = now + timedelta(days=15)
         await db.flush()
@@ -514,12 +558,14 @@ async def _upsert_calendar_reservation(
 ) -> None:
     """Idempotent by (club_id, title) — re-runs refresh the time window."""
     result = await db.execute(
-        select(CalendarReservation).where(
+        select(CalendarReservation)
+        .where(
             CalendarReservation.club_id == club_id,
             CalendarReservation.title == title,
         )
+        .limit(1)
     )
-    res = result.scalar_one_or_none()
+    res = result.scalars().first()
     if res:
         res.start_datetime = start_dt
         res.end_datetime = end_dt
@@ -548,12 +594,14 @@ async def _upsert_equipment(
     condition: ItemCondition = ItemCondition.good,
 ) -> EquipmentInventory:
     result = await db.execute(
-        select(EquipmentInventory).where(
+        select(EquipmentInventory)
+        .where(
             EquipmentInventory.club_id == club_id,
             EquipmentInventory.name == name,
         )
+        .limit(1)
     )
-    eq = result.scalar_one_or_none()
+    eq = result.scalars().first()
     if eq:
         return eq
     eq = EquipmentInventory(
@@ -587,9 +635,9 @@ async def _upsert_waitlist_entry(
             WaitlistEntry.club_id == club_id,
             WaitlistEntry.user_id == marker_reference_user.id,
             WaitlistEntry.desired_date == desired_date,
-        ))
+        )).limit(1)
     )
-    if result.scalar_one_or_none():
+    if result.scalars().first():
         return
     db.add(WaitlistEntry(
         club_id=club_id,
@@ -627,9 +675,9 @@ async def seed():
             dict(name="Enterprise", max_clubs=-1, max_courts_per_club=-1, open_games_feature=True,  waitlist_feature=True,  analytics_enabled=True,  white_label_enabled=True,  price_per_month=Decimal("299.00"), booking_fee_pct=Decimal("1.00")),
         ]:
             result = await db.execute(
-                select(SubscriptionPlan).where(SubscriptionPlan.name == plan_def["name"])
+                select(SubscriptionPlan).where(SubscriptionPlan.name == plan_def["name"]).limit(1)
             )
-            plan = result.scalar_one_or_none()
+            plan = result.scalars().first()
             if not plan:
                 plan = SubscriptionPlan(**plan_def)
                 db.add(plan)
@@ -737,16 +785,20 @@ async def seed():
 
         # Staff profiles
         result = await db.execute(
-            select(StaffProfile).where(StaffProfile.club_id == north.id, StaffProfile.user_id == ace_trainer.id)
+            select(StaffProfile)
+            .where(StaffProfile.club_id == north.id, StaffProfile.user_id == ace_trainer.id)
+            .limit(1)
         )
-        if not result.scalar_one_or_none():
+        if not result.scalars().first():
             db.add(StaffProfile(user_id=ace_trainer.id, club_id=north.id, role=StaffRole.trainer,
                                 bio="Certified padel trainer, 10+ years experience.", is_active=True))
             await db.flush()
         result = await db.execute(
-            select(StaffProfile).where(StaffProfile.club_id == north.id, StaffProfile.user_id == ace_fd.id)
+            select(StaffProfile)
+            .where(StaffProfile.club_id == north.id, StaffProfile.user_id == ace_fd.id)
+            .limit(1)
         )
-        if not result.scalar_one_or_none():
+        if not result.scalars().first():
             db.add(StaffProfile(user_id=ace_fd.id, club_id=north.id, role=StaffRole.front_desk, is_active=True))
             await db.flush()
 
@@ -930,17 +982,21 @@ async def seed():
         )
 
         rental_booking = await db.execute(
-            select(Booking).where(Booking.club_id == north.id, Booking.notes == _booking_marker("aceN-p02"))
+            select(Booking)
+            .where(Booking.club_id == north.id, Booking.notes == _booking_marker("aceN-p02"))
+            .limit(1)
         )
-        rb = rental_booking.scalar_one_or_none()
+        rb = rental_booking.scalars().first()
         if rb:
             existing = await db.execute(
-                select(EquipmentRental).where(
+                select(EquipmentRental)
+                .where(
                     EquipmentRental.booking_id == rb.id,
                     EquipmentRental.equipment_id == racket.id,
                 )
+                .limit(1)
             )
-            if not existing.scalar_one_or_none():
+            if not existing.scalars().first():
                 db.add(EquipmentRental(
                     booking_id=rb.id, equipment_id=racket.id, user_id=bob.id,
                     quantity=2, charge=Decimal("8.00"),
