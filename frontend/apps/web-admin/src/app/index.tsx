@@ -57,7 +57,6 @@ const indexRoute = createRoute({
     },
 });
 
-
 const dashboardLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
     id: "dashboard-layout",

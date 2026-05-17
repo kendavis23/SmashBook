@@ -186,8 +186,11 @@ export function LoginView({
                                                 accessibilityLabel="Password"
                                                 autoCapitalize="none"
                                                 autoComplete="password"
+                                                autoCorrect={false}
                                                 className="h-12 flex-1 py-0 text-base text-[#0f172a]"
                                                 editable={!isPending}
+                                                inputMode="text"
+                                                keyboardType="default"
                                                 onBlur={field.onBlur}
                                                 onChangeText={field.onChange}
                                                 placeholder="Enter your password"

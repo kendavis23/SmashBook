@@ -28,7 +28,10 @@ export default function NewPlanView({
 }: NewPlanViewProps): JSX.Element {
     return (
         <div className="w-full space-y-5">
-            <Breadcrumb items={[{ label: "Plans", onClick: onCancel }, { label: "New Plan" }]} showHomeIcon={false} />
+            <Breadcrumb
+                items={[{ label: "Plans", onClick: onCancel }, { label: "New Plan" }]}
+                showHomeIcon={false}
+            />
 
             {apiError ? (
                 <AlertToast title={apiError} variant="error" onClose={onDismissError} />

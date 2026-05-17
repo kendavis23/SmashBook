@@ -1,5 +1,12 @@
 import { Breadcrumb } from "@repo/ui";
-import { Building2, ChevronLeft, ChevronRight, ExternalLink, RefreshCw, Search } from "lucide-react";
+import {
+    Building2,
+    ChevronLeft,
+    ChevronRight,
+    ExternalLink,
+    RefreshCw,
+    Search,
+} from "lucide-react";
 import { type JSX, useState } from "react";
 
 import type { TenantSummary } from "../../types";
@@ -59,7 +66,7 @@ export default function TenantsView({
         ? tenants.filter(
               (t) =>
                   t.name.toLowerCase().includes(search.toLowerCase()) ||
-                  t.subdomain.toLowerCase().includes(search.toLowerCase()),
+                  t.subdomain.toLowerCase().includes(search.toLowerCase())
           )
         : tenants;
 
