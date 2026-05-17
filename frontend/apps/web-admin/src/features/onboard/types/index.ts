@@ -19,7 +19,6 @@ export interface OnboardCourtForm {
 }
 
 export interface OnboardTenantFormState {
-    platformKey: string;
     name: string;
     subdomain: string;
     plan_id: string;
@@ -54,7 +53,6 @@ export const DEFAULT_COURT: OnboardCourtForm = {
 };
 
 export const DEFAULT_ONBOARD_FORM: OnboardTenantFormState = {
-    platformKey: "",
     name: "",
     subdomain: "",
     plan_id: "",
