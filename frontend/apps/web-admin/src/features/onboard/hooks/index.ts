@@ -1,1 +1,1 @@
-export { useOnboardTenant } from "@repo/admin-domain/hooks";
+export { useOnboardTenant, useListPlans } from "@repo/admin-domain/hooks";

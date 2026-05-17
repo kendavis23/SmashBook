@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import type { JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -8,15 +8,9 @@ import PlansView from "./PlansView";
 
 export default function PlansContainer(): JSX.Element {
     const navigate = useNavigate();
-    const { platformKey, isSet, set } = usePlatformKeyStore();
-    const [platformKeyInput, setPlatformKeyInput] = useState("");
+    const { platformKey, isSet } = usePlatformKeyStore();
 
     const { data, isLoading, error, refetch } = useListPlans(isSet ? platformKey : "");
-
-    const handleSetPlatformKey = useCallback(() => {
-        const trimmed = platformKeyInput.trim();
-        if (trimmed) set(trimmed);
-    }, [platformKeyInput, set]);
 
     const handleRefresh = useCallback(() => void refetch(), [refetch]);
 
@@ -33,14 +27,9 @@ export default function PlansContainer(): JSX.Element {
 
     return (
         <PlansView
-            platformKey={platformKey}
-            isPlatformKeySet={isSet}
-            platformKeyInput={platformKeyInput}
             plans={data ?? []}
             isLoading={isLoading}
             error={error?.message ?? null}
-            onPlatformKeyInputChange={setPlatformKeyInput}
-            onSetPlatformKey={handleSetPlatformKey}
             onRefresh={handleRefresh}
             onCreateClick={handleCreateClick}
             onManageClick={handleManageClick}

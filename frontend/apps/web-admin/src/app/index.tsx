@@ -12,10 +12,10 @@ import OnboardPage from "../features/onboard/pages/OnboardPage";
 import PlansPage from "../features/plan/pages/PlansPage";
 import NewPlanPage from "../features/plan/pages/NewPlanPage";
 import EditPlanPage from "../features/plan/pages/EditPlanPage";
-
-function DashboardPage() {
-    return <div className="p-8 text-gray-700">Dashboard — coming soon</div>;
-}
+import TenantsPage from "../features/tenant/pages/TenantsPage";
+import ManageTenantPage from "../features/tenant/pages/ManageTenantPage";
+import AdminLoginPage from "../pages/admin-login-page";
+import { loadPlatformKey } from "../lib/platform-key-crypto";
 
 function PageLoader() {
     return (
@@ -38,24 +38,35 @@ const rootRoute = createRootRoute({
     ),
 });
 
+const loginRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/login",
+    beforeLoad: () => {
+        if (loadPlatformKey() !== null) {
+            throw redirect({ to: "/plans" });
+        }
+    },
+    component: AdminLoginPage,
+});
+
 const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
     beforeLoad: () => {
-        throw redirect({ to: "/dashboard" });
+        throw redirect({ to: "/plans" });
     },
 });
+
 
 const dashboardLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
     id: "dashboard-layout",
+    beforeLoad: () => {
+        if (loadPlatformKey() === null) {
+            throw redirect({ to: "/login" });
+        }
+    },
     component: DashboardLayout,
-});
-
-const dashboardRoute = createRoute({
-    getParentRoute: () => dashboardLayoutRoute,
-    path: "/dashboard",
-    component: DashboardPage,
 });
 
 const onboardRoute = createRoute({
@@ -82,14 +93,28 @@ const editPlanRoute = createRoute({
     component: EditPlanPage,
 });
 
+const tenantsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/tenants",
+    component: TenantsPage,
+});
+
+const manageTenantRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/tenants/$tenantId",
+    component: ManageTenantPage,
+});
+
 const routeTree = rootRoute.addChildren([
+    loginRoute,
     indexRoute,
     dashboardLayoutRoute.addChildren([
-        dashboardRoute,
         onboardRoute,
         plansRoute,
         newPlanRoute,
         editPlanRoute,
+        tenantsRoute,
+        manageTenantRoute,
     ]),
 ]);
 

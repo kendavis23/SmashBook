@@ -2,7 +2,8 @@ import type { FormEvent, JSX } from "react";
 import { useState } from "react";
 import { datetimeLocalToUTC } from "@repo/ui";
 
-import { useOnboardTenant } from "../hooks";
+import { usePlatformKeyStore } from "../../plan/store/platformKey";
+import { useListPlans, useOnboardTenant } from "../hooks";
 import type { OnboardCourtForm, OnboardTenantFormState, TenantOnboardInput } from "../types";
 import { DEFAULT_COURT, DEFAULT_ONBOARD_FORM } from "../types";
 import OnboardView from "./OnboardView";
@@ -39,8 +40,8 @@ function buildPayload(form: OnboardTenantFormState): TenantOnboardInput {
     };
 }
 
-function validateForm(form: OnboardTenantFormState): string | null {
-    if (!form.platformKey.trim()) return "Platform key is required.";
+function validateForm(form: OnboardTenantFormState, platformKey: string): string | null {
+    if (!platformKey.trim()) return "Platform key is required.";
     if (!form.name.trim()) return "Tenant name is required.";
     if (!form.subdomain.trim()) return "Subdomain is required.";
     if (!form.plan_id.trim()) return "Plan ID is required.";
@@ -62,11 +63,19 @@ function validateForm(form: OnboardTenantFormState): string | null {
 }
 
 export default function OnboardContainer(): JSX.Element {
+    const { platformKey } = usePlatformKeyStore();
     const [form, setForm] = useState<OnboardTenantFormState>(DEFAULT_ONBOARD_FORM);
     const [apiError, setApiError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    const onboardTenant = useOnboardTenant(form.platformKey.trim());
+    const onboardTenant = useOnboardTenant(platformKey);
+    const { data: plans = [] } = useListPlans(platformKey);
+
+    const planOptions = plans.map((plan) => ({ value: plan.id, label: plan.name }));
+
+    // Auto-select the first plan when plans load and no plan is selected yet
+    const firstPlanId = plans[0]?.id ?? "";
+    const effectivePlanId = form.plan_id || firstPlanId;
 
     const updateField = (field: keyof OnboardTenantFormState, value: string): void => {
         setForm((current) => ({ ...current, [field]: value }));
@@ -124,13 +133,14 @@ export default function OnboardContainer(): JSX.Element {
         setApiError(null);
         setSuccessMessage(null);
 
-        const validationError = validateForm(form);
+        const resolvedForm = { ...form, plan_id: effectivePlanId };
+        const validationError = validateForm(resolvedForm, platformKey);
         if (validationError) {
             setApiError(validationError);
             return;
         }
 
-        onboardTenant.mutate(buildPayload(form), {
+        onboardTenant.mutate(buildPayload(resolvedForm), {
             onSuccess: (result) => {
                 setSuccessMessage(`Tenant onboarded. Tenant ID: ${result.tenant_id}`);
             },
@@ -142,7 +152,8 @@ export default function OnboardContainer(): JSX.Element {
 
     return (
         <OnboardView
-            form={form}
+            form={{ ...form, plan_id: effectivePlanId }}
+            planOptions={planOptions}
             isPending={onboardTenant.isPending}
             apiError={apiError}
             successMessage={successMessage}

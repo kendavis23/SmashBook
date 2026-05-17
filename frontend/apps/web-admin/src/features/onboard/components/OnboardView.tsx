@@ -1,12 +1,18 @@
-import { AlertToast, DateTimePicker, NumberInput, SelectInput } from "@repo/ui";
-import { Building2, KeyRound, Plus, Trash2, UserPlus } from "lucide-react";
-import type { FormEvent, JSX } from "react";
+import { AlertToast, Breadcrumb, DateTimePicker, NumberInput, SelectInput } from "@repo/ui";
+import { Building2, Globe, LayoutGrid, Plus, Trash2, UserPlus, Users } from "lucide-react";
+import type { FormEvent, JSX, ReactNode } from "react";
 
 import type { OnboardCourtForm, OnboardTenantFormState, SurfaceType } from "../types";
 import { CURRENCY_OPTIONS, SURFACE_OPTIONS } from "../types";
 
+interface PlanOption {
+    value: string;
+    label: string;
+}
+
 interface OnboardViewProps {
     form: OnboardTenantFormState;
+    planOptions: PlanOption[];
     isPending: boolean;
     apiError: string | null;
     successMessage: string | null;
@@ -25,12 +31,58 @@ interface OnboardViewProps {
     onDismissSuccess: () => void;
 }
 
-const fieldGroupCls = "grid gap-4 md:grid-cols-2";
-const labelCls = "mb-1.5 block text-sm font-medium text-foreground";
-const hintCls = "mt-1 text-xs text-muted-foreground";
+function Field({
+    label,
+    hint,
+    children,
+    span2 = false,
+}: {
+    label: string;
+    hint?: string;
+    children: ReactNode;
+    span2?: boolean;
+}): JSX.Element {
+    return (
+        <div className={span2 ? "col-span-2" : undefined}>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                {label}
+            </label>
+            {children}
+            {hint ? <p className="mt-1 text-[11px] text-muted-foreground/70">{hint}</p> : null}
+        </div>
+    );
+}
+
+function Card({
+    icon,
+    title,
+    action,
+    children,
+}: {
+    icon: JSX.Element;
+    title: string;
+    action?: JSX.Element;
+    children: ReactNode;
+}): JSX.Element {
+    return (
+        <div className="flex flex-col rounded-xl border border-border bg-background shadow-sm">
+            <div className="flex items-center justify-between gap-3 rounded-t-xl border-b border-border bg-muted/30 px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-background text-foreground shadow-xs ring-1 ring-border">
+                        {icon}
+                    </div>
+                    <span className="text-sm font-semibold text-foreground">{title}</span>
+                </div>
+                {action}
+            </div>
+            <div className="flex-1 p-4">{children}</div>
+        </div>
+    );
+}
 
 export default function OnboardView({
     form,
+    planOptions,
     isPending,
     apiError,
     successMessage,
@@ -45,21 +97,29 @@ export default function OnboardView({
     onDismissSuccess,
 }: OnboardViewProps): JSX.Element {
     return (
-        <form onSubmit={onSubmit} noValidate className="p-6">
-            <div className="mb-6 flex flex-col gap-3 border-b border-border pb-5 md:flex-row md:items-center md:justify-between">
-                <div>
-                    <h1 className="page-title">Onboard Tenant</h1>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        Create the tenant, first club, courts, and owner account.
-                    </p>
-                </div>
-                <button type="submit" disabled={isPending} className="btn-cta min-h-10 px-4">
-                    <UserPlus size={16} />
-                    {isPending ? "Onboarding..." : "Onboard"}
-                </button>
-            </div>
+        <div className="w-full space-y-5">
+            <Breadcrumb items={[{ label: "Onboard" }]} showHomeIcon={false} />
 
-            <div className="space-y-5">
+            <form onSubmit={onSubmit} noValidate className="space-y-5">
+                {/* Page header */}
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="page-title">Onboard Tenant</h1>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                            Create the tenant, first club, courts, and owner account.
+                        </p>
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={isPending}
+                        className="btn-cta min-h-10 shrink-0 px-5"
+                    >
+                        <UserPlus size={15} />
+                        {isPending ? "Onboarding..." : "Onboard"}
+                    </button>
+                </div>
+
+                {/* Alerts */}
                 {apiError ? (
                     <AlertToast title={apiError} variant="error" onClose={onDismissError} />
                 ) : null}
@@ -71,278 +131,228 @@ export default function OnboardView({
                     />
                 ) : null}
 
-                <section className="card-surface p-5">
-                    <div className="mb-4 flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                            <KeyRound size={17} />
+                {/* 2×2 grid */}
+                <div className="grid gap-4 lg:grid-cols-2">
+                    {/* Tenant */}
+                    <Card icon={<Globe size={14} />} title="Tenant">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
+                            <Field label="Tenant name" span2>
+                                <input
+                                    className="input-base"
+                                    value={form.name}
+                                    onChange={(e) => onFieldChange("name", e.target.value)}
+                                    placeholder="Ace Padel"
+                                />
+                            </Field>
+                            <Field label="Subdomain">
+                                <input
+                                    className="input-base"
+                                    value={form.subdomain}
+                                    onChange={(e) => onFieldChange("subdomain", e.target.value)}
+                                    placeholder="ace-padel"
+                                    autoComplete="off"
+                                />
+                            </Field>
+                            <Field label="Plan">
+                                <SelectInput
+                                    className="input-base"
+                                    value={form.plan_id}
+                                    options={planOptions}
+                                    onValueChange={(value) => onFieldChange("plan_id", value)}
+                                />
+                            </Field>
+                            <Field label="Subscription start" hint="Optional · UTC" span2>
+                                <DateTimePicker
+                                    className="input-base"
+                                    value={form.subscription_start_date}
+                                    onChange={(value) =>
+                                        onFieldChange("subscription_start_date", value)
+                                    }
+                                    placeholder="Pick a date"
+                                />
+                            </Field>
                         </div>
-                        <div>
-                            <h2 className="text-base font-semibold text-foreground">Platform</h2>
-                            <p className="text-xs text-muted-foreground">
-                                The platform key is sent as the admin API header value.
-                            </p>
-                        </div>
-                    </div>
-                    <label>
-                        <span className={labelCls}>Platform key</span>
-                        <input
-                            className="input-base"
-                            value={form.platformKey}
-                            onChange={(event) => onFieldChange("platformKey", event.target.value)}
-                            placeholder="platform-key"
-                            autoComplete="off"
-                        />
-                    </label>
-                </section>
+                    </Card>
 
-                <section className="card-surface p-5">
-                    <div className="mb-4 flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-secondary-foreground">
-                            <Building2 size={17} />
+                    {/* Club */}
+                    <Card icon={<Building2 size={14} />} title="Club">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
+                            <Field label="Club name">
+                                <input
+                                    className="input-base"
+                                    value={form.club.name}
+                                    onChange={(e) => onClubFieldChange("name", e.target.value)}
+                                    placeholder="Ace Padel HQ"
+                                />
+                            </Field>
+                            <Field label="Currency">
+                                <SelectInput
+                                    className="input-base"
+                                    value={form.club.currency}
+                                    options={CURRENCY_OPTIONS}
+                                    onValueChange={(value) => onClubFieldChange("currency", value)}
+                                />
+                            </Field>
+                            <Field label="Address" span2>
+                                <input
+                                    className="input-base"
+                                    value={form.club.address}
+                                    onChange={(e) => onClubFieldChange("address", e.target.value)}
+                                    placeholder="Club address"
+                                />
+                            </Field>
                         </div>
-                        <div>
-                            <h2 className="text-base font-semibold text-foreground">Tenant</h2>
-                            <p className="text-xs text-muted-foreground">
-                                Create the tenant workspace and subscription details.
-                            </p>
-                        </div>
-                    </div>
-                    <div className={fieldGroupCls}>
-                        <label>
-                            <span className={labelCls}>Tenant name</span>
-                            <input
-                                className="input-base"
-                                value={form.name}
-                                onChange={(event) => onFieldChange("name", event.target.value)}
-                                placeholder="Ace Padel"
-                            />
-                        </label>
-                        <label>
-                            <span className={labelCls}>Subdomain</span>
-                            <input
-                                className="input-base"
-                                value={form.subdomain}
-                                onChange={(event) => onFieldChange("subdomain", event.target.value)}
-                                placeholder="ace-padel"
-                                autoComplete="off"
-                            />
-                        </label>
-                        <label>
-                            <span className={labelCls}>Plan ID</span>
-                            <input
-                                className="input-base"
-                                value={form.plan_id}
-                                onChange={(event) => onFieldChange("plan_id", event.target.value)}
-                                placeholder="3fa85f64-5717-4562-b3fc-2c963f66afa6"
-                                autoComplete="off"
-                            />
-                        </label>
-                        <label className="md:col-span-2">
-                            <span className={labelCls}>Subscription start date</span>
-                            <DateTimePicker
-                                className="input-base"
-                                value={form.subscription_start_date}
-                                onChange={(value) =>
-                                    onFieldChange("subscription_start_date", value)
-                                }
-                                placeholder="Pick subscription start"
-                            />
-                            <span className={hintCls}>
-                                Optional. The value is converted to UTC before submit.
-                            </span>
-                        </label>
-                    </div>
-                </section>
+                    </Card>
 
-                <section className="card-surface p-5">
-                    <div className="mb-4">
-                        <h2 className="text-base font-semibold text-foreground">Club</h2>
-                    </div>
-                    <div className={fieldGroupCls}>
-                        <label>
-                            <span className={labelCls}>Club name</span>
-                            <input
-                                className="input-base"
-                                value={form.club.name}
-                                onChange={(event) => onClubFieldChange("name", event.target.value)}
-                                placeholder="Ace Padel HQ"
-                            />
-                        </label>
-                        <label>
-                            <span className={labelCls}>Currency</span>
-                            <SelectInput
-                                className="input-base"
-                                value={form.club.currency}
-                                options={CURRENCY_OPTIONS}
-                                onValueChange={(value) => onClubFieldChange("currency", value)}
-                            />
-                        </label>
-                        <label className="md:col-span-2">
-                            <span className={labelCls}>Address</span>
-                            <input
-                                className="input-base"
-                                value={form.club.address}
-                                onChange={(event) =>
-                                    onClubFieldChange("address", event.target.value)
-                                }
-                                placeholder="Club address"
-                            />
-                        </label>
-                    </div>
-                </section>
-
-                <section className="card-surface p-5">
-                    <div className="mb-4 flex items-center justify-between gap-3">
-                        <div>
-                            <h2 className="text-base font-semibold text-foreground">Courts</h2>
-                        </div>
-                        <button type="button" onClick={onAddCourt} className="btn-outline">
-                            <Plus size={15} />
-                            Add Court
-                        </button>
-                    </div>
-
-                    <div className="space-y-4">
-                        {form.courts.map((court, index) => (
-                            <div key={index} className="rounded-lg border border-border p-4">
-                                <div className="mb-4 flex items-center justify-between gap-3">
-                                    <h3 className="text-sm font-semibold text-foreground">
-                                        Court {index + 1}
-                                    </h3>
-                                    <button
-                                        type="button"
-                                        onClick={() => onRemoveCourt(index)}
-                                        disabled={form.courts.length === 1}
-                                        className="btn-outline px-2.5 py-1.5 text-xs"
-                                        aria-label={`Remove court ${index + 1}`}
-                                    >
-                                        <Trash2 size={14} />
-                                        Remove
-                                    </button>
-                                </div>
-                                <div className={fieldGroupCls}>
-                                    <label>
-                                        <span className={labelCls}>Court name</span>
-                                        <input
-                                            className="input-base"
-                                            value={court.name}
-                                            onChange={(event) =>
-                                                onCourtFieldChange(
-                                                    index,
-                                                    "name",
-                                                    event.target.value
-                                                )
-                                            }
-                                            placeholder="Court 1"
-                                        />
-                                    </label>
-                                    <label>
-                                        <span className={labelCls}>Surface type</span>
-                                        <SelectInput
-                                            className="input-base"
-                                            value={court.surface_type}
-                                            options={SURFACE_OPTIONS}
-                                            onValueChange={(value) =>
-                                                onCourtFieldChange(
-                                                    index,
-                                                    "surface_type",
-                                                    value as SurfaceType
-                                                )
-                                            }
-                                        />
-                                    </label>
-                                    <label>
-                                        <span className={labelCls}>Lighting surcharge</span>
-                                        <NumberInput
-                                            className="input-base"
-                                            value={court.lighting_surcharge}
-                                            min={0}
-                                            step={0.01}
-                                            onChange={(event) =>
-                                                onCourtFieldChange(
-                                                    index,
-                                                    "lighting_surcharge",
-                                                    event.target.value
-                                                )
-                                            }
-                                        />
-                                    </label>
-                                    <label className="flex items-center gap-3 pt-7">
-                                        <input
-                                            type="checkbox"
-                                            checked={court.has_lighting}
-                                            onChange={(event) =>
-                                                onCourtFieldChange(
-                                                    index,
-                                                    "has_lighting",
-                                                    event.target.checked
-                                                )
-                                            }
-                                            className="h-4 w-4 rounded border-border text-cta focus:ring-cta-ring"
-                                        />
-                                        <span className="text-sm font-medium text-foreground">
-                                            Has lighting
+                    {/* Courts */}
+                    <Card
+                        icon={<LayoutGrid size={14} />}
+                        title="Courts"
+                        action={
+                            <button
+                                type="button"
+                                onClick={onAddCourt}
+                                className="btn-outline min-h-7 px-2.5 text-xs"
+                            >
+                                <Plus size={12} />
+                                Add
+                            </button>
+                        }
+                    >
+                        <div className="space-y-3">
+                            {form.courts.map((court, index) => (
+                                <div
+                                    key={index}
+                                    className="rounded-lg border border-border bg-muted/20 p-3"
+                                >
+                                    <div className="mb-3 flex items-center justify-between">
+                                        <span className="text-xs font-semibold text-foreground/60">
+                                            Court {index + 1}
                                         </span>
-                                    </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemoveCourt(index)}
+                                            disabled={form.courts.length === 1}
+                                            className="btn-outline min-h-6 px-2 text-[11px] disabled:opacity-40"
+                                            aria-label={`Remove court ${index + 1}`}
+                                        >
+                                            <Trash2 size={11} />
+                                            Remove
+                                        </button>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                                        <Field label="Name" span2>
+                                            <input
+                                                className="input-base"
+                                                value={court.name}
+                                                onChange={(e) =>
+                                                    onCourtFieldChange(
+                                                        index,
+                                                        "name",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                placeholder="Court 1"
+                                            />
+                                        </Field>
+                                        <Field label="Surface">
+                                            <SelectInput
+                                                className="input-base"
+                                                value={court.surface_type}
+                                                options={SURFACE_OPTIONS}
+                                                onValueChange={(value) =>
+                                                    onCourtFieldChange(
+                                                        index,
+                                                        "surface_type",
+                                                        value as SurfaceType
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+                                        <Field label="Lighting surcharge">
+                                            <NumberInput
+                                                className="input-base"
+                                                value={court.lighting_surcharge}
+                                                min={0}
+                                                step={0.01}
+                                                onChange={(e) =>
+                                                    onCourtFieldChange(
+                                                        index,
+                                                        "lighting_surcharge",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+                                        <label className="col-span-2 flex cursor-pointer items-center gap-2.5 rounded-md border border-border bg-background px-3 py-2.5">
+                                            <input
+                                                type="checkbox"
+                                                checked={court.has_lighting}
+                                                onChange={(e) =>
+                                                    onCourtFieldChange(
+                                                        index,
+                                                        "has_lighting",
+                                                        e.target.checked
+                                                    )
+                                                }
+                                                className="h-4 w-4 rounded border-border text-cta focus:ring-cta-ring"
+                                            />
+                                            <span className="text-xs font-medium text-foreground">
+                                                Has lighting
+                                            </span>
+                                        </label>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                </section>
+                            ))}
+                        </div>
+                    </Card>
 
-                <section className="card-surface p-5">
-                    <div className="mb-4">
-                        <h2 className="text-base font-semibold text-foreground">Owner</h2>
-                    </div>
-                    <div className={fieldGroupCls}>
-                        <label>
-                            <span className={labelCls}>Email</span>
-                            <input
-                                className="input-base"
-                                type="email"
-                                value={form.owner.email}
-                                onChange={(event) =>
-                                    onOwnerFieldChange("email", event.target.value)
-                                }
-                                placeholder="owner@example.com"
-                                autoComplete="email"
-                            />
-                        </label>
-                        <label>
-                            <span className={labelCls}>Full name</span>
-                            <input
-                                className="input-base"
-                                value={form.owner.full_name}
-                                onChange={(event) =>
-                                    onOwnerFieldChange("full_name", event.target.value)
-                                }
-                                placeholder="Owner name"
-                                autoComplete="name"
-                            />
-                        </label>
-                        <label className="md:col-span-2">
-                            <span className={labelCls}>Password</span>
-                            <input
-                                className="input-base"
-                                type="password"
-                                value={form.owner.password}
-                                onChange={(event) =>
-                                    onOwnerFieldChange("password", event.target.value)
-                                }
-                                placeholder="Temporary password"
-                                autoComplete="new-password"
-                            />
-                        </label>
-                    </div>
-                </section>
+                    {/* Owner */}
+                    <Card icon={<Users size={14} />} title="Owner">
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
+                            <Field label="Email" span2>
+                                <input
+                                    className="input-base"
+                                    type="email"
+                                    value={form.owner.email}
+                                    onChange={(e) => onOwnerFieldChange("email", e.target.value)}
+                                    placeholder="owner@example.com"
+                                    autoComplete="email"
+                                />
+                            </Field>
+                            <Field label="Full name" span2>
+                                <input
+                                    className="input-base"
+                                    value={form.owner.full_name}
+                                    onChange={(e) =>
+                                        onOwnerFieldChange("full_name", e.target.value)
+                                    }
+                                    placeholder="Owner name"
+                                    autoComplete="name"
+                                />
+                            </Field>
+                            <Field label="Password" span2>
+                                <input
+                                    className="input-base"
+                                    type="password"
+                                    value={form.owner.password}
+                                    onChange={(e) => onOwnerFieldChange("password", e.target.value)}
+                                    placeholder="Temporary password"
+                                    autoComplete="new-password"
+                                />
+                            </Field>
+                        </div>
+                    </Card>
+                </div>
 
-                <div className="flex justify-end border-t border-border pt-5">
-                    <button type="submit" disabled={isPending} className="btn-cta min-h-10 px-4">
-                        <UserPlus size={16} />
+                {/* Footer */}
+                <div className="flex justify-end border-t border-border pt-4">
+                    <button type="submit" disabled={isPending} className="btn-cta min-h-10 px-5">
+                        <UserPlus size={15} />
                         {isPending ? "Onboarding..." : "Onboard"}
                     </button>
                 </div>
-            </div>
-        </form>
+            </form>
+        </div>
     );
 }

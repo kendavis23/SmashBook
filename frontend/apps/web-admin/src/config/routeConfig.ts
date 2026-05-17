@@ -1,4 +1,4 @@
-import { BookOpen, LayoutDashboard, UserPlus } from "lucide-react";
+import { BookOpen, Building2, UserPlus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type UserRole = "player";
@@ -39,14 +39,14 @@ function flattenNavigableRoutes(routes: RouteConfig[], inheritedRoles?: UserRole
 
 export const ROUTES: RouteConfig[] = [
     {
-        key: "dashboard",
-        path: "/dashboard",
-        label: "Dashboard",
-        icon: LayoutDashboard,
-        title: "Dashboard",
-        subtitle: "Welcome to SmashBook",
-        breadcrumb: ["Dashboard"],
-        group: "Overview",
+        key: "plans",
+        path: "/plans",
+        label: "Plans",
+        icon: BookOpen,
+        title: "Subscription Plans",
+        subtitle: "Manage platform subscription plans",
+        breadcrumb: ["Plans"],
+        group: "Admin",
     },
     {
         key: "onboard",
@@ -59,13 +59,13 @@ export const ROUTES: RouteConfig[] = [
         group: "Admin",
     },
     {
-        key: "plans",
-        path: "/plans",
-        label: "Plans",
-        icon: BookOpen,
-        title: "Subscription Plans",
-        subtitle: "Manage platform subscription plans",
-        breadcrumb: ["Plans"],
+        key: "tenants",
+        path: "/tenants",
+        label: "Tenants",
+        icon: Building2,
+        title: "Tenants",
+        subtitle: "Manage platform tenants and subscriptions",
+        breadcrumb: ["Tenants"],
         group: "Admin",
     },
 ];

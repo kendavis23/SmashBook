@@ -1,4 +1,4 @@
-import { AlertToast, NumberInput } from "@repo/ui";
+import { AlertToast, Breadcrumb, NumberInput } from "@repo/ui";
 import { BookOpen, Save } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 
@@ -33,13 +33,11 @@ export default function EditPlanView({
     onDismissSuccess,
 }: EditPlanViewProps): JSX.Element {
     return (
-        <div className="w-full space-y-5 p-6">
-            <div>
-                <h1 className="text-xl font-semibold text-foreground">{planName || "Edit Plan"}</h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                    {"Update this subscription plan's settings."}
-                </p>
-            </div>
+        <div className="w-full space-y-5">
+            <Breadcrumb
+                items={[{ label: "Plans", onClick: onCancel }, { label: planName || "Edit Plan" }]}
+                showHomeIcon={false}
+            />
 
             {apiError ? (
                 <AlertToast title={apiError} variant="error" onClose={onDismissError} />
