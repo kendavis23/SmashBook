@@ -1,5 +1,6 @@
 import { useAuth } from "@repo/auth";
-import { Redirect, Stack, type Href } from "expo-router";
+import { Redirect, Tabs, type Href } from "expo-router";
+import { FloatingTabBar } from "../../src/components/FloatingTabBar";
 
 export default function PlayerLayout() {
     const { isAuthenticated } = useAuth();
@@ -9,8 +10,29 @@ export default function PlayerLayout() {
     }
 
     return (
-        <Stack>
-            <Stack.Screen name="home" options={{ headerShown: false }} />
-        </Stack>
+        <Tabs
+            tabBar={(props) => <FloatingTabBar {...props} />}
+            screenOptions={{
+                headerShown: false,
+                tabBarStyle: { display: "none" },
+            }}
+        >
+            <Tabs.Screen
+                name="home"
+                options={{ title: "Home", tabBarAccessibilityLabel: "Home" }}
+            />
+            <Tabs.Screen
+                name="book"
+                options={{ title: "Book", tabBarAccessibilityLabel: "Book" }}
+            />
+            <Tabs.Screen
+                name="my-games"
+                options={{ title: "My Games", tabBarAccessibilityLabel: "My Games" }}
+            />
+            <Tabs.Screen
+                name="profile"
+                options={{ title: "Profile", tabBarAccessibilityLabel: "Profile" }}
+            />
+        </Tabs>
     );
 }

@@ -3,7 +3,7 @@ name: Deploy web-admin
 on:
   push:
     branches:
-      - frontend
+      - main
     paths:
       - frontend/apps/web-admin/**
       - frontend/packages/admin-domain/**

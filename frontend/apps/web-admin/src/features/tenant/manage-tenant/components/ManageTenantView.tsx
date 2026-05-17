@@ -104,7 +104,10 @@ export default function ManageTenantView({
 }: ManageTenantViewProps): JSX.Element {
     return (
         <div className="w-full space-y-5">
-            <Breadcrumb items={[{ label: "Tenants", onClick: onBack }, { label: tenant.name }]} showHomeIcon={false} />
+            <Breadcrumb
+                items={[{ label: "Tenants", onClick: onBack }, { label: tenant.name }]}
+                showHomeIcon={false}
+            />
 
             {/* Header */}
             <section className="card-surface overflow-hidden">
