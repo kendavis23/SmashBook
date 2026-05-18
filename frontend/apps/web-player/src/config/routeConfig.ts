@@ -1,4 +1,13 @@
-import { CalendarCheck, LayoutDashboard, Swords, UserCircle } from "lucide-react";
+import {
+    BadgeCheck,
+    Bell,
+    CalendarCheck,
+    CreditCard,
+    LayoutDashboard,
+    Swords,
+    UserCircle,
+    Wallet,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type UserRole = "player";
@@ -84,13 +93,72 @@ export const ROUTES: RouteConfig[] = [
         group: "Operations",
     },
     {
-        key: "profile",
-        path: "/profile",
-        label: "Profile",
+        key: "account",
+        label: "Account",
         icon: UserCircle,
-        title: "Profile",
-        breadcrumb: ["Account", "Profile"],
-        group: "Account",
+        group: "Manage",
+        children: [
+            {
+                key: "profile",
+                path: "/profile",
+                label: "Profile",
+                title: "Profile",
+                breadcrumb: ["Account", "Profile"],
+            },
+            {
+                key: "notifications",
+                path: "/profile/notifications",
+                label: "Notifications",
+                icon: Bell,
+                title: "Notifications",
+                breadcrumb: ["Account", "Notifications"],
+            },
+        ],
+    },
+    {
+        key: "payments",
+        label: "Payments",
+        icon: CreditCard,
+        group: "Manage",
+        children: [
+            {
+                key: "payment-cards",
+                path: "/profile/payments/cards",
+                label: "Cards",
+                title: "Payment Cards",
+                breadcrumb: ["Payments", "Cards"],
+            },
+            {
+                key: "payment-wallet",
+                path: "/profile/payments/wallet",
+                label: "Wallet",
+                icon: Wallet,
+                title: "Wallet",
+                breadcrumb: ["Payments", "Wallet"],
+            },
+        ],
+    },
+    {
+        key: "memberships",
+        label: "Memberships",
+        icon: BadgeCheck,
+        group: "Manage",
+        children: [
+            {
+                key: "my-membership",
+                path: "/profile/memberships/current",
+                label: "My Membership",
+                title: "My Membership",
+                breadcrumb: ["Memberships", "My Membership"],
+            },
+            {
+                key: "membership-plans",
+                path: "/profile/memberships/plans",
+                label: "Plans",
+                title: "Membership Plans",
+                breadcrumb: ["Memberships", "Plans"],
+            },
+        ],
     },
 ];
 
@@ -106,13 +174,13 @@ export function getSearchableRoutes(userRole: string | undefined): RouteConfig[]
 
 /**
  * Find the RouteConfig whose path matches the given pathname.
- * Uses a substring match to mirror the original pageConfig.match behaviour.
+ * Sorts by path length descending so more-specific paths win over shorter prefixes
+ * (e.g. /profile/notifications wins over /profile).
  */
 export function getRouteByPath(pathname: string): RouteConfig | undefined {
-    // Children first so more-specific paths (e.g. /settings/club) win over /settings
-    return getNavigableRoutes().find(
-        (route) => route.path !== undefined && pathname.includes(route.path)
-    );
+    return [...getNavigableRoutes()]
+        .sort((a, b) => (b.path?.length ?? 0) - (a.path?.length ?? 0))
+        .find((route) => route.path !== undefined && pathname.includes(route.path));
 }
 
 /**

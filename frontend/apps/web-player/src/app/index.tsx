@@ -16,6 +16,11 @@ const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage")
 const DashboardPage = lazy(() => import("../features/dashboard/pages/DashboardPage"));
 const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
 const ProfilePage = lazy(() => import("../features/profile/pages/ProfilePage"));
+const NotificationsPage = lazy(() => import("../features/profile/pages/NotificationsPage"));
+const PaymentCardsPage = lazy(() => import("../features/profile/pages/PaymentCardsPage"));
+const PaymentWalletPage = lazy(() => import("../features/profile/pages/PaymentWalletPage"));
+const MyMembershipPage = lazy(() => import("../features/profile/pages/MyMembershipPage"));
+const MembershipPlansPage = lazy(() => import("../features/profile/pages/MembershipPlansPage"));
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
 const LogoutPage = lazy(() => import("../features/auth/pages/LogoutPage"));
 const UnauthorizedPage = lazy(() => import("../features/auth/pages/UnauthorizedPage"));
@@ -115,10 +120,37 @@ const myGamesRoute = createRoute({
 const profileRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/profile",
-    validateSearch: (search: Record<string, unknown>) => ({
-        tab: (search.tab as string | undefined) ?? undefined,
-    }),
     component: ProfilePage,
+});
+
+const notificationsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/profile/notifications",
+    component: NotificationsPage,
+});
+
+const paymentCardsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/profile/payments/cards",
+    component: PaymentCardsPage,
+});
+
+const paymentWalletRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/profile/payments/wallet",
+    component: PaymentWalletPage,
+});
+
+const myMembershipRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/profile/memberships/current",
+    component: MyMembershipPage,
+});
+
+const membershipPlansRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/profile/memberships/plans",
+    component: MembershipPlansPage,
 });
 
 const routeTree = rootRoute.addChildren([
@@ -128,7 +160,17 @@ const routeTree = rootRoute.addChildren([
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
-    dashboardLayoutRoute.addChildren([dashboardRoute, bookingsRoute, myGamesRoute, profileRoute]),
+    dashboardLayoutRoute.addChildren([
+        dashboardRoute,
+        bookingsRoute,
+        myGamesRoute,
+        profileRoute,
+        notificationsRoute,
+        paymentCardsRoute,
+        paymentWalletRoute,
+        myMembershipRoute,
+        membershipPlansRoute,
+    ]),
 ]);
 
 const router = createRouter({ routeTree });

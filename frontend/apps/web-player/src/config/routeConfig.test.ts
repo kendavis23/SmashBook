@@ -14,6 +14,9 @@ describe("ROUTES", () => {
         expect(keys).toContain("dashboard");
         expect(keys).toContain("bookings");
         expect(keys).toContain("my-games");
+        expect(keys).toContain("account");
+        expect(keys).toContain("payments");
+        expect(keys).toContain("memberships");
     });
 
     it("every top-level route has a group assigned", () => {
@@ -32,11 +35,30 @@ describe("ROUTES", () => {
 
         expect(grouped["Overview"]).toEqual(["dashboard"]);
         expect(grouped["Operations"]).toEqual(["bookings", "my-games"]);
+        expect(grouped["Manage"]).toEqual(["account", "payments", "memberships"]);
+    });
+
+    it("account group has the correct children", () => {
+        const account = ROUTES.find((r) => r.key === "account");
+        const childKeys = account?.children?.map((c) => c.key) ?? [];
+        expect(childKeys).toEqual(["profile", "notifications"]);
+    });
+
+    it("payments group has the correct children", () => {
+        const payments = ROUTES.find((r) => r.key === "payments");
+        const childKeys = payments?.children?.map((c) => c.key) ?? [];
+        expect(childKeys).toEqual(["payment-cards", "payment-wallet"]);
+    });
+
+    it("memberships group has the correct children", () => {
+        const memberships = ROUTES.find((r) => r.key === "memberships");
+        const childKeys = memberships?.children?.map((c) => c.key) ?? [];
+        expect(childKeys).toEqual(["my-membership", "membership-plans"]);
     });
 
     it("each route with a path has a title and breadcrumb", () => {
         const flat = (routes: typeof ROUTES): typeof ROUTES =>
-            routes.flatMap((r) => (r.children ? [r, ...flat(r.children)] : [r]));
+            routes.flatMap((r) => (r.children ? [...flat(r.children)] : [r]));
 
         flat(ROUTES)
             .filter((r) => r.path !== undefined)
@@ -63,6 +85,26 @@ describe("getRouteByPath", () => {
         expect(result?.key).toBe("bookings");
     });
 
+    it("returns the profile route for /profile", () => {
+        const result = getRouteByPath("/profile");
+        expect(result?.key).toBe("profile");
+    });
+
+    it("returns the notifications route for /profile/notifications", () => {
+        const result = getRouteByPath("/profile/notifications");
+        expect(result?.key).toBe("notifications");
+    });
+
+    it("returns the payment-cards route for /profile/payments/cards", () => {
+        const result = getRouteByPath("/profile/payments/cards");
+        expect(result?.key).toBe("payment-cards");
+    });
+
+    it("returns the my-membership route for /profile/memberships/current", () => {
+        const result = getRouteByPath("/profile/memberships/current");
+        expect(result?.key).toBe("my-membership");
+    });
+
     it("returns undefined for an unknown path", () => {
         expect(getRouteByPath("/unknown-xyz")).toBeUndefined();
     });
@@ -73,9 +115,24 @@ describe("getNavigableRoutes", () => {
         expect(getNavigableRoutes().every((route) => route.path !== undefined)).toBe(true);
     });
 
-    it("returns the same top-level route keys because there are no nested routes", () => {
-        const keys = getNavigableRoutes().map((route) => route.key);
-        expect(keys).toEqual(ROUTES.map((route) => route.key));
+    it("includes all leaf routes", () => {
+        const keys = getNavigableRoutes().map((r) => r.key);
+        expect(keys).toContain("dashboard");
+        expect(keys).toContain("bookings");
+        expect(keys).toContain("my-games");
+        expect(keys).toContain("profile");
+        expect(keys).toContain("notifications");
+        expect(keys).toContain("payment-cards");
+        expect(keys).toContain("payment-wallet");
+        expect(keys).toContain("my-membership");
+        expect(keys).toContain("membership-plans");
+    });
+
+    it("does not include parent nodes without a path", () => {
+        const keys = getNavigableRoutes().map((r) => r.key);
+        expect(keys).not.toContain("account");
+        expect(keys).not.toContain("payments");
+        expect(keys).not.toContain("memberships");
     });
 });
 
@@ -85,11 +142,14 @@ describe("getSearchableRoutes", () => {
         expect(keys).toContain("dashboard");
         expect(keys).toContain("bookings");
         expect(keys).toContain("my-games");
+        expect(keys).toContain("profile");
+        expect(keys).toContain("notifications");
     });
 
     it("returns all unrestricted routes when the user role is missing", () => {
         const keys = getSearchableRoutes(undefined).map((route) => route.key);
-        expect(keys).toEqual(ROUTES.map((route) => route.key));
+        expect(keys).toContain("dashboard");
+        expect(keys).toContain("profile");
     });
 });
 

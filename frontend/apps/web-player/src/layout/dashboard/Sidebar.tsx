@@ -46,8 +46,7 @@ export default function Sidebar({
 
     /** Returns true when this path (or any sub-path) is the current location */
     const isPathActive = (path: string | undefined): boolean =>
-        path !== undefined &&
-        (location.pathname === path || location.pathname.startsWith(path + "/"));
+        path !== undefined && location.pathname === path;
 
     /* ── Render helpers ──────────────────────────────────────────────────── */
 
