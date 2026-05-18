@@ -275,6 +275,105 @@ async def test_patch_tenant_updates_custom_domain():
     assert out.custom_domain == "myclub.com"
 
 
+@pytest.mark.asyncio
+async def test_patch_tenant_updates_name_and_is_active():
+    t = _make_tenant(name="Old Name", is_active=True)
+    p = _make_plan()
+    db = _make_db(tenant=t, plan=p)
+
+    out = await update_tenant(
+        t.id,
+        TenantUpdate(name="New Name", is_active=False),
+        db,
+    )
+    assert out.name == "New Name"
+    assert out.is_active is False
+
+
+@pytest.mark.asyncio
+async def test_patch_tenant_updates_subscription_start_date():
+    t = _make_tenant()
+    p = _make_plan()
+    db = _make_db(tenant=t, plan=p)
+
+    when = datetime(2026, 6, 1, tzinfo=timezone.utc)
+    out = await update_tenant(t.id, TenantUpdate(subscription_start_date=when), db)
+    assert out.subscription_start_date == when
+
+
+@pytest.mark.asyncio
+async def test_patch_tenant_updates_owner_email_and_full_name():
+    t = _make_tenant()
+    p = _make_plan()
+    owner = SimpleNamespace(
+        id=uuid.uuid4(),
+        tenant_id=t.id,
+        email="old@padelkings.com",
+        full_name="Old Owner",
+        role=TenantUserRole.owner,
+    )
+    db = _make_db(tenant=t, plan=p, owner=owner)
+
+    # Two execute() calls in this path:
+    #   1) club count (in _load_tenant_with_plan)
+    #   2) owner lookup
+    #   3) email-conflict check (because email is changing)
+    no_conflict = MagicMock()
+    no_conflict.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(side_effect=[db._count_result, db._owner_result, no_conflict])
+
+    out = await update_tenant(
+        t.id,
+        TenantUpdate(owner_email="new@padelkings.com", owner_full_name="New Owner"),
+        db,
+    )
+    assert out.id == t.id
+    assert owner.email == "new@padelkings.com"
+    assert owner.full_name == "New Owner"
+
+
+@pytest.mark.asyncio
+async def test_patch_tenant_owner_email_conflict_409():
+    t = _make_tenant()
+    p = _make_plan()
+    owner = SimpleNamespace(
+        id=uuid.uuid4(),
+        tenant_id=t.id,
+        email="old@padelkings.com",
+        full_name="Old Owner",
+        role=TenantUserRole.owner,
+    )
+    db = _make_db(tenant=t, plan=p, owner=owner)
+
+    conflict = MagicMock()
+    conflict.scalar_one_or_none.return_value = SimpleNamespace(id=uuid.uuid4())
+    db.execute = AsyncMock(side_effect=[db._count_result, db._owner_result, conflict])
+
+    with pytest.raises(HTTPException) as exc:
+        await update_tenant(
+            t.id, TenantUpdate(owner_email="taken@padelkings.com"), db
+        )
+    assert exc.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_patch_tenant_owner_missing_422():
+    t = _make_tenant()
+    p = _make_plan()
+    db = _make_db(tenant=t, plan=p, owner=None)
+
+    no_owner = MagicMock()
+    no_owner.scalar_one_or_none.return_value = None
+    db.execute = AsyncMock(side_effect=[db._count_result, no_owner])
+
+    with pytest.raises(HTTPException) as exc:
+        await update_tenant(
+            t.id, TenantUpdate(owner_full_name="Whoever"), db
+        )
+    assert exc.value.status_code == 422
+    assert "owner" in exc.value.detail.lower()
+
+
 # ---------------------------------------------------------------------------
 # Tenant activate
 # ---------------------------------------------------------------------------

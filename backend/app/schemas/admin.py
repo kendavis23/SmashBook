@@ -112,8 +112,20 @@ class TenantDetail(BaseModel):
 
 
 class TenantUpdate(BaseModel):
+    """
+    Partial update for a tenant. Any field left ``None`` is untouched.
+
+    `owner_email` and `owner_full_name` mutate the tenant's single
+    ``role=owner`` user (the User row created by /admin/onboard), not the
+    Tenant row itself.
+    """
+    name: Optional[str] = None
     subdomain: Optional[str] = None
     custom_domain: Optional[str] = None
+    is_active: Optional[bool] = None
+    subscription_start_date: Optional[datetime] = None
+    owner_email: Optional[EmailStr] = None
+    owner_full_name: Optional[str] = None
 
     @field_validator("subdomain")
     @classmethod

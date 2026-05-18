@@ -1,4 +1,4 @@
-_Last updated: 2026-05-16 00:00 UTC_
+_Last updated: 2026-05-18 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -25,14 +25,14 @@ All endpoints require the shared `X-Platform-Key` header. Used by SmashBook inte
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/admin/onboard` | Provision a new tenant, club, courts, and owner user atomically |
+| `POST` | `/api/v1/admin/onboard` | Provision a new tenant, one or more clubs, and an owner user atomically (courts are added later from the staff portal) |
 | `GET` | `/api/v1/admin/plans` | List all subscription plans |
 | `POST` | `/api/v1/admin/plans` | Create a subscription plan (limits, fees, feature flags, `stripe_price_id`) |
 | `GET` | `/api/v1/admin/plans/{plan_id}` | Get a single plan |
 | `PUT` | `/api/v1/admin/plans/{plan_id}` | Update plan fields |
 | `GET` | `/api/v1/admin/tenants` | List all tenants (plan name, club count, subscription status) |
 | `GET` | `/api/v1/admin/tenants/{tenant_id}` | Get tenant detail including Stripe IDs and subscription status |
-| `PATCH` | `/api/v1/admin/tenants/{tenant_id}` | Update tenant subdomain or custom domain |
+| `PATCH` | `/api/v1/admin/tenants/{tenant_id}` | Update tenant org fields (`name`, `subdomain`, `custom_domain`, `is_active`, `subscription_start_date`) and/or the tenant's owner user (`owner_email`, `owner_full_name`) |
 | `POST` | `/api/v1/admin/tenants/{tenant_id}/activate` | Create Stripe Customer (if needed) and Subscription on the plan's `stripe_price_id`; flip `is_active=true` |
 | `POST` | `/api/v1/admin/tenants/{tenant_id}/suspend` | Cancel the Stripe subscription; set `is_active=false` and `subscription_status=suspended` |
 | `POST` | `/api/v1/admin/tenants/{tenant_id}/change-plan` | Move tenant to a different plan; if a Stripe sub exists, update its price with proration |

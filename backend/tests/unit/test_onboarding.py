@@ -15,11 +15,9 @@ from fastapi import HTTPException
 from app.api.v1.endpoints.admin import onboard_tenant, _require_platform_key
 from app.schemas.onboarding import (
     ClubCreate,
-    CourtCreate,
     OwnerCreate,
     TenantOnboardRequest,
 )
-from app.db.models.court import SurfaceType
 
 
 # ---------------------------------------------------------------------------
@@ -36,8 +34,7 @@ def _valid_request(**overrides) -> TenantOnboardRequest:
         name="Padel Kings",
         subdomain="padelkings",
         plan_id=PLAN_ID,
-        club=ClubCreate(name="Padel Kings Club", currency="GBP"),
-        courts=[CourtCreate(name="Court 1", surface_type=SurfaceType.indoor)],
+        clubs=[ClubCreate(name="Padel Kings Club", currency="GBP")],
         owner=OwnerCreate(email="owner@padelkings.com", full_name="King Owner", password="s3cret"),
     )
     defaults.update(overrides)
@@ -103,7 +100,7 @@ async def test_platform_key_invalid():
 
 
 @pytest.mark.asyncio
-async def test_onboard_creates_tenant_club_courts_owner():
+async def test_onboard_creates_tenant_single_club_owner():
     db = _make_db()
     body = _valid_request()
 
@@ -111,26 +108,25 @@ async def test_onboard_creates_tenant_club_courts_owner():
         response = await onboard_tenant(body, db)
 
     assert response.tenant_id is not None
-    assert response.club_id is not None
-    assert len(response.courts) == 1
-    assert response.courts[0].name == "Court 1"
-    assert response.courts[0].surface_type == SurfaceType.indoor
+    assert len(response.club_ids) == 1
+    assert response.owner_id is not None
 
 
 @pytest.mark.asyncio
-async def test_onboard_creates_multiple_courts():
+async def test_onboard_creates_multiple_clubs():
     db = _make_db(plan=PLAN_UNLIMITED)
     body = _valid_request(
-        courts=[
-            CourtCreate(name="Court A", surface_type=SurfaceType.indoor),
-            CourtCreate(name="Court B", surface_type=SurfaceType.outdoor, has_lighting=True),
+        clubs=[
+            ClubCreate(name="Club A", currency="GBP"),
+            ClubCreate(name="Club B", currency="EUR", address="Madrid"),
+            ClubCreate(name="Club C", currency="USD"),
         ]
     )
 
     with patch("app.api.v1.endpoints.admin.get_password_hash", return_value="hashed"):
         response = await onboard_tenant(body, db)
 
-    assert len(response.courts) == 2
+    assert len(response.club_ids) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -150,20 +146,60 @@ async def test_onboard_plan_not_found():
 
 
 @pytest.mark.asyncio
-async def test_onboard_exceeds_plan_court_limit():
-    limited_plan = SimpleNamespace(id=PLAN_ID, name="starter", max_clubs=1, max_courts_per_club=1)
+async def test_onboard_exceeds_plan_club_limit():
+    limited_plan = SimpleNamespace(id=PLAN_ID, name="starter", max_clubs=1, max_courts_per_club=4)
     db = _make_db(plan=limited_plan)
     body = _valid_request(
-        courts=[
-            CourtCreate(name="Court 1", surface_type=SurfaceType.indoor),
-            CourtCreate(name="Court 2", surface_type=SurfaceType.indoor),
+        clubs=[
+            ClubCreate(name="Club 1"),
+            ClubCreate(name="Club 2"),
         ]
     )
 
     with pytest.raises(HTTPException) as exc_info:
         await onboard_tenant(body, db)
     assert exc_info.value.status_code == 422
-    assert "1" in exc_info.value.detail  # mentions the limit
+    errors = exc_info.value.detail["errors"]
+    assert any("at most 1 club" in e["error"] for e in errors)
+
+
+@pytest.mark.asyncio
+async def test_onboard_duplicate_club_names_aggregated():
+    db = _make_db(plan=PLAN_UNLIMITED)
+    body = _valid_request(
+        clubs=[
+            ClubCreate(name="Club A"),
+            ClubCreate(name="club a"),  # case-insensitive duplicate
+            ClubCreate(name="Club B"),
+        ]
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await onboard_tenant(body, db)
+    assert exc_info.value.status_code == 422
+    errors = exc_info.value.detail["errors"]
+    assert any("duplicate club name" in e["error"] for e in errors)
+
+
+@pytest.mark.asyncio
+async def test_onboard_aggregates_multiple_problems():
+    """Plan-cap exceeded + duplicate names + subdomain conflict all reported together."""
+    limited_plan = SimpleNamespace(id=PLAN_ID, name="starter", max_clubs=1, max_courts_per_club=4)
+    db = _make_db(plan=limited_plan, subdomain_exists=True)
+    body = _valid_request(
+        clubs=[
+            ClubCreate(name="Club A"),
+            ClubCreate(name="Club A"),
+        ]
+    )
+
+    with pytest.raises(HTTPException) as exc_info:
+        await onboard_tenant(body, db)
+    assert exc_info.value.status_code == 422
+    errors = exc_info.value.detail["errors"]
+    fields = {e["field"] for e in errors}
+    assert "clubs" in fields
+    assert "subdomain" in fields
 
 
 @pytest.mark.asyncio
@@ -172,22 +208,23 @@ async def test_onboard_subdomain_conflict():
 
     with pytest.raises(HTTPException) as exc_info:
         await onboard_tenant(_valid_request(), db)
+    # Sole problem → 409 with a plain string detail
     assert exc_info.value.status_code == 409
     assert "padelkings" in exc_info.value.detail
 
 
 @pytest.mark.asyncio
-async def test_onboard_unlimited_plan_ignores_court_limit():
-    """max_courts_per_club == -1 means unlimited."""
+async def test_onboard_unlimited_plan_accepts_many_clubs():
+    """max_clubs == -1 means unlimited."""
     db = _make_db(plan=PLAN_UNLIMITED)
     body = _valid_request(
-        courts=[CourtCreate(name=f"Court {i}", surface_type=SurfaceType.indoor) for i in range(10)]
+        clubs=[ClubCreate(name=f"Club {i}") for i in range(10)]
     )
 
     with patch("app.api.v1.endpoints.admin.get_password_hash", return_value="hashed"):
         response = await onboard_tenant(body, db)
 
-    assert len(response.courts) == 10
+    assert len(response.club_ids) == 10
 
 
 # ---------------------------------------------------------------------------
@@ -201,21 +238,19 @@ def test_subdomain_normalises_uppercase():
         name="X",
         subdomain="UpperCase",
         plan_id=PLAN_ID,
-        club=ClubCreate(name="X"),
-        courts=[CourtCreate(name="C1", surface_type=SurfaceType.indoor)],
+        clubs=[ClubCreate(name="X")],
         owner=OwnerCreate(email="a@b.com", full_name="A", password="p"),
     )
     assert req.subdomain == "uppercase"
 
 
-def test_subdomain_rejects_empty_courts():
+def test_rejects_empty_clubs():
     with pytest.raises(Exception):
         TenantOnboardRequest(
             name="X",
             subdomain="valid",
             plan_id=PLAN_ID,
-            club=ClubCreate(name="X"),
-            courts=[],
+            clubs=[],
             owner=OwnerCreate(email="a@b.com", full_name="A", password="p"),
         )
 
@@ -225,8 +260,7 @@ def test_subdomain_allows_hyphens():
         name="X",
         subdomain="my-club-name",
         plan_id=PLAN_ID,
-        club=ClubCreate(name="X"),
-        courts=[CourtCreate(name="C1", surface_type=SurfaceType.indoor)],
+        clubs=[ClubCreate(name="X")],
         owner=OwnerCreate(email="a@b.com", full_name="A", password="p"),
     )
     assert req.subdomain == "my-club-name"

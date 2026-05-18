@@ -2,9 +2,8 @@
 Integration tests for org-facing `/api/v1/subscription/*` endpoints.
 
 All endpoints require the ``owner`` role on the calling user's tenant.  Stripe
-calls go through the shared ``stripe_billing_mock`` fixture, except for the
-direct ``stripe.Customer.retrieve_async`` call inside GET /subscription which
-is patched per-test.
+calls go through the shared ``stripe_billing_mock`` fixture; per-test overrides
+of ``stripe_billing_mock.get_customer`` simulate different payment-method states.
 
 Coverage
 --------
@@ -13,8 +12,6 @@ Coverage
 - POST   /subscription/setup-intent — first call, reuse customer, Stripe error
 - PUT    /subscription/payment-method — happy path, missing customer, Stripe error
 """
-
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest_asyncio
 import stripe
@@ -117,16 +114,11 @@ class TestViewSubscription:
             "current_period_end": 1_900_000_000,  # ~2030-03-17
             "cancel_at_period_end": False,
         }
-        customer_obj = MagicMock()
-        customer_obj.get = lambda key, default=None: {
+        stripe_billing_mock.get_customer.return_value = {
             "invoice_settings": {"default_payment_method": "pm_default"},
-        }.get(key, default)
+        }
 
-        with patch(
-            "stripe.Customer.retrieve_async",
-            new=AsyncMock(return_value=customer_obj),
-        ):
-            resp = await client.get("/api/v1/subscription", headers=owner_headers)
+        resp = await client.get("/api/v1/subscription", headers=owner_headers)
 
         assert resp.status_code == 200
         body = resp.json()
@@ -134,6 +126,9 @@ class TestViewSubscription:
         assert body["has_payment_method"] is True
         stripe_billing_mock.get_subscription.assert_awaited_once_with(
             subscription_id="sub_x"
+        )
+        stripe_billing_mock.get_customer.assert_awaited_once_with(
+            customer_id="cus_x"
         )
 
     async def test_stripe_failure_falls_back_to_db_fields(
@@ -144,12 +139,9 @@ class TestViewSubscription:
             customer_id="cus_x", subscription_id="sub_x",
         )
         stripe_billing_mock.get_subscription.side_effect = stripe.StripeError("down")
+        stripe_billing_mock.get_customer.side_effect = stripe.StripeError("down")
 
-        with patch(
-            "stripe.Customer.retrieve_async",
-            new=AsyncMock(side_effect=stripe.StripeError("down")),
-        ):
-            resp = await client.get("/api/v1/subscription", headers=owner_headers)
+        resp = await client.get("/api/v1/subscription", headers=owner_headers)
 
         assert resp.status_code == 200
         body = resp.json()

@@ -1,19 +1,9 @@
 import re
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from typing import List, Optional
 
-from pydantic import BaseModel, field_validator
-
-from app.db.models.court import SurfaceType
-
-
-class CourtCreate(BaseModel):
-    name: str
-    surface_type: SurfaceType
-    has_lighting: bool = False
-    lighting_surcharge: Optional[Decimal] = None
+from pydantic import BaseModel, EmailStr, field_validator
 
 
 class ClubCreate(BaseModel):
@@ -23,7 +13,7 @@ class ClubCreate(BaseModel):
 
 
 class OwnerCreate(BaseModel):
-    email: str
+    email: EmailStr
     full_name: str
     password: str
 
@@ -33,8 +23,7 @@ class TenantOnboardRequest(BaseModel):
     subdomain: str
     plan_id: uuid.UUID
     subscription_start_date: Optional[datetime] = None
-    club: ClubCreate
-    courts: List[CourtCreate]
+    clubs: List[ClubCreate]
     owner: OwnerCreate
 
     @field_validator("subdomain")
@@ -45,25 +34,15 @@ class TenantOnboardRequest(BaseModel):
             raise ValueError("subdomain must be lowercase alphanumeric with optional hyphens")
         return v
 
-    @field_validator("courts")
+    @field_validator("clubs")
     @classmethod
-    def at_least_one_court(cls, v: List[CourtCreate]) -> List[CourtCreate]:
+    def at_least_one_club(cls, v: List[ClubCreate]) -> List[ClubCreate]:
         if not v:
-            raise ValueError("at least one court is required")
+            raise ValueError("at least one club is required")
         return v
-
-
-class CourtResponse(BaseModel):
-    id: uuid.UUID
-    name: str
-    surface_type: SurfaceType
-    has_lighting: bool
-    is_active: bool
-
-    model_config = {"from_attributes": True}
 
 
 class TenantOnboardResponse(BaseModel):
     tenant_id: uuid.UUID
-    club_id: uuid.UUID
-    courts: List[CourtResponse]
+    club_ids: List[uuid.UUID]
+    owner_id: uuid.UUID

@@ -121,10 +121,7 @@ def _onboard_payload(**overrides):
         "name": "Padel Kings",
         "subdomain": f"padelkings-{uuid.uuid4().hex[:6]}",
         "plan_id": overrides.pop("plan_id"),
-        "club": {"name": "Padel Kings HQ", "currency": "GBP"},
-        "courts": [
-            {"name": "Court 1", "surface_type": "indoor"},
-        ],
+        "clubs": [{"name": "Padel Kings HQ", "currency": "GBP"}],
         "owner": {
             "email": f"owner-{uuid.uuid4().hex[:6]}@padelkings.com",
             "full_name": "King Owner",
@@ -168,7 +165,7 @@ class TestPlatformKeyGate:
 
 
 class TestOnboard:
-    async def test_success_provisions_tenant_club_courts_owner(
+    async def test_success_provisions_tenant_single_club_owner(
         self, client, plan, cleanup_tenants, test_session_factory
     ):
         body = _onboard_payload(plan_id=str(plan.id))
@@ -180,9 +177,8 @@ class TestOnboard:
         assert resp.status_code == 201
         data = resp.json()
         assert data["tenant_id"]
-        assert data["club_id"]
-        assert len(data["courts"]) == 1
-        assert data["courts"][0]["name"] == "Court 1"
+        assert len(data["club_ids"]) == 1
+        assert data["owner_id"]
 
         tenant_id = uuid.UUID(data["tenant_id"])
         cleanup_tenants.append(tenant_id)
@@ -197,6 +193,24 @@ class TestOnboard:
             assert owner.email == body["owner"]["email"]
             assert owner.role.value == "owner"
             assert owner.is_active is True
+
+    async def test_success_provisions_multiple_clubs(
+        self, client, plan, cleanup_tenants, test_session_factory
+    ):
+        body = _onboard_payload(plan_id=str(plan.id))
+        body["clubs"] = [
+            {"name": "Padel Kings HQ", "currency": "GBP"},
+            {"name": "Padel Kings West", "currency": "GBP", "address": "Bristol"},
+        ]
+
+        resp = await client.post(
+            "/api/v1/admin/onboard", json=body, headers=PLATFORM_HEADERS
+        )
+
+        assert resp.status_code == 201, resp.text
+        data = resp.json()
+        assert len(data["club_ids"]) == 2
+        cleanup_tenants.append(uuid.UUID(data["tenant_id"]))
 
     async def test_unauthorized_without_platform_key(self, client, plan):
         resp = await client.post(
@@ -214,15 +228,15 @@ class TestOnboard:
         assert resp.status_code == 422
         assert "plan_id" in resp.json()["detail"]
 
-    async def test_exceeds_court_limit_returns_422(
+    async def test_exceeds_club_limit_returns_422(
         self, client, test_session_factory, cleanup_tenants
     ):
-        # Make a plan with a tight court cap
+        # Plan permits only 1 club
         async with test_session_factory() as session:
             limited = SubscriptionPlan(
                 name="Tight Plan",
                 max_clubs=1,
-                max_courts_per_club=1,
+                max_courts_per_club=-1,
                 max_staff_users=-1,
                 price_per_month=Decimal("19.00"),
             )
@@ -232,21 +246,35 @@ class TestOnboard:
 
         try:
             body = _onboard_payload(plan_id=str(limited.id))
-            body["courts"] = [
-                {"name": "Court 1", "surface_type": "indoor"},
-                {"name": "Court 2", "surface_type": "indoor"},
+            body["clubs"] = [
+                {"name": "Club 1", "currency": "GBP"},
+                {"name": "Club 2", "currency": "GBP"},
             ]
             resp = await client.post(
                 "/api/v1/admin/onboard", json=body, headers=PLATFORM_HEADERS
             )
             assert resp.status_code == 422
-            assert "1" in resp.json()["detail"]
+            errors = resp.json()["detail"]["errors"]
+            assert any("at most 1 club" in e["error"] for e in errors)
         finally:
             async with test_session_factory() as session:
                 obj = await session.get(SubscriptionPlan, limited.id)
                 if obj:
                     await session.delete(obj)
                     await session.commit()
+
+    async def test_duplicate_club_names_returns_422(self, client, plan):
+        body = _onboard_payload(plan_id=str(plan.id))
+        body["clubs"] = [
+            {"name": "Same Club", "currency": "GBP"},
+            {"name": "same club", "currency": "GBP"},  # case-insensitive dup
+        ]
+        resp = await client.post(
+            "/api/v1/admin/onboard", json=body, headers=PLATFORM_HEADERS
+        )
+        assert resp.status_code == 422
+        errors = resp.json()["detail"]["errors"]
+        assert any("duplicate club name" in e["error"] for e in errors)
 
     async def test_duplicate_subdomain_returns_409(
         self, client, plan, tenant, cleanup_tenants
@@ -442,6 +470,76 @@ class TestPatchTenant:
                 if obj:
                     await session.delete(obj)
                     await session.commit()
+
+    async def test_update_name_and_is_active(
+        self, client, tenant, test_session_factory
+    ):
+        new_name = f"Renamed Org {uuid.uuid4().hex[:6]}"
+        resp = await client.patch(
+            f"/api/v1/admin/tenants/{tenant.id}",
+            json={"name": new_name, "is_active": False},
+            headers=PLATFORM_HEADERS,
+        )
+        assert resp.status_code == 200, resp.text
+        data = resp.json()
+        assert data["name"] == new_name
+        assert data["is_active"] is False
+
+        # Restore for any downstream tests that share this fixture
+        async with test_session_factory() as session:
+            t = await session.get(Tenant, tenant.id)
+            t.is_active = True
+            await session.commit()
+
+    async def test_update_owner_email_and_full_name(
+        self, client, tenant, test_session_factory
+    ):
+        # Seed an owner user the patch can mutate
+        async with test_session_factory() as session:
+            owner = User(
+                tenant_id=tenant.id,
+                email=f"old-owner-{uuid.uuid4().hex[:6]}@x.com",
+                full_name="Old Owner",
+                hashed_password="x",
+                role="owner",
+                is_active=True,
+            )
+            session.add(owner)
+            await session.commit()
+            await session.refresh(owner)
+
+        try:
+            new_email = f"new-owner-{uuid.uuid4().hex[:6]}@x.com"
+            resp = await client.patch(
+                f"/api/v1/admin/tenants/{tenant.id}",
+                json={"owner_email": new_email, "owner_full_name": "New Owner"},
+                headers=PLATFORM_HEADERS,
+            )
+            assert resp.status_code == 200, resp.text
+
+            async with test_session_factory() as session:
+                refreshed = await session.get(User, owner.id)
+                assert refreshed.email == new_email
+                assert refreshed.full_name == "New Owner"
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(User, owner.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()
+
+    async def test_update_owner_when_no_owner_exists_returns_422(
+        self, client, tenant
+    ):
+        # `tenant` fixture has no owner user wired up. Asking to change owner
+        # fields should fail with 422.
+        resp = await client.patch(
+            f"/api/v1/admin/tenants/{tenant.id}",
+            json={"owner_full_name": "Nobody"},
+            headers=PLATFORM_HEADERS,
+        )
+        assert resp.status_code == 422
+        assert "owner" in resp.json()["detail"].lower()
 
 
 # ---------------------------------------------------------------------------

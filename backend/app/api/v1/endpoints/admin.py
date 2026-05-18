@@ -26,7 +26,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.security import get_password_hash
 from app.db.models.club import Club
-from app.db.models.court import Court
 from app.db.models.tenant import SubscriptionPlan, SubscriptionStatus, Tenant
 from app.db.models.user import TenantUserRole, User
 from app.db.session import get_db
@@ -68,11 +67,11 @@ async def onboard_tenant(
     db: AsyncSession = Depends(get_db),
 ) -> TenantOnboardResponse:
     """
-    Atomically create a **Tenant**, its first **Club** (with default settings),
-    one or more **Courts**, and an owner **User** account.
+    Atomically create a **Tenant**, one or more **Clubs**, and an owner **User**
+    account. Courts are added later from the staff portal via `POST /courts`.
 
-    Enforces plan-level court limits.  Returns the new IDs so the caller can
-    proceed with further setup (operating hours, pricing rules, Stripe Connect).
+    Enforces the plan's ``max_clubs`` limit. All request-level validation runs
+    up front so the caller receives every problem in a single response.
     """
     # --- verify plan ---
     plan = await db.get(SubscriptionPlan, body.plan_id)
@@ -82,18 +81,49 @@ async def onboard_tenant(
             detail="plan_id not found",
         )
 
-    if plan.max_courts_per_club != -1 and len(body.courts) > plan.max_courts_per_club:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Plan '{plan.name}' allows at most {plan.max_courts_per_club} courts per club",
-        )
+    # --- aggregate validation: collect every problem before failing ---
+    errors: list[dict] = []
 
-    # --- subdomain uniqueness ---
+    if plan.max_clubs != -1 and len(body.clubs) > plan.max_clubs:
+        errors.append({
+            "field": "clubs",
+            "error": (
+                f"Plan '{plan.name}' allows at most {plan.max_clubs} club(s); "
+                f"got {len(body.clubs)}"
+            ),
+        })
+
+    # Duplicate club names within the same request (case-insensitive)
+    seen: dict[str, list[int]] = {}
+    for idx, c in enumerate(body.clubs):
+        key = c.name.strip().lower()
+        seen.setdefault(key, []).append(idx)
+    for key, idxs in seen.items():
+        if len(idxs) > 1:
+            errors.append({
+                "field": "clubs",
+                "error": f"duplicate club name '{body.clubs[idxs[0]].name}' at indexes {idxs}",
+            })
+
+    # Subdomain uniqueness (DB-level)
     existing = await db.execute(select(Tenant).where(Tenant.subdomain == body.subdomain))
     if existing.scalar_one_or_none():
+        # Subdomain conflict is a distinct error class — surface it as 409 alone
+        # if it's the only problem; otherwise include it in the aggregate 422.
+        if not errors:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Subdomain '{body.subdomain}' is already in use",
+            )
+        errors.append({
+            "field": "subdomain",
+            "error": f"Subdomain '{body.subdomain}' is already in use",
+        })
+
+    if errors:
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Subdomain '{body.subdomain}' is already in use",
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"errors": errors},
         )
 
     # --- tenant ---
@@ -107,29 +137,18 @@ async def onboard_tenant(
     db.add(tenant)
     await db.flush()
 
-    # --- club ---
-    club = Club(
-        tenant_id=tenant.id,
-        name=body.club.name,
-        address=body.club.address,
-        currency=body.club.currency,
-    )
-    db.add(club)
-    await db.flush()
-
-    # --- courts ---
-    courts = [
-        Court(
-            club_id=club.id,
+    # --- clubs ---
+    clubs = [
+        Club(
+            tenant_id=tenant.id,
             name=c.name,
-            surface_type=c.surface_type,
-            has_lighting=c.has_lighting,
-            lighting_surcharge=c.lighting_surcharge,
-            is_active=True,
+            address=c.address,
+            currency=c.currency,
         )
-        for c in body.courts
+        for c in body.clubs
     ]
-    db.add_all(courts)
+    db.add_all(clubs)
+    await db.flush()
 
     # --- owner user ---
     owner = User(
@@ -147,8 +166,8 @@ async def onboard_tenant(
 
     return TenantOnboardResponse(
         tenant_id=tenant.id,
-        club_id=club.id,
-        courts=courts,
+        club_ids=[c.id for c in clubs],
+        owner_id=owner.id,
     )
 
 
@@ -321,29 +340,81 @@ async def get_tenant(
     "/tenants/{tenant_id}",
     response_model=TenantDetail,
     dependencies=[Depends(_require_platform_key)],
-    summary="Update a tenant's subdomain or custom domain",
+    summary="Update tenant org fields and/or its owner user",
 )
 async def update_tenant(
     tenant_id: uuid.UUID,
     body: TenantUpdate,
     db: AsyncSession = Depends(get_db),
 ) -> TenantDetail:
+    """
+    Partial update for a tenant. Accepts any combination of:
+
+    - **Tenant fields**: ``name``, ``subdomain``, ``custom_domain``, ``is_active``,
+      ``subscription_start_date``.
+    - **Owner fields**: ``owner_email``, ``owner_full_name`` — applied to the
+      tenant's single ``role=owner`` user.
+
+    To add clubs to an existing tenant, the owner uses the tenant-scoped
+    ``POST /clubs`` endpoint from the staff portal — not this route.
+    """
     tenant, plan, club_count = await _load_tenant_with_plan(tenant_id, db)
 
     updates = body.model_dump(exclude_none=True)
 
+    # Split owner-targeted fields from tenant-targeted fields
+    owner_updates = {
+        k.removeprefix("owner_"): v
+        for k, v in updates.items()
+        if k.startswith("owner_")
+    }
+    tenant_updates = {k: v for k, v in updates.items() if not k.startswith("owner_")}
+
     # Subdomain uniqueness check
-    if "subdomain" in updates and updates["subdomain"] != tenant.subdomain:
+    if "subdomain" in tenant_updates and tenant_updates["subdomain"] != tenant.subdomain:
         existing = await db.execute(
-            select(Tenant).where(Tenant.subdomain == updates["subdomain"])
+            select(Tenant).where(Tenant.subdomain == tenant_updates["subdomain"])
         )
         if existing.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Subdomain '{updates['subdomain']}' is already in use",
+                detail=f"Subdomain '{tenant_updates['subdomain']}' is already in use",
             )
 
-    for field, value in updates.items():
+    # Owner update path
+    if owner_updates:
+        owner_result = await db.execute(
+            select(User)
+            .where(User.tenant_id == tenant.id, User.role == TenantUserRole.owner)
+            .limit(1)
+        )
+        owner = owner_result.scalar_one_or_none()
+        if not owner:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Tenant has no owner user to update",
+            )
+
+        new_email = owner_updates.get("email")
+        if new_email and str(new_email) != owner.email:
+            # Enforce (tenant_id, email) uniqueness before hitting the DB constraint
+            conflict = await db.execute(
+                select(User).where(
+                    User.tenant_id == tenant.id,
+                    User.email == str(new_email),
+                )
+            )
+            if conflict.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Email '{new_email}' is already in use for this tenant",
+                )
+            owner.email = str(new_email)
+
+        if "full_name" in owner_updates:
+            owner.full_name = owner_updates["full_name"]
+
+    for field, value in tenant_updates.items():
         setattr(tenant, field, value)
 
     await db.flush()
