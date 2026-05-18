@@ -4,8 +4,8 @@ import { datetimeLocalToUTC } from "@repo/ui";
 
 import { usePlatformKeyStore } from "../../plan/store/platformKey";
 import { useListPlans, useOnboardTenant } from "../hooks";
-import type { OnboardCourtForm, OnboardTenantFormState, TenantOnboardInput } from "../types";
-import { DEFAULT_COURT, DEFAULT_ONBOARD_FORM } from "../types";
+import type { OnboardClubForm, OnboardTenantFormState, TenantOnboardInput } from "../types";
+import { DEFAULT_CLUB, DEFAULT_ONBOARD_FORM } from "../types";
 import OnboardView from "./OnboardView";
 
 function trimOrNull(value: string): string | null {
@@ -21,16 +21,10 @@ function buildPayload(form: OnboardTenantFormState): TenantOnboardInput {
         subscription_start_date: form.subscription_start_date
             ? datetimeLocalToUTC(form.subscription_start_date)
             : null,
-        club: {
-            name: form.club.name.trim(),
-            address: trimOrNull(form.club.address),
-            currency: form.club.currency,
-        },
-        courts: form.courts.map((court) => ({
-            name: court.name.trim(),
-            surface_type: court.surface_type,
-            has_lighting: court.has_lighting,
-            lighting_surcharge: court.lighting_surcharge ? Number(court.lighting_surcharge) : null,
+        clubs: form.clubs.map((club) => ({
+            name: club.name.trim(),
+            address: trimOrNull(club.address),
+            currency: club.currency,
         })),
         owner: {
             email: form.owner.email.trim(),
@@ -45,20 +39,11 @@ function validateForm(form: OnboardTenantFormState, platformKey: string): string
     if (!form.name.trim()) return "Tenant name is required.";
     if (!form.subdomain.trim()) return "Subdomain is required.";
     if (!form.plan_id.trim()) return "Plan ID is required.";
-    if (!form.club.name.trim()) return "Club name is required.";
-    if (form.courts.length === 0) return "Add at least one court.";
-    if (form.courts.some((court) => !court.name.trim())) return "Every court needs a name.";
+    if (form.clubs.length === 0) return "Add at least one club.";
+    if (form.clubs.some((club) => !club.name.trim())) return "Every club needs a name.";
     if (!form.owner.email.trim()) return "Owner email is required.";
     if (!form.owner.full_name.trim()) return "Owner full name is required.";
     if (!form.owner.password) return "Owner password is required.";
-    if (
-        form.courts.some(
-            (court) =>
-                court.lighting_surcharge !== "" && Number.isNaN(Number(court.lighting_surcharge))
-        )
-    ) {
-        return "Lighting surcharge must be a valid number.";
-    }
     return null;
 }
 
@@ -73,7 +58,6 @@ export default function OnboardContainer(): JSX.Element {
 
     const planOptions = plans.map((plan) => ({ value: plan.id, label: plan.name }));
 
-    // Auto-select the first plan when plans load and no plan is selected yet
     const firstPlanId = plans[0]?.id ?? "";
     const effectivePlanId = form.plan_id || firstPlanId;
 
@@ -81,10 +65,12 @@ export default function OnboardContainer(): JSX.Element {
         setForm((current) => ({ ...current, [field]: value }));
     };
 
-    const updateClubField = (field: keyof OnboardTenantFormState["club"], value: string): void => {
+    const updateClubField = (index: number, field: keyof OnboardClubForm, value: string): void => {
         setForm((current) => ({
             ...current,
-            club: { ...current.club, [field]: value },
+            clubs: current.clubs.map((club, clubIndex) =>
+                clubIndex === index ? { ...club, [field]: value } : club
+            ),
         }));
     };
 
@@ -98,33 +84,20 @@ export default function OnboardContainer(): JSX.Element {
         }));
     };
 
-    const updateCourtField = <K extends keyof OnboardCourtForm>(
-        index: number,
-        field: K,
-        value: OnboardCourtForm[K]
-    ): void => {
+    const addClub = (): void => {
         setForm((current) => ({
             ...current,
-            courts: current.courts.map((court, courtIndex) =>
-                courtIndex === index ? { ...court, [field]: value } : court
-            ),
+            clubs: [...current.clubs, { ...DEFAULT_CLUB }],
         }));
     };
 
-    const addCourt = (): void => {
+    const removeClub = (index: number): void => {
         setForm((current) => ({
             ...current,
-            courts: [...current.courts, { ...DEFAULT_COURT }],
-        }));
-    };
-
-    const removeCourt = (index: number): void => {
-        setForm((current) => ({
-            ...current,
-            courts:
-                current.courts.length === 1
-                    ? current.courts
-                    : current.courts.filter((_, courtIndex) => courtIndex !== index),
+            clubs:
+                current.clubs.length === 1
+                    ? current.clubs
+                    : current.clubs.filter((_, clubIndex) => clubIndex !== index),
         }));
     };
 
@@ -161,9 +134,8 @@ export default function OnboardContainer(): JSX.Element {
             onFieldChange={updateField}
             onClubFieldChange={updateClubField}
             onOwnerFieldChange={updateOwnerField}
-            onCourtFieldChange={updateCourtField}
-            onAddCourt={addCourt}
-            onRemoveCourt={removeCourt}
+            onAddClub={addClub}
+            onRemoveClub={removeClub}
             onDismissError={() => setApiError(null)}
             onDismissSuccess={() => setSuccessMessage(null)}
         />

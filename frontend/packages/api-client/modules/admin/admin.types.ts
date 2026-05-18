@@ -5,16 +5,7 @@ export type { UUID };
 
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled" | "suspended";
 
-export type SurfaceType = "indoor" | "outdoor" | "crystal" | "artificial_grass";
-
 // Onboarding
-
-export interface CourtOnboardCreate {
-    name: string;
-    surface_type: SurfaceType;
-    has_lighting?: boolean;
-    lighting_surcharge?: number | null;
-}
 
 export interface ClubOnboardCreate {
     name: string;
@@ -33,23 +24,14 @@ export interface TenantOnboardRequest {
     subdomain: string;
     plan_id: UUID;
     subscription_start_date?: string | null;
-    club: ClubOnboardCreate;
-    courts: CourtOnboardCreate[];
+    clubs: ClubOnboardCreate[];
     owner: OwnerCreate;
-}
-
-export interface CourtOnboardResponse {
-    id: UUID;
-    name: string;
-    surface_type: SurfaceType;
-    has_lighting: boolean;
-    is_active: boolean;
 }
 
 export interface TenantOnboardResponse {
     tenant_id: UUID;
-    club_id: UUID;
-    courts: CourtOnboardResponse[];
+    club_ids: UUID[];
+    owner_id: UUID;
 }
 
 // Subscription Plans
@@ -149,8 +131,13 @@ export interface TenantDetail {
 }
 
 export interface TenantUpdate {
+    name?: string | null;
     subdomain?: string | null;
     custom_domain?: string | null;
+    is_active?: boolean | null;
+    subscription_start_date?: string | null;
+    owner_email?: string | null;
+    owner_full_name?: string | null;
 }
 
 export interface TenantActivateRequest {

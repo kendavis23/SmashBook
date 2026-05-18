@@ -28,7 +28,7 @@ function createDefaultForm(): NewBookingFormState {
         bookingType: "regular",
         bookingDate: "",
         startTime: "",
-        isOpenGame: false,
+        isOpenGame: true,
         maxPlayers: "4",
         anchorSkill: "",
         skillMin: "",

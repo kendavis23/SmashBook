@@ -152,8 +152,7 @@ export default function MembershipPlansContainer(): JSX.Element {
         );
     }
 
-    const locked =
-        membership?.status === "active" || membership?.status === "trialing";
+    const locked = membership?.status === "active" || membership?.status === "trialing";
 
     return (
         <div className="w-full space-y-5">

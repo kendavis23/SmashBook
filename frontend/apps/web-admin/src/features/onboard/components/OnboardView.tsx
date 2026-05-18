@@ -1,9 +1,9 @@
-import { AlertToast, Breadcrumb, DateTimePicker, NumberInput, SelectInput } from "@repo/ui";
-import { Building2, Globe, LayoutGrid, Plus, Trash2, UserPlus, Users } from "lucide-react";
+import { AlertToast, Breadcrumb, DateTimePicker, SelectInput } from "@repo/ui";
+import { Building2, Globe, Plus, Trash2, UserPlus, Users } from "lucide-react";
 import type { FormEvent, JSX, ReactNode } from "react";
 
-import type { OnboardCourtForm, OnboardTenantFormState, SurfaceType } from "../types";
-import { CURRENCY_OPTIONS, SURFACE_OPTIONS } from "../types";
+import type { OnboardClubForm, OnboardTenantFormState } from "../types";
+import { CURRENCY_OPTIONS } from "../types";
 
 interface PlanOption {
     value: string;
@@ -18,15 +18,10 @@ interface OnboardViewProps {
     successMessage: string | null;
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
     onFieldChange: (field: keyof OnboardTenantFormState, value: string) => void;
-    onClubFieldChange: (field: keyof OnboardTenantFormState["club"], value: string) => void;
+    onClubFieldChange: (index: number, field: keyof OnboardClubForm, value: string) => void;
     onOwnerFieldChange: (field: keyof OnboardTenantFormState["owner"], value: string) => void;
-    onCourtFieldChange: <K extends keyof OnboardCourtForm>(
-        index: number,
-        field: K,
-        value: OnboardCourtForm[K]
-    ) => void;
-    onAddCourt: () => void;
-    onRemoveCourt: (index: number) => void;
+    onAddClub: () => void;
+    onRemoveClub: (index: number) => void;
     onDismissError: () => void;
     onDismissSuccess: () => void;
 }
@@ -90,9 +85,8 @@ export default function OnboardView({
     onFieldChange,
     onClubFieldChange,
     onOwnerFieldChange,
-    onCourtFieldChange,
-    onAddCourt,
-    onRemoveCourt,
+    onAddClub,
+    onRemoveClub,
     onDismissError,
     onDismissSuccess,
 }: OnboardViewProps): JSX.Element {
@@ -106,7 +100,7 @@ export default function OnboardView({
                     <div>
                         <h1 className="page-title">Onboard Tenant</h1>
                         <p className="mt-1 text-sm text-muted-foreground">
-                            Create the tenant, first club, courts, and owner account.
+                            Create the tenant, clubs, and owner account.
                         </p>
                     </div>
                     <button
@@ -131,7 +125,7 @@ export default function OnboardView({
                     />
                 ) : null}
 
-                {/* 2×2 grid */}
+                {/* 2-column grid */}
                 <div className="grid gap-4 lg:grid-cols-2">
                     {/* Tenant */}
                     <Card icon={<Globe size={14} />} title="Tenant">
@@ -174,139 +168,6 @@ export default function OnboardView({
                         </div>
                     </Card>
 
-                    {/* Club */}
-                    <Card icon={<Building2 size={14} />} title="Club">
-                        <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
-                            <Field label="Club name">
-                                <input
-                                    className="input-base"
-                                    value={form.club.name}
-                                    onChange={(e) => onClubFieldChange("name", e.target.value)}
-                                    placeholder="Ace Padel HQ"
-                                />
-                            </Field>
-                            <Field label="Currency">
-                                <SelectInput
-                                    className="input-base"
-                                    value={form.club.currency}
-                                    options={CURRENCY_OPTIONS}
-                                    onValueChange={(value) => onClubFieldChange("currency", value)}
-                                />
-                            </Field>
-                            <Field label="Address" span2>
-                                <input
-                                    className="input-base"
-                                    value={form.club.address}
-                                    onChange={(e) => onClubFieldChange("address", e.target.value)}
-                                    placeholder="Club address"
-                                />
-                            </Field>
-                        </div>
-                    </Card>
-
-                    {/* Courts */}
-                    <Card
-                        icon={<LayoutGrid size={14} />}
-                        title="Courts"
-                        action={
-                            <button
-                                type="button"
-                                onClick={onAddCourt}
-                                className="btn-outline min-h-7 px-2.5 text-xs"
-                            >
-                                <Plus size={12} />
-                                Add
-                            </button>
-                        }
-                    >
-                        <div className="space-y-3">
-                            {form.courts.map((court, index) => (
-                                <div
-                                    key={index}
-                                    className="rounded-lg border border-border bg-muted/20 p-3"
-                                >
-                                    <div className="mb-3 flex items-center justify-between">
-                                        <span className="text-xs font-semibold text-foreground/60">
-                                            Court {index + 1}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => onRemoveCourt(index)}
-                                            disabled={form.courts.length === 1}
-                                            className="btn-outline min-h-6 px-2 text-[11px] disabled:opacity-40"
-                                            aria-label={`Remove court ${index + 1}`}
-                                        >
-                                            <Trash2 size={11} />
-                                            Remove
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-x-3 gap-y-3">
-                                        <Field label="Name" span2>
-                                            <input
-                                                className="input-base"
-                                                value={court.name}
-                                                onChange={(e) =>
-                                                    onCourtFieldChange(
-                                                        index,
-                                                        "name",
-                                                        e.target.value
-                                                    )
-                                                }
-                                                placeholder="Court 1"
-                                            />
-                                        </Field>
-                                        <Field label="Surface">
-                                            <SelectInput
-                                                className="input-base"
-                                                value={court.surface_type}
-                                                options={SURFACE_OPTIONS}
-                                                onValueChange={(value) =>
-                                                    onCourtFieldChange(
-                                                        index,
-                                                        "surface_type",
-                                                        value as SurfaceType
-                                                    )
-                                                }
-                                            />
-                                        </Field>
-                                        <Field label="Lighting surcharge">
-                                            <NumberInput
-                                                className="input-base"
-                                                value={court.lighting_surcharge}
-                                                min={0}
-                                                step={0.01}
-                                                onChange={(e) =>
-                                                    onCourtFieldChange(
-                                                        index,
-                                                        "lighting_surcharge",
-                                                        e.target.value
-                                                    )
-                                                }
-                                            />
-                                        </Field>
-                                        <label className="col-span-2 flex cursor-pointer items-center gap-2.5 rounded-md border border-border bg-background px-3 py-2.5">
-                                            <input
-                                                type="checkbox"
-                                                checked={court.has_lighting}
-                                                onChange={(e) =>
-                                                    onCourtFieldChange(
-                                                        index,
-                                                        "has_lighting",
-                                                        e.target.checked
-                                                    )
-                                                }
-                                                className="h-4 w-4 rounded border-border text-cta focus:ring-cta-ring"
-                                            />
-                                            <span className="text-xs font-medium text-foreground">
-                                                Has lighting
-                                            </span>
-                                        </label>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </Card>
-
                     {/* Owner */}
                     <Card icon={<Users size={14} />} title="Owner">
                         <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
@@ -344,6 +205,79 @@ export default function OnboardView({
                         </div>
                     </Card>
                 </div>
+
+                {/* Clubs — full width, repeatable */}
+                <Card
+                    icon={<Building2 size={14} />}
+                    title="Clubs"
+                    action={
+                        <button
+                            type="button"
+                            onClick={onAddClub}
+                            className="btn-outline min-h-7 px-2.5 text-xs"
+                        >
+                            <Plus size={12} />
+                            Add
+                        </button>
+                    }
+                >
+                    <div className="space-y-3">
+                        {form.clubs.map((club, index) => (
+                            <div
+                                key={index}
+                                className="rounded-lg border border-border bg-muted/20 p-3"
+                            >
+                                <div className="mb-3 flex items-center justify-between">
+                                    <span className="text-xs font-semibold text-foreground/60">
+                                        Club {index + 1}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => onRemoveClub(index)}
+                                        disabled={form.clubs.length === 1}
+                                        className="btn-outline min-h-6 px-2 text-[11px] disabled:opacity-40"
+                                        aria-label={`Remove club ${index + 1}`}
+                                    >
+                                        <Trash2 size={11} />
+                                        Remove
+                                    </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+                                    <Field label="Club name">
+                                        <input
+                                            className="input-base"
+                                            value={club.name}
+                                            onChange={(e) =>
+                                                onClubFieldChange(index, "name", e.target.value)
+                                            }
+                                            placeholder="Ace Padel HQ"
+                                        />
+                                    </Field>
+                                    <Field label="Currency">
+                                        <SelectInput
+                                            className="input-base"
+                                            value={club.currency}
+                                            options={CURRENCY_OPTIONS}
+                                            onValueChange={(value) =>
+                                                onClubFieldChange(index, "currency", value)
+                                            }
+                                        />
+                                    </Field>
+                                    <Field label="Address" span2>
+                                        <input
+                                            className="input-base"
+                                            value={club.address}
+                                            onChange={(e) =>
+                                                onClubFieldChange(index, "address", e.target.value)
+                                            }
+                                            placeholder="Club address"
+                                        />
+                                    </Field>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </Card>
 
                 {/* Footer */}
                 <div className="flex justify-end border-t border-border pt-4">

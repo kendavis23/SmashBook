@@ -9,6 +9,9 @@ import {
     useMyProfile,
 } from "../../hooks";
 import type { BookingModalState, ClubOption, OpenGameFilters, SurfaceType } from "../../types";
+import type { Booking } from "@repo/player-domain/models";
+import type { PlayerBookingItem } from "@repo/player-domain/models";
+import { PaymentModal } from "../../../payment";
 import DashboardView from "./DashboardView";
 import DashboardViewMobile from "./DashboardViewMobile";
 
@@ -67,6 +70,7 @@ export default function DashboardContainer(): JSX.Element {
     const [joinBookingId, setJoinBookingId] = useState("");
     const [joinError, setJoinError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
     const startedJoinRef = useRef("");
     const {
         data: myProfile,
@@ -128,12 +132,32 @@ export default function DashboardContainer(): JSX.Element {
         if (startedJoinRef.current === joinBookingId) return;
         startedJoinRef.current = joinBookingId;
         joinMutation.mutate(undefined, {
-            onSuccess: () => {
+            onSuccess: (booking: Booking) => {
                 setJoinBookingId("");
                 startedJoinRef.current = "";
                 setJoinError("");
-                setSuccessMessage("Joined game successfully.");
                 void refetchOpenGames();
+
+                const me = booking.players.find((p) => p.user_id === myProfile?.id);
+                if (me && me.amount_due > 0) {
+                    const item: PlayerBookingItem = {
+                        booking_id: booking.id,
+                        club_id: booking.club_id,
+                        court_id: booking.court_id,
+                        court_name: booking.court_name,
+                        booking_type: booking.booking_type,
+                        status: booking.status,
+                        start_datetime: booking.start_datetime,
+                        end_datetime: booking.end_datetime,
+                        role: me.role,
+                        invite_status: me.invite_status,
+                        payment_status: me.payment_status,
+                        amount_due: me.amount_due,
+                    };
+                    setPayingBooking(item);
+                } else {
+                    setSuccessMessage("Joined game successfully.");
+                }
             },
             onError: (error) => {
                 setJoinError(error.message);
@@ -232,9 +256,35 @@ export default function DashboardContainer(): JSX.Element {
         onDismissSuccess: () => setSuccessMessage(""),
     };
 
+    const paymentModal = payingBooking ? (
+        <PaymentModal
+            context={{ type: "booking", booking: payingBooking }}
+            onClose={() => {
+                setPayingBooking(null);
+                setSuccessMessage("Joined game successfully.");
+                void refetchOpenGames();
+            }}
+            onSuccess={() => {
+                setPayingBooking(null);
+                setSuccessMessage("Joined and paid successfully.");
+                void refetchOpenGames();
+            }}
+        />
+    ) : null;
+
     if (isMobile) {
-        return <DashboardViewMobile {...sharedProps} />;
+        return (
+            <>
+                <DashboardViewMobile {...sharedProps} />
+                {paymentModal}
+            </>
+        );
     }
 
-    return <DashboardView {...sharedProps} />;
+    return (
+        <>
+            <DashboardView {...sharedProps} />
+            {paymentModal}
+        </>
+    );
 }
