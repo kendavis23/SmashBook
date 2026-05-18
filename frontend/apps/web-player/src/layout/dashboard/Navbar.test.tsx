@@ -251,7 +251,8 @@ describe("Navbar — module search", () => {
         fireEvent.keyDown(searchInput, { key: "ArrowUp" });
         fireEvent.keyDown(searchInput, { key: "Enter" });
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/my-games" });
+        // "my" matches My Games and My Membership; ArrowUp from first wraps to last (My Membership)
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/profile/memberships/current" });
     });
 
     it("renders inactive search results and updates the active item on hover", () => {

@@ -39,23 +39,30 @@ type Props = {
     selected: NotificationChannel;
     isPending: boolean;
     apiError: string;
+    successMessage: string;
     onSelect: (channel: NotificationChannel) => void;
     onSubmit: (e: FormEvent) => void;
     onDismissError: () => void;
+    onDismissSuccess: () => void;
 };
 
 export function ProfileNotificationView({
     selected,
     isPending,
     apiError,
+    successMessage,
     onSelect,
     onSubmit,
     onDismissError,
+    onDismissSuccess,
 }: Props): JSX.Element {
     return (
         <form onSubmit={onSubmit} noValidate className="flex h-full flex-col space-y-5">
             {apiError ? (
                 <AlertToast title={apiError} variant="error" onClose={onDismissError} />
+            ) : null}
+            {successMessage ? (
+                <AlertToast title={successMessage} variant="success" onClose={onDismissSuccess} />
             ) : null}
 
             <div className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">

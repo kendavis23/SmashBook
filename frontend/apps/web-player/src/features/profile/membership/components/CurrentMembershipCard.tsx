@@ -1,13 +1,12 @@
 import { useState, type JSX } from "react";
 import { formatUTCDate, formatCurrency } from "@repo/ui";
-import { BadgeCheck, ChevronRight, CreditCard, Ticket, Users } from "lucide-react";
+import { BadgeCheck, CreditCard, Ticket, Users } from "lucide-react";
 import type { MembershipSubscription } from "../../types";
 import { STATUS_STYLES, FALLBACK_STYLE } from "./membershipConstants";
 import { StatRow, SectionHeader } from "./MembershipPrimitives";
 
 type Props = {
     membership: MembershipSubscription;
-    onBrowsePlans: () => void;
     onCancel: () => void;
     isCancelling: boolean;
     cancelError: string | null;
@@ -15,7 +14,6 @@ type Props = {
 
 export function CurrentMembershipCard({
     membership,
-    onBrowsePlans,
     onCancel,
     isCancelling,
     cancelError,
@@ -149,15 +147,6 @@ export function CurrentMembershipCard({
                     </div>
                 </section>
             )}
-
-            <button
-                type="button"
-                onClick={onBrowsePlans}
-                className="btn-outline w-full min-h-11 text-sm font-medium"
-            >
-                Browse available plans
-                <ChevronRight size={15} />
-            </button>
 
             {(status === "active" || status === "trialing") && !membership.cancel_at_period_end && (
                 <CancelSection
