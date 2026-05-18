@@ -37,11 +37,22 @@ async def stripe_webhook(request: Request, db=Depends(get_db)):
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
 
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-        )
-    except stripe.StripeError:
+    # Two Stripe webhooks (platform + Connect) deliver to this endpoint, each
+    # signed with its own secret. Try both; whichever verifies tells us which
+    # account the event came from. event["account"] is set for Connect events.
+    event = None
+    for secret in (
+        settings.STRIPE_WEBHOOK_SECRET,
+        settings.STRIPE_CONNECT_WEBHOOK_SECRET,
+    ):
+        try:
+            event = stripe.Webhook.construct_event(payload, sig_header, secret)
+            break
+        except stripe.error.SignatureVerificationError:
+            continue
+        except stripe.StripeError:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
+    if event is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid Stripe signature")
 
     payment_svc = PaymentService(db)

@@ -4,12 +4,15 @@
 *platform-account* events (subscriptions on SmashBook's main Stripe account)
 and is verified with ``STRIPE_BILLING_WEBHOOK_SECRET``.
 
-Connect-account events (org → player payments, membership subscriptions on
-connected accounts) are handled by ``POST /payments/stripe/webhook`` using
-``STRIPE_WEBHOOK_SECRET``.  The two endpoints must remain separate because
-event types like ``invoice.payment_succeeded`` and ``customer.subscription.*``
-fire on both accounts, and only the URL + signing secret can disambiguate
-which relationship the event belongs to.
+Org-payments events (both the platform-account and Connect-account webhooks
+covering org → player payments, payouts, and membership subscriptions) are
+handled by ``POST /payments/stripe/webhook``.  That endpoint receives both
+webhooks at the same URL and verifies signatures against both
+``STRIPE_WEBHOOK_SECRET`` and ``STRIPE_CONNECT_WEBHOOK_SECRET`` in turn.
+The billing endpoint here must remain separate because Stripe → SmashBook
+subscription events share types (``invoice.payment_succeeded``,
+``customer.subscription.*``) with the org-payments flow and routing them to
+the same handler would conflate two unrelated billing relationships.
 
 Events handled here:
     invoice.payment_succeeded        → status = active

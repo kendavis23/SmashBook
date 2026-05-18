@@ -29,9 +29,12 @@ class Settings(BaseSettings):
 
     # Stripe
     STRIPE_SECRET_KEY: str = "placeholder-not-used-in-migrations"
-    # Connect-account events (org → player payments, memberships)
+    # Org-payments endpoint signing secrets. Stripe is configured with two
+    # webhooks (platform + Connect) both pointing at POST /payments/stripe/webhook;
+    # the handler tries each secret in turn to verify the signature.
     STRIPE_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
-    # Platform-account events (SmashBook → org subscription billing)
+    STRIPE_CONNECT_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
+    # Platform-account events (SmashBook → org subscription billing) — separate endpoint
     STRIPE_BILLING_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
     STRIPE_API_VERSION: str = "2024-12-18.acacia"
 
