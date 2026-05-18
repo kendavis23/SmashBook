@@ -103,16 +103,8 @@ const mockTenantDetail = {
 
 const mockOnboardResult = {
     tenant_id: TENANT_ID,
-    club_id: "club-111",
-    courts: [
-        {
-            id: "court-1",
-            name: "Court 1",
-            surface_type: "indoor" as const,
-            has_lighting: true,
-            is_active: true,
-        },
-    ],
+    club_ids: ["club-111"],
+    owner_id: "owner-999",
 };
 
 // ---------------------------------------------------------------------------
@@ -129,8 +121,7 @@ describe("useOnboardTenant", () => {
             name: "Ace Club",
             subdomain: "ace",
             plan_id: PLAN_ID,
-            club: { name: "Ace Club HQ" },
-            courts: [{ name: "Court 1", surface_type: "indoor" as const }],
+            clubs: [{ name: "Ace Club HQ" }],
             owner: { email: "owner@ace.com", full_name: "Owner", password: "secret" },
         };
         result.current.mutate(data);
@@ -288,10 +279,16 @@ describe("useUpdateTenant", () => {
         const { result } = renderHook(() => useUpdateTenant(PLATFORM_KEY, TENANT_ID), {
             wrapper: Wrapper,
         });
-        result.current.mutate({ subdomain: "ace-new" });
+        result.current.mutate({
+            name: "Ace Club Updated",
+            subdomain: "ace-new",
+            owner_email: "new@ace.com",
+        });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(adminApi.updateTenantEndpoint).toHaveBeenCalledWith(PLATFORM_KEY, TENANT_ID, {
+            name: "Ace Club Updated",
             subdomain: "ace-new",
+            owner_email: "new@ace.com",
         });
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["tenants", PLATFORM_KEY, TENANT_ID] })

@@ -72,13 +72,16 @@ const mockTenantDetail = {
 
 describe("onboardTenantEndpoint", () => {
     it("calls POST /api/v1/admin/onboard with platform key and body", async () => {
-        mockFetcher.mockResolvedValue({ tenant_id: TENANT_ID, club_id: "club-1", courts: [] });
+        mockFetcher.mockResolvedValue({
+            tenant_id: TENANT_ID,
+            club_ids: ["club-1"],
+            owner_id: "owner-1",
+        });
         const data = {
             name: "Ace Club",
             subdomain: "ace",
             plan_id: PLAN_ID,
-            club: { name: "Ace Club London" },
-            courts: [{ name: "Court 1", surface_type: "indoor" as const }],
+            clubs: [{ name: "Ace Club London" }],
             owner: { email: "owner@ace.com", full_name: "Owner", password: "secret" },
         };
         await onboardTenantEndpoint(PLATFORM_KEY, data);
@@ -154,7 +157,13 @@ describe("getTenantEndpoint", () => {
 describe("updateTenantEndpoint", () => {
     it("calls PATCH /api/v1/admin/tenants/:tenantId with platform key and body", async () => {
         mockFetcher.mockResolvedValue(mockTenantDetail);
-        const data = { subdomain: "ace-new" };
+        const data = {
+            name: "Ace Club Updated",
+            subdomain: "ace-new",
+            is_active: true,
+            owner_email: "newowner@ace.com",
+            owner_full_name: "New Owner",
+        };
         await updateTenantEndpoint(PLATFORM_KEY, TENANT_ID, data);
         expect(mockFetcher).toHaveBeenCalledWith(
             `/api/v1/admin/tenants/${TENANT_ID}`,

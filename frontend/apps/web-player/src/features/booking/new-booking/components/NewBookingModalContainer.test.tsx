@@ -232,7 +232,9 @@ describe("NewBookingModalContainer", () => {
                 start_datetime: "UTC:2026-05-20T10:00",
                 max_players: 6,
                 event_name: "Club match",
-                player_user_ids: ["player-2"],
+                is_open_game: true,
+                player_user_ids: undefined,
+                staff_profile_id: null,
             }),
             expect.any(Object)
         );

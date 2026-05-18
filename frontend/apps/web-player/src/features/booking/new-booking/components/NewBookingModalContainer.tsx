@@ -73,7 +73,7 @@ export default function NewBookingModalContainer({
         bookingType: "regular",
         bookingDate: date,
         startTime,
-        isOpenGame: false,
+        isOpenGame: true,
         maxPlayers: "4",
         anchorSkill: "",
         skillMin: "",

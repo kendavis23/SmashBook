@@ -273,7 +273,9 @@ describe("NewBookingContainer", () => {
                 skill_level_override_min: 2,
                 skill_level_override_max: 5,
                 event_name: "Club match",
-                player_user_ids: ["player-2"],
+                is_open_game: true,
+                player_user_ids: undefined,
+                staff_profile_id: null,
             }),
             expect.any(Object)
         );

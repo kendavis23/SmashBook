@@ -240,81 +240,95 @@ export function NewBookingModalView({
                 ) : null}
 
                 {!isIndividualLesson ? (
-                    <div className="space-y-3 border-t border-border/30 pt-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className={labelCls}>Invite Players</p>
+                    <>
+                        <label className="flex cursor-pointer items-center gap-2.5 border-t border-border/30 pt-4">
+                            <input
+                                type="checkbox"
+                                checked={!form.isOpenGame}
+                                onChange={(e) => onFormChange({ isOpenGame: !e.target.checked })}
+                                className="h-4 w-4 rounded border-border accent-cta"
+                            />
+                            <span className="text-xs font-medium text-foreground">
+                                Private / invite-only match
+                            </span>
+                        </label>
+
+                        <div className="space-y-3 border-t border-border/30 pt-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className={labelCls}>Invite Players</p>
+                                </div>
+                                {invitedCount > 0 ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-cta/10 px-2.5 py-1 text-xs font-semibold text-cta ring-1 ring-cta/20">
+                                        <Users size={11} />
+                                        {invitedCount} added
+                                    </span>
+                                ) : null}
                             </div>
+
+                            <PlayerAutocomplete
+                                label="Invite player"
+                                inputId="bk-invite-player"
+                                clubId={clubId}
+                                value={invitePlayerId}
+                                placeholder="Search and add player..."
+                                onChange={setInvitePlayerId}
+                                onSelect={(player) => {
+                                    setInvitedPlayerInfo((info) => ({
+                                        ...info,
+                                        [player.id]: {
+                                            name: player.full_name,
+                                            skill: player.skill_level,
+                                        },
+                                    }));
+                                    if (!form.playerUserIds.includes(player.id)) {
+                                        onFormChange({
+                                            playerUserIds: [
+                                                ...form.playerUserIds.filter(Boolean),
+                                                player.id,
+                                            ],
+                                        });
+                                    }
+                                    setInvitePlayerId("");
+                                }}
+                            />
+
                             {invitedCount > 0 ? (
-                                <span className="inline-flex items-center gap-1.5 rounded-full bg-cta/10 px-2.5 py-1 text-xs font-semibold text-cta ring-1 ring-cta/20">
-                                    <Users size={11} />
-                                    {invitedCount} added
-                                </span>
+                                <div className="mt-2 grid grid-cols-2 gap-2">
+                                    {form.playerUserIds.filter(Boolean).map((uid, index) => {
+                                        const info = invitedPlayerInfo[uid];
+                                        const displayName = info?.name ?? `Player ${index + 1}`;
+                                        const label = info?.skill
+                                            ? `${displayName} (${info.skill})`
+                                            : displayName;
+                                        return (
+                                            <div
+                                                key={`${uid}-${index}`}
+                                                className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
+                                            >
+                                                <p className="min-w-0 truncate text-sm text-foreground">
+                                                    {label}
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Remove ${displayName}`}
+                                                    onClick={() => {
+                                                        const next = form.playerUserIds.filter(
+                                                            (_, i) => i !== index
+                                                        );
+                                                        onFormChange({ playerUserIds: next });
+                                                    }}
+                                                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                                                >
+                                                    <X size={11} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             ) : null}
                         </div>
-
-                        <PlayerAutocomplete
-                            label="Invite player"
-                            inputId="bk-invite-player"
-                            clubId={clubId}
-                            value={invitePlayerId}
-                            placeholder="Search and add player..."
-                            onChange={setInvitePlayerId}
-                            onSelect={(player) => {
-                                setInvitedPlayerInfo((info) => ({
-                                    ...info,
-                                    [player.id]: {
-                                        name: player.full_name,
-                                        skill: player.skill_level,
-                                    },
-                                }));
-                                if (!form.playerUserIds.includes(player.id)) {
-                                    onFormChange({
-                                        playerUserIds: [
-                                            ...form.playerUserIds.filter(Boolean),
-                                            player.id,
-                                        ],
-                                    });
-                                }
-                                setInvitePlayerId("");
-                            }}
-                        />
-
-                        {invitedCount > 0 ? (
-                            <div className="mt-2 grid grid-cols-2 gap-2">
-                                {form.playerUserIds.filter(Boolean).map((uid, index) => {
-                                    const info = invitedPlayerInfo[uid];
-                                    const displayName = info?.name ?? `Player ${index + 1}`;
-                                    const label = info?.skill
-                                        ? `${displayName} (${info.skill})`
-                                        : displayName;
-                                    return (
-                                        <div
-                                            key={`${uid}-${index}`}
-                                            className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
-                                        >
-                                            <p className="min-w-0 truncate text-sm text-foreground">
-                                                {label}
-                                            </p>
-                                            <button
-                                                type="button"
-                                                aria-label={`Remove ${displayName}`}
-                                                onClick={() => {
-                                                    const next = form.playerUserIds.filter(
-                                                        (_, i) => i !== index
-                                                    );
-                                                    onFormChange({ playerUserIds: next });
-                                                }}
-                                                className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                                            >
-                                                <X size={11} />
-                                            </button>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : null}
-                    </div>
+                    </>
                 ) : null}
             </main>
 

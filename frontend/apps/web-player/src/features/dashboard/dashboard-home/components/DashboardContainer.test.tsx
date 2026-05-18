@@ -9,7 +9,10 @@ const mockRefetchAvailability = vi.fn();
 const mockJoinMutate = vi.fn();
 let mockClubId: string | null = "club-1";
 let mockInnerWidth = 1024;
-let mockProfile: { skill_level?: number | null } | undefined = { skill_level: 3.5 };
+let mockProfile: { id?: string; skill_level?: number | null } | undefined = {
+    id: "user-1",
+    skill_level: 3.5,
+};
 let mockProfileLoading = false;
 let mockProfileError: Error | null = null;
 
@@ -143,7 +146,7 @@ describe("DashboardContainer", () => {
     beforeEach(() => {
         mockClubId = "club-1";
         mockInnerWidth = 1024;
-        mockProfile = { skill_level: 3.5 };
+        mockProfile = { id: "user-1", skill_level: 3.5 };
         mockProfileLoading = false;
         mockProfileError = null;
         mockSetActiveClubId.mockReset();
@@ -212,7 +215,27 @@ describe("DashboardContainer", () => {
     });
 
     it("joins a game and handles success", async () => {
-        mockJoinMutate.mockImplementation((_payload, options) => options.onSuccess());
+        mockJoinMutate.mockImplementation((_payload, options) =>
+            options.onSuccess({
+                id: "game-1",
+                club_id: "club-1",
+                court_id: "court-1",
+                court_name: "Court One",
+                booking_type: "regular",
+                status: "confirmed",
+                start_datetime: "2026-05-20T10:00:00Z",
+                end_datetime: "2026-05-20T11:00:00Z",
+                players: [
+                    {
+                        user_id: "user-1",
+                        role: "player",
+                        invite_status: "accepted",
+                        payment_status: "paid",
+                        amount_due: 0,
+                    },
+                ],
+            })
+        );
         render(<DashboardContainer />);
 
         fireEvent.click(screen.getByRole("button", { name: "Join game" }));

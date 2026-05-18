@@ -1,12 +1,9 @@
 export type {
     UUID,
     SubscriptionStatus,
-    SurfaceType,
-    CourtOnboardInput,
     ClubOnboardInput,
     OwnerInput,
     TenantOnboardInput,
-    CourtOnboardResult,
     TenantOnboardResult,
     Plan,
     PlanInput,
