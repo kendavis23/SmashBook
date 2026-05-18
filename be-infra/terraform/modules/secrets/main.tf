@@ -14,6 +14,7 @@ locals {
     "stripe-publishable-key",
     "stripe-webhook-secret",
     "stripe-connect-webhook-secret",
+    "stripe-billing-secret-key",
     "stripe-billing-webhook-secret",
     "sendgrid-api-key",
     "padel-platform-api-key",

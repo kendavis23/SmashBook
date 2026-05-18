@@ -27,14 +27,20 @@ class Settings(BaseSettings):
     GCS_BUCKET_INVOICES: str = ""
     GCS_PROJECT_ID: str = ""
 
-    # Stripe
+    # Stripe — two-account model. Today STRIPE_BILLING_SECRET_KEY may point at
+    # the same Stripe account as STRIPE_SECRET_KEY; when SmashBook Corporate
+    # is provisioned, only these env vars change — no code edits required.
+    # See docs/runbooks/STRIPE_BILLING_ACCOUNT_SPLIT.md.
+    #
+    # Platform account (Connect, player payments, application fees, payouts):
     STRIPE_SECRET_KEY: str = "placeholder-not-used-in-migrations"
     # Org-payments endpoint signing secrets. Stripe is configured with two
     # webhooks (platform + Connect) both pointing at POST /payments/stripe/webhook;
     # the handler tries each secret in turn to verify the signature.
     STRIPE_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
     STRIPE_CONNECT_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
-    # Platform-account events (SmashBook → org subscription billing) — separate endpoint
+    # Billing account (tenant SaaS subscriptions — SmashBook → org):
+    STRIPE_BILLING_SECRET_KEY: str = "placeholder-not-used-in-migrations"
     STRIPE_BILLING_WEBHOOK_SECRET: str = "placeholder-not-used-in-migrations"
     STRIPE_API_VERSION: str = "2024-12-18.acacia"
 

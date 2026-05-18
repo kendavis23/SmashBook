@@ -1,4 +1,4 @@
-_Last updated: 2026-05-16 12:00 UTC_
+_Last updated: 2026-05-19 12:00 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -95,6 +95,7 @@ Images are tagged with git SHA by CI/CD. Terraform ignores image tag drift (`lif
 | `SECRET_KEY` | `padel-secret-key` |
 | `STRIPE_SECRET_KEY` | `stripe-secret-key` |
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook-secret` |
+| `STRIPE_BILLING_SECRET_KEY` | `stripe-billing-secret-key` |
 | `STRIPE_BILLING_WEBHOOK_SECRET` | `stripe-billing-webhook-secret` |
 | `SENDGRID_API_KEY` | `sendgrid-api-key` |
 
@@ -181,6 +182,7 @@ All secret resources are managed by Terraform. Secret **values** are set manuall
 | `stripe-secret-key` | Stripe API key | Live (test key) |
 | `stripe-publishable-key` | Stripe publishable key | Live (test key) |
 | `stripe-webhook-secret` | Stripe webhook signature secret — Connect-account events (`/payments/stripe/webhook`) | Live |
+| `stripe-billing-secret-key` | Stripe API secret key for the **billing account** (tenant SaaS subscriptions). Currently set to the same value as `stripe-secret-key`; will diverge when SmashBook Corporate Stripe account is provisioned (see `docs/runbooks/STRIPE_BILLING_ACCOUNT_SPLIT.md`). | Live (test key) |
 | `stripe-billing-webhook-secret` | Stripe webhook signature secret — platform-account events for SmashBook→org subscription billing (`/webhooks/stripe-billing`) | Declared — value must be set via `gcloud secrets versions add stripe-billing-webhook-secret --data-file=-` after creating the corresponding webhook in the Stripe Dashboard |
 | `sendgrid-api-key` | SendGrid transactional email | Live |
 | `padel-platform-api-key` | Platform API key (future use) | Declared — placeholder value |

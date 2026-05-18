@@ -97,7 +97,9 @@ async def view_subscription(
 
     if tenant.stripe_customer_id:
         try:
-            customer = await stripe.Customer.retrieve_async(tenant.stripe_customer_id)
+            customer = await stripe_billing.get_customer(
+                customer_id=tenant.stripe_customer_id
+            )
             has_payment_method = bool(
                 customer.get("invoice_settings", {}).get("default_payment_method")
             )

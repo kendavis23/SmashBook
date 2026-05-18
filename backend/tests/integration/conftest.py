@@ -158,6 +158,9 @@ def stripe_billing_mock(monkeypatch):
 
     mocks = SimpleNamespace(
         create_customer=AsyncMock(return_value="cus_test_default"),
+        get_customer=AsyncMock(
+            return_value={"invoice_settings": {"default_payment_method": None}}
+        ),
         create_subscription=AsyncMock(
             return_value={"id": "sub_test_default", "status": "active"}
         ),

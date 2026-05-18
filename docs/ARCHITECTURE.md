@@ -1,4 +1,4 @@
-_Last updated: 2026-05-16 12:00 UTC_
+_Last updated: 2026-05-19 12:00 UTC_
 
 # SmashBook — Architecture
 
@@ -342,6 +342,19 @@ Player pays → SmashBook platform account
 ```
 
 This means SmashBook earns a percentage of every transaction without clubs needing to manage platform billing separately.
+
+### Two Stripe account identities — one client per account
+
+SmashBook's backend talks to Stripe via two distinct account identities. Each is exposed as a separate `StripeClient` instance in `backend/app/core/stripe_clients.py`:
+
+| Client | Env var (secret key) | What it does | Used by |
+|---|---|---|---|
+| `platform_client()` | `STRIPE_SECRET_KEY` | Connect platform — onboards connected accounts, charges players, deducts application fees, settles payouts to clubs. | `clubs.py`, `payment_service.py`, `membership_service.py` |
+| `billing_client()` | `STRIPE_BILLING_SECRET_KEY` | SmashBook Corporate — tenant SaaS subscriptions (clubs paying SmashBook). | `stripe_billing_service.py` only |
+
+The factories are `lru_cache`'d so each process holds one client per account. No mutable globals — `stripe.api_key` is never set inside `stripe_billing_service.py`, so a future split of the two accounts cannot accidentally cross-contaminate state.
+
+Until the dedicated SmashBook Corporate Stripe account is provisioned, `STRIPE_BILLING_SECRET_KEY` may point to the same Stripe account as `STRIPE_SECRET_KEY`. The split is then a pure secrets/dashboard change — no code edits required. See `docs/runbooks/STRIPE_BILLING_ACCOUNT_SPLIT.md` for the runbook.
 
 ### Fee configuration
 

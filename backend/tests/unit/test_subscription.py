@@ -144,10 +144,10 @@ async def test_view_subscription_fetches_period_end_from_stripe():
                           "current_period_end": period_end_ts,
                           "cancel_at_period_end": False,
                       })):
-        # Customer retrieve mocked at the stripe module
+        # Customer retrieve routed through the billing service
         fake_customer = {"invoice_settings": {"default_payment_method": "pm_abc"}}
-        with patch("app.api.v1.endpoints.subscription.stripe.Customer.retrieve_async",
-                   new=AsyncMock(return_value=fake_customer)):
+        with patch.object(stripe_billing_service, "get_customer",
+                          new=AsyncMock(return_value=fake_customer)):
             out = await view_subscription(
                 current_user=_owner_user(tenant.id), tenant=tenant, db=db,
             )
@@ -168,8 +168,8 @@ async def test_view_subscription_tolerates_stripe_failure():
 
     with patch.object(stripe_billing_service, "get_subscription",
                       new=AsyncMock(side_effect=stripe.APIConnectionError("Network down"))):
-        with patch("app.api.v1.endpoints.subscription.stripe.Customer.retrieve_async",
-                   new=AsyncMock(side_effect=stripe.APIConnectionError("Network down"))):
+        with patch.object(stripe_billing_service, "get_customer",
+                          new=AsyncMock(side_effect=stripe.APIConnectionError("Network down"))):
             out = await view_subscription(
                 current_user=_owner_user(tenant.id), tenant=tenant, db=db,
             )
