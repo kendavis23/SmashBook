@@ -159,6 +159,11 @@ resource "google_cloud_run_v2_service" "api" {
           }
         }
       }
+
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
     }
 
     max_instance_request_concurrency = 80
@@ -264,6 +269,11 @@ resource "google_cloud_run_v2_service" "booking_worker" {
           }
         }
       }
+
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
     }
 
     max_instance_request_concurrency = 80
@@ -361,6 +371,11 @@ resource "google_cloud_run_v2_service" "payment_worker" {
           }
         }
       }
+
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
     }
 
     max_instance_request_concurrency = 80
@@ -457,6 +472,11 @@ resource "google_cloud_run_v2_service" "notification_worker" {
             version = "latest"
           }
         }
+      }
+
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
       }
     }
 
