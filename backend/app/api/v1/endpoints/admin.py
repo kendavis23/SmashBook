@@ -16,7 +16,7 @@ Three concern areas live here:
 import secrets
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, status
@@ -262,16 +262,9 @@ async def _tenant_summary_row(
     )
 
 
-async def _tenant_detail_row(
-    tenant: Tenant, plan_name: str, club_count: int, db: AsyncSession
+def _tenant_detail_row(
+    tenant: Tenant, plan_name: str, club_count: int, owner: Optional[User]
 ) -> TenantDetail:
-    owner = (
-        await db.execute(
-            select(User)
-            .where(User.tenant_id == tenant.id, User.role == TenantUserRole.owner)
-            .limit(1)
-        )
-    ).scalar_one_or_none()
     return TenantDetail(
         id=tenant.id,
         name=tenant.name,
@@ -320,7 +313,7 @@ async def list_tenants(db: AsyncSession = Depends(get_db)) -> List[TenantSummary
 
 async def _load_tenant_with_plan(
     tenant_id: uuid.UUID, db: AsyncSession
-) -> tuple[Tenant, SubscriptionPlan, int]:
+) -> tuple[Tenant, SubscriptionPlan, int, Optional[User]]:
     tenant = await db.get(Tenant, tenant_id)
     if not tenant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found")
@@ -329,7 +322,12 @@ async def _load_tenant_with_plan(
     club_count = (await db.execute(
         select(func.count()).select_from(Club).where(Club.tenant_id == tenant.id)
     )).scalar_one()
-    return tenant, plan, club_count
+    owner = (await db.execute(
+        select(User)
+        .where(User.tenant_id == tenant.id, User.role == TenantUserRole.owner)
+        .limit(1)
+    )).scalar_one_or_none()
+    return tenant, plan, club_count, owner
 
 
 @router.get(
@@ -341,8 +339,8 @@ async def _load_tenant_with_plan(
 async def get_tenant(
     tenant_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 ) -> TenantDetail:
-    tenant, plan, club_count = await _load_tenant_with_plan(tenant_id, db)
-    return await _tenant_detail_row(tenant, plan.name, club_count, db)
+    tenant, plan, club_count, owner = await _load_tenant_with_plan(tenant_id, db)
+    return _tenant_detail_row(tenant, plan.name, club_count, owner)
 
 
 @router.patch(
@@ -367,7 +365,7 @@ async def update_tenant(
     To add clubs to an existing tenant, the owner uses the tenant-scoped
     ``POST /clubs`` endpoint from the staff portal — not this route.
     """
-    tenant, plan, club_count = await _load_tenant_with_plan(tenant_id, db)
+    tenant, plan, club_count, owner = await _load_tenant_with_plan(tenant_id, db)
 
     updates = body.model_dump(exclude_none=True)
 
@@ -392,12 +390,6 @@ async def update_tenant(
 
     # Owner update path
     if owner_updates:
-        owner_result = await db.execute(
-            select(User)
-            .where(User.tenant_id == tenant.id, User.role == TenantUserRole.owner)
-            .limit(1)
-        )
-        owner = owner_result.scalar_one_or_none()
         if not owner:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -428,7 +420,7 @@ async def update_tenant(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, plan.name, club_count, db)
+    return _tenant_detail_row(tenant, plan.name, club_count, owner)
 
 
 @router.post(
@@ -452,7 +444,7 @@ async def activate_tenant(
 
     Fails if the tenant already has an active or trialing subscription.
     """
-    tenant, plan, club_count = await _load_tenant_with_plan(tenant_id, db)
+    tenant, plan, club_count, owner = await _load_tenant_with_plan(tenant_id, db)
 
     if not plan.stripe_price_id:
         raise HTTPException(
@@ -470,12 +462,6 @@ async def activate_tenant(
     if not tenant.stripe_customer_id:
         owner_email = body.billing_email
         if not owner_email:
-            owner_result = await db.execute(
-                select(User)
-                .where(User.tenant_id == tenant.id, User.role == TenantUserRole.owner)
-                .limit(1)
-            )
-            owner = owner_result.scalar_one_or_none()
             if not owner:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -518,7 +504,7 @@ async def activate_tenant(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, plan.name, club_count, db)
+    return _tenant_detail_row(tenant, plan.name, club_count, owner)
 
 
 @router.post(
@@ -537,7 +523,7 @@ async def suspend_tenant(
 
     Re-activating later creates a fresh Stripe subscription (the old one is gone).
     """
-    tenant, plan, club_count = await _load_tenant_with_plan(tenant_id, db)
+    tenant, plan, club_count, owner = await _load_tenant_with_plan(tenant_id, db)
 
     if tenant.stripe_subscription_id:
         try:
@@ -558,7 +544,7 @@ async def suspend_tenant(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, plan.name, club_count, db)
+    return _tenant_detail_row(tenant, plan.name, club_count, owner)
 
 
 @router.post(
@@ -577,7 +563,7 @@ async def change_tenant_plan(
     swap the subscription's price with proration. Otherwise just update the
     ``plan_id`` (a later activation will pick up the new plan).
     """
-    tenant, _current_plan, club_count = await _load_tenant_with_plan(tenant_id, db)
+    tenant, _current_plan, club_count, owner = await _load_tenant_with_plan(tenant_id, db)
 
     new_plan = await db.get(SubscriptionPlan, body.plan_id)
     if not new_plan:
@@ -608,4 +594,4 @@ async def change_tenant_plan(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, new_plan.name, club_count, db)
+    return _tenant_detail_row(tenant, new_plan.name, club_count, owner)

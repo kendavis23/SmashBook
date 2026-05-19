@@ -118,6 +118,10 @@ def _make_db(*, tenant=None, plan=None, club_count: int = 0,
     # We use side_effect to dispatch by call count or context.
     count_result = MagicMock()
     count_result.scalar_one.return_value = club_count
+    # When the default db.execute is reused for an owner lookup (callers that
+    # don't override execute), surface owner=None so _tenant_detail_row produces
+    # a valid pydantic payload.
+    count_result.scalar_one_or_none.return_value = None
 
     subdomain_result = MagicMock()
     subdomain_result.scalar_one_or_none.return_value = (
@@ -254,9 +258,10 @@ async def test_patch_tenant_subdomain_conflict():
     p = _make_plan()
     db = _make_db(tenant=t, plan=p)
 
-    # First execute: club count for _load_tenant_with_plan
-    # Second execute: subdomain conflict check
+    # _load_tenant_with_plan: club count, then owner lookup.
+    # Then the subdomain conflict check.
     db.execute = AsyncMock(side_effect=[db._count_result,
+                                        db._owner_result,
                                         db._subdomain_result])
     db._subdomain_result.scalar_one_or_none.return_value = SimpleNamespace(id=uuid.uuid4())
 
@@ -407,7 +412,8 @@ async def test_activate_creates_customer_and_subscription_with_owner_email():
     t = _make_tenant()
     p = _make_plan(stripe_price_id="price_pro", trial_days=14)
     owner = SimpleNamespace(id=uuid.uuid4(), email="owner@padelkings.com",
-                            role=TenantUserRole.owner, tenant_id=t.id)
+                            full_name="Owner", role=TenantUserRole.owner,
+                            tenant_id=t.id)
     db = _make_db(tenant=t, plan=p, owner=owner)
 
     # Two execute calls: count, then owner lookup
@@ -540,6 +546,7 @@ async def test_change_plan_updates_stripe_subscription_when_active():
 
     count_result = MagicMock()
     count_result.scalar_one.return_value = 0
+    count_result.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(return_value=count_result)
     db.flush = AsyncMock()
 
@@ -576,6 +583,7 @@ async def test_change_plan_no_subscription_just_swaps_plan_id():
     db.get = AsyncMock(side_effect=_get)
     count_result = MagicMock()
     count_result.scalar_one.return_value = 0
+    count_result.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(return_value=count_result)
     db.flush = AsyncMock()
 
@@ -608,6 +616,7 @@ async def test_change_plan_new_plan_not_found():
     db.get = AsyncMock(side_effect=_get)
     count_result = MagicMock()
     count_result.scalar_one.return_value = 0
+    count_result.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(return_value=count_result)
     db.flush = AsyncMock()
 
@@ -638,6 +647,7 @@ async def test_change_plan_fails_when_new_plan_has_no_stripe_price_id_and_sub_ac
     db.get = AsyncMock(side_effect=_get)
     count_result = MagicMock()
     count_result.scalar_one.return_value = 0
+    count_result.scalar_one_or_none.return_value = None
     db.execute = AsyncMock(return_value=count_result)
     db.flush = AsyncMock()
 

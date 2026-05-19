@@ -422,6 +422,37 @@ class TestGetTenant:
         )
         assert resp.status_code == 404
 
+    async def test_includes_owner_fields_when_owner_exists(
+        self, client, tenant, test_session_factory
+    ):
+        owner_email = f"owner-{uuid.uuid4().hex[:6]}@x.com"
+        async with test_session_factory() as session:
+            owner = User(
+                tenant_id=tenant.id,
+                email=owner_email,
+                full_name="Tenant Owner",
+                hashed_password="x",
+                role="owner",
+                is_active=True,
+            )
+            session.add(owner)
+            await session.commit()
+            await session.refresh(owner)
+        try:
+            resp = await client.get(
+                f"/api/v1/admin/tenants/{tenant.id}", headers=PLATFORM_HEADERS
+            )
+            assert resp.status_code == 200
+            data = resp.json()
+            assert data["owner_email"] == owner_email
+            assert data["owner_full_name"] == "Tenant Owner"
+        finally:
+            async with test_session_factory() as session:
+                obj = await session.get(User, owner.id)
+                if obj:
+                    await session.delete(obj)
+                    await session.commit()
+
 
 class TestPatchTenant:
     async def test_update_custom_domain(self, client, tenant):
@@ -516,6 +547,9 @@ class TestPatchTenant:
                 headers=PLATFORM_HEADERS,
             )
             assert resp.status_code == 200, resp.text
+            data = resp.json()
+            assert data["owner_email"] == new_email
+            assert data["owner_full_name"] == "New Owner"
 
             async with test_session_factory() as session:
                 refreshed = await session.get(User, owner.id)
