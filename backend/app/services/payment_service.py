@@ -21,8 +21,6 @@ from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
-
-logger = logging.getLogger(__name__)
 from app.core.pubsub import publish_notification_event
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus, InviteStatus, PaymentStatus
 from app.db.models.club import Club
@@ -32,6 +30,8 @@ from app.db.models.payment import PaymentState
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import User
 from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction, WalletTransactionSource, WalletTransactionType
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY

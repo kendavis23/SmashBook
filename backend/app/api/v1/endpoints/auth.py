@@ -7,8 +7,6 @@ from sqlalchemy import select
 from app.db.session import get_db
 from app.core.config import get_settings
 from app.core.pubsub import publish_notification_event
-
-logger = logging.getLogger(__name__)
 from app.core.security import (
     verify_password,
     create_access_token,
@@ -32,6 +30,8 @@ from app.schemas.user import (
     PasswordResetRequest,
     PasswordResetConfirm,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
