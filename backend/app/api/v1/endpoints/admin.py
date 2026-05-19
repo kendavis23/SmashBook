@@ -263,8 +263,15 @@ async def _tenant_summary_row(
 
 
 async def _tenant_detail_row(
-    tenant: Tenant, plan_name: str, club_count: int
+    tenant: Tenant, plan_name: str, club_count: int, db: AsyncSession
 ) -> TenantDetail:
+    owner = (
+        await db.execute(
+            select(User)
+            .where(User.tenant_id == tenant.id, User.role == TenantUserRole.owner)
+            .limit(1)
+        )
+    ).scalar_one_or_none()
     return TenantDetail(
         id=tenant.id,
         name=tenant.name,
@@ -278,6 +285,8 @@ async def _tenant_detail_row(
         stripe_subscription_id=tenant.stripe_subscription_id,
         subscription_status=tenant.subscription_status,
         club_count=club_count,
+        owner_email=owner.email if owner else None,
+        owner_full_name=owner.full_name if owner else None,
         created_at=tenant.created_at,
         updated_at=tenant.updated_at,
     )
@@ -333,7 +342,7 @@ async def get_tenant(
     tenant_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 ) -> TenantDetail:
     tenant, plan, club_count = await _load_tenant_with_plan(tenant_id, db)
-    return await _tenant_detail_row(tenant, plan.name, club_count)
+    return await _tenant_detail_row(tenant, plan.name, club_count, db)
 
 
 @router.patch(
@@ -419,7 +428,7 @@ async def update_tenant(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, plan.name, club_count)
+    return await _tenant_detail_row(tenant, plan.name, club_count, db)
 
 
 @router.post(
@@ -509,7 +518,7 @@ async def activate_tenant(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, plan.name, club_count)
+    return await _tenant_detail_row(tenant, plan.name, club_count, db)
 
 
 @router.post(
@@ -549,7 +558,7 @@ async def suspend_tenant(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, plan.name, club_count)
+    return await _tenant_detail_row(tenant, plan.name, club_count, db)
 
 
 @router.post(
@@ -599,4 +608,4 @@ async def change_tenant_plan(
 
     await db.flush()
     await db.refresh(tenant)
-    return await _tenant_detail_row(tenant, new_plan.name, club_count)
+    return await _tenant_detail_row(tenant, new_plan.name, club_count, db)

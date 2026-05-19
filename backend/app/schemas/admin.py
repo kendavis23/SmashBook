@@ -107,6 +107,8 @@ class TenantDetail(BaseModel):
     stripe_subscription_id: Optional[str] = None
     subscription_status: Optional[SubscriptionStatus] = None
     club_count: int
+    owner_email: Optional[EmailStr] = None
+    owner_full_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
