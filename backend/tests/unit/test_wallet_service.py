@@ -381,10 +381,11 @@ def _bp_obj(*, user_id=None, payment_status=None):
     )
 
 
-def _db_for_deduct(wallet, club_row, *, plan=None, booking=None, bp=None, all_bps=None):
+def _db_for_deduct(wallet, club_row, *, plan=None, booking=None, bp=None, all_bps=None, user=None):
     """
     plan: fee source; defaults to _plan_obj(fee_pct="0") when None.
     booking, bp, all_bps: supply to exercise the booking-payment branch.
+    user: returned when payment_service looks up the User by user_id.
     """
     db = AsyncMock()
 
@@ -410,6 +411,8 @@ def _db_for_deduct(wallet, club_row, *, plan=None, booking=None, bp=None, all_bp
             return _plan
         if model_class.__name__ == "Booking":
             return booking
+        if model_class.__name__ == "User":
+            return user
         return None
 
     db.get = AsyncMock(side_effect=_get)
@@ -669,7 +672,10 @@ class TestDeductWalletBookingPath:
         wallet.id = WALLET_ID
         bp = _bp_obj()
         booking = _booking_obj()
-        db = _db_for_deduct(wallet, (_club_obj(), _tenant_obj()), booking=booking, bp=bp)
+        user = MagicMock(email="player@example.com", full_name="Test Player")
+        db = _db_for_deduct(
+            wallet, (_club_obj(), _tenant_obj()), booking=booking, bp=bp, user=user
+        )
         with patch("app.services.payment_service.publish_notification_event") as mock_publish:
             await PaymentService(db).deduct_wallet(
                 USER_ID, CLUB_ID, Decimal("20.00"), WalletTransactionSource.booking, SOURCE_ID
@@ -679,6 +685,8 @@ class TestDeductWalletBookingPath:
         assert args[0] == "send_payment_receipt"
         payload = args[1]
         assert payload["user_id"] == str(USER_ID)
+        assert payload["email"] == "player@example.com"
+        assert payload["full_name"] == "Test Player"
         assert payload["booking_id"] == str(SOURCE_ID)
         assert payload["amount"] == "20.00"
         assert payload["payment_method"] == "wallet"

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -5,6 +7,8 @@ from sqlalchemy import select
 from app.db.session import get_db
 from app.core.config import get_settings
 from app.core.pubsub import publish_notification_event
+
+logger = logging.getLogger(__name__)
 from app.core.security import (
     verify_password,
     create_access_token,
@@ -64,6 +68,20 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
     await db.flush()  # Populate user.id before foreign key references
 
     db.add(Wallet(user_id=user.id))
+    await db.commit()
+
+    try:
+        publish_notification_event("welcome", {
+            "user_id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "tenant_name": tenant.name,
+        })
+    except Exception:
+        logger.exception(
+            "failed to publish welcome event user_id=%s tenant_id=%s",
+            user.id, tenant.id,
+        )
 
     token_data = {"sub": str(user.id), "tid": str(tenant.id)}
     return TokenResponse(

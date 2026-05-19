@@ -180,36 +180,30 @@ jobs:
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
 
+      # Image-only update: Terraform owns secrets, Cloud SQL bindings, IAM, and scaling.
+      # CI must NOT pass --set-secrets / --set-cloudsql-instances / --allow-unauthenticated here —
+      # those flags replace (not merge) the corresponding service config and would drop any
+      # secrets Terraform attached that aren't in the CI flag string.
       - name: Deploy API
         run: |
-          gcloud run deploy padel-api \
+          gcloud run services update padel-api \
             --image="${{ env.REGISTRY }}/padel-api:${{ needs.build.outputs.image_tag }}" \
             --region=${{ env.REGION }} \
             --platform=managed \
             --project=${{ secrets.GCP_PROJECT_ID }} \
-            --set-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
-            --set-secrets="DATABASE_URL=padel-database-url:latest,DATABASE_READ_REPLICA_URL=padel-database-read-replica-url:latest,SECRET_KEY=padel-secret-key:latest,STRIPE_SECRET_KEY=stripe-secret-key:latest,STRIPE_WEBHOOK_SECRET=stripe-webhook-secret:latest,SENDGRID_API_KEY=sendgrid-api-key:latest" \
-            --allow-unauthenticated \
-            --quiet      
+            --quiet
 
+      # Image-only update: Terraform owns secrets, Cloud SQL bindings, command, and args.
+      # See the comment on "Deploy API" for why we don't pass config flags here.
       - name: Deploy Workers
         run: |
-          declare -A WORKER_MODULES
-          WORKER_MODULES["booking-worker"]="app.workers.booking_worker:app"
-          WORKER_MODULES["payment-worker"]="app.workers.payment_worker:app"
-          WORKER_MODULES["notification-worker"]="app.workers.notification_worker:app"
-
           for WORKER in booking-worker payment-worker notification-worker; do
             echo "Deploying padel-${WORKER}..."
-            gcloud run deploy "padel-${WORKER}" \
+            gcloud run services update "padel-${WORKER}" \
               --image="${{ env.REGISTRY }}/padel-worker:${{ needs.build.outputs.image_tag }}" \
               --region=${{ env.REGION }} \
               --platform=managed \
               --project=${{ secrets.GCP_PROJECT_ID }} \
-              --set-cloudsql-instances=${{ env.CLOUD_SQL_INSTANCE }} \
-              --set-secrets="DATABASE_URL=padel-database-url:latest,SECRET_KEY=padel-secret-key:latest" \
-              --command="uvicorn" \
-              --args="${WORKER_MODULES[$WORKER]},--host,0.0.0.0,--port,8080" \
               --quiet
           done
 

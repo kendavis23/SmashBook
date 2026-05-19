@@ -1,4 +1,4 @@
-_Last updated: 2026-05-10 18:00 UTC_
+_Last updated: 2026-05-19 12:00 UTC_
 
 # SmashBook — Deployment & CI/CD Runbook
 
@@ -480,8 +480,23 @@ File: `.github/workflows/deploy-staging.yml`
 3. Build:    docker build — api + worker images tagged with git SHA
 4. Push:     images pushed to Artifact Registry
 5. Migrate:  run-migrations Cloud Run Job (self-bootstrapping — creates on first run)
-6. Deploy:   gcloud run deploy — api + 3 workers
+6. Deploy:   gcloud run services update --image=... — api + 3 workers (image only)
 7. Smoke:    GET /healthz — fails pipeline if non-200
+```
+
+### Config ownership: Terraform vs CI
+
+For `padel-api` and the three worker services, **Terraform is the sole source of truth for all service configuration** — secret env vars, Cloud SQL bindings, IAM (`run.invoker`), scaling, command, args, and resource limits. The CI pipeline only updates the container image on each deploy via `gcloud run services update --image=...`.
+
+This split matters because `gcloud run deploy ...` with flags like `--set-secrets` is a *replace, not merge* operation: any secret env var attached by Terraform but not listed in the CI flag silently disappears on the next deploy. The earlier pipeline used `gcloud run deploy` with an explicit `--set-secrets="..."` string, which meant every new secret added to Terraform had to be mirrored into the workflow string by hand — and missing one would cause silent drift (most recently affecting `STRIPE_CONNECT_WEBHOOK_SECRET` and `SENDGRID_API_KEY`).
+
+**The rule:** to attach a new secret env var to a Cloud Run service, edit `be-infra/terraform/modules/cloud_run/main.tf`, add the secret to `be-infra/terraform/modules/secrets/main.tf` if it's new, then `terraform apply` from `be-infra/terraform/staging/`. **Never** add `--set-secrets` (or any other config flag) to the CI deploy steps.
+
+The `run-migrations` Cloud Run **Job** is the exception — it is not managed by Terraform and is self-bootstrapped by the CI pipeline, so its `--set-secrets` and `--set-cloudsql-instances` flags only fire on first creation and stay CI-owned.
+
+Verify attached secrets on staging at any time:
+```
+make staging-api-secrets
 ```
 
 ### Pipeline: production promotion
@@ -507,15 +522,20 @@ File: `.github/workflows/deploy-production.yml` _(to be created)_
 
 ### GCP Secret Manager secrets required at runtime
 
-| Secret name | Required for | Notes |
+Authoritative source: `be-infra/terraform/modules/cloud_run/main.tf` (env block on each service) and `be-infra/terraform/modules/secrets/main.tf` (declarations). Update both files when adding a new secret — this table is descriptive, not load-bearing.
+
+| Secret name | Attached to | Notes |
 |---|---|---|
-| `padel-database-url` | API + migrations | Primary DB — always required |
-| `padel-database-read-replica-url` | API reads | Can point to primary initially |
-| `padel-secret-key` | API (JWT) | Generate with `secrets.token_hex(32)` |
-| `stripe-secret-key` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
-| `stripe-webhook-secret` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
-| `sendgrid-api-key` | API (Sprint 5+) | Placeholder ok until Sprint 5 |
-| `padel-platform-api-key` | API (future) | Placeholder ok until feature is built |
+| `padel-database-url` | `padel-api`, workers, `run-migrations` job | Primary DB — always required |
+| `padel-database-read-replica-url` | `padel-api` | Can point to primary initially |
+| `padel-secret-key` | `padel-api`, workers | JWT signing — generate with `secrets.token_hex(32)` |
+| `stripe-secret-key` | `padel-api` | Platform Stripe Connect account |
+| `stripe-webhook-secret` | `padel-api` | Platform Stripe webhook signing |
+| `stripe-connect-webhook-secret` | `padel-api` | Connected-account webhook signing |
+| `stripe-billing-secret-key` | `padel-api` | SmashBook tenant-billing Stripe account |
+| `stripe-billing-webhook-secret` | `padel-api` | Tenant-billing webhook signing |
+| `sendgrid-api-key` | `padel-api` | Transactional email |
+| `padel-platform-api-key` | (not yet attached) | Reserved for future feature |
 
 ### Trigger the pipeline manually
 

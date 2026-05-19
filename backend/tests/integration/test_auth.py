@@ -21,6 +21,7 @@ Why these are integration tests (not unit tests)
 
 import uuid
 from datetime import datetime, timezone, timedelta
+from unittest.mock import patch
 
 from sqlalchemy import delete as sql_delete
 
@@ -90,6 +91,41 @@ class TestRegister:
             },
         )
         assert resp.status_code == 422
+
+    async def test_publishes_welcome_event(self, client, tenant):
+        email = f"new-{uuid.uuid4().hex[:6]}@example.com"
+        with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
+            resp = await client.post(
+                "/api/v1/auth/register",
+                json={
+                    "tenant_subdomain": tenant.subdomain,
+                    "email": email,
+                    "full_name": "New Player",
+                    "password": "Password1!",
+                },
+            )
+        assert resp.status_code == 201
+        mock_publish.assert_called_once()
+        event_type, payload = mock_publish.call_args.args
+        assert event_type == "welcome"
+        assert payload["email"] == email
+        assert payload["full_name"] == "New Player"
+        assert payload["tenant_name"] == tenant.name
+        assert "user_id" in payload
+
+    async def test_duplicate_email_skips_welcome(self, client, player, tenant):
+        with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
+            resp = await client.post(
+                "/api/v1/auth/register",
+                json={
+                    "tenant_subdomain": tenant.subdomain,
+                    "email": player.email,
+                    "full_name": "Duplicate",
+                    "password": "Password1!",
+                },
+            )
+        assert resp.status_code == 409
+        mock_publish.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

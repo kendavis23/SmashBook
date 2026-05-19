@@ -85,6 +85,16 @@ class NotificationService:
         })
 
     @staticmethod
+    def send_welcome_email(user_id: str, email: str, full_name: str, tenant_name: str) -> None:
+        """Welcome email sent after a player registers an account."""
+        publish_notification_event("welcome", {
+            "user_id": user_id,
+            "email": email,
+            "full_name": full_name,
+            "tenant_name": tenant_name,
+        })
+
+    @staticmethod
     def send_club_announcement(club_id: str, title: str, body: str) -> None:
         """Broadcast announcement to all active players in a club."""
         publish_notification_event("send_club_announcement", {

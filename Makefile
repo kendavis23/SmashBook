@@ -94,6 +94,13 @@ seed-staging:
 		--project=smashbook-488121 \
 		--wait
 
+# List Secret Manager secrets attached to the staging Cloud Run API service
+staging-api-secrets:
+	gcloud run services describe padel-api \
+		--project=smashbook-488121 \
+		--region=europe-west2 \
+		--format=json | jq '.spec.template.spec.containers[0].env[] | select(.valueFrom.secretKeyRef) | {name: .name, secret: .valueFrom.secretKeyRef.name, key: .valueFrom.secretKeyRef.key}'
+
 # Run seed against the local dev DB (api container must be up)
 seed-local:
 	docker-compose exec api python scripts/seed_staging.py
@@ -134,4 +141,4 @@ get-token:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token

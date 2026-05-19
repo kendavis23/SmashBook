@@ -10,6 +10,7 @@ Responsibilities:
   - Apply discounts / promo codes
 """
 import hashlib
+import logging
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -20,6 +21,8 @@ from sqlalchemy import select as sa_select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+
+logger = logging.getLogger(__name__)
 from app.core.pubsub import publish_notification_event
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus, InviteStatus, PaymentStatus
 from app.db.models.club import Club
@@ -365,7 +368,10 @@ class PaymentService:
                     "currency": wallet.currency,
                 })
             except Exception:
-                pass
+                logger.exception(
+                    "failed to publish wallet_topped_up event user_id=%s",
+                    user_id_str,
+                )
 
     async def confirm_payment(self, stripe_event: dict) -> None:
         """
@@ -454,6 +460,8 @@ class PaymentService:
         try:
             publish_notification_event("send_payment_receipt", {
                 "user_id": str(payment.user_id),
+                "email": user.email if user else None,
+                "full_name": user.full_name if user else None,
                 "booking_id": str(payment.booking_id),
                 "payment_id": str(payment.id),
                 "amount": str(payment.amount),
@@ -461,7 +469,10 @@ class PaymentService:
                 "receipt_url": payment.stripe_receipt_url,
             })
         except Exception:
-            pass  # notification failure must not affect payment state
+            logger.exception(
+                "failed to publish send_payment_receipt event payment_id=%s user_id=%s",
+                payment.id, payment.user_id,
+            )
 
     async def handle_payment_failed(self, stripe_event: dict) -> None:
         """
@@ -498,7 +509,10 @@ class PaymentService:
                 "failure_reason": failure_reason,
             })
         except Exception:
-            pass
+            logger.exception(
+                "failed to publish payment_failed_player event payment_id=%s user_id=%s",
+                payment.id, payment.user_id,
+            )
 
         try:
             publish_notification_event("payment_failed_staff", {
@@ -508,7 +522,10 @@ class PaymentService:
                 "failure_reason": failure_reason,
             })
         except Exception:
-            pass
+            logger.exception(
+                "failed to publish payment_failed_staff event payment_id=%s booking_id=%s",
+                payment.id, payment.booking_id,
+            )
 
     async def issue_refund(self, booking_id: str, user_id: str,
                             amount: float = None, reason: str = None) -> dict:
@@ -771,8 +788,11 @@ class PaymentService:
                     booking.status = BookingStatus.confirmed
                     self.db.add(booking)
 
+            user = await self.db.get(User, user_id)
             receipt_payload = {
                 "user_id": str(user_id),
+                "email": user.email if user else None,
+                "full_name": user.full_name if user else None,
                 "booking_id": str(source_id),
                 "payment_id": str(payment.id),
                 "amount": str(amount),
@@ -786,7 +806,10 @@ class PaymentService:
             try:
                 publish_notification_event("send_payment_receipt", receipt_payload)
             except Exception:
-                pass  # notification failure must not affect payment state
+                logger.exception(
+                    "failed to publish send_payment_receipt event (wallet) payment_id=%s user_id=%s",
+                    payment.id, user_id,
+                )
 
         return {"balance_after": wallet.balance, "transaction_id": txn.id}
 

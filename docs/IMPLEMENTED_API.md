@@ -1,4 +1,4 @@
-_Last updated: 2026-05-18 00:00 UTC_
+_Last updated: 2026-05-19 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -10,7 +10,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/auth/register` | Register a new player account; returns access + refresh tokens |
+| `POST` | `/api/v1/auth/register` | Register a new player account; returns access + refresh tokens. Publishes `welcome` event to `notification-events` → notification worker → SendGrid welcome email (best-effort; failure does not block registration) |
 | `POST` | `/api/v1/auth/login` | Login with email + password; returns access + refresh tokens |
 | `POST` | `/api/v1/auth/refresh` | Exchange a refresh token for a new token pair |
 | `POST` | `/api/v1/auth/logout` | Stateless logout (client discards tokens) |
