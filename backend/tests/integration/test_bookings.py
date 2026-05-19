@@ -945,6 +945,70 @@ class TestJoinBooking:
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 
+    async def test_join_applies_membership_discount(
+        self, client, player_headers, player2, player2_headers, club, court_with_hours, test_session_factory
+    ):
+        """Joining player's BookingPlayer row exposes discount_amount/discount_source
+        when a membership discount applies. Regression: previously these were null on
+        the join response even though amount_due reflected the discount."""
+        async with test_session_factory() as session:
+            plan = MembershipPlan(
+                club_id=club.id,
+                name="Join Discount Plan",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("30.00"),
+                booking_credits_per_period=0,
+                discount_pct=Decimal("20.00"),
+                is_active=True,
+            )
+            session.add(plan)
+            await session.flush()
+
+            now = datetime.now(tz=timezone.utc)
+            sub = MembershipSubscription(
+                user_id=player2.id,
+                plan_id=plan.id,
+                club_id=club.id,
+                status=MembershipStatus.active,
+                current_period_start=now,
+                current_period_end=now + timedelta(days=30),
+                credits_remaining=0,
+            )
+            session.add(sub)
+            await session.commit()
+            plan_id = plan.id
+            sub_id = sub.id
+
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start, is_open_game=True),
+            headers=player_headers,
+        )
+        booking_id = r.json()["id"]
+
+        resp = await client.post(
+            f"/api/v1/bookings/{booking_id}/join?club_id={club.id}", headers=player2_headers
+        )
+        assert resp.status_code == 200, resp.text
+        joined = next(p for p in resp.json()["players"] if p["user_id"] == str(player2.id))
+
+        # Court 20.00 / 4 players = 5.00 per player; 20% off = 1.00 discount → 4.00 due
+        assert Decimal(joined["discount_amount"]) == Decimal("1.00")
+        assert joined["discount_source"] == "membership"
+        assert Decimal(joined["amount_due"]) == Decimal("4.00")
+
+        async with test_session_factory() as session:
+            obj = await session.get(MembershipSubscription, sub_id)
+            if obj:
+                await session.delete(obj)
+            obj = await session.get(MembershipPlan, plan_id)
+            if obj:
+                await session.delete(obj)
+            await session.commit()
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
 
 # ---------------------------------------------------------------------------
 # POST /api/v1/bookings/{id}/invite

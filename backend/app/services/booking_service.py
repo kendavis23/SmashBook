@@ -783,7 +783,17 @@ class BookingService:
         breakdown = await pricing_svc.calculate(
             club_id, booking.start_datetime, booking.max_players, requesting_user.id
         )
-        amount_due = breakdown.amount_due if breakdown else Decimal("0.00")
+        if breakdown:
+            amount_due = breakdown.amount_due
+            discount_source = breakdown.discount_source
+            # discount_amount and discount_source travel together; PricingService
+            # uses Decimal("0.00") internally as the no-discount default, but the
+            # persisted contract is (None, None) when no discount was actually applied.
+            discount_amount = breakdown.discount_amount if discount_source else None
+        else:
+            amount_due = Decimal("0.00")
+            discount_amount = None
+            discount_source = None
 
         join_payment_status = (
             PaymentStatus.paid
@@ -797,6 +807,8 @@ class BookingService:
             invite_status=InviteStatus.accepted,
             payment_status=join_payment_status,
             amount_due=amount_due,
+            discount_amount=discount_amount,
+            discount_source=discount_source,
         )
         self.db.add(bp)
         await self.db.flush()
