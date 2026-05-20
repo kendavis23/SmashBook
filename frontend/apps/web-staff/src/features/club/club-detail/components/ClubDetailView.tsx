@@ -1,7 +1,5 @@
 import type { Club, OperatingHours, PricingRule } from "../../types";
-import type { JSX } from "react";
-
-const RULES_PER_PAGE = 7;
+import { type JSX, useState } from "react";
 
 const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAY_NAMES_FULL = [
@@ -68,11 +66,11 @@ export default function ClubDetailView({
     rules,
     hoursLoading,
     rulesLoading,
-    rulesPage,
-    onRulesPageChange,
+    rulesPage: _rulesPage,
+    onRulesPageChange: _onRulesPageChange,
 }: Props): JSX.Element {
-    const totalPages = Math.ceil(rules.length / RULES_PER_PAGE);
-    const pagedRules = rules.slice(rulesPage * RULES_PER_PAGE, (rulesPage + 1) * RULES_PER_PAGE);
+    const [selectedDay, setSelectedDay] = useState(0);
+    const dayRules = rules.filter((r) => r.day_of_week === selectedDay);
 
     return (
         <div className="space-y-5">
@@ -126,133 +124,146 @@ export default function ClubDetailView({
             </section>
 
             <section>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Operating Hours
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Operating Hours & Pricing Rules
                 </p>
-                {hoursLoading ? (
+                {hoursLoading || rulesLoading ? (
                     <p className="text-xs text-muted-foreground/60">Loading…</p>
                 ) : (
-                    <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7">
-                        {DAY_NAMES_FULL.map((_, i) => {
-                            const entry = hours.find((h) => h.day_of_week === i);
-                            return (
-                                <div
-                                    key={i}
-                                    className={`rounded-lg border px-2 py-2 text-center ${
-                                        entry
-                                            ? "border-cta/20 bg-cta/5"
-                                            : "border-border/50 bg-muted/30"
-                                    }`}
-                                >
-                                    <p className="text-xs font-semibold text-muted-foreground">
-                                        {DAY_NAMES_SHORT[i]}
-                                    </p>
-                                    {entry ? (
-                                        <p className="mt-0.5 text-xs font-medium text-cta">
-                                            {formatTime(entry.open_time)} –{" "}
-                                            {formatTime(entry.close_time)}
-                                        </p>
-                                    ) : (
-                                        <p className="mt-0.5 text-xs text-muted-foreground/50">
-                                            Closed
-                                        </p>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </section>
-
-            <section>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Pricing Rules
-                </p>
-                {rulesLoading ? (
-                    <p className="text-xs text-muted-foreground/60">Loading…</p>
-                ) : rules.length === 0 ? (
-                    <p className="text-xs text-muted-foreground/60">No pricing rules configured.</p>
-                ) : (
-                    <>
-                        <div className="overflow-x-auto rounded-lg border border-border">
-                            <table className="w-full text-xs">
-                                <thead>
-                                    <tr className="border-b border-border bg-muted/50">
-                                        <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                                            Label
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                                            Day
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                                            Time
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                                            Price
-                                        </th>
-                                        <th className="px-3 py-2.5 text-left font-semibold text-muted-foreground">
-                                            Status
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pagedRules.map((r, i) => (
-                                        <tr
-                                            key={i}
-                                            className="border-b border-border/50 last:border-0 hover:bg-muted/20"
+                    <div className="space-y-3">
+                        {/* Day cards — act as tabs */}
+                        <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                            {DAY_NAMES_FULL.map((_, i) => {
+                                const entry = hours.find((h) => h.day_of_week === i);
+                                const isActive = selectedDay === i;
+                                return (
+                                    <button
+                                        key={i}
+                                        onClick={() => setSelectedDay(i)}
+                                        className={`rounded-lg border px-2 py-2.5 text-center transition-all ${
+                                            isActive
+                                                ? "border-cta bg-cta/10 shadow-sm"
+                                                : entry
+                                                  ? "border-border bg-card hover:border-cta/40 hover:bg-cta/5"
+                                                  : "border-border/50 bg-muted/20 hover:bg-muted/40"
+                                        }`}
+                                    >
+                                        <p
+                                            className={`text-xs font-semibold ${isActive ? "text-cta" : "text-foreground"}`}
                                         >
-                                            <td className="px-3 py-2 font-medium text-foreground">
-                                                {r.label}
-                                            </td>
-                                            <td className="px-3 py-2 text-muted-foreground">
-                                                {DAY_NAMES_FULL[r.day_of_week]}
-                                            </td>
-                                            <td className="px-3 py-2 text-muted-foreground">
-                                                {r.start_time}–{r.end_time}
-                                            </td>
-                                            <td className="px-3 py-2 font-medium text-foreground">
-                                                {club.currency} {r.price_per_slot}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <span
-                                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                        r.is_active
-                                                            ? "bg-success/15 text-success"
-                                                            : "bg-muted text-muted-foreground"
-                                                    }`}
-                                                >
-                                                    {r.is_active ? "Active" : "Inactive"}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            {DAY_NAMES_SHORT[i]}
+                                        </p>
+                                        {entry ? (
+                                            <p
+                                                className={`mt-0.5 text-[10px] leading-tight ${isActive ? "text-cta/80" : "text-muted-foreground"}`}
+                                            >
+                                                {formatTime(entry.open_time)} –{" "}
+                                                {formatTime(entry.close_time)}
+                                            </p>
+                                        ) : (
+                                            <p className="mt-0.5 text-[10px] text-muted-foreground/40">
+                                                Closed
+                                            </p>
+                                        )}
+                                    </button>
+                                );
+                            })}
                         </div>
-                        {totalPages > 1 && (
-                            <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                                <span>
-                                    Page {rulesPage + 1} of {totalPages}
-                                </span>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={() => onRulesPageChange(rulesPage - 1)}
-                                        disabled={rulesPage === 0}
-                                        className="rounded border border-border px-2 py-1 disabled:opacity-40 hover:bg-muted/50"
-                                    >
-                                        Prev
-                                    </button>
-                                    <button
-                                        onClick={() => onRulesPageChange(rulesPage + 1)}
-                                        disabled={rulesPage === totalPages - 1}
-                                        className="rounded border border-border px-2 py-1 disabled:opacity-40 hover:bg-muted/50"
-                                    >
-                                        Next
-                                    </button>
+
+                        {/* Selected day detail panel */}
+                        <div className="rounded-xl border border-border bg-card overflow-hidden">
+                            {/* Day header */}
+                            {(() => {
+                                const entry = hours.find((h) => h.day_of_week === selectedDay);
+                                return (
+                                    <div className="flex items-center gap-3 border-b border-border px-4 py-3 bg-muted/20">
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-sm font-semibold text-foreground">
+                                                    {DAY_NAMES_FULL[selectedDay]}
+                                                </span>
+                                                {entry ? (
+                                                    <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
+                                                        Open
+                                                    </span>
+                                                ) : (
+                                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                                                        Closed
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="mt-0.5 text-xs text-muted-foreground">
+                                                {entry
+                                                    ? `${formatTime(entry.open_time)} – ${formatTime(entry.close_time)}`
+                                                    : "No operating hours set"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Pricing rules table */}
+                            {dayRules.length === 0 ? (
+                                <div className="px-4 py-8 text-center">
+                                    <p className="text-xs text-muted-foreground/60">
+                                        No pricing rules for {DAY_NAMES_FULL[selectedDay]}.
+                                    </p>
                                 </div>
-                            </div>
-                        )}
-                    </>
+                            ) : (
+                                <table className="w-full text-xs">
+                                    <thead>
+                                        <tr className="border-b border-border bg-muted/30">
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                Label
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                Day
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                Time
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                Price
+                                            </th>
+                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                                Status
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {dayRules.map((r, i) => (
+                                            <tr
+                                                key={i}
+                                                className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                                            >
+                                                <td className="px-4 py-3 font-medium text-foreground">
+                                                    {r.label}
+                                                </td>
+                                                <td className="px-4 py-3 text-muted-foreground">
+                                                    {DAY_NAMES_FULL[r.day_of_week]}
+                                                </td>
+                                                <td className="px-4 py-3 text-muted-foreground">
+                                                    {formatTime(r.start_time)} –{" "}
+                                                    {formatTime(r.end_time)}
+                                                </td>
+                                                <td className="px-4 py-3 font-semibold text-foreground">
+                                                    {club.currency}{" "}
+                                                    {Number(r.price_per_slot).toFixed(2)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span
+                                                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${r.is_active ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
+                                                    >
+                                                        {r.is_active ? "Active" : "Inactive"}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                    </div>
                 )}
             </section>
         </div>

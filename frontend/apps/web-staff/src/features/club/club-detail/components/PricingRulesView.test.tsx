@@ -66,7 +66,9 @@ const defaultProps = {
     currentPage: 0,
     totalPages: 1,
     deleteIndex: null,
+    selectedDay: 0,
     onToastDismiss: vi.fn(),
+    onDayChange: vi.fn(),
     onAddRule: vi.fn(),
     onEditRule: vi.fn(),
     onDeleteRule: vi.fn(),
@@ -90,9 +92,9 @@ describe("PricingRulesView — empty state", () => {
 });
 
 describe("PricingRulesView — with rules", () => {
-    const twoRules = [baseRule, { ...baseRule, label: "Off-Peak", day_of_week: 6 }];
+    const twoRules = [baseRule, { ...baseRule, label: "Off-Peak", day_of_week: 0 }];
 
-    it("renders rule count", () => {
+    it("renders selected day heading", () => {
         render(
             <PricingRulesView
                 {...defaultProps}
@@ -101,7 +103,7 @@ describe("PricingRulesView — with rules", () => {
                 totalPages={1}
             />
         );
-        expect(screen.getByText("2 rules")).toBeInTheDocument();
+        expect(screen.getByText("Monday Pricing Rules")).toBeInTheDocument();
     });
 
     it("renders each rule card", () => {
@@ -149,7 +151,22 @@ describe("PricingRulesView — with rules", () => {
         expect(handleDelete).toHaveBeenCalledWith(0);
     });
 
-    it("shows '1 rule' text for a single rule", () => {
+    it("renders rules for the selected day only", () => {
+        render(
+            <PricingRulesView
+                {...defaultProps}
+                rules={[baseRule, { ...baseRule, label: "Saturday Peak", day_of_week: 5 }]}
+                pagedRules={[baseRule, { ...baseRule, label: "Saturday Peak", day_of_week: 5 }]}
+                totalPages={1}
+            />
+        );
+        expect(screen.getByText("Peak")).toBeInTheDocument();
+        expect(screen.queryByText("Saturday Peak")).not.toBeInTheDocument();
+    });
+});
+
+describe("PricingRulesView — day tabs", () => {
+    it("renders all day tabs", () => {
         render(
             <PricingRulesView
                 {...defaultProps}
@@ -158,55 +175,36 @@ describe("PricingRulesView — with rules", () => {
                 totalPages={1}
             />
         );
-        expect(screen.getByText("1 rule")).toBeInTheDocument();
+        expect(screen.getByText("Monday")).toBeInTheDocument();
+        expect(screen.getByText("Sunday")).toBeInTheDocument();
     });
-});
 
-describe("PricingRulesView — pagination", () => {
-    const manyRules = Array.from({ length: 12 }, (_, i) => ({
-        ...baseRule,
-        label: `Rule ${i}`,
-    }));
-
-    it("renders pagination controls when totalPages > 1", () => {
+    it("calls onDayChange when a day is clicked", () => {
+        const handleDayChange = vi.fn();
         render(
             <PricingRulesView
                 {...defaultProps}
-                rules={manyRules}
-                pagedRules={manyRules.slice(0, 10)}
-                totalPages={2}
+                rules={[baseRule]}
+                pagedRules={[baseRule]}
+                totalPages={1}
+                onDayChange={handleDayChange}
             />
         );
-        expect(screen.getByText("Previous")).toBeInTheDocument();
-        expect(screen.getByText("Next")).toBeInTheDocument();
+        fireEvent.click(screen.getByText("Sunday"));
+        expect(handleDayChange).toHaveBeenCalledWith(6);
     });
 
-    it("calls onPageChange when Next is clicked", () => {
-        const handlePage = vi.fn();
+    it("shows an empty message for the selected day when it has no rules", () => {
         render(
             <PricingRulesView
                 {...defaultProps}
-                rules={manyRules}
-                pagedRules={manyRules.slice(0, 10)}
-                totalPages={2}
-                onPageChange={handlePage}
+                rules={[baseRule]}
+                pagedRules={[baseRule]}
+                selectedDay={6}
+                totalPages={1}
             />
         );
-        fireEvent.click(screen.getByText("Next"));
-        expect(handlePage).toHaveBeenCalledWith(1);
-    });
-
-    it("Previous button is disabled on first page", () => {
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={manyRules}
-                pagedRules={manyRules.slice(0, 10)}
-                totalPages={2}
-                currentPage={0}
-            />
-        );
-        expect(screen.getByText("Previous")).toBeDisabled();
+        expect(screen.getByText("No rules for Sunday.")).toBeInTheDocument();
     });
 });
 

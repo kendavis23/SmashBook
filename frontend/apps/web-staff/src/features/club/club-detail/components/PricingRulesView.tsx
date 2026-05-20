@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import type { JSX } from "react";
 import { DeleteModal } from "./DeleteModal";
 import { RuleCard } from "./PricingRuleCard";
-import { PAGE_SIZE } from "./pricingRulesConstants";
+import { DAY_NAMES } from "./pricingRulesConstants";
 
 type Props = {
     rules: PricingRule[];
@@ -17,7 +17,9 @@ type Props = {
     currentPage: number;
     totalPages: number;
     deleteIndex: number | null;
+    selectedDay: number;
     onToastDismiss: () => void;
+    onDayChange: (day: number) => void;
     onAddRule: () => void;
     onEditRule: (index: number) => void;
     onDeleteRule: (index: number) => void;
@@ -28,23 +30,25 @@ type Props = {
 
 export default function PricingRulesView({
     rules,
-    pagedRules,
     currency,
     saving,
     success,
     finalError,
     toastDismissed,
-    currentPage,
-    totalPages,
     deleteIndex,
+    selectedDay,
     onToastDismiss,
+    onDayChange,
     onAddRule,
     onEditRule,
     onDeleteRule,
-    onPageChange,
     onDeleteConfirmed,
     onDeleteCancel,
 }: Props): JSX.Element {
+    const dayRules = rules
+        .map((rule, i) => ({ rule, globalIndex: i }))
+        .filter(({ rule }) => rule.day_of_week === selectedDay);
+
     return (
         <div className="space-y-4">
             {finalError && !toastDismissed ? (
@@ -72,60 +76,60 @@ export default function PricingRulesView({
             ) : null}
 
             {rules.length > 0 ? (
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <p className="text-sm text-muted-foreground">
-                            {rules.length} rule{rules.length !== 1 ? "s" : ""}
+                <div className="flex gap-0 rounded-xl border border-border bg-card overflow-hidden">
+                    {/* Day nav */}
+                    <div className="w-44 shrink-0 border-r border-border bg-muted/20">
+                        <p className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                            Days
                         </p>
-                        <button
-                            onClick={onAddRule}
-                            className="btn-cta-sm inline-flex items-center gap-1.5"
-                        >
-                            <Plus size={13} />
-                            Add rule
-                        </button>
+                        {DAY_NAMES.map((name, idx) => (
+                            <button
+                                key={name}
+                                onClick={() => onDayChange(idx)}
+                                className={`w-full px-4 py-3 text-left text-sm transition ${
+                                    selectedDay === idx
+                                        ? "border-l-2 border-cta bg-background font-semibold text-foreground"
+                                        : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                                }`}
+                            >
+                                {name}
+                            </button>
+                        ))}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                        {pagedRules.map((rule, i) => {
-                            const globalIndex = currentPage * PAGE_SIZE + i;
-                            return (
-                                <RuleCard
-                                    key={`${rule.label}-${rule.day_of_week}-${rule.start_time}-${globalIndex}`}
-                                    rule={rule}
-                                    currency={currency}
-                                    onEdit={() => onEditRule(globalIndex)}
-                                    onDelete={() => onDeleteRule(globalIndex)}
-                                />
-                            );
-                        })}
-                    </div>
-
-                    {totalPages > 1 ? (
-                        <div className="flex items-center justify-between border-t border-border pt-3">
-                            <p className="text-xs text-muted-foreground">
-                                Page {currentPage + 1} of {totalPages}
-                            </p>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => onPageChange(Math.max(0, currentPage - 1))}
-                                    disabled={currentPage === 0}
-                                    className="btn-outline disabled:opacity-40"
-                                >
-                                    Previous
-                                </button>
-                                <button
-                                    onClick={() =>
-                                        onPageChange(Math.min(totalPages - 1, currentPage + 1))
-                                    }
-                                    disabled={currentPage >= totalPages - 1}
-                                    className="btn-outline disabled:opacity-40"
-                                >
-                                    Next
-                                </button>
-                            </div>
+                    {/* Rules panel */}
+                    <div className="min-w-0 flex-1 px-5 py-4">
+                        <div className="mb-4 flex items-center justify-between gap-2">
+                            <h3 className="text-sm font-semibold text-foreground">
+                                {DAY_NAMES[selectedDay]} Pricing Rules
+                            </h3>
+                            <button
+                                onClick={onAddRule}
+                                className="btn-cta-sm inline-flex items-center gap-1.5"
+                            >
+                                <Plus size={13} />
+                                Add rule
+                            </button>
                         </div>
-                    ) : null}
+
+                        {dayRules.length === 0 ? (
+                            <p className="py-8 text-center text-sm text-muted-foreground">
+                                No rules for {DAY_NAMES[selectedDay]}.
+                            </p>
+                        ) : (
+                            <div className="space-y-3">
+                                {dayRules.map(({ rule, globalIndex }) => (
+                                    <RuleCard
+                                        key={`${rule.label}-${rule.day_of_week}-${rule.start_time}-${globalIndex}`}
+                                        rule={rule}
+                                        currency={currency}
+                                        onEdit={() => onEditRule(globalIndex)}
+                                        onDelete={() => onDeleteRule(globalIndex)}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             ) : null}
 
