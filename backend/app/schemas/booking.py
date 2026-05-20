@@ -153,6 +153,14 @@ class RecurringBookingResponse(BaseModel):
     skipped: list[RecurringBookingSkipped]
 
 
+class OpenGamePlayer(BaseModel):
+    user_id: uuid.UUID
+    full_name: str
+    invite_status: InviteStatus
+
+    model_config = {"from_attributes": True}
+
+
 class OpenGameSummary(BaseModel):
     id: uuid.UUID
     court_id: uuid.UUID
@@ -165,6 +173,7 @@ class OpenGameSummary(BaseModel):
     total_price: Optional[Decimal] = None
     discount_amount: Optional[Decimal] = None
     discount_source: Optional[DiscountSource] = None
+    players: list[OpenGamePlayer]
 
     model_config = {"from_attributes": True}
 

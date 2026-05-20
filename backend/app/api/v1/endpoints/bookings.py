@@ -28,6 +28,7 @@ from app.schemas.booking import (
     CalendarTimeSlot,
     InvitePlayerRequest,
     InviteRespondRequest,
+    OpenGamePlayer,
     OpenGameSummary,
     RecurringBookingCreate,
     RecurringBookingResponse,
@@ -90,6 +91,15 @@ def _build_booking_response(booking: Booking) -> BookingResponse:
 
 def _build_open_game_summary(booking: Booking) -> OpenGameSummary:
     accepted = _accepted_count(booking.players)
+    players = [
+        OpenGamePlayer(
+            user_id=p.user_id,
+            full_name=p.user.full_name,
+            invite_status=p.invite_status,
+        )
+        for p in booking.players
+        if p.invite_status != InviteStatus.declined
+    ]
     return OpenGameSummary(
         id=booking.id,
         court_id=booking.court_id,
@@ -100,6 +110,7 @@ def _build_open_game_summary(booking: Booking) -> OpenGameSummary:
         max_skill_level=booking.max_skill_level,
         slots_available=max(0, (booking.max_players or 0) - accepted),
         total_price=booking.total_price,
+        players=players,
     )
 
 
