@@ -26,8 +26,13 @@ export default function ManageTenantContainer(): JSX.Element {
     const suspendTenant = useSuspendTenant(platformKey, tenantId);
     const changePlan = useChangeTenantPlan(platformKey, tenantId);
 
+    const [nameInput, setNameInput] = useState("");
     const [subdomainInput, setSubdomainInput] = useState("");
     const [customDomainInput, setCustomDomainInput] = useState("");
+    const [isActiveInput, setIsActiveInput] = useState(true);
+    const [subscriptionStartDateInput, setSubscriptionStartDateInput] = useState("");
+    const [ownerEmailInput, setOwnerEmailInput] = useState("");
+    const [ownerFullNameInput, setOwnerFullNameInput] = useState("");
     const [billingEmailInput, setBillingEmailInput] = useState("");
     const [selectedPlanId, setSelectedPlanId] = useState("");
     const [initialised, setInitialised] = useState(false);
@@ -35,8 +40,17 @@ export default function ManageTenantContainer(): JSX.Element {
 
     useEffect(() => {
         if (tenant && !initialised) {
+            setNameInput(tenant.name);
             setSubdomainInput(tenant.subdomain);
             setCustomDomainInput(tenant.custom_domain ?? "");
+            setIsActiveInput(tenant.is_active);
+            setSubscriptionStartDateInput(
+                tenant.subscription_start_date
+                    ? tenant.subscription_start_date.slice(0, 10)
+                    : ""
+            );
+            setOwnerEmailInput(tenant.owner_email ?? "");
+            setOwnerFullNameInput(tenant.owner_full_name ?? "");
             setSelectedPlanId(tenant.plan_id);
             setInitialised(true);
         }
@@ -47,13 +61,27 @@ export default function ManageTenantContainer(): JSX.Element {
             e.preventDefault();
             updateTenant.mutate(
                 {
+                    name: nameInput.trim() || null,
                     subdomain: subdomainInput.trim() || null,
                     custom_domain: customDomainInput.trim() || null,
+                    is_active: isActiveInput,
+                    subscription_start_date: subscriptionStartDateInput.trim() || null,
+                    owner_email: ownerEmailInput.trim() || null,
+                    owner_full_name: ownerFullNameInput.trim() || null,
                 },
                 { onSuccess: () => setSuccessMessage("Tenant updated.") }
             );
         },
-        [subdomainInput, customDomainInput, updateTenant]
+        [
+            nameInput,
+            subdomainInput,
+            customDomainInput,
+            isActiveInput,
+            subscriptionStartDateInput,
+            ownerEmailInput,
+            ownerFullNameInput,
+            updateTenant,
+        ]
     );
 
     const handleActivate = useCallback(() => {
@@ -96,8 +124,13 @@ export default function ManageTenantContainer(): JSX.Element {
         <ManageTenantView
             tenant={tenant}
             plans={plans ?? []}
+            nameInput={nameInput}
             subdomainInput={subdomainInput}
             customDomainInput={customDomainInput}
+            isActiveInput={isActiveInput}
+            subscriptionStartDateInput={subscriptionStartDateInput}
+            ownerEmailInput={ownerEmailInput}
+            ownerFullNameInput={ownerFullNameInput}
             billingEmailInput={billingEmailInput}
             selectedPlanId={selectedPlanId}
             isUpdatePending={updateTenant.isPending}
@@ -109,8 +142,13 @@ export default function ManageTenantContainer(): JSX.Element {
             suspendError={(suspendTenant.error as Error | null)?.message ?? null}
             changePlanError={(changePlan.error as Error | null)?.message ?? null}
             successMessage={successMessage}
+            onNameChange={setNameInput}
             onSubdomainChange={setSubdomainInput}
             onCustomDomainChange={setCustomDomainInput}
+            onIsActiveChange={setIsActiveInput}
+            onSubscriptionStartDateChange={setSubscriptionStartDateInput}
+            onOwnerEmailChange={setOwnerEmailInput}
+            onOwnerFullNameChange={setOwnerFullNameInput}
             onBillingEmailChange={setBillingEmailInput}
             onSelectedPlanChange={setSelectedPlanId}
             onUpdateSubmit={handleUpdateSubmit}

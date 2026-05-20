@@ -126,6 +126,8 @@ export interface TenantDetail {
     stripe_subscription_id: string | null;
     subscription_status: SubscriptionStatus | null;
     club_count: number;
+    owner_email: string | null;
+    owner_full_name: string | null;
     created_at: string;
     updated_at: string;
 }

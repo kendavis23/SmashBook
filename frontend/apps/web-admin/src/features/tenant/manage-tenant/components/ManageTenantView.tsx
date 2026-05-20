@@ -1,6 +1,6 @@
-import { AlertToast, Breadcrumb, SelectInput, formatUTCDate } from "@repo/ui";
+import { AlertToast, Breadcrumb, DatePicker, SelectInput, formatUTCDate } from "@repo/ui";
 import type { SelectOption } from "@repo/ui";
-import { Building2, CheckCircle, PauseCircle, RefreshCw } from "lucide-react";
+import { Building2, CheckCircle, PauseCircle, Save } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 
 import type { Plan, TenantDetail } from "../../types";
@@ -42,8 +42,13 @@ function statusBadge(status: string | null, isActive: boolean): JSX.Element {
 interface ManageTenantViewProps {
     tenant: TenantDetail;
     plans: Plan[];
+    nameInput: string;
     subdomainInput: string;
     customDomainInput: string;
+    isActiveInput: boolean;
+    subscriptionStartDateInput: string;
+    ownerEmailInput: string;
+    ownerFullNameInput: string;
     billingEmailInput: string;
     selectedPlanId: string;
     isUpdatePending: boolean;
@@ -55,8 +60,13 @@ interface ManageTenantViewProps {
     suspendError: string | null;
     changePlanError: string | null;
     successMessage: string | null;
+    onNameChange: (v: string) => void;
     onSubdomainChange: (v: string) => void;
     onCustomDomainChange: (v: string) => void;
+    onIsActiveChange: (v: boolean) => void;
+    onSubscriptionStartDateChange: (v: string) => void;
+    onOwnerEmailChange: (v: string) => void;
+    onOwnerFullNameChange: (v: string) => void;
     onBillingEmailChange: (v: string) => void;
     onSelectedPlanChange: (v: string) => void;
     onUpdateSubmit: (e: FormEvent) => void;
@@ -74,8 +84,13 @@ interface ManageTenantViewProps {
 export default function ManageTenantView({
     tenant,
     plans,
+    nameInput,
     subdomainInput,
     customDomainInput,
+    isActiveInput,
+    subscriptionStartDateInput,
+    ownerEmailInput,
+    ownerFullNameInput,
     billingEmailInput,
     selectedPlanId,
     isUpdatePending,
@@ -87,8 +102,13 @@ export default function ManageTenantView({
     suspendError,
     changePlanError,
     successMessage,
+    onNameChange,
     onSubdomainChange,
     onCustomDomainChange,
+    onIsActiveChange,
+    onSubscriptionStartDateChange,
+    onOwnerEmailChange,
+    onOwnerFullNameChange,
     onBillingEmailChange,
     onSelectedPlanChange,
     onUpdateSubmit,
@@ -109,7 +129,7 @@ export default function ManageTenantView({
                 showHomeIcon={false}
             />
 
-            {/* Header */}
+            {/* Header card */}
             <section className="card-surface overflow-hidden">
                 <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
                     <div className="min-w-0">
@@ -177,80 +197,168 @@ export default function ManageTenantView({
                 <AlertToast title={successMessage} variant="success" onClose={onDismissSuccess} />
             ) : null}
 
-            {/* Domain settings + Subscription plan side by side */}
-            <div className="grid gap-5 lg:grid-cols-2">
-                {/* Update domain settings */}
-                <section className="card-surface p-5">
-                    <div className="mb-4">
-                        <h2 className="text-sm font-semibold text-foreground">Domain settings</h2>
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                            Update subdomain and custom domain.
-                        </p>
-                    </div>
-                    {updateError ? (
-                        <div className="mb-4">
-                            <AlertToast
-                                title={updateError}
-                                variant="error"
-                                onClose={onDismissUpdateError}
-                            />
-                        </div>
-                    ) : null}
-                    <form onSubmit={onUpdateSubmit} noValidate>
-                        <div className="grid gap-4">
-                            <label>
-                                <span className={labelCls}>Subdomain</span>
-                                <input
-                                    className="input-base"
-                                    value={subdomainInput}
-                                    onChange={(e) => onSubdomainChange(e.target.value)}
-                                    placeholder="my-club"
-                                    autoComplete="off"
-                                />
-                            </label>
-                            <label>
-                                <span className={labelCls}>Custom domain</span>
-                                <input
-                                    className="input-base"
-                                    value={customDomainInput}
-                                    onChange={(e) => onCustomDomainChange(e.target.value)}
-                                    placeholder="app.myclub.com (optional)"
-                                    autoComplete="off"
-                                />
-                            </label>
-                        </div>
-                        <div className="mt-4 flex justify-end">
-                            <button
-                                type="submit"
-                                disabled={isUpdatePending}
-                                className="btn-cta min-h-10 px-4"
-                            >
-                                <RefreshCw size={14} />
-                                {isUpdatePending ? "Saving…" : "Save"}
-                            </button>
-                        </div>
-                    </form>
-                </section>
+            {/* Tenant settings form */}
+            <section className="card-surface overflow-hidden">
+                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <h2 className="text-sm font-semibold text-foreground">Tenant settings</h2>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                        Update organisation details, domain, owner, and billing configuration.
+                    </p>
+                </header>
 
+                {updateError ? (
+                    <div className="px-5 pt-4 sm:px-6">
+                        <AlertToast
+                            title={updateError}
+                            variant="error"
+                            onClose={onDismissUpdateError}
+                        />
+                    </div>
+                ) : null}
+
+                <form onSubmit={onUpdateSubmit} noValidate>
+                    <div className="space-y-6 px-5 py-5 sm:px-6">
+
+                        {/* Organisation details */}
+                        <div>
+                            <div className="mb-3">
+                                <h3 className="text-sm font-semibold text-foreground">
+                                    Organisation details
+                                </h3>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                    Name, domain identifiers, and account status.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <label>
+                                    <span className={labelCls}>Organisation name</span>
+                                    <input
+                                        className="input-base"
+                                        value={nameInput}
+                                        onChange={(e) => onNameChange(e.target.value)}
+                                        placeholder="Ace Padel Club"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                                <label>
+                                    <span className={labelCls}>Subdomain</span>
+                                    <input
+                                        className="input-base"
+                                        value={subdomainInput}
+                                        onChange={(e) => onSubdomainChange(e.target.value)}
+                                        placeholder="ace-padel"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                                <label>
+                                    <span className={labelCls}>Custom domain</span>
+                                    <input
+                                        className="input-base"
+                                        value={customDomainInput}
+                                        onChange={(e) => onCustomDomainChange(e.target.value)}
+                                        placeholder="app.myclub.com (optional)"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                                <div>
+                                    <span className={labelCls}>Subscription start date</span>
+                                    <DatePicker
+                                        className="input-base"
+                                        value={subscriptionStartDateInput}
+                                        onChange={onSubscriptionStartDateChange}
+                                    />
+                                </div>
+                                <div className="flex items-center gap-3 pt-1">
+                                    <button
+                                        type="button"
+                                        role="switch"
+                                        aria-checked={isActiveInput}
+                                        onClick={() => onIsActiveChange(!isActiveInput)}
+                                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-cta-ring/30 ${isActiveInput ? "bg-cta" : "bg-muted"}`}
+                                    >
+                                        <span
+                                            className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${isActiveInput ? "translate-x-4" : "translate-x-0"}`}
+                                        />
+                                    </button>
+                                    <span className="text-sm text-foreground">
+                                        Account active
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-border" />
+
+                        {/* Owner details */}
+                        <div>
+                            <div className="mb-3">
+                                <h3 className="text-sm font-semibold text-foreground">
+                                    Owner details
+                                </h3>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                    Update the tenant owner's contact information.
+                                </p>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <label>
+                                    <span className={labelCls}>Owner email</span>
+                                    <input
+                                        className="input-base"
+                                        type="email"
+                                        value={ownerEmailInput}
+                                        onChange={(e) => onOwnerEmailChange(e.target.value)}
+                                        placeholder="owner@myclub.com"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                                <label>
+                                    <span className={labelCls}>Owner full name</span>
+                                    <input
+                                        className="input-base"
+                                        value={ownerFullNameInput}
+                                        onChange={(e) => onOwnerFullNameChange(e.target.value)}
+                                        placeholder="Jane Smith"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end border-t border-border px-5 py-4 sm:px-6">
+                        <button
+                            type="submit"
+                            disabled={isUpdatePending}
+                            className="btn-cta min-h-10 px-4"
+                        >
+                            <Save size={14} />
+                            {isUpdatePending ? "Saving…" : "Save changes"}
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            {/* Subscription plan + Account status side by side */}
+            <div className="grid gap-5 lg:grid-cols-2">
                 {/* Change plan */}
-                <section className="card-surface p-5">
-                    <div className="mb-4">
+                <section className="card-surface overflow-hidden">
+                    <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
                         <h2 className="text-sm font-semibold text-foreground">Subscription plan</h2>
                         <p className="mt-0.5 text-xs text-muted-foreground">
                             Switch this tenant to a different plan.
                         </p>
-                    </div>
-                    {changePlanError ? (
+                    </header>
+                    <div className="px-5 py-5 sm:px-6">
+                        {changePlanError ? (
+                            <div className="mb-4">
+                                <AlertToast
+                                    title={changePlanError}
+                                    variant="error"
+                                    onClose={onDismissChangePlanError}
+                                />
+                            </div>
+                        ) : null}
                         <div className="mb-4">
-                            <AlertToast
-                                title={changePlanError}
-                                variant="error"
-                                onClose={onDismissChangePlanError}
-                            />
-                        </div>
-                    ) : null}
-                    <div className="grid gap-4">
-                        <div>
                             <span className={labelCls}>Plan</span>
                             <SelectInput
                                 className="input-base"
@@ -263,83 +371,89 @@ export default function ManageTenantView({
                                 placeholder="Select plan…"
                             />
                         </div>
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={onChangePlan}
+                                disabled={
+                                    isChangePlanPending || selectedPlanId === tenant.plan_id
+                                }
+                                className="btn-cta min-h-10 px-4"
+                            >
+                                {isChangePlanPending ? "Changing…" : "Change plan"}
+                            </button>
+                        </div>
                     </div>
-                    <div className="mt-4 flex justify-end">
-                        <button
-                            type="button"
-                            onClick={onChangePlan}
-                            disabled={isChangePlanPending || selectedPlanId === tenant.plan_id}
-                            className="btn-cta min-h-10 px-4"
-                        >
-                            {isChangePlanPending ? "Changing…" : "Change plan"}
-                        </button>
+                </section>
+
+                {/* Account status */}
+                <section className="card-surface overflow-hidden">
+                    <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                        <h2 className="text-sm font-semibold text-foreground">Account status</h2>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                            Activate or suspend this tenant's Stripe subscription.
+                        </p>
+                    </header>
+                    <div className="px-5 py-5 sm:px-6">
+                        {activateError ? (
+                            <div className="mb-4">
+                                <AlertToast
+                                    title={activateError}
+                                    variant="error"
+                                    onClose={onDismissActivateError}
+                                />
+                            </div>
+                        ) : null}
+                        {suspendError ? (
+                            <div className="mb-4">
+                                <AlertToast
+                                    title={suspendError}
+                                    variant="error"
+                                    onClose={onDismissSuspendError}
+                                />
+                            </div>
+                        ) : null}
+                        {!tenant.is_active ? (
+                            <div className="flex flex-col gap-3">
+                                <label>
+                                    <span className={labelCls}>Billing email (optional)</span>
+                                    <input
+                                        className="input-base"
+                                        value={billingEmailInput}
+                                        onChange={(e) => onBillingEmailChange(e.target.value)}
+                                        placeholder="billing@myclub.com"
+                                        type="email"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                                <div className="flex justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={onActivate}
+                                        disabled={isActivatePending}
+                                        className="btn-cta min-h-10 px-4"
+                                    >
+                                        <CheckCircle size={14} />
+                                        {isActivatePending ? "Activating…" : "Activate tenant"}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={onSuspend}
+                                    disabled={isSuspendPending}
+                                    className="flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-50"
+                                >
+                                    <PauseCircle size={14} />
+                                    {isSuspendPending ? "Suspending…" : "Suspend tenant"}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </section>
             </div>
-
-            {/* Activate / Suspend */}
-            <section className="card-surface p-5">
-                <div className="mb-4">
-                    <h2 className="text-sm font-semibold text-foreground">Account status</h2>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                        Activate or suspend this tenant.
-                    </p>
-                </div>
-                {activateError ? (
-                    <div className="mb-4">
-                        <AlertToast
-                            title={activateError}
-                            variant="error"
-                            onClose={onDismissActivateError}
-                        />
-                    </div>
-                ) : null}
-                {suspendError ? (
-                    <div className="mb-4">
-                        <AlertToast
-                            title={suspendError}
-                            variant="error"
-                            onClose={onDismissSuspendError}
-                        />
-                    </div>
-                ) : null}
-                <div className="flex flex-wrap items-end gap-4">
-                    {!tenant.is_active ? (
-                        <div className="flex items-end gap-3">
-                            <label className="flex-1">
-                                <span className={labelCls}>Billing email (optional)</span>
-                                <input
-                                    className="input-base"
-                                    value={billingEmailInput}
-                                    onChange={(e) => onBillingEmailChange(e.target.value)}
-                                    placeholder="billing@myclub.com"
-                                    type="email"
-                                    autoComplete="off"
-                                />
-                            </label>
-                            <button
-                                type="button"
-                                onClick={onActivate}
-                                disabled={isActivatePending}
-                                className="btn-cta min-h-10 px-4"
-                            >
-                                <CheckCircle size={14} />
-                                {isActivatePending ? "Activating…" : "Activate"}
-                            </button>
-                        </div>
-                    ) : (
-                        <button
-                            type="button"
-                            onClick={onSuspend}
-                            disabled={isSuspendPending}
-                            className="flex items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-sm font-medium text-destructive transition hover:bg-destructive/20 disabled:opacity-50"
-                        >
-                            <PauseCircle size={14} />
-                            {isSuspendPending ? "Suspending…" : "Suspend tenant"}
-                        </button>
-                    )}
-                </div>
-            </section>
         </div>
     );
 }
