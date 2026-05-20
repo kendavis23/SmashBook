@@ -218,7 +218,6 @@ export default function ManageTenantView({
 
                 <form onSubmit={onUpdateSubmit} noValidate>
                     <div className="space-y-6 px-5 py-5 sm:px-6">
-
                         {/* Organisation details */}
                         <div>
                             <div className="mb-3">
@@ -280,9 +279,7 @@ export default function ManageTenantView({
                                             className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${isActiveInput ? "translate-x-4" : "translate-x-0"}`}
                                         />
                                     </button>
-                                    <span className="text-sm text-foreground">
-                                        Account active
-                                    </span>
+                                    <span className="text-sm text-foreground">Account active</span>
                                 </div>
                             </div>
                         </div>
@@ -296,7 +293,7 @@ export default function ManageTenantView({
                                     Owner details
                                 </h3>
                                 <p className="mt-0.5 text-xs text-muted-foreground">
-                                    Update the tenant owner's contact information.
+                                    Update the tenant owner&apos;s contact information.
                                 </p>
                             </div>
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -375,9 +372,7 @@ export default function ManageTenantView({
                             <button
                                 type="button"
                                 onClick={onChangePlan}
-                                disabled={
-                                    isChangePlanPending || selectedPlanId === tenant.plan_id
-                                }
+                                disabled={isChangePlanPending || selectedPlanId === tenant.plan_id}
                                 className="btn-cta min-h-10 px-4"
                             >
                                 {isChangePlanPending ? "Changing…" : "Change plan"}
@@ -391,7 +386,7 @@ export default function ManageTenantView({
                     <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
                         <h2 className="text-sm font-semibold text-foreground">Account status</h2>
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                            Activate or suspend this tenant's Stripe subscription.
+                            Activate or suspend this tenant&apos;s Stripe subscription.
                         </p>
                     </header>
                     <div className="px-5 py-5 sm:px-6">
