@@ -18,6 +18,7 @@ export default function PricingRulesTable({
     const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
     const [currentPage, setCurrentPage] = useState(0);
     const [toastDismissed, setToastDismissed] = useState(false);
+    const [selectedDay, setSelectedDay] = useState(0);
 
     const { data: rules = [], isLoading, error } = useGetPricingRules(clubId);
 
@@ -122,11 +123,13 @@ export default function PricingRulesTable({
             currentPage={currentPage}
             totalPages={totalPages}
             deleteIndex={deleteIndex}
+            selectedDay={selectedDay}
             onToastDismiss={() => setToastDismissed(true)}
             onAddRule={openAddForm}
             onEditRule={openEditForm}
             onDeleteRule={setDeleteIndex}
             onPageChange={setCurrentPage}
+            onDayChange={setSelectedDay}
             onDeleteConfirmed={handleDeleteConfirmed}
             onDeleteCancel={() => setDeleteIndex(null)}
         />

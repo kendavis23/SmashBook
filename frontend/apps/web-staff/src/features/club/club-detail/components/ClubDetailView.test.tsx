@@ -99,7 +99,7 @@ describe("ClubDetailView — operating hours section", () => {
                 onRulesPageChange={vi.fn()}
             />
         );
-        expect(screen.getByText("9:00 AM – 9:00 PM")).toBeInTheDocument();
+        expect(screen.getAllByText("9:00 AM – 9:00 PM").length).toBeGreaterThan(0);
     });
 
     it("renders Closed for days with no hours", () => {
@@ -147,7 +147,7 @@ describe("ClubDetailView — pricing rules section", () => {
                 onRulesPageChange={vi.fn()}
             />
         );
-        expect(screen.getByText("No pricing rules configured.")).toBeInTheDocument();
+        expect(screen.getByText("No pricing rules for Monday.")).toBeInTheDocument();
     });
 
     it("renders rule label in table", () => {
@@ -165,24 +165,20 @@ describe("ClubDetailView — pricing rules section", () => {
         expect(screen.getByText("Peak")).toBeInTheDocument();
     });
 
-    it("calls onRulesPageChange when Next is clicked on multiple pages", () => {
-        const manyRules = Array.from({ length: 10 }, (_, i) => ({
-            ...mockRules[0],
-            label: `Rule ${i}`,
-        })) as PricingRule[];
-        const handlePageChange = vi.fn();
+    it("switches selected day details when a day tab is clicked", () => {
         render(
             <ClubDetailView
                 club={mockClub}
                 hours={[]}
-                rules={manyRules}
+                rules={[{ ...mockRules[0], day_of_week: 6 } as PricingRule]}
                 hoursLoading={false}
                 rulesLoading={false}
                 rulesPage={0}
-                onRulesPageChange={handlePageChange}
+                onRulesPageChange={vi.fn()}
             />
         );
-        fireEvent.click(screen.getByText("Next"));
-        expect(handlePageChange).toHaveBeenCalledWith(1);
+        fireEvent.click(screen.getByText("Sun"));
+        expect(screen.getAllByText("Sunday").length).toBeGreaterThan(0);
+        expect(screen.getByText("Peak")).toBeInTheDocument();
     });
 });
