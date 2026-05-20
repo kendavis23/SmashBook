@@ -23,31 +23,13 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
 
     return (
         <View
+            className="absolute left-5 right-5"
             style={{
-                position: "absolute",
                 bottom: bottomOffset,
-                left: 20,
-                right: 20,
             }}
             pointerEvents="box-none"
         >
-            <View
-                style={{
-                    flexDirection: "row",
-                    backgroundColor: "#FFFFFF",
-                    borderRadius: 36,
-                    paddingHorizontal: 12,
-                    paddingVertical: 10,
-                    alignItems: "center",
-                    // iOS shadow
-                    shadowColor: "#000",
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.1,
-                    shadowRadius: 20,
-                    // Android shadow
-                    elevation: 12,
-                }}
-            >
+            <View className="flex-row items-center rounded-[36px] bg-white px-3 py-2.5 shadow-xl">
                 {state.routes.map((route, index) => {
                     const isFocused = state.index === index;
                     const tab = TABS.find((t) => t.name === route.name);
@@ -78,23 +60,13 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                             accessibilityRole="tab"
                             accessibilityLabel={options.tabBarAccessibilityLabel ?? tab.label}
                             accessibilityState={{ selected: isFocused }}
-                            style={{
-                                flex: 1,
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 5,
-                            }}
+                            className="flex-1 items-center justify-center gap-[5px]"
                         >
                             {/* Icon circle */}
                             <View
-                                style={{
-                                    width: 48,
-                                    height: 48,
-                                    borderRadius: 24,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    backgroundColor: isFocused ? "#F0F0F0" : "transparent",
-                                }}
+                                className={`h-12 w-12 items-center justify-center rounded-full ${
+                                    isFocused ? "bg-[#F0F0F0]" : "bg-transparent"
+                                }`}
                             >
                                 <Ionicons
                                     name={isFocused ? tab.iconFocused : tab.icon}
@@ -106,12 +78,11 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
 
                             {/* Label */}
                             <Text
-                                style={{
-                                    fontSize: 11,
-                                    fontWeight: isFocused ? "700" : "500",
-                                    color: isFocused ? "#2563EB" : "#6B7280",
-                                    letterSpacing: 0.2,
-                                }}
+                                className={`text-[11px] tracking-[0.2px] ${
+                                    isFocused
+                                        ? "font-bold text-[#2563EB]"
+                                        : "font-medium text-[#6B7280]"
+                                }`}
                                 numberOfLines={1}
                             >
                                 {tab.label}

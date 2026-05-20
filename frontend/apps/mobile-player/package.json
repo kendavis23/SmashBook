@@ -35,6 +35,7 @@
         "zustand": "4.5.5"
     },
     "devDependencies": {
+        "@expo/vector-icons": "^15.0.3",
         "@babel/core": "^7.25.0",
         "@expo/metro-runtime": "6.1.2",
         "@repo/eslint-config": "workspace:*",

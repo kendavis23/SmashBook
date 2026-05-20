@@ -118,13 +118,6 @@ export function LoginView({
                                             placeholder="your-club"
                                             placeholderTextColor="#94a3b8"
                                             returnKeyType="next"
-                                            style={{
-                                                includeFontPadding: false,
-                                                lineHeight: 20,
-                                                paddingBottom: 4,
-                                                paddingTop: 0,
-                                                textAlignVertical: "center",
-                                            }}
                                             value={field.value}
                                         />
                                     </InputField>
@@ -155,13 +148,6 @@ export function LoginView({
                                             placeholder="you@example.com"
                                             placeholderTextColor="#94a3b8"
                                             returnKeyType="next"
-                                            style={{
-                                                includeFontPadding: false,
-                                                lineHeight: 20,
-                                                paddingBottom: 4,
-                                                paddingTop: 0,
-                                                textAlignVertical: "center",
-                                            }}
                                             textContentType="emailAddress"
                                             value={field.value}
                                         />
@@ -197,13 +183,6 @@ export function LoginView({
                                                 placeholderTextColor="#94a3b8"
                                                 returnKeyType="done"
                                                 secureTextEntry={!passwordVisible}
-                                                style={{
-                                                    includeFontPadding: false,
-                                                    lineHeight: 20,
-                                                    paddingBottom: 4,
-                                                    paddingTop: 0,
-                                                    textAlignVertical: "center",
-                                                }}
                                                 textContentType="password"
                                                 value={field.value}
                                             />
