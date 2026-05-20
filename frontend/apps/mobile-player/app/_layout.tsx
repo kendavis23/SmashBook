@@ -2,8 +2,9 @@
 // Configure providers (QueryClient, ThemeProvider, AuthProvider) here.
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { setAuthStorage } from "@repo/auth";
+import * as Font from "expo-font";
 import { Stack } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppProviders } from "../src/providers";
 
 try {
@@ -22,6 +23,14 @@ export default function RootLayout() {
             <Stack>
                 <Stack.Screen name="(auth)" options={{ headerShown: false }} />
                 <Stack.Screen name="(player)" options={{ headerShown: false }} />
+                <Stack.Screen
+                    name="profile-edit"
+                    options={{ headerShown: false, animation: "slide_from_right" }}
+                />
+                <Stack.Screen
+                    name="profile-notifications"
+                    options={{ headerShown: false, animation: "slide_from_right" }}
+                />
             </Stack>
         </AppProviders>
     );

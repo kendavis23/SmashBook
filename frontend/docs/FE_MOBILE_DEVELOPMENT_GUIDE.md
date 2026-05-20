@@ -1,4 +1,4 @@
-Last updated: 2026-05-10 00:00 UTC\_
+Last updated: 2026-05-20 00:00 UTC\_
 
 # Mobile Player Development Guide
 
@@ -30,8 +30,11 @@ apps/mobile-player/
     ├── features/               # All feature UI and composition lives here
     │   └── <feature>/
     │       ├── components/     # Feature-local UI components
+    │       ├── constants/      # Static options, menu rows, labels, route config
     │       ├── hooks/          # Feature-local hook composition
-    │       └── pages/          # Container + View pairs — one per screen
+    │       ├── pages/          # Screen/page components
+    │       ├── types/          # Feature-local TypeScript types
+    │       └── utils/          # Pure helpers: formatters, parsers, mappers
     ├── components/             # Shared app-level components
     ├── providers/              # App-level React providers
     ├── store/                  # Mobile-only Zustand state
@@ -57,6 +60,17 @@ features/
 ```
 
 **Rule:** `app/` route files only import from `src/features/`. All logic stays in `src/`.
+
+### Feature Folder Rules
+
+- Keep `app/` files thin: route params, auth fallback, and rendering the feature screen only.
+- Use `pages/*Screen.tsx` for full-screen stack/tab screens.
+- Use `*Sheet.tsx` only for real bottom sheets/action sheets, not because NativeWind is used.
+- Put static arrays and labels in `constants/`, not inside screen files.
+- Put reusable row/card/input pieces in `components/`.
+- Put shared feature types in `types/`; keep one-off prop types beside the component.
+- Put pure display helpers in `utils/` (`getInitials`, `formatDate`, `parseSkillLevel`).
+- Create sub-feature folders only when the feature has separate flows, not for one small screen.
 
 ---
 
@@ -93,7 +107,7 @@ router.replace("/(player)/home" as Href); // correct
 router.replace("/home" as Href); // wrong — ambiguous between groups
 ```
 
-Inside `pages/`, always split container and view. Zod schemas go in a sibling `types.ts`:
+Inside `pages/`, split container and view when the screen has meaningful data/loading/error orchestration. Small static screens can stay as one `*Screen.tsx`. Zod schemas go in a sibling `types.ts` or feature `types/` when shared:
 
 ```tsx
 // src/features/booking/bookings-list/pages/index.tsx  (Container)
@@ -171,7 +185,7 @@ import { config } from "@repo/config";
 
 ## Styling — NativeWind Only
 
-Light theme is used throughout. Use NativeWind `className` on every component. **Never use `StyleSheet.create` or inline `style={{}}`.**
+Light theme is used throughout. Use NativeWind `className` on every component. **Never use `StyleSheet.create`, `StyleSheet`, or inline `style={{}}`. NativeWind is always required for styling.**
 
 ```tsx
 // Correct
@@ -232,14 +246,14 @@ const { control, handleSubmit } = useForm<FormValues>({
 
 ## Android & iOS Support
 
-| Concern              | How to handle                                                                    |
-| -------------------- | -------------------------------------------------------------------------------- |
-| Safe area            | Wrap screens in `<SafeAreaView className="flex-1 bg-background">`                |
-| Keyboard             | `<KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>` |
-| Status bar           | `<StatusBar style="dark" />` from `expo-status-bar`                              |
-| Platform classes     | Use NativeWind `ios:` / `android:` prefixes                                      |
-| `accessibilityLabel` | Required on all interactive elements                                             |
-| `accessibilityRole`  | Set `"button"`, `"link"`, `"checkbox"` on `Pressable`                            |
+| Concern              | How to handle                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------- |
+| Safe area            | Import `SafeAreaView` from `react-native-safe-area-context`; never from `react-native` |
+| Keyboard             | `<KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>`       |
+| Status bar           | `<StatusBar style="dark" />` from `expo-status-bar`                                    |
+| Platform classes     | Use NativeWind `ios:` / `android:` prefixes                                            |
+| `accessibilityLabel` | Required on all interactive elements                                                   |
+| `accessibilityRole`  | Set `"button"`, `"link"`, `"checkbox"` on `Pressable`                                  |
 
 ---
 
@@ -264,12 +278,13 @@ const { control, handleSubmit } = useForm<FormValues>({
 
 ## Adding a New Screen
 
-1. Read the equivalent feature in `apps/web-player/src/features/<feature>/` for context
-2. Create route file in `app/(player)/` — thin wrapper only
-3. Create the feature folder under `src/features/<feature>/pages/` with container + view
-4. Register the screen in `app/(player)/_layout.tsx` if needed
-5. Use domain hooks from `@repo/player-domain` for data
-6. Style with NativeWind className — no StyleSheet, no hardcoded colors
+1. Read `apps/web-player/src/features/<feature>/` for business logic and data shape.
+2. Create a thin route file in `app/(player)/` or `app/` for stack screens.
+3. Create `src/features/<feature>/pages/<FeatureScreen>.tsx`.
+4. Add `components/`, `constants/`, `types/`, `utils/`, or `hooks/` only when the screen needs them.
+5. Register the route in the relevant `_layout.tsx` if it is a stack/tab screen.
+6. Use `@repo/player-domain` hooks for server data.
+7. Style with NativeWind `className`; no `StyleSheet.create` and no inline styles except native/animated exceptions.
 
 ---
 
