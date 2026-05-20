@@ -45,9 +45,7 @@ export default function ManageTenantContainer(): JSX.Element {
             setCustomDomainInput(tenant.custom_domain ?? "");
             setIsActiveInput(tenant.is_active);
             setSubscriptionStartDateInput(
-                tenant.subscription_start_date
-                    ? tenant.subscription_start_date.slice(0, 10)
-                    : ""
+                tenant.subscription_start_date ? tenant.subscription_start_date.slice(0, 10) : ""
             );
             setOwnerEmailInput(tenant.owner_email ?? "");
             setOwnerFullNameInput(tenant.owner_full_name ?? "");
