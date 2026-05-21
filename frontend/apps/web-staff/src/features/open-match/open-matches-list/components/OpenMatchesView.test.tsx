@@ -73,6 +73,7 @@ const mockOpenGame: OpenGame = {
     max_skill_level: 5,
     slots_available: 2,
     total_price: 50,
+    players: [],
 };
 
 function renderView(overrides: Partial<Parameters<typeof OpenMatchesView>[0]> = {}) {

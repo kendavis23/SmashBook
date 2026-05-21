@@ -84,6 +84,7 @@ const mockOpenGame: OpenGame = {
     max_skill_level: 5,
     slots_available: 2,
     total_price: 50,
+    players: [],
 };
 
 describe("OpenMatchesContainer", () => {

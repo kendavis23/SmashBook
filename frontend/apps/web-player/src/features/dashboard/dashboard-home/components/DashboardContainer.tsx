@@ -219,61 +219,67 @@ export default function DashboardContainer(): JSX.Element {
     );
 
     const sharedProps = {
-        clubs,
-        selectedClubId,
-        selectedClubName: selectedClub?.name ?? "",
         currentUserId,
-        joinFilterDate: joinFilters.date,
-        joinFilterStatus: joinFilters.status,
-        bookFilterDate: bookFilters.date,
-        bookFilterSurfaceType: bookFilters.surfaceType,
-        bookFilterTimeFrom: bookFilters.timeFrom,
-        bookFilterTimeTo: bookFilters.timeTo,
-        openGames: filteredOpenGames,
-        courts,
-        availability: availability ?? null,
-        availabilityCourtId,
+        club: {
+            clubs,
+            selectedId: selectedClubId,
+            selectedName: selectedClub?.name ?? "",
+            onChange: handleClubChange,
+        },
+        joinSection: {
+            filterDate: joinFilters.date,
+            filterStatus: joinFilters.status,
+            games: filteredOpenGames,
+            isLoading: isMyProfileLoading || isOpenGamesLoading,
+            error: myProfileError ?? openGamesError,
+            isJoining: joinMutation.isPending || Boolean(joinBookingId),
+            joiningBookingId: joinBookingId,
+            onFilterDateChange: (date: string) => setJoinFilters((prev) => ({ ...prev, date })),
+            onFilterStatusChange: (status: JoinStatusFilter) =>
+                setJoinFilters((prev) => ({ ...prev, status })),
+            onRefresh: () => {
+                if (playerSkillLevel != null) void refetchOpenGames();
+            },
+            onJoinGame: (bookingId: string) => {
+                setJoinError("");
+                setJoinBookingId(bookingId);
+            },
+        },
+        bookSection: {
+            filterDate: bookFilters.date,
+            filterSurface: bookFilters.surfaceType,
+            filterTimeFrom: bookFilters.timeFrom,
+            filterTimeTo: bookFilters.timeTo,
+            courts,
+            isLoading: isCourtsLoading,
+            error: courtsError,
+            onFilterDateChange: (date: string) => {
+                setBookFilters((prev) => ({ ...prev, date }));
+                setAvailabilityCourtId("");
+            },
+            onFilterSurfaceChange: (surfaceType: "" | SurfaceType) => {
+                setBookFilters((prev) => ({ ...prev, surfaceType }));
+                setAvailabilityCourtId("");
+            },
+            onFilterTimeFromChange: (timeFrom: string) => {
+                setBookFilters((prev) => ({ ...prev, timeFrom }));
+                setAvailabilityCourtId("");
+            },
+            onFilterTimeToChange: (timeTo: string) => {
+                setBookFilters((prev) => ({ ...prev, timeTo }));
+                setAvailabilityCourtId("");
+            },
+            onRefresh: () => void refetchCourts(),
+            onCheckAvailability: handleCheckAvailability,
+        },
+        availability: {
+            courtId: availabilityCourtId,
+            data: availability ?? null,
+            isLoading: isAvailabilityLoading,
+            error: availabilityError,
+            onOpenBooking: handleOpenBooking,
+        },
         bookingModal,
-        isOpenGamesLoading: isMyProfileLoading || isOpenGamesLoading,
-        isCourtsLoading,
-        isAvailabilityLoading,
-        isJoining: joinMutation.isPending || Boolean(joinBookingId),
-        joiningBookingId: joinBookingId,
-        openGamesError: myProfileError ?? openGamesError,
-        courtsError,
-        availabilityError,
-        joinError,
-        successMessage,
-        onClubChange: handleClubChange,
-        onJoinFilterDateChange: (date: string) => setJoinFilters((prev) => ({ ...prev, date })),
-        onJoinFilterStatusChange: (status: JoinStatusFilter) =>
-            setJoinFilters((prev) => ({ ...prev, status })),
-        onBookFilterDateChange: (date: string) => {
-            setBookFilters((prev) => ({ ...prev, date }));
-            setAvailabilityCourtId("");
-        },
-        onBookFilterSurfaceTypeChange: (surfaceType: "" | SurfaceType) => {
-            setBookFilters((prev) => ({ ...prev, surfaceType }));
-            setAvailabilityCourtId("");
-        },
-        onBookFilterTimeFromChange: (timeFrom: string) => {
-            setBookFilters((prev) => ({ ...prev, timeFrom }));
-            setAvailabilityCourtId("");
-        },
-        onBookFilterTimeToChange: (timeTo: string) => {
-            setBookFilters((prev) => ({ ...prev, timeTo }));
-            setAvailabilityCourtId("");
-        },
-        onCheckAvailability: handleCheckAvailability,
-        onRefreshOpenGames: () => {
-            if (playerSkillLevel != null) void refetchOpenGames();
-        },
-        onRefreshCourts: () => void refetchCourts(),
-        onJoinGame: (bookingId: string) => {
-            setJoinError("");
-            setJoinBookingId(bookingId);
-        },
-        onOpenBooking: handleOpenBooking,
         onCloseBooking: () => setBookingModal(null),
         onBookingSuccess: () => {
             setBookingModal(null);
@@ -282,8 +288,12 @@ export default function DashboardContainer(): JSX.Element {
             if (availabilityCourtId) void refetchAvailability();
             void refetchOpenGames();
         },
-        onDismissJoinError: () => setJoinError(""),
-        onDismissSuccess: () => setSuccessMessage(""),
+        feedback: {
+            joinError,
+            successMessage,
+            onDismissJoinError: () => setJoinError(""),
+            onDismissSuccess: () => setSuccessMessage(""),
+        },
     };
 
     const paymentModal = payingBooking ? (
