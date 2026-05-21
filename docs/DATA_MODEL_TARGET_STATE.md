@@ -1,4 +1,4 @@
-_Last updated: 2026-05-16_
+_Last updated: 2026-05-21_
 
 # SmashBook — Data Model Target State
 
@@ -114,6 +114,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | G10 | Sprint 10 | ⬜ Not started | New tables: `campaigns`, `ai_recommendations`, `equipment_maintenance_log`, `equipment_replacement_predictions`; membership v2: add `membership_plan_pricing` (perks stay as columns on `membership_plans`) |
 | G11 | Sprint 11 | ⬜ Not started | New tables: `training_recommendations`; `support_tickets` / `support_messages` AI fields |
 | G12 | Sprint 12 | ⬜ Not started | New tables: `tournaments`, `tournament_registrations`, `video_analyses`, `competitor_price_snapshots`; `bookings`: add `tournament_id` FK |
+| OOB | Out-of-band fix | ✅ Applied (`a3ad99663232`) | `payments`: add `stripe_destination_payment_id` (indexed) — connected-account-side payment id (`py_xxx`) so `payout.paid` can match destination-charge Connect payouts |
 
 > **Note on G3 and G5 (May 2026):** Ken's working memory indicates "up to Group 5 is in place," but the migration history in `DATA_MODEL.md` only shows applied migrations for G1, G2, and G4 — no entries for G3 or G5. Two possibilities: (1) G3 and G5 were never run, or (2) they were run but `DATA_MODEL.md` wasn't updated to match. **Action:** run `alembic history` and `alembic current` against staging, compare with `DATA_MODEL.md`, then either update the status to ✅ + add the missing migration rows to `DATA_MODEL.md`, or reclassify back to ⬜. Either way, this is a doc-vs-database drift that needs reconciling before further migrations land.
 
@@ -562,7 +563,8 @@ AI-generated predictions for when equipment will need replacement or reorder.
 | `user_id` | UUID | FK → `users` |
 | `club_id` | UUID | **NEW** FK → `clubs` — denormalised for scoping |
 | `stripe_payment_intent_id` | VARCHAR(255) | Nullable |
-| `stripe_charge_id` | VARCHAR(255) | Nullable |
+| `stripe_charge_id` | VARCHAR(255) | Nullable — platform-side charge id (`ch_xxx`) |
+| `stripe_destination_payment_id` | VARCHAR(255) | Nullable — connected-account-side payment id (`py_xxx`) for destination-charge Connect flow; indexed; used by `payout.paid` to stamp `stripe_payout_id` |
 | `amount` | NUMERIC(10,2) | |
 | `currency` | VARCHAR(3) | Default `"GBP"` |
 | `payment_method` | ENUM | `stripe_card`, `wallet`, `cash`, `account_credit` |

@@ -41,6 +41,7 @@ class Payment(Base, UUIDMixin, TimestampMixin):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     stripe_payment_intent_id = Column(String(255), nullable=True)
     stripe_charge_id = Column(String(255), nullable=True)
+    stripe_destination_payment_id = Column(String(255), nullable=True, index=True)
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(3), nullable=False, default="GBP")
     payment_method = Column(Enum(PaymentMethod), nullable=False)

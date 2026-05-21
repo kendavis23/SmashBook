@@ -1,4 +1,4 @@
-_Last updated: 2026-05-16 00:00 UTC_
+_Last updated: 2026-05-21 07:30 UTC_
 
 # SmashBook Data Model
 
@@ -424,7 +424,8 @@ Invoice fields are stored directly on this table (no separate `invoices` table).
 | `club_id` | UUID | FK → `clubs`, nullable |
 | `user_id` | UUID | FK → `users` |
 | `stripe_payment_intent_id` | VARCHAR(255) | Nullable |
-| `stripe_charge_id` | VARCHAR(255) | Nullable |
+| `stripe_charge_id` | VARCHAR(255) | Nullable — platform-side charge id (`ch_xxx`) |
+| `stripe_destination_payment_id` | VARCHAR(255) | Nullable — connected-account-side payment id (`py_xxx`) for destination-charge Connect flow; indexed; used by `payout.paid` webhook to stamp `stripe_payout_id` |
 | `amount` | NUMERIC(10,2) | |
 | `currency` | VARCHAR(3) | Default `"GBP"` |
 | `payment_method` | ENUM | `stripe_card`, `wallet`, `cash`, `account_credit` |
@@ -668,6 +669,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `80803a6bae79` | Add `source_type` (`wallettransactionsource` enum) and `source_id` (UUID) to `wallet_transactions` |
 | `3a758d32ab8d` | New table `wallet_club_debts` — deferred settlement of wallet debits to club Stripe Connect accounts |
 | `0fcac3948b73` | Add `stripe_price_id` to `subscription_plans`; add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` (`subscriptionstatus` enum) to `tenants` for SmashBook → org subscription billing |
+| `a3ad99663232` | Add `stripe_destination_payment_id` (indexed) to `payments` — connected-account-side payment id (`py_xxx`) so the `payout.paid` webhook can match destination-charge Connect payouts |
 
 To run migrations:
 ```bash

@@ -410,6 +410,16 @@ class PaymentService:
             try:
                 charge = stripe.Charge.retrieve(payment.stripe_charge_id)
                 payment.stripe_receipt_url = charge.receipt_url
+                # Destination-charge Connect flow: walk Charge → Transfer to
+                # capture the connected-account-side payment id (py_xxx) so
+                # the payout.paid webhook can match without extra API calls.
+                transfer_id = charge.get("transfer")
+                if transfer_id:
+                    try:
+                        transfer = stripe.Transfer.retrieve(transfer_id)
+                        payment.stripe_destination_payment_id = transfer.get("destination_payment")
+                    except stripe.StripeError:
+                        pass  # best-effort; payout reconciliation can still backfill
             except stripe.StripeError:
                 pass  # receipt URL is best-effort
 
@@ -926,18 +936,28 @@ class PaymentService:
         payout_id: str = payout["id"]
         connect_account_id: str = event["account"]
 
+        # Destination-charge Connect flow: payouts happen on the connected
+        # account, where balance transactions for incoming charges are
+        # type="payment" and `source` is the destination payment id (py_xxx)
+        # — not the platform-side charge id (ch_xxx). We store py_xxx on
+        # Payment.stripe_destination_payment_id at confirm time so we can
+        # match here without extra API calls.
         txns = stripe.BalanceTransaction.list(
             payout=payout_id,
-            type="charge",
+            type="payment",
             stripe_account=connect_account_id,
         )
-        charge_ids = [t["source"] for t in txns.auto_paging_iter() if t.get("source")]
+        destination_payment_ids = [
+            t["source"] for t in txns.auto_paging_iter() if t.get("source")
+        ]
 
-        if not charge_ids:
+        if not destination_payment_ids:
             return
 
         result = await self.db.execute(
-            sa_select(Payment).where(Payment.stripe_charge_id.in_(charge_ids))
+            sa_select(Payment).where(
+                Payment.stripe_destination_payment_id.in_(destination_payment_ids)
+            )
         )
         payments = result.scalars().all()
 
