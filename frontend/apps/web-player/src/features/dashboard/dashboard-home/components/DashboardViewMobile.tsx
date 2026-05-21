@@ -12,58 +12,23 @@ import { useEffect, useRef, useState } from "react";
 import type { JSX } from "react";
 import { NewBookingModal } from "../../../booking/new-booking/components/NewBookingModal";
 import { formatSlotTime } from "../../utils/slotTime";
+import type { SurfaceType } from "../../types";
 import type {
-    BookingModalState,
-    ClubOption,
-    Court,
-    CourtAvailability,
-    JoinStatusFilter,
-    OpenGame,
-    SurfaceType,
-} from "../../types";
+    AvailabilitySectionProps,
+    BookSectionProps,
+    ClubSectionProps,
+    DashboardViewProps,
+    FeedbackProps,
+    JoinSectionProps,
+} from "./DashboardView";
 
-type Props = {
-    clubs: ClubOption[];
-    selectedClubId: string;
-    selectedClubName: string;
-    currentUserId: string;
-    joinFilterDate: string;
-    joinFilterStatus: JoinStatusFilter;
-    bookFilterDate: string;
-    bookFilterSurfaceType: "" | SurfaceType;
-    bookFilterTimeFrom: string;
-    bookFilterTimeTo: string;
-    openGames: OpenGame[];
-    courts: Court[];
-    availability: CourtAvailability | null;
-    availabilityCourtId: string;
-    bookingModal: BookingModalState;
-    isOpenGamesLoading: boolean;
-    isCourtsLoading: boolean;
-    isAvailabilityLoading: boolean;
-    isJoining: boolean;
-    joiningBookingId: string;
-    openGamesError: Error | null;
-    courtsError: Error | null;
-    availabilityError: Error | null;
-    joinError: string;
-    successMessage: string;
-    onClubChange: (clubId: string) => void;
-    onJoinFilterDateChange: (date: string) => void;
-    onJoinFilterStatusChange: (status: JoinStatusFilter) => void;
-    onBookFilterDateChange: (date: string) => void;
-    onBookFilterSurfaceTypeChange: (surfaceType: "" | SurfaceType) => void;
-    onBookFilterTimeFromChange: (value: string) => void;
-    onBookFilterTimeToChange: (value: string) => void;
-    onCheckAvailability: (courtId: string) => void;
-    onRefreshOpenGames: () => void;
-    onRefreshCourts: () => void;
-    onJoinGame: (bookingId: string) => void;
-    onOpenBooking: (courtId: string, courtName: string, startTime: string) => void;
-    onCloseBooking: () => void;
-    onBookingSuccess: () => void;
-    onDismissJoinError: () => void;
-    onDismissSuccess: () => void;
+export type {
+    AvailabilitySectionProps,
+    BookSectionProps,
+    ClubSectionProps,
+    DashboardViewProps,
+    FeedbackProps,
+    JoinSectionProps,
 };
 
 type ActiveTab = "join" | "book";
@@ -90,65 +55,33 @@ function slotPriceLabel(price: number | string | null, priceLabel: string | null
 }
 
 export default function DashboardViewMobile({
-    clubs,
-    selectedClubId,
-    selectedClubName,
     currentUserId,
-    joinFilterDate,
-    joinFilterStatus,
-    bookFilterDate,
-    bookFilterSurfaceType,
-    bookFilterTimeFrom,
-    bookFilterTimeTo,
-    openGames,
-    courts,
+    club,
+    joinSection,
+    bookSection,
     availability,
-    availabilityCourtId,
     bookingModal,
-    isOpenGamesLoading,
-    isCourtsLoading,
-    isAvailabilityLoading,
-    isJoining,
-    joiningBookingId,
-    openGamesError,
-    courtsError,
-    availabilityError,
-    joinError,
-    successMessage,
-    onClubChange,
-    onJoinFilterDateChange,
-    onJoinFilterStatusChange,
-    onBookFilterDateChange,
-    onBookFilterSurfaceTypeChange,
-    onBookFilterTimeFromChange,
-    onBookFilterTimeToChange,
-    onCheckAvailability,
-    onRefreshOpenGames,
-    onRefreshCourts,
-    onJoinGame,
-    onOpenBooking,
     onCloseBooking,
     onBookingSuccess,
-    onDismissJoinError,
-    onDismissSuccess,
-}: Props): JSX.Element {
+    feedback,
+}: DashboardViewProps): JSX.Element {
     const [activeTab, setActiveTab] = useState<ActiveTab>("join");
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const checkedCourt = courts.find((court) => court.id === availabilityCourtId);
+    const checkedCourt = bookSection.courts.find((court) => court.id === availability.courtId);
 
     // Auto-select first court when courts load on book tab
     useEffect(() => {
-        const firstCourt = courts[0];
-        if (activeTab === "book" && firstCourt && !availabilityCourtId) {
-            onCheckAvailability(firstCourt.id);
+        const firstCourt = bookSection.courts[0];
+        if (activeTab === "book" && firstCourt && !availability.courtId) {
+            bookSection.onCheckAvailability(firstCourt.id);
         }
-    }, [activeTab, courts, availabilityCourtId, onCheckAvailability]);
+    }, [activeTab, bookSection, availability.courtId]);
 
     // Refresh when switching tabs
     useEffect(() => {
-        if (activeTab === "join") onRefreshOpenGames();
-        else onRefreshCourts();
+        if (activeTab === "join") joinSection.onRefresh();
+        else bookSection.onRefresh();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab]);
 
@@ -157,34 +90,34 @@ export default function DashboardViewMobile({
             {/* Club selector */}
             <div className="border-b border-border bg-card px-3 pb-3 pt-3 shadow-sm">
                 <p className="mb-2 truncate text-xs font-medium text-muted-foreground">
-                    {selectedClubName || "Select a club"}
+                    {club.selectedName || "Select a club"}
                 </p>
                 <SelectInput
-                    value={selectedClubId}
-                    onValueChange={onClubChange}
-                    options={clubs.map((club) => ({ value: club.id, label: club.name }))}
+                    value={club.selectedId}
+                    onValueChange={club.onChange}
+                    options={club.clubs.map((c) => ({ value: c.id, label: c.name }))}
                     placeholder="Select club"
                     className="input-base h-11 w-full rounded-lg text-sm font-semibold"
                 />
             </div>
 
             {/* Toasts */}
-            {joinError ? (
+            {feedback.joinError ? (
                 <div className="px-3">
                     <AlertToast
                         variant="error"
                         title="Unable to join game"
-                        description={joinError}
-                        onClose={onDismissJoinError}
+                        description={feedback.joinError}
+                        onClose={feedback.onDismissJoinError}
                     />
                 </div>
             ) : null}
-            {successMessage ? (
+            {feedback.successMessage ? (
                 <div className="px-3">
                     <AlertToast
                         variant="success"
-                        title={successMessage}
-                        onClose={onDismissSuccess}
+                        title={feedback.successMessage}
+                        onClose={feedback.onDismissSuccess}
                     />
                 </div>
             ) : null}
@@ -225,8 +158,8 @@ export default function DashboardViewMobile({
                                 Date
                             </span>
                             <DatePicker
-                                value={joinFilterDate}
-                                onChange={onJoinFilterDateChange}
+                                value={joinSection.filterDate}
+                                onChange={joinSection.onFilterDateChange}
                                 placeholder="All dates"
                                 className={mobileFieldCls}
                             />
@@ -236,9 +169,11 @@ export default function DashboardViewMobile({
                                 Status
                             </span>
                             <SelectInput
-                                value={joinFilterStatus}
+                                value={joinSection.filterStatus}
                                 onValueChange={(v) =>
-                                    onJoinFilterStatusChange(v as JoinStatusFilter)
+                                    joinSection.onFilterStatusChange(
+                                        v as JoinSectionProps["filterStatus"]
+                                    )
                                 }
                                 options={[
                                     { value: "all", label: "All" },
@@ -251,14 +186,14 @@ export default function DashboardViewMobile({
                     </div>
 
                     {/* Open games list */}
-                    {openGamesError ? (
-                        <div className="feedback-error">{openGamesError.message}</div>
-                    ) : isOpenGamesLoading ? (
+                    {joinSection.error ? (
+                        <div className="feedback-error">{joinSection.error.message}</div>
+                    ) : joinSection.isLoading ? (
                         <div className="flex items-center justify-center gap-2 py-14 text-sm text-muted-foreground">
                             <Loader2 size={16} className="animate-spin" />
                             Loading open games
                         </div>
-                    ) : openGames.length === 0 ? (
+                    ) : joinSection.games.length === 0 ? (
                         <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-10 text-center">
                             <DoorOpen className="mx-auto text-muted-foreground" size={24} />
                             <p className="mt-3 text-sm font-medium text-foreground">
@@ -270,7 +205,7 @@ export default function DashboardViewMobile({
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {openGames.map((game) => {
+                            {joinSection.games.map((game) => {
                                 const hasJoinedCard = game.players.some(
                                     (p) =>
                                         p.user_id === currentUserId &&
@@ -334,11 +269,14 @@ export default function DashboardViewMobile({
                                                 ) : (
                                                     <button
                                                         type="button"
-                                                        onClick={() => onJoinGame(game.id)}
-                                                        disabled={isJoining}
+                                                        onClick={() =>
+                                                            joinSection.onJoinGame(game.id)
+                                                        }
+                                                        disabled={joinSection.isJoining}
                                                         className="btn-cta min-h-11 shrink-0 rounded-lg px-4 text-sm font-semibold"
                                                     >
-                                                        {joiningBookingId === game.id ? (
+                                                        {joinSection.joiningBookingId ===
+                                                        game.id ? (
                                                             <Loader2
                                                                 size={14}
                                                                 className="animate-spin"
@@ -369,8 +307,8 @@ export default function DashboardViewMobile({
                                 Date
                             </span>
                             <DatePicker
-                                value={bookFilterDate}
-                                onChange={onBookFilterDateChange}
+                                value={bookSection.filterDate}
+                                onChange={bookSection.onFilterDateChange}
                                 className={mobileFieldCls}
                             />
                         </label>
@@ -379,9 +317,9 @@ export default function DashboardViewMobile({
                                 Surface
                             </span>
                             <SelectInput
-                                value={bookFilterSurfaceType}
+                                value={bookSection.filterSurface}
                                 onValueChange={(value) =>
-                                    onBookFilterSurfaceTypeChange(value as "" | SurfaceType)
+                                    bookSection.onFilterSurfaceChange(value as "" | SurfaceType)
                                 }
                                 options={[
                                     { value: "indoor", label: "Indoor" },
@@ -399,30 +337,30 @@ export default function DashboardViewMobile({
                                 From
                             </span>
                             <TimeInput
-                                value={bookFilterTimeFrom}
-                                onChange={(e) => onBookFilterTimeFromChange(e.target.value)}
+                                value={bookSection.filterTimeFrom}
+                                onChange={(e) => bookSection.onFilterTimeFromChange(e.target.value)}
                                 className={mobileFieldCls}
                             />
                         </label>
                         <label className="flex flex-col gap-1.5">
                             <span className="text-xs font-semibold text-muted-foreground">To</span>
                             <TimeInput
-                                value={bookFilterTimeTo}
-                                onChange={(e) => onBookFilterTimeToChange(e.target.value)}
+                                value={bookSection.filterTimeTo}
+                                onChange={(e) => bookSection.onFilterTimeToChange(e.target.value)}
                                 className={mobileFieldCls}
                             />
                         </label>
                     </div>
 
                     {/* Courts horizontal scroll */}
-                    {courtsError ? (
-                        <div className="feedback-error mx-3">{courtsError.message}</div>
-                    ) : isCourtsLoading ? (
+                    {bookSection.error ? (
+                        <div className="feedback-error mx-3">{bookSection.error.message}</div>
+                    ) : bookSection.isLoading ? (
                         <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                             <Loader2 size={16} className="animate-spin" />
                             Loading courts
                         </div>
-                    ) : courts.length === 0 ? (
+                    ) : bookSection.courts.length === 0 ? (
                         <div className="mx-3 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
                             No courts available for this club.
                         </div>
@@ -433,14 +371,14 @@ export default function DashboardViewMobile({
                                 ref={scrollRef}
                                 className="flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                             >
-                                {courts.map((court) => (
+                                {bookSection.courts.map((court) => (
                                     <button
                                         key={court.id}
                                         type="button"
                                         disabled={!court.is_active}
-                                        onClick={() => onCheckAvailability(court.id)}
+                                        onClick={() => bookSection.onCheckAvailability(court.id)}
                                         className={`min-h-10 shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
-                                            court.id === availabilityCourtId
+                                            court.id === availability.courtId
                                                 ? "border-cta bg-cta text-white"
                                                 : "border-border bg-card text-foreground"
                                         }`}
@@ -478,29 +416,29 @@ export default function DashboardViewMobile({
                                     </p>
                                 )}
 
-                                {availabilityError ? (
+                                {availability.error ? (
                                     <div className="feedback-error">
-                                        {availabilityError.message}
+                                        {availability.error.message}
                                     </div>
-                                ) : isAvailabilityLoading ? (
+                                ) : availability.isLoading ? (
                                     <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted-foreground">
                                         <Loader2 size={16} className="animate-spin" />
                                         Checking availability
                                     </div>
-                                ) : !availabilityCourtId ? (
+                                ) : !availability.courtId ? (
                                     <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
                                         Select a court to see bookable slots.
                                     </div>
-                                ) : availability?.slots.length ? (
+                                ) : availability.data?.slots.length ? (
                                     <div className="grid grid-cols-2 gap-2.5">
-                                        {availability.slots.map((slot) => (
+                                        {availability.data.slots.map((slot) => (
                                             <button
                                                 key={`${slot.start_time}-${slot.end_time}`}
                                                 type="button"
                                                 disabled={!slot.is_available || !checkedCourt}
                                                 onClick={() =>
                                                     checkedCourt &&
-                                                    onOpenBooking(
+                                                    availability.onOpenBooking(
                                                         checkedCourt.id,
                                                         checkedCourt.name,
                                                         slot.start_time

@@ -149,47 +149,57 @@ const availability: CourtAvailability = {
 };
 
 const defaultProps = {
-    clubs: [{ id: "club-1", name: "Club One", role: "member" }],
-    selectedClubId: "club-1",
-    selectedClubName: "Club One",
     currentUserId: "user-1",
-    joinFilterDate: "",
-    joinFilterStatus: "all" as const,
-    bookFilterDate: "2026-05-20",
-    bookFilterSurfaceType: "" as const,
-    bookFilterTimeFrom: "",
-    bookFilterTimeTo: "",
-    openGames: [openGame()],
-    courts: [court()],
-    availability,
-    availabilityCourtId: "court-1",
+    club: {
+        clubs: [{ id: "club-1", name: "Club One", role: "member" }],
+        selectedId: "club-1",
+        selectedName: "Club One",
+        onChange: vi.fn(),
+    },
+    joinSection: {
+        filterDate: "",
+        filterStatus: "all" as const,
+        games: [openGame()],
+        isLoading: false,
+        error: null,
+        isJoining: false,
+        joiningBookingId: "",
+        onFilterDateChange: vi.fn(),
+        onFilterStatusChange: vi.fn(),
+        onRefresh: vi.fn(),
+        onJoinGame: vi.fn(),
+    },
+    bookSection: {
+        filterDate: "2026-05-20",
+        filterSurface: "" as const,
+        filterTimeFrom: "",
+        filterTimeTo: "",
+        courts: [court()],
+        isLoading: false,
+        error: null,
+        onFilterDateChange: vi.fn(),
+        onFilterSurfaceChange: vi.fn(),
+        onFilterTimeFromChange: vi.fn(),
+        onFilterTimeToChange: vi.fn(),
+        onRefresh: vi.fn(),
+        onCheckAvailability: vi.fn(),
+    },
+    availability: {
+        courtId: "court-1",
+        data: availability,
+        isLoading: false,
+        error: null,
+        onOpenBooking: vi.fn(),
+    },
     bookingModal: null,
-    isOpenGamesLoading: false,
-    isCourtsLoading: false,
-    isAvailabilityLoading: false,
-    isJoining: false,
-    joiningBookingId: "",
-    openGamesError: null,
-    courtsError: null,
-    availabilityError: null,
-    joinError: "",
-    successMessage: "",
-    onClubChange: vi.fn(),
-    onJoinFilterDateChange: vi.fn(),
-    onJoinFilterStatusChange: vi.fn(),
-    onBookFilterDateChange: vi.fn(),
-    onBookFilterSurfaceTypeChange: vi.fn(),
-    onBookFilterTimeFromChange: vi.fn(),
-    onBookFilterTimeToChange: vi.fn(),
-    onCheckAvailability: vi.fn(),
-    onRefreshOpenGames: vi.fn(),
-    onRefreshCourts: vi.fn(),
-    onJoinGame: vi.fn(),
-    onOpenBooking: vi.fn(),
     onCloseBooking: vi.fn(),
     onBookingSuccess: vi.fn(),
-    onDismissJoinError: vi.fn(),
-    onDismissSuccess: vi.fn(),
+    feedback: {
+        joinError: "",
+        successMessage: "",
+        onDismissJoinError: vi.fn(),
+        onDismissSuccess: vi.fn(),
+    },
 };
 
 function getAt<T>(items: T[], index: number): T {
@@ -206,9 +216,9 @@ describe("DashboardView", () => {
         render(
             <DashboardView
                 {...defaultProps}
-                onJoinGame={onJoinGame}
-                onCheckAvailability={onCheckAvailability}
-                onOpenBooking={onOpenBooking}
+                joinSection={{ ...defaultProps.joinSection, onJoinGame }}
+                bookSection={{ ...defaultProps.bookSection, onCheckAvailability }}
+                availability={{ ...defaultProps.availability, onOpenBooking }}
             />
         );
 
@@ -232,22 +242,28 @@ describe("DashboardView", () => {
         const onClubChange = vi.fn();
         const onJoinFilterDateChange = vi.fn();
         const onBookFilterDateChange = vi.fn();
-        const onBookFilterSurfaceTypeChange = vi.fn();
-        const onBookFilterTimeFromChange = vi.fn();
-        const onBookFilterTimeToChange = vi.fn();
-        const onRefreshOpenGames = vi.fn();
-        const onRefreshCourts = vi.fn();
+        const onBookFilterSurfaceChange = vi.fn();
+        const onFilterTimeFromChange = vi.fn();
+        const onFilterTimeToChange = vi.fn();
+        const onJoinRefresh = vi.fn();
+        const onBookRefresh = vi.fn();
         render(
             <DashboardView
                 {...defaultProps}
-                onClubChange={onClubChange}
-                onJoinFilterDateChange={onJoinFilterDateChange}
-                onBookFilterDateChange={onBookFilterDateChange}
-                onBookFilterSurfaceTypeChange={onBookFilterSurfaceTypeChange}
-                onBookFilterTimeFromChange={onBookFilterTimeFromChange}
-                onBookFilterTimeToChange={onBookFilterTimeToChange}
-                onRefreshOpenGames={onRefreshOpenGames}
-                onRefreshCourts={onRefreshCourts}
+                club={{ ...defaultProps.club, onChange: onClubChange }}
+                joinSection={{
+                    ...defaultProps.joinSection,
+                    onFilterDateChange: onJoinFilterDateChange,
+                    onRefresh: onJoinRefresh,
+                }}
+                bookSection={{
+                    ...defaultProps.bookSection,
+                    onFilterDateChange: onBookFilterDateChange,
+                    onFilterSurfaceChange: onBookFilterSurfaceChange,
+                    onFilterTimeFromChange,
+                    onFilterTimeToChange,
+                    onRefresh: onBookRefresh,
+                }}
             />
         );
 
@@ -266,11 +282,11 @@ describe("DashboardView", () => {
         expect(onClubChange).toHaveBeenCalledWith("club-1");
         expect(onJoinFilterDateChange).toHaveBeenCalledWith("2026-05-21");
         expect(onBookFilterDateChange).toHaveBeenCalledWith("2026-05-22");
-        expect(onBookFilterSurfaceTypeChange).toHaveBeenCalledWith("outdoor");
-        expect(onBookFilterTimeFromChange).toHaveBeenCalledWith("09:00");
-        expect(onBookFilterTimeToChange).toHaveBeenCalledWith("12:00");
-        expect(onRefreshOpenGames).toHaveBeenCalledOnce();
-        expect(onRefreshCourts).toHaveBeenCalledOnce();
+        expect(onBookFilterSurfaceChange).toHaveBeenCalledWith("outdoor");
+        expect(onFilterTimeFromChange).toHaveBeenCalledWith("09:00");
+        expect(onFilterTimeToChange).toHaveBeenCalledWith("12:00");
+        expect(onJoinRefresh).toHaveBeenCalledOnce();
+        expect(onBookRefresh).toHaveBeenCalledOnce();
     });
 
     it("renders loading, error, empty, and toast states", () => {
@@ -279,13 +295,24 @@ describe("DashboardView", () => {
         const { rerender } = render(
             <DashboardView
                 {...defaultProps}
-                openGamesError={new Error("Open games failed")}
-                courtsError={new Error("Courts failed")}
-                availabilityError={new Error("Availability failed")}
-                joinError="Join failed"
-                successMessage="Done"
-                onDismissJoinError={onDismissJoinError}
-                onDismissSuccess={onDismissSuccess}
+                joinSection={{
+                    ...defaultProps.joinSection,
+                    error: new Error("Open games failed"),
+                }}
+                bookSection={{
+                    ...defaultProps.bookSection,
+                    error: new Error("Courts failed"),
+                }}
+                availability={{
+                    ...defaultProps.availability,
+                    error: new Error("Availability failed"),
+                }}
+                feedback={{
+                    joinError: "Join failed",
+                    successMessage: "Done",
+                    onDismissJoinError,
+                    onDismissSuccess,
+                }}
             />
         );
 
@@ -300,10 +327,9 @@ describe("DashboardView", () => {
         rerender(
             <DashboardView
                 {...defaultProps}
-                openGames={[]}
-                courts={[]}
-                availability={null}
-                availabilityCourtId=""
+                joinSection={{ ...defaultProps.joinSection, games: [] }}
+                bookSection={{ ...defaultProps.bookSection, courts: [] }}
+                availability={{ ...defaultProps.availability, courtId: "", data: null }}
             />
         );
         expect(screen.getByText("No open games yet")).toBeInTheDocument();
@@ -313,9 +339,9 @@ describe("DashboardView", () => {
         rerender(
             <DashboardView
                 {...defaultProps}
-                isOpenGamesLoading
-                isCourtsLoading
-                isAvailabilityLoading
+                joinSection={{ ...defaultProps.joinSection, isLoading: true }}
+                bookSection={{ ...defaultProps.bookSection, isLoading: true }}
+                availability={{ ...defaultProps.availability, isLoading: true }}
             />
         );
         expect(screen.getByText("Loading open games")).toBeInTheDocument();
@@ -324,13 +350,19 @@ describe("DashboardView", () => {
     });
 
     it("shows pagination summaries for long open game and court lists", () => {
-        const openGames = Array.from({ length: 4 }, (_, index) =>
+        const games = Array.from({ length: 4 }, (_, index) =>
             openGame({ id: `game-${index + 1}`, court_name: `Game Court ${index + 1}` })
         );
         const courts = Array.from({ length: 5 }, (_, index) =>
             court({ id: `court-${index + 1}`, name: `Court ${index + 1}` })
         );
-        render(<DashboardView {...defaultProps} openGames={openGames} courts={courts} />);
+        render(
+            <DashboardView
+                {...defaultProps}
+                joinSection={{ ...defaultProps.joinSection, games }}
+                bookSection={{ ...defaultProps.bookSection, courts }}
+            />
+        );
 
         expect(screen.getAllByText("Page 1 of 2")).toHaveLength(2);
         expect(screen.queryByText("Game Court 4")).not.toBeInTheDocument();

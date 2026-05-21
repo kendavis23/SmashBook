@@ -33,48 +33,68 @@ import type {
     SurfaceType,
 } from "../../types";
 
-type Props = {
+export type ClubSectionProps = {
     clubs: ClubOption[];
-    selectedClubId: string;
-    selectedClubName: string;
-    currentUserId: string;
-    joinFilterDate: string;
-    joinFilterStatus: JoinStatusFilter;
-    bookFilterDate: string;
-    bookFilterSurfaceType: "" | SurfaceType;
-    bookFilterTimeFrom: string;
-    bookFilterTimeTo: string;
-    openGames: OpenGame[];
-    courts: Court[];
-    availability: CourtAvailability | null;
-    availabilityCourtId: string;
-    bookingModal: BookingModalState;
-    isOpenGamesLoading: boolean;
-    isCourtsLoading: boolean;
-    isAvailabilityLoading: boolean;
+    selectedId: string;
+    selectedName: string;
+    onChange: (clubId: string) => void;
+};
+
+export type JoinSectionProps = {
+    filterDate: string;
+    filterStatus: JoinStatusFilter;
+    games: OpenGame[];
+    isLoading: boolean;
+    error: Error | null;
     isJoining: boolean;
     joiningBookingId: string;
-    openGamesError: Error | null;
-    courtsError: Error | null;
-    availabilityError: Error | null;
+    onFilterDateChange: (date: string) => void;
+    onFilterStatusChange: (status: JoinStatusFilter) => void;
+    onRefresh: () => void;
+    onJoinGame: (bookingId: string) => void;
+};
+
+export type BookSectionProps = {
+    filterDate: string;
+    filterSurface: "" | SurfaceType;
+    filterTimeFrom: string;
+    filterTimeTo: string;
+    courts: Court[];
+    isLoading: boolean;
+    error: Error | null;
+    onFilterDateChange: (date: string) => void;
+    onFilterSurfaceChange: (surface: "" | SurfaceType) => void;
+    onFilterTimeFromChange: (value: string) => void;
+    onFilterTimeToChange: (value: string) => void;
+    onRefresh: () => void;
+    onCheckAvailability: (courtId: string) => void;
+};
+
+export type AvailabilitySectionProps = {
+    courtId: string;
+    data: CourtAvailability | null;
+    isLoading: boolean;
+    error: Error | null;
+    onOpenBooking: (courtId: string, courtName: string, startTime: string) => void;
+};
+
+export type FeedbackProps = {
     joinError: string;
     successMessage: string;
-    onClubChange: (clubId: string) => void;
-    onJoinFilterDateChange: (date: string) => void;
-    onJoinFilterStatusChange: (status: JoinStatusFilter) => void;
-    onBookFilterDateChange: (date: string) => void;
-    onBookFilterSurfaceTypeChange: (surfaceType: "" | SurfaceType) => void;
-    onBookFilterTimeFromChange: (value: string) => void;
-    onBookFilterTimeToChange: (value: string) => void;
-    onCheckAvailability: (courtId: string) => void;
-    onRefreshOpenGames: () => void;
-    onRefreshCourts: () => void;
-    onJoinGame: (bookingId: string) => void;
-    onOpenBooking: (courtId: string, courtName: string, startTime: string) => void;
-    onCloseBooking: () => void;
-    onBookingSuccess: () => void;
     onDismissJoinError: () => void;
     onDismissSuccess: () => void;
+};
+
+export type DashboardViewProps = {
+    currentUserId: string;
+    club: ClubSectionProps;
+    joinSection: JoinSectionProps;
+    bookSection: BookSectionProps;
+    availability: AvailabilitySectionProps;
+    bookingModal: BookingModalState;
+    onCloseBooking: () => void;
+    onBookingSuccess: () => void;
+    feedback: FeedbackProps;
 };
 
 const fieldCls = "input-base h-10";
@@ -103,58 +123,26 @@ function slotPriceLabel(price: number | string | null, priceLabel: string | null
 }
 
 export default function DashboardView({
-    clubs,
-    selectedClubId,
-    selectedClubName,
     currentUserId,
-    joinFilterDate,
-    joinFilterStatus,
-    bookFilterDate,
-    bookFilterSurfaceType,
-    bookFilterTimeFrom,
-    bookFilterTimeTo,
-    openGames,
-    courts,
+    club,
+    joinSection,
+    bookSection,
     availability,
-    availabilityCourtId,
     bookingModal,
-    isOpenGamesLoading,
-    isCourtsLoading,
-    isAvailabilityLoading,
-    isJoining,
-    joiningBookingId,
-    openGamesError,
-    courtsError,
-    availabilityError,
-    joinError,
-    successMessage,
-    onClubChange,
-    onJoinFilterDateChange,
-    onJoinFilterStatusChange,
-    onBookFilterDateChange,
-    onBookFilterSurfaceTypeChange,
-    onBookFilterTimeFromChange,
-    onBookFilterTimeToChange,
-    onCheckAvailability,
-    onRefreshOpenGames,
-    onRefreshCourts,
-    onJoinGame,
-    onOpenBooking,
     onCloseBooking,
     onBookingSuccess,
-    onDismissJoinError,
-    onDismissSuccess,
-}: Props): JSX.Element {
-    const checkedCourt = courts.find((court) => court.id === availabilityCourtId);
-    const availableSlot = firstAvailableSlot(availability);
+    feedback,
+}: DashboardViewProps): JSX.Element {
+    const checkedCourt = bookSection.courts.find((court) => court.id === availability.courtId);
+    const availableSlot = firstAvailableSlot(availability.data);
 
     const PAGE_SIZE = 3;
     const [openGamesPage, setOpenGamesPage] = useState(0);
     useEffect(() => {
         setOpenGamesPage(0);
-    }, [openGames]);
-    const totalPages = Math.ceil(openGames.length / PAGE_SIZE);
-    const pagedOpenGames = openGames.slice(
+    }, [joinSection.games]);
+    const totalPages = Math.ceil(joinSection.games.length / PAGE_SIZE);
+    const pagedOpenGames = joinSection.games.slice(
         openGamesPage * PAGE_SIZE,
         (openGamesPage + 1) * PAGE_SIZE
     );
@@ -163,9 +151,9 @@ export default function DashboardView({
     const [courtsPage, setCourtsPage] = useState(0);
     useEffect(() => {
         setCourtsPage(0);
-    }, [courts]);
-    const courtsTotalPages = Math.ceil(courts.length / COURTS_PAGE_SIZE);
-    const pagedCourts = courts.slice(
+    }, [bookSection.courts]);
+    const courtsTotalPages = Math.ceil(bookSection.courts.length / COURTS_PAGE_SIZE);
+    const pagedCourts = bookSection.courts.slice(
         courtsPage * COURTS_PAGE_SIZE,
         (courtsPage + 1) * COURTS_PAGE_SIZE
     );
@@ -179,8 +167,8 @@ export default function DashboardView({
                             Book a court or join a game
                         </h1>
                         <p className="text-xs text-muted-foreground">
-                            {selectedClubName
-                                ? `${selectedClubName} options`
+                            {club.selectedName
+                                ? `${club.selectedName} options`
                                 : "Select a club to see available options"}
                         </p>
                     </div>
@@ -188,11 +176,11 @@ export default function DashboardView({
                     <div className="flex shrink-0 items-center gap-2">
                         <span className="text-xs font-semibold text-muted-foreground">Club</span>
                         <SelectInput
-                            value={selectedClubId}
-                            onValueChange={onClubChange}
-                            options={clubs.map((club) => ({
-                                value: club.id,
-                                label: club.name,
+                            value={club.selectedId}
+                            onValueChange={club.onChange}
+                            options={club.clubs.map((c) => ({
+                                value: c.id,
+                                label: c.name,
                             }))}
                             placeholder="Select club"
                             className="input-base h-8 w-[200px] text-sm"
@@ -201,17 +189,21 @@ export default function DashboardView({
                 </div>
             </section>
 
-            {joinError ? (
+            {feedback.joinError ? (
                 <AlertToast
                     variant="error"
                     title="Unable to join game"
-                    description={joinError}
-                    onClose={onDismissJoinError}
+                    description={feedback.joinError}
+                    onClose={feedback.onDismissJoinError}
                 />
             ) : null}
 
-            {successMessage ? (
-                <AlertToast variant="success" title={successMessage} onClose={onDismissSuccess} />
+            {feedback.successMessage ? (
+                <AlertToast
+                    variant="success"
+                    title={feedback.successMessage}
+                    onClose={feedback.onDismissSuccess}
+                />
             ) : null}
 
             <div className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
@@ -223,7 +215,11 @@ export default function DashboardView({
                                 Open games needing players
                             </p>
                         </div>
-                        <button type="button" onClick={onRefreshOpenGames} className="btn-ghost-sm">
+                        <button
+                            type="button"
+                            onClick={joinSection.onRefresh}
+                            className="btn-ghost-sm"
+                        >
                             <RefreshCw size={13} />
                             Refresh
                         </button>
@@ -235,8 +231,8 @@ export default function DashboardView({
                                 Date
                             </span>
                             <DatePicker
-                                value={joinFilterDate}
-                                onChange={onJoinFilterDateChange}
+                                value={joinSection.filterDate}
+                                onChange={joinSection.onFilterDateChange}
                                 placeholder="All dates"
                                 className={fieldCls}
                             />
@@ -246,9 +242,9 @@ export default function DashboardView({
                                 Status
                             </span>
                             <SelectInput
-                                value={joinFilterStatus}
+                                value={joinSection.filterStatus}
                                 onValueChange={(v) =>
-                                    onJoinFilterStatusChange(v as JoinStatusFilter)
+                                    joinSection.onFilterStatusChange(v as JoinStatusFilter)
                                 }
                                 options={[
                                     { value: "all", label: "All" },
@@ -261,14 +257,14 @@ export default function DashboardView({
                     </div>
 
                     <div className="p-4">
-                        {openGamesError ? (
-                            <div className="feedback-error">{openGamesError.message}</div>
-                        ) : isOpenGamesLoading ? (
+                        {joinSection.error ? (
+                            <div className="feedback-error">{joinSection.error.message}</div>
+                        ) : joinSection.isLoading ? (
                             <div className="flex items-center justify-center gap-2 py-14 text-sm text-muted-foreground">
                                 <Loader2 size={16} className="animate-spin" />
                                 Loading open games
                             </div>
-                        ) : openGames.length === 0 ? (
+                        ) : joinSection.games.length === 0 ? (
                             <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-10 text-center">
                                 <DoorOpen className="mx-auto text-muted-foreground" size={24} />
                                 <p className="mt-3 text-sm font-medium text-foreground">
@@ -345,11 +341,14 @@ export default function DashboardView({
                                                     ) : (
                                                         <button
                                                             type="button"
-                                                            onClick={() => onJoinGame(game.id)}
-                                                            disabled={isJoining}
+                                                            onClick={() =>
+                                                                joinSection.onJoinGame(game.id)
+                                                            }
+                                                            disabled={joinSection.isJoining}
                                                             className="btn-cta-sm"
                                                         >
-                                                            {joiningBookingId === game.id ? (
+                                                            {joinSection.joiningBookingId ===
+                                                            game.id ? (
                                                                 <Loader2
                                                                     size={13}
                                                                     className="animate-spin"
@@ -403,7 +402,11 @@ export default function DashboardView({
                                 Check courts and reserve a slot
                             </p>
                         </div>
-                        <button type="button" onClick={onRefreshCourts} className="btn-ghost-sm">
+                        <button
+                            type="button"
+                            onClick={bookSection.onRefresh}
+                            className="btn-ghost-sm"
+                        >
                             <RefreshCw size={13} />
                             Refresh
                         </button>
@@ -415,8 +418,8 @@ export default function DashboardView({
                                 Date
                             </span>
                             <DatePicker
-                                value={bookFilterDate}
-                                onChange={onBookFilterDateChange}
+                                value={bookSection.filterDate}
+                                onChange={bookSection.onFilterDateChange}
                                 className={fieldCls}
                             />
                         </label>
@@ -425,9 +428,9 @@ export default function DashboardView({
                                 Surface
                             </span>
                             <SelectInput
-                                value={bookFilterSurfaceType}
+                                value={bookSection.filterSurface}
                                 onValueChange={(value) =>
-                                    onBookFilterSurfaceTypeChange(value as "" | SurfaceType)
+                                    bookSection.onFilterSurfaceChange(value as "" | SurfaceType)
                                 }
                                 options={[
                                     { value: "indoor", label: "Indoor" },
@@ -445,16 +448,20 @@ export default function DashboardView({
                                 From
                             </span>
                             <TimeInput
-                                value={bookFilterTimeFrom}
-                                onChange={(event) => onBookFilterTimeFromChange(event.target.value)}
+                                value={bookSection.filterTimeFrom}
+                                onChange={(event) =>
+                                    bookSection.onFilterTimeFromChange(event.target.value)
+                                }
                                 className={fieldCls}
                             />
                         </label>
                         <label className="flex flex-col gap-1.5">
                             <span className="text-xs font-semibold text-muted-foreground">To</span>
                             <TimeInput
-                                value={bookFilterTimeTo}
-                                onChange={(event) => onBookFilterTimeToChange(event.target.value)}
+                                value={bookSection.filterTimeTo}
+                                onChange={(event) =>
+                                    bookSection.onFilterTimeToChange(event.target.value)
+                                }
                                 className={fieldCls}
                             />
                         </label>
@@ -462,14 +469,14 @@ export default function DashboardView({
 
                     <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(280px,1fr)]">
                         <div className="space-y-3">
-                            {courtsError ? (
-                                <div className="feedback-error">{courtsError.message}</div>
-                            ) : isCourtsLoading ? (
+                            {bookSection.error ? (
+                                <div className="feedback-error">{bookSection.error.message}</div>
+                            ) : bookSection.isLoading ? (
                                 <div className="flex items-center justify-center gap-2 py-14 text-sm text-muted-foreground">
                                     <Loader2 size={16} className="animate-spin" />
                                     Loading courts
                                 </div>
-                            ) : courts.length === 0 ? (
+                            ) : bookSection.courts.length === 0 ? (
                                 <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
                                     No courts are available for this club.
                                 </div>
@@ -479,7 +486,7 @@ export default function DashboardView({
                                         <article
                                             key={court.id}
                                             className={`rounded-lg border p-4 transition-colors ${
-                                                court.id === availabilityCourtId
+                                                court.id === availability.courtId
                                                     ? "border-cta/35 bg-cta/5"
                                                     : "border-border bg-background"
                                             }`}
@@ -514,7 +521,9 @@ export default function DashboardView({
                                                 </div>
                                                 <button
                                                     type="button"
-                                                    onClick={() => onCheckAvailability(court.id)}
+                                                    onClick={() =>
+                                                        bookSection.onCheckAvailability(court.id)
+                                                    }
                                                     disabled={!court.is_active}
                                                     className="btn-outline shrink-0 px-2.5 py-1.5 text-xs"
                                                 >
@@ -560,7 +569,7 @@ export default function DashboardView({
                                     </h3>
                                     <p className="mt-1 text-xs text-muted-foreground">
                                         {checkedCourt
-                                            ? `Slots for ${bookFilterDate}`
+                                            ? `Slots for ${bookSection.filterDate}`
                                             : "Choose a court to see bookable slots."}
                                     </p>
                                 </div>
@@ -572,29 +581,29 @@ export default function DashboardView({
                             </div>
 
                             <div className="mt-4">
-                                {availabilityError ? (
+                                {availability.error ? (
                                     <div className="feedback-error">
-                                        {availabilityError.message}
+                                        {availability.error.message}
                                     </div>
-                                ) : isAvailabilityLoading ? (
+                                ) : availability.isLoading ? (
                                     <div className="flex items-center justify-center gap-2 py-12 text-sm text-muted-foreground">
                                         <Loader2 size={16} className="animate-spin" />
                                         Checking availability
                                     </div>
-                                ) : !availabilityCourtId ? (
+                                ) : !availability.courtId ? (
                                     <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-10 text-center text-sm text-muted-foreground">
                                         Select Check Availability on a court.
                                     </div>
-                                ) : availability?.slots.length ? (
+                                ) : availability.data?.slots.length ? (
                                     <div className="grid grid-cols-2 gap-2">
-                                        {availability.slots.map((slot) => (
+                                        {availability.data.slots.map((slot) => (
                                             <button
                                                 key={`${slot.start_time}-${slot.end_time}`}
                                                 type="button"
                                                 disabled={!slot.is_available || !checkedCourt}
                                                 onClick={() =>
                                                     checkedCourt &&
-                                                    onOpenBooking(
+                                                    availability.onOpenBooking(
                                                         checkedCourt.id,
                                                         checkedCourt.name,
                                                         slot.start_time

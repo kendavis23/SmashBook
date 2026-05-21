@@ -63,59 +63,60 @@ vi.mock("../../hooks", () => ({
 }));
 
 vi.mock("./DashboardView", () => ({
-    default: (props: Record<string, unknown>) => (
+    default: (props: {
+        club: { selectedId: string; selectedName: string; onChange: (id: string) => void };
+        joinSection: {
+            filterDate: string;
+            onFilterDateChange: (v: string) => void;
+            onRefresh: () => void;
+            onJoinGame: (id: string) => void;
+        };
+        bookSection: {
+            filterDate: string;
+            onFilterDateChange: (v: string) => void;
+            onRefresh: () => void;
+            onCheckAvailability: (id: string) => void;
+        };
+        availability: {
+            onOpenBooking: (courtId: string, courtName: string, startTime: string) => void;
+        };
+        bookingModal: unknown;
+        onBookingSuccess: () => void;
+        feedback: {
+            joinError: string;
+            successMessage: string;
+            onDismissJoinError: () => void;
+            onDismissSuccess: () => void;
+        };
+    }) => (
         <div>
             <span>desktop view</span>
-            <span>selected:{String(props.selectedClubId)}</span>
-            <span>club:{String(props.selectedClubName)}</span>
-            <span>joinError:{String(props.joinError)}</span>
-            <span>success:{String(props.successMessage)}</span>
+            <span>selected:{props.club.selectedId}</span>
+            <span>club:{props.club.selectedName}</span>
+            <span>joinError:{props.feedback.joinError}</span>
+            <span>success:{props.feedback.successMessage}</span>
             <span>modal:{props.bookingModal ? "open" : "closed"}</span>
-            <button onClick={() => (props.onClubChange as (id: string) => void)("club-2")}>
-                Change club
-            </button>
-            <button
-                onClick={() => (props.onJoinFilterDateChange as (v: string) => void)("2026-05-21")}
-            >
+            <button onClick={() => props.club.onChange("club-2")}>Change club</button>
+            <button onClick={() => props.joinSection.onFilterDateChange("2026-05-21")}>
                 Join date
             </button>
-            <button
-                onClick={() => (props.onBookFilterDateChange as (v: string) => void)("2026-05-22")}
-            >
+            <button onClick={() => props.bookSection.onFilterDateChange("2026-05-22")}>
                 Book date
             </button>
-            <button onClick={() => (props.onCheckAvailability as (id: string) => void)("court-1")}>
+            <button onClick={() => props.bookSection.onCheckAvailability("court-1")}>
                 Check availability
             </button>
-            <button onClick={() => (props.onRefreshOpenGames as () => void)()}>
-                Refresh open games
-            </button>
-            <button onClick={() => (props.onRefreshCourts as () => void)()}>Refresh courts</button>
-            <button onClick={() => (props.onJoinGame as (id: string) => void)("game-1")}>
-                Join game
-            </button>
+            <button onClick={() => props.joinSection.onRefresh()}>Refresh open games</button>
+            <button onClick={() => props.bookSection.onRefresh()}>Refresh courts</button>
+            <button onClick={() => props.joinSection.onJoinGame("game-1")}>Join game</button>
             <button
-                onClick={() =>
-                    (
-                        props.onOpenBooking as (
-                            courtId: string,
-                            courtName: string,
-                            startTime: string
-                        ) => void
-                    )("court-1", "Court One", "10:00")
-                }
+                onClick={() => props.availability.onOpenBooking("court-1", "Court One", "10:00")}
             >
                 Open booking
             </button>
-            <button onClick={() => (props.onBookingSuccess as () => void)()}>
-                Booking success
-            </button>
-            <button onClick={() => (props.onDismissJoinError as () => void)()}>
-                Dismiss join error
-            </button>
-            <button onClick={() => (props.onDismissSuccess as () => void)()}>
-                Dismiss success
-            </button>
+            <button onClick={() => props.onBookingSuccess()}>Booking success</button>
+            <button onClick={() => props.feedback.onDismissJoinError()}>Dismiss join error</button>
+            <button onClick={() => props.feedback.onDismissSuccess()}>Dismiss success</button>
         </div>
     ),
 }));
