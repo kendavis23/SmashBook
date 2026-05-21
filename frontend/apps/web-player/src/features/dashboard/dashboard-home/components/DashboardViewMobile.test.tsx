@@ -101,6 +101,7 @@ const openGame: OpenGame = {
     max_skill_level: 5,
     slots_available: 2,
     total_price: 24,
+    players: [],
 };
 
 const court: Court = {
@@ -131,7 +132,9 @@ const defaultProps = {
     clubs: [{ id: "club-1", name: "Club One", role: "member" }],
     selectedClubId: "club-1",
     selectedClubName: "Club One",
+    currentUserId: "user-1",
     joinFilterDate: "",
+    joinFilterStatus: "all" as const,
     bookFilterDate: "2026-05-20",
     bookFilterSurfaceType: "" as const,
     bookFilterTimeFrom: "",
@@ -153,6 +156,7 @@ const defaultProps = {
     successMessage: "",
     onClubChange: vi.fn(),
     onJoinFilterDateChange: vi.fn(),
+    onJoinFilterStatusChange: vi.fn(),
     onBookFilterDateChange: vi.fn(),
     onBookFilterSurfaceTypeChange: vi.fn(),
     onBookFilterTimeFromChange: vi.fn(),

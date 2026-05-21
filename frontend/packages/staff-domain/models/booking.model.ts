@@ -109,6 +109,12 @@ export interface Booking {
     created_at: string; // ISO 8601
 }
 
+export interface OpenGamePlayer {
+    user_id: UUID;
+    full_name: string;
+    invite_status: InviteStatus;
+}
+
 export interface OpenGame {
     id: UUID;
     court_id: UUID;
@@ -119,6 +125,7 @@ export interface OpenGame {
     max_skill_level: number | null;
     slots_available: number;
     total_price: number | null;
+    players: OpenGamePlayer[];
 }
 
 export interface RecurringBookingInput {

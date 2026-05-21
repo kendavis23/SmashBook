@@ -71,6 +71,7 @@ export type {
     InvitePlayerInput,
     BookingPlayer,
     Booking,
+    OpenGamePlayer,
     OpenGame,
     CalendarBookingItem,
     CalendarBlockItem,

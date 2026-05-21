@@ -81,6 +81,12 @@ export interface BookingResponse {
     created_at: string;
 }
 
+export interface OpenGamePlayer {
+    user_id: UUID;
+    full_name: string;
+    invite_status: InviteStatus;
+}
+
 export interface OpenGameSummary {
     id: UUID;
     court_id: UUID;
@@ -91,4 +97,5 @@ export interface OpenGameSummary {
     max_skill_level: number | null;
     slots_available: number;
     total_price: number | null;
+    players: OpenGamePlayer[];
 }
