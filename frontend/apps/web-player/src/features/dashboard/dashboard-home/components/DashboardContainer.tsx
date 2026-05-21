@@ -8,7 +8,13 @@ import {
     useListOpenGames,
     useMyProfile,
 } from "../../hooks";
-import type { BookingModalState, ClubOption, OpenGameFilters, SurfaceType } from "../../types";
+import type {
+    BookingModalState,
+    ClubOption,
+    JoinStatusFilter,
+    OpenGameFilters,
+    SurfaceType,
+} from "../../types";
 import type { Booking } from "@repo/player-domain/models";
 import type { PlayerBookingItem } from "@repo/player-domain/models";
 import { PaymentModal } from "../../../payment";
@@ -28,6 +34,7 @@ function useIsMobile(): boolean {
 
 type JoinFilters = {
     date: string;
+    status: JoinStatusFilter;
 };
 
 type BookFilters = {
@@ -58,6 +65,7 @@ export default function DashboardContainer(): JSX.Element {
     const today = useMemo(() => todayInputValue(), []);
     const [joinFilters, setJoinFilters] = useState<JoinFilters>({
         date: "",
+        status: "all",
     });
     const [bookFilters, setBookFilters] = useState<BookFilters>({
         date: today,
@@ -123,6 +131,24 @@ export default function DashboardContainer(): JSX.Element {
         error: availabilityError,
         refetch: refetchAvailability,
     } = useGetCourtAvailability(availabilityCourtId, bookFilters.date);
+
+    const currentUserId = myProfile?.id ?? "";
+    const filteredOpenGames = useMemo(() => {
+        if (joinFilters.status === "joined") {
+            return openGames.filter((g) =>
+                g.players.some((p) => p.user_id === currentUserId && p.invite_status === "accepted")
+            );
+        }
+        if (joinFilters.status === "open") {
+            return openGames.filter(
+                (g) =>
+                    !g.players.some(
+                        (p) => p.user_id === currentUserId && p.invite_status === "accepted"
+                    )
+            );
+        }
+        return openGames;
+    }, [openGames, joinFilters.status, currentUserId]);
 
     const isMobile = useIsMobile();
     const joinMutation = useJoinBooking(selectedClubId, joinBookingId);
@@ -196,12 +222,14 @@ export default function DashboardContainer(): JSX.Element {
         clubs,
         selectedClubId,
         selectedClubName: selectedClub?.name ?? "",
+        currentUserId,
         joinFilterDate: joinFilters.date,
+        joinFilterStatus: joinFilters.status,
         bookFilterDate: bookFilters.date,
         bookFilterSurfaceType: bookFilters.surfaceType,
         bookFilterTimeFrom: bookFilters.timeFrom,
         bookFilterTimeTo: bookFilters.timeTo,
-        openGames,
+        openGames: filteredOpenGames,
         courts,
         availability: availability ?? null,
         availabilityCourtId,
@@ -218,6 +246,8 @@ export default function DashboardContainer(): JSX.Element {
         successMessage,
         onClubChange: handleClubChange,
         onJoinFilterDateChange: (date: string) => setJoinFilters((prev) => ({ ...prev, date })),
+        onJoinFilterStatusChange: (status: JoinStatusFilter) =>
+            setJoinFilters((prev) => ({ ...prev, status })),
         onBookFilterDateChange: (date: string) => {
             setBookFilters((prev) => ({ ...prev, date }));
             setAvailabilityCourtId("");

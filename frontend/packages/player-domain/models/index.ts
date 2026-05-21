@@ -26,6 +26,7 @@ export type {
     InviteRespondInput,
     BookingPlayer,
     Booking,
+    OpenGamePlayer,
     OpenGame,
     EquipmentRentalInput,
     EquipmentRental,

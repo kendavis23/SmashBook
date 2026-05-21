@@ -15,6 +15,8 @@ export type ClubOption = {
     role: string;
 };
 
+export type JoinStatusFilter = "all" | "open" | "joined";
+
 export type BookingModalState = {
     courtId: string;
     courtName: string;

@@ -17,6 +17,7 @@ import type {
     ClubOption,
     Court,
     CourtAvailability,
+    JoinStatusFilter,
     OpenGame,
     SurfaceType,
 } from "../../types";
@@ -25,7 +26,9 @@ type Props = {
     clubs: ClubOption[];
     selectedClubId: string;
     selectedClubName: string;
+    currentUserId: string;
     joinFilterDate: string;
+    joinFilterStatus: JoinStatusFilter;
     bookFilterDate: string;
     bookFilterSurfaceType: "" | SurfaceType;
     bookFilterTimeFrom: string;
@@ -47,6 +50,7 @@ type Props = {
     successMessage: string;
     onClubChange: (clubId: string) => void;
     onJoinFilterDateChange: (date: string) => void;
+    onJoinFilterStatusChange: (status: JoinStatusFilter) => void;
     onBookFilterDateChange: (date: string) => void;
     onBookFilterSurfaceTypeChange: (surfaceType: "" | SurfaceType) => void;
     onBookFilterTimeFromChange: (value: string) => void;
@@ -89,7 +93,9 @@ export default function DashboardViewMobile({
     clubs,
     selectedClubId,
     selectedClubName,
+    currentUserId,
     joinFilterDate,
+    joinFilterStatus,
     bookFilterDate,
     bookFilterSurfaceType,
     bookFilterTimeFrom,
@@ -111,6 +117,7 @@ export default function DashboardViewMobile({
     successMessage,
     onClubChange,
     onJoinFilterDateChange,
+    onJoinFilterStatusChange,
     onBookFilterDateChange,
     onBookFilterSurfaceTypeChange,
     onBookFilterTimeFromChange,
@@ -211,16 +218,37 @@ export default function DashboardViewMobile({
             {/* JOIN TAB */}
             {activeTab === "join" && (
                 <div className="flex flex-col gap-3 px-3">
-                    {/* Date filter */}
-                    <label className="flex flex-col gap-1.5">
-                        <span className="text-xs font-semibold text-muted-foreground">Date</span>
-                        <DatePicker
-                            value={joinFilterDate}
-                            onChange={onJoinFilterDateChange}
-                            placeholder="All dates"
-                            className={mobileFieldCls}
-                        />
-                    </label>
+                    {/* Date + Status filters */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <label className="flex flex-col gap-1.5">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                Date
+                            </span>
+                            <DatePicker
+                                value={joinFilterDate}
+                                onChange={onJoinFilterDateChange}
+                                placeholder="All dates"
+                                className={mobileFieldCls}
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1.5">
+                            <span className="text-xs font-semibold text-muted-foreground">
+                                Status
+                            </span>
+                            <SelectInput
+                                value={joinFilterStatus}
+                                onValueChange={(v) =>
+                                    onJoinFilterStatusChange(v as JoinStatusFilter)
+                                }
+                                options={[
+                                    { value: "all", label: "All" },
+                                    { value: "open", label: "Open" },
+                                    { value: "joined", label: "Joined" },
+                                ]}
+                                className={mobileFieldCls}
+                            />
+                        </label>
+                    </div>
 
                     {/* Open games list */}
                     {openGamesError ? (
@@ -242,62 +270,90 @@ export default function DashboardViewMobile({
                         </div>
                     ) : (
                         <div className="space-y-3">
-                            {openGames.map((game) => (
-                                <article
-                                    key={game.id}
-                                    className="rounded-lg border border-border bg-card p-3.5 shadow-sm"
-                                >
-                                    <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                            <h3 className="truncate text-[15px] font-semibold text-foreground">
-                                                {game.court_name}
-                                            </h3>
-                                            <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-                                                <span className="inline-flex items-center gap-1">
-                                                    <CalendarDays size={13} />
-                                                    {formatUTCDate(game.start_datetime)}
-                                                </span>
-                                                <span className="inline-flex items-center gap-1">
-                                                    <Clock3 size={13} />
-                                                    {formatUTCTime(game.start_datetime)}-
-                                                    {formatUTCTime(game.end_datetime)}
-                                                </span>
+                            {openGames.map((game) => {
+                                const hasJoinedCard = game.players.some(
+                                    (p) =>
+                                        p.user_id === currentUserId &&
+                                        p.invite_status === "accepted"
+                                );
+                                return (
+                                    <article
+                                        key={game.id}
+                                        className={`rounded-lg border p-3.5 shadow-sm ${hasJoinedCard ? "border-success/40 bg-success/5" : "border-border bg-card"}`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <h3 className="truncate text-[15px] font-semibold text-foreground">
+                                                    {game.court_name}
+                                                </h3>
+                                                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <CalendarDays size={13} />
+                                                        {formatUTCDate(game.start_datetime)}
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1">
+                                                        <Clock3 size={13} />
+                                                        {formatUTCTime(game.start_datetime)}-
+                                                        {formatUTCTime(game.end_datetime)}
+                                                    </span>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <span className="shrink-0 rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">
-                                            {game.slots_available} slot
-                                            {game.slots_available === 1 ? "" : "s"}
-                                        </span>
-                                    </div>
-
-                                    <div className="mt-4 flex items-center justify-between gap-3">
-                                        <div className="text-xs text-muted-foreground">
-                                            <span className="font-semibold text-foreground">
-                                                {formatCurrency(game.total_price)}
+                                            <span className="shrink-0 rounded-full bg-success/15 px-2.5 py-1 text-xs font-semibold text-success">
+                                                {game.slots_available} slot
+                                                {game.slots_available === 1 ? "" : "s"}
                                             </span>
-                                            {game.min_skill_level || game.max_skill_level ? (
-                                                <span className="ml-2">
-                                                    Skill {game.min_skill_level ?? "-"}-
-                                                    {game.max_skill_level ?? "-"}
-                                                </span>
-                                            ) : null}
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => onJoinGame(game.id)}
-                                            disabled={isJoining}
-                                            className="btn-cta min-h-11 shrink-0 rounded-lg px-4 text-sm font-semibold"
-                                        >
-                                            {joiningBookingId === game.id ? (
-                                                <Loader2 size={14} className="animate-spin" />
-                                            ) : (
-                                                <Users size={14} />
-                                            )}
-                                            Join
-                                        </button>
-                                    </div>
-                                </article>
-                            ))}
+
+                                        <div className="mt-4 flex items-center justify-between gap-3">
+                                            <div className="text-xs text-muted-foreground">
+                                                <span className="font-semibold text-foreground">
+                                                    {formatCurrency(game.total_price)}
+                                                </span>
+                                                {game.min_skill_level || game.max_skill_level ? (
+                                                    <span className="ml-2">
+                                                        Skill {game.min_skill_level ?? "-"}-
+                                                        {game.max_skill_level ?? "-"}
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                            {(() => {
+                                                const hasJoined = game.players.some(
+                                                    (p) =>
+                                                        p.user_id === currentUserId &&
+                                                        p.invite_status === "accepted"
+                                                );
+                                                return hasJoined ? (
+                                                    <button
+                                                        type="button"
+                                                        disabled
+                                                        className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg border border-border bg-muted px-4 text-sm font-semibold text-muted-foreground"
+                                                    >
+                                                        <Users size={14} />
+                                                        Joined
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => onJoinGame(game.id)}
+                                                        disabled={isJoining}
+                                                        className="btn-cta min-h-11 shrink-0 rounded-lg px-4 text-sm font-semibold"
+                                                    >
+                                                        {joiningBookingId === game.id ? (
+                                                            <Loader2
+                                                                size={14}
+                                                                className="animate-spin"
+                                                            />
+                                                        ) : (
+                                                            <Users size={14} />
+                                                        )}
+                                                        Join
+                                                    </button>
+                                                );
+                                            })()}
+                                        </div>
+                                    </article>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
