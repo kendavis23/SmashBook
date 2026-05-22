@@ -11,6 +11,21 @@ vi.mock("@repo/ui", () => ({
             ))}
         </nav>
     ),
+    DatePicker: ({
+        value,
+        onChange,
+    }: {
+        value: string;
+        onChange: (v: string) => void;
+        className?: string;
+    }) => (
+        <input
+            type="date"
+            aria-label="Pick a date"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
+    ),
     SelectInput: ({
         value,
         onValueChange,
@@ -66,6 +81,7 @@ const baseProps = {
     onCourtChange: vi.fn(),
     onManageClick: vi.fn(),
     onManageReservationClick: vi.fn(),
+    onDatePickerChange: vi.fn(),
     onNewSlotClick: vi.fn(),
 };
 
@@ -221,5 +237,14 @@ describe("CalendarView — user events", () => {
         render(<CalendarView {...baseProps} onViewModeChange={onViewModeChange} />);
         fireEvent.click(screen.getByText("Week"));
         expect(onViewModeChange).toHaveBeenCalledWith("week");
+    });
+
+    it("calls onDatePickerChange with selected date when date picker changes", () => {
+        const onDatePickerChange = vi.fn();
+        render(<CalendarView {...baseProps} onDatePickerChange={onDatePickerChange} />);
+        fireEvent.change(screen.getByLabelText("Pick a date"), {
+            target: { value: "2026-05-22" },
+        });
+        expect(onDatePickerChange).toHaveBeenCalledWith("2026-05-22");
     });
 });

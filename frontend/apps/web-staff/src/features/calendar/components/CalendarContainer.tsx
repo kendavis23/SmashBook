@@ -57,6 +57,11 @@ export default function CalendarContainer(): JSX.Element {
         setViewMode(mode);
     }, []);
 
+    const handleDatePickerChange = useCallback((date: string): void => {
+        setAnchorDate(date);
+        setViewMode("day");
+    }, []);
+
     const handleRefresh = useCallback((): void => {
         void refetch();
     }, [refetch]);
@@ -142,6 +147,7 @@ export default function CalendarContainer(): JSX.Element {
                 onCourtChange={setSelectedCourtId}
                 onManageClick={handleManageClick}
                 onManageReservationClick={handleManageReservationClick}
+                onDatePickerChange={handleDatePickerChange}
                 onNewSlotClick={handleNewSlotClick}
             />
         </>

@@ -1,5 +1,5 @@
 import { memo, type JSX } from "react";
-import { Breadcrumb, SelectInput } from "@repo/ui";
+import { Breadcrumb, SelectInput, DatePicker } from "@repo/ui";
 import { ChevronLeft, ChevronRight, CalendarDays, RefreshCw } from "lucide-react";
 import type { CalendarView as CalendarViewData, CalendarViewMode } from "../types";
 import { CALENDAR_VIEW_MODES, formatShortDate } from "../types";
@@ -24,6 +24,7 @@ type Props = {
     onCourtChange: (courtId: string) => void;
     onManageClick: (bookingId: string) => void;
     onManageReservationClick: (reservationId: string) => void;
+    onDatePickerChange: (date: string) => void;
     onNewSlotClick: (
         courtId: string,
         courtName: string,
@@ -51,6 +52,7 @@ function CalendarView({
     onCourtChange,
     onManageClick,
     onManageReservationClick,
+    onDatePickerChange,
     onNewSlotClick,
 }: Props): JSX.Element {
     const rangeLabel =
@@ -97,6 +99,15 @@ function CalendarView({
                                 <span className="hidden h-5 w-px bg-border sm:block" />
                             </>
                         ) : null}
+
+                        {/* Date picker — jumps to day view on the selected date */}
+                        <div className="w-[160px]">
+                            <DatePicker
+                                className="input-base"
+                                value={anchorDate}
+                                onChange={(v) => onDatePickerChange(v)}
+                            />
+                        </div>
 
                         {/* View mode toggle */}
                         <div className="flex rounded-lg border border-border bg-muted/20 p-0.5">
