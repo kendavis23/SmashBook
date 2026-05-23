@@ -58,6 +58,17 @@ export type {
     SkillLevelUpdateResult,
 } from "./player.model";
 export type {
+    SubscriptionStatus,
+    PlanLimits,
+    UsageCounts,
+    PlanFeatures,
+    Subscription,
+    InvoiceItem,
+    SetupIntent,
+    UpdatePaymentMethodInput,
+    UpdatePaymentMethodResult,
+} from "./subscription.model";
+export type {
     BookingType,
     BookingStatus,
     PlayerRole,

@@ -48,6 +48,8 @@ const ManageOpenMatchPage = lazy(
 );
 const PlayersPage = lazy(() => import("../features/player/pages/PlayersPage"));
 const EquipmentPage = lazy(() => import("../features/equipment/pages/EquipmentPage"));
+const MySubscriptionPage = lazy(() => import("../features/subscription/pages/MySubscriptionPage"));
+const InvoicesPage = lazy(() => import("../features/subscription/pages/InvoicesPage"));
 
 function requireRole(roles: UserRole[]) {
     return () => {
@@ -379,6 +381,20 @@ const playersRoute = createRoute({
     component: PlayersPage,
 });
 
+const subscriptionRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/subscription",
+    beforeLoad: requireRole(["owner"]),
+    component: MySubscriptionPage,
+});
+
+const invoicesRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/invoices",
+    beforeLoad: requireRole(["owner"]),
+    component: InvoicesPage,
+});
+
 const financeRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/finance",
@@ -438,6 +454,8 @@ const routeTree = rootRoute.addChildren([
         openMatchRoute,
         manageOpenMatchRoute,
         playersRoute,
+        subscriptionRoute,
+        invoicesRoute,
         financeRoute,
         reportsRoute,
         supportRoute,
