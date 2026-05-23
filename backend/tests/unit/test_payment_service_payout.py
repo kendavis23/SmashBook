@@ -14,6 +14,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from stripe._stripe_object import StripeObject
 
 from app.services.payment_service import PaymentService
 
@@ -35,11 +36,18 @@ def _make_db(payments_returned):
     return db
 
 
+def _txn(**fields):
+    # Real Stripe BalanceTransactions are StripeObject (not dict) — attribute
+    # access goes through __getattr__ and there is no `.get` method. Mocking
+    # with plain dicts hides the AttributeError that hit prod in revision 105.
+    return StripeObject.construct_from(fields, "fake_key")
+
+
 def _make_balance_txns(sources):
     """Stand-in for stripe.BalanceTransaction.list(...) return value."""
     listing = MagicMock()
     listing.auto_paging_iter = MagicMock(
-        return_value=[{"source": s} for s in sources]
+        return_value=[_txn(source=s) for s in sources]
     )
     return listing
 
@@ -100,7 +108,7 @@ async def test_skips_balance_txns_without_source():
 
     listing = MagicMock()
     listing.auto_paging_iter = MagicMock(
-        return_value=[{"source": None}, {"source": "py_999"}, {}]
+        return_value=[_txn(source=None), _txn(source="py_999"), _txn()]
     )
 
     with patch(
