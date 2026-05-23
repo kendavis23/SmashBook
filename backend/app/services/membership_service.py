@@ -7,6 +7,7 @@ Responsibilities:
   - Cancel at period end (player-initiated via UI)
   - Handle Stripe subscription lifecycle webhooks (renewal, cancellation, payment failure)
 """
+import logging
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
@@ -27,6 +28,8 @@ from app.db.models.membership import (
     MembershipSubscription,
 )
 from app.db.models.user import User
+
+logger = logging.getLogger(__name__)
 
 settings = get_settings()
 stripe.api_key = settings.STRIPE_SECRET_KEY
@@ -318,7 +321,10 @@ class MembershipService:
                 "effective_end": subscription.current_period_end.isoformat(),
             })
         except Exception:
-            pass
+            logger.exception(
+                "failed to publish membership_cancelled event subscription_id=%s user_id=%s",
+                subscription.id, subscription.user_id,
+            )
 
         return subscription
 
@@ -474,7 +480,10 @@ class MembershipService:
                 "period_end": sub.current_period_end.isoformat(),
             })
         except Exception:
-            pass
+            logger.exception(
+                "failed to publish membership_renewed event subscription_id=%s user_id=%s",
+                sub.id, sub.user_id,
+            )
 
     async def handle_invoice_payment_failed(self, event: dict) -> None:
         """
@@ -499,4 +508,7 @@ class MembershipService:
                 "currency": _sget(invoice, "currency", "gbp"),
             })
         except Exception:
-            pass
+            logger.exception(
+                "failed to publish membership_payment_failed event subscription_id=%s user_id=%s",
+                sub.id, sub.user_id,
+            )

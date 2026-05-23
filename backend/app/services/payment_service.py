@@ -413,11 +413,11 @@ class PaymentService:
                 # Destination-charge Connect flow: walk Charge → Transfer to
                 # capture the connected-account-side payment id (py_xxx) so
                 # the payout.paid webhook can match without extra API calls.
-                transfer_id = charge.get("transfer")
+                transfer_id = getattr(charge, "transfer", None)
                 if transfer_id:
                     try:
                         transfer = stripe.Transfer.retrieve(transfer_id)
-                        payment.stripe_destination_payment_id = transfer.get("destination_payment")
+                        payment.stripe_destination_payment_id = getattr(transfer, "destination_payment", None)
                     except stripe.StripeError:
                         pass  # best-effort; payout reconciliation can still backfill
             except stripe.StripeError:
@@ -948,7 +948,7 @@ class PaymentService:
             stripe_account=connect_account_id,
         )
         destination_payment_ids = [
-            t["source"] for t in txns.auto_paging_iter() if t.get("source")
+            t["source"] for t in txns.auto_paging_iter() if getattr(t, "source", None)
         ]
 
         if not destination_payment_ids:

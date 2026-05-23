@@ -77,6 +77,9 @@ async def stripe_billing_webhook(
             detail="Invalid payload",
         )
 
+    # Stripe's StripeObject (v8+) doesn't implement dict.get(); normalise once
+    # so the field accesses below behave like plain dict lookups.
+    event = event.to_dict() if hasattr(event, "to_dict") else event
     event_type = event["type"]
     obj = event["data"]["object"]
 
