@@ -5,6 +5,9 @@ export type {
     UsageCounts,
     PlanFeatures,
     InvoiceItem,
+    SetupIntent,
+    UpdatePaymentMethodInput,
+    UpdatePaymentMethodResult,
 } from "@repo/staff-domain/models";
 
 export const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {

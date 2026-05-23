@@ -13,6 +13,8 @@
     },
     "dependencies": {
         "@hookform/resolvers": "^3.9.0",
+        "@stripe/react-stripe-js": "^6.3.0",
+        "@stripe/stripe-js": "^9.4.0",
         "@repo/api-client": "workspace:*",
         "@repo/auth": "workspace:*",
         "@repo/config": "workspace:*",

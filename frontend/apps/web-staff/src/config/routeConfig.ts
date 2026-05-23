@@ -223,6 +223,17 @@ export const ROUTES: RouteConfig[] = [
         group: "Subscription",
     },
     {
+        key: "cards",
+        path: "/subscription/payment",
+        label: "Cards",
+        icon: CreditCard,
+        title: "Cards",
+        subtitle: "Manage your billing card.",
+        breadcrumb: ["Subscription", "Cards"],
+        roles: ["owner"],
+        group: "Subscription",
+    },
+    {
         key: "finance",
         path: "/finance",
         label: "Finance",
@@ -283,10 +294,12 @@ export function getSearchableRoutes(userRole: string | undefined): RouteConfig[]
  * Uses a substring match to mirror the original pageConfig.match behaviour.
  */
 export function getRouteByPath(pathname: string): RouteConfig | undefined {
-    // Children first so more-specific paths (e.g. /settings/club) win over /settings
-    return getNavigableRoutes().find(
-        (route) => route.path !== undefined && pathname.includes(route.path)
-    );
+    // Sort by path length descending so more-specific paths (e.g. /subscription/payment)
+    // win over shorter prefixes (e.g. /subscription).
+    const routes = getNavigableRoutes()
+        .filter((route) => route.path !== undefined && pathname.includes(route.path))
+        .sort((a, b) => (b.path?.length ?? 0) - (a.path?.length ?? 0));
+    return routes[0];
 }
 
 /**

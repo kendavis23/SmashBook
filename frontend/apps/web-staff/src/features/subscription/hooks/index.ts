@@ -1,1 +1,6 @@
-export { useGetSubscription, useListInvoices } from "@repo/staff-domain/hooks";
+export {
+    useGetSubscription,
+    useListInvoices,
+    useCreateSetupIntent,
+    useUpdatePaymentMethod,
+} from "@repo/staff-domain/hooks";

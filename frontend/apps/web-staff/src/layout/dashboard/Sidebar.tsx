@@ -44,10 +44,22 @@ export default function Sidebar({
 
     /* ── Shared helpers ──────────────────────────────────────────────────── */
 
-    /** Returns true when this path (or any sub-path) is the current location */
-    const isPathActive = (path: string | undefined): boolean =>
-        path !== undefined &&
-        (location.pathname === path || location.pathname.startsWith(path + "/"));
+    /** Returns true when this path is the current location.
+     *  Uses exact match only — a more-specific registered sibling route
+     *  (e.g. /subscription/payment) must not activate a parent (/subscription). */
+    const isPathActive = (path: string | undefined): boolean => {
+        if (path === undefined) return false;
+        if (location.pathname === path) return true;
+        // Only activate prefix-match when no other top-level route owns the
+        // current pathname exactly (prevents /subscription lighting up on /subscription/payment).
+        if (location.pathname.startsWith(path + "/")) {
+            const allPaths = ROUTES.flatMap((r) =>
+                r.children ? [r.path, ...r.children.map((c) => c.path)] : [r.path]
+            ).filter(Boolean) as string[];
+            return !allPaths.some((p) => p !== path && location.pathname === p);
+        }
+        return false;
+    };
 
     /* ── Render helpers ──────────────────────────────────────────────────── */
 
