@@ -50,13 +50,23 @@ export type {
 export type {
     PlayerSearchResult,
     PlayerSearchParams,
-    ClubSummary,
-    TokenResponse,
     RegisterPlayerInput,
+    RegisterPlayerResult,
     SkillLevelUpdateInput,
     SkillLevelHistoryItem,
     SkillLevelUpdateResult,
 } from "./player.model";
+export type {
+    SubscriptionStatus,
+    PlanLimits,
+    UsageCounts,
+    PlanFeatures,
+    Subscription,
+    InvoiceItem,
+    SetupIntent,
+    UpdatePaymentMethodInput,
+    UpdatePaymentMethodResult,
+} from "./subscription.model";
 export type {
     BookingType,
     BookingStatus,

@@ -11,15 +11,18 @@ import {
     requestPasswordResetService,
     confirmPasswordResetService,
     getMeService,
+    verifyEmailService,
 } from "../services";
 import { isTokenExpired } from "../utils";
 import type {
     UserLogin,
     UserRegister,
+    RegisterResponse,
     PasswordResetRequest,
     PasswordResetConfirm,
     UserResponse,
     TenantUserRole,
+    EmailVerifyResponse,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -185,19 +188,12 @@ export function useLogin(portalType: PortalType = "staff") {
 // useRegister — POST /api/v1/auth/register then GET /api/v1/players/me
 // ---------------------------------------------------------------------------
 
+// useRegister — POST /api/v1/auth/register
+// Returns RegisterResponse (no tokens). Login is gated on email verification.
+// Callers should redirect to a "check your email" screen on success.
 export function useRegister() {
     return useMutation({
-        mutationFn: async (data: UserRegister): Promise<UserResponse> => {
-            const { setTokens, setUser, setTenantSubdomain } = useAuthStore.getState();
-
-            const tokens = await registerService(data);
-            setTokens(tokens);
-            setTenantSubdomain(data.tenant_subdomain);
-
-            const user = await getMeService(tokens.access_token, data.tenant_subdomain);
-            setUser(user);
-            return user;
-        },
+        mutationFn: (data: UserRegister): Promise<RegisterResponse> => registerService(data),
     });
 }
 
@@ -267,4 +263,17 @@ export async function tryRefreshToken(): Promise<boolean> {
 /** Clears all auth state — call after a failed refresh in fetcher.ts. */
 export function signOut(): void {
     useAuthStore.getState().clearAuth();
+}
+
+// ---------------------------------------------------------------------------
+// useVerifyEmail — POST /api/v1/auth/verify-email (called with token from URL)
+// ---------------------------------------------------------------------------
+
+export function useVerifyEmail(token: string) {
+    return useQuery<EmailVerifyResponse>({
+        queryKey: ["auth", "verify-email", token],
+        queryFn: () => verifyEmailService({ token }),
+        enabled: !!token,
+        retry: false,
+    });
 }

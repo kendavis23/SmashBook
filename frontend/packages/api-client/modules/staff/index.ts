@@ -13,3 +13,5 @@ export * from "./trainer/trainer.api";
 export * from "./trainer/trainer.types";
 export * from "./player/player.api";
 export * from "./player/player.types";
+export * from "./subscription/subscription.api";
+export * from "./subscription/subscription.types";

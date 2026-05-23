@@ -7,11 +7,14 @@ import { buildAuthHeaders } from "../utils";
 import type {
     UserLogin,
     UserRegister,
+    RegisterResponse,
     TokenResponse,
     RefreshRequest,
     PasswordResetRequest,
     PasswordResetConfirm,
     UserResponse,
+    EmailVerifyRequest,
+    EmailVerifyResponse,
 } from "../types";
 
 const BASE = config.apiBaseUrl;
@@ -37,14 +40,24 @@ export async function loginService(data: UserLogin): Promise<TokenResponse> {
     return res.json() as Promise<TokenResponse>;
 }
 
-export async function registerService(data: UserRegister): Promise<TokenResponse> {
+export async function registerService(data: UserRegister): Promise<RegisterResponse> {
     const res = await fetch(`${BASE}/api/v1/auth/register`, {
         method: "POST",
         headers: buildAuthHeaders(),
         body: JSON.stringify(data),
     });
     if (!res.ok) throw await parseError(res);
-    return res.json() as Promise<TokenResponse>;
+    return res.json() as Promise<RegisterResponse>;
+}
+
+export async function verifyEmailService(data: EmailVerifyRequest): Promise<EmailVerifyResponse> {
+    const res = await fetch(`${BASE}/api/v1/auth/verify-email`, {
+        method: "POST",
+        headers: buildAuthHeaders(),
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await parseError(res);
+    return res.json() as Promise<EmailVerifyResponse>;
 }
 
 export async function refreshService(data: RefreshRequest): Promise<TokenResponse> {

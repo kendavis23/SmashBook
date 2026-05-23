@@ -11,24 +11,18 @@ export interface PlayerSearchParams {
     club_id?: string;
 }
 
-export interface ClubSummary {
-    club_id: UUID;
-    club_name: string;
-    role: string;
-}
-
-export interface TokenResponse {
-    access_token: string;
-    refresh_token: string;
-    token_type: string;
-    clubs: ClubSummary[];
-}
-
 export interface RegisterPlayerInput {
     tenant_subdomain: string;
+    club_id: UUID;
     email: string;
     full_name: string;
     password: string;
+}
+
+export interface RegisterPlayerResult {
+    user_id: UUID;
+    email: string;
+    message: string;
 }
 
 export interface SkillLevelUpdateInput {

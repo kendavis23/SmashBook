@@ -1,17 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import {
-    registerPlayerEndpoint,
-    updateSkillLevelEndpoint,
-    getSkillHistoryEndpoint,
-} from "@repo/api-client/modules/staff";
+import { updateSkillLevelEndpoint, getSkillHistoryEndpoint } from "@repo/api-client/modules/staff";
 import { searchPlayersEndpoint } from "@repo/api-client/modules/share";
 import type {
-    RegisterPlayerInput,
     SkillLevelUpdateInput,
     SkillLevelUpdateResult,
     SkillLevelHistoryItem,
-    TokenResponse,
     PlayerSearchResult,
     PlayerSearchParams,
 } from "../models";
@@ -20,12 +14,6 @@ const playerKeys = {
     skillHistory: (playerId: string) => ["players", playerId, "skill-history"] as const,
     search: (params?: PlayerSearchParams) => ["players", "search", params] as const,
 };
-
-export function useRegisterPlayer() {
-    return useMutation<TokenResponse, Error, RegisterPlayerInput>({
-        mutationFn: (data: RegisterPlayerInput) => registerPlayerEndpoint(data),
-    });
-}
 
 export function useUpdateSkillLevel(playerId: string) {
     const queryClient = useQueryClient();

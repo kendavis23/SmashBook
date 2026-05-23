@@ -8,6 +8,7 @@ export type {
     NotificationChannel,
     ClubSummary,
     UserRegister,
+    RegisterResponse,
     UserLogin,
     TokenResponse,
     RefreshRequest,
@@ -41,6 +42,7 @@ export {
     useLogout,
     usePasswordResetRequest,
     usePasswordResetConfirm,
+    useVerifyEmail,
     // Non-hook functions for api-client/fetcher.ts
     tryRefreshToken,
     signOut,

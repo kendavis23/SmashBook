@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
 vi.mock("@repo/api-client/modules/staff", () => ({
-    registerPlayerEndpoint: vi.fn(),
     updateSkillLevelEndpoint: vi.fn(),
     getSkillHistoryEndpoint: vi.fn(),
 }));
@@ -15,12 +14,7 @@ vi.mock("@repo/api-client/modules/share", () => ({
 
 import * as staffApi from "@repo/api-client/modules/staff";
 import * as shareApi from "@repo/api-client/modules/share";
-import {
-    useRegisterPlayer,
-    useUpdateSkillLevel,
-    useGetSkillHistory,
-    useSearchPlayers,
-} from "./player.hooks";
+import { useUpdateSkillLevel, useGetSkillHistory, useSearchPlayers } from "./player.hooks";
 
 function makeWrapper() {
     const client = new QueryClient({
@@ -33,13 +27,6 @@ function makeWrapper() {
 }
 
 const PLAYER_ID = "player-1";
-
-const mockToken = {
-    access_token: "access",
-    refresh_token: "refresh",
-    token_type: "bearer",
-    clubs: [],
-};
 
 const mockHistoryItem = {
     id: "hist-1",
@@ -59,27 +46,9 @@ const mockSkillResult = {
 };
 
 beforeEach(() => {
-    vi.mocked(staffApi.registerPlayerEndpoint).mockReset();
     vi.mocked(staffApi.updateSkillLevelEndpoint).mockReset();
     vi.mocked(staffApi.getSkillHistoryEndpoint).mockReset();
     vi.mocked(shareApi.searchPlayersEndpoint).mockReset();
-});
-
-describe("useRegisterPlayer", () => {
-    it("calls registerPlayerEndpoint with correct args", async () => {
-        vi.mocked(staffApi.registerPlayerEndpoint).mockResolvedValue(mockToken);
-        const { Wrapper } = makeWrapper();
-        const { result } = renderHook(() => useRegisterPlayer(), { wrapper: Wrapper });
-        const data = {
-            tenant_subdomain: "club-a",
-            email: "player@example.com",
-            full_name: "Test Player",
-            password: "password123",
-        };
-        result.current.mutate(data);
-        await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.registerPlayerEndpoint).toHaveBeenCalledWith(data);
-    });
 });
 
 describe("useUpdateSkillLevel", () => {

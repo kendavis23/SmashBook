@@ -22,10 +22,12 @@ const PaymentWalletPage = lazy(() => import("../features/profile/pages/PaymentWa
 const MyMembershipPage = lazy(() => import("../features/profile/pages/MyMembershipPage"));
 const MembershipPlansPage = lazy(() => import("../features/profile/pages/MembershipPlansPage"));
 const LoginPage = lazy(() => import("../features/auth/pages/LoginPage"));
+const RegisterPage = lazy(() => import("../features/auth/pages/RegisterPage"));
 const LogoutPage = lazy(() => import("../features/auth/pages/LogoutPage"));
 const UnauthorizedPage = lazy(() => import("../features/auth/pages/UnauthorizedPage"));
 const ForgotPasswordPage = lazy(() => import("../features/auth/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/pages/ResetPasswordPage"));
+const VerifyEmailPage = lazy(() => import("../features/auth/pages/VerifyEmailPage"));
 
 function PageLoader() {
     return (
@@ -81,6 +83,16 @@ const unauthorizedRoute = createRoute({
     component: UnauthorizedPage,
 });
 
+const registerRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/register",
+    validateSearch: (search: Record<string, unknown>) => ({
+        clubid: typeof search.clubid === "string" ? search.clubid : undefined,
+        t_subdomain: typeof search.t_subdomain === "string" ? search.t_subdomain : undefined,
+    }),
+    component: RegisterPage,
+});
+
 const forgotPasswordRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/forgot-password",
@@ -91,6 +103,15 @@ const resetPasswordRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/reset-password",
     component: ResetPasswordPage,
+});
+
+const verifyEmailRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/verify-email",
+    validateSearch: (search: Record<string, unknown>) => ({
+        token: typeof search.token === "string" ? search.token : undefined,
+    }),
+    component: VerifyEmailPage,
 });
 
 const dashboardLayoutRoute = createRoute({
@@ -156,10 +177,12 @@ const membershipPlansRoute = createRoute({
 const routeTree = rootRoute.addChildren([
     indexRoute,
     loginRoute,
+    registerRoute,
     logoutRoute,
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
+    verifyEmailRoute,
     dashboardLayoutRoute.addChildren([
         dashboardRoute,
         bookingsRoute,

@@ -1,10 +1,5 @@
 export { useUpdateProfile } from "./profile.hooks";
-export {
-    useRegisterPlayer,
-    useUpdateSkillLevel,
-    useGetSkillHistory,
-    useSearchPlayers,
-} from "./player.hooks";
+export { useUpdateSkillLevel, useGetSkillHistory, useSearchPlayers } from "./player.hooks";
 export {
     useListClubs,
     useCreateClub,
@@ -49,6 +44,12 @@ export {
     useDeleteTrainerAvailability,
     useGetTrainerBookings,
 } from "./trainer.hooks";
+export {
+    useGetSubscription,
+    useListInvoices,
+    useCreateSetupIntent,
+    useUpdatePaymentMethod,
+} from "./subscription.hooks";
 export {
     useListBookings,
     useGetBooking,

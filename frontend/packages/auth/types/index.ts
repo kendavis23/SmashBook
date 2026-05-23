@@ -16,9 +16,16 @@ export type NotificationChannel = "email" | "sms" | "push" | "in_app";
 
 export interface UserRegister {
     tenant_subdomain: string;
+    club_id: UUID;
     email: string;
     full_name: string;
     password: string;
+}
+
+export interface RegisterResponse {
+    user_id: UUID;
+    email: string;
+    message: string;
 }
 
 export interface UserLogin {
@@ -52,6 +59,17 @@ export interface PasswordResetRequest {
 export interface PasswordResetConfirm {
     token: string;
     new_password: string;
+}
+
+export interface EmailVerifyRequest {
+    token: string;
+}
+
+export interface EmailVerifyResponse {
+    user_id: UUID;
+    email: string;
+    club_id: UUID;
+    membership_subscription_id: UUID;
 }
 
 export interface UserResponse {
