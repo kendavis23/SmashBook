@@ -948,7 +948,7 @@ class PaymentService:
             stripe_account=connect_account_id,
         )
         destination_payment_ids = [
-            t["source"] for t in txns.auto_paging_iter() if getattr(t, "source", None)
+            src for t in txns.auto_paging_iter() if (src := t.get("source"))
         ]
 
         if not destination_payment_ids:
