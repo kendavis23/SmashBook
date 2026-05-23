@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-05-19_
+_Last updated: 2026-05-23_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -329,7 +329,7 @@ Migration groups in `DATA_MODEL_TARGET_STATE.md` map to sprints. Implement the g
 
 ## Environment Variables
 
-Defined in `backend/app/core/config.py` via pydantic-settings. For local dev, create `backend/.env` (gitignored). Required: `SECRET_KEY`, `DATABASE_URL`, `DATABASE_READ_REPLICA_URL`, `PUBSUB_PROJECT_ID`, `GCS_BUCKET_VIDEOS`, `GCS_BUCKET_INVOICES`, `GCS_PROJECT_ID`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `STRIPE_BILLING_SECRET_KEY`, `STRIPE_BILLING_WEBHOOK_SECRET`, `PLATFORM_API_KEY`, `SENDGRID_API_KEY`, `FIREBASE_PROJECT_ID`, `APP_BASE_URL` (e.g. `https://app.smashbook.app`; used to construct password-reset links; defaults to that value if unset).
+Defined in `backend/app/core/config.py` via pydantic-settings. For local dev, create `backend/.env` (gitignored). Required: `SECRET_KEY`, `DATABASE_URL`, `DATABASE_READ_REPLICA_URL`, `PUBSUB_PROJECT_ID`, `GCS_BUCKET_VIDEOS`, `GCS_BUCKET_INVOICES`, `GCS_PROJECT_ID`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET`, `STRIPE_BILLING_SECRET_KEY`, `STRIPE_BILLING_WEBHOOK_SECRET`, `PLATFORM_API_KEY`, `SENDGRID_API_KEY`, `FIREBASE_PROJECT_ID`, `APP_BASE_URL` (e.g. `https://smashbook.app`; used to construct password-reset links; defaults to that value if unset).
 
 ### Stripe — two-account model
 

@@ -63,6 +63,8 @@ module "cloud_run" {
   secret_ids                   = module.secrets.secret_ids
   cloud_sql_connection         = module.database.connection_name
   cloud_sql_replica_connection = module.database.replica_connection_name
+  sendgrid_from_email          = var.sendgrid_from_email
+  app_base_url                 = var.app_base_url
 }
 
 module "pubsub" {

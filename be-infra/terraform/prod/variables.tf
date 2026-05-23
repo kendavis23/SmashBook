@@ -27,3 +27,11 @@ variable "api_image" {
 variable "worker_image" {
   type = string
 }
+
+variable "sendgrid_from_email" {
+  type = string
+}
+
+variable "app_base_url" {
+  type = string
+}

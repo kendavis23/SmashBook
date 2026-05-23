@@ -161,6 +161,16 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name = "PLATFORM_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["padel-platform-api-key"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
         name  = "PUBSUB_PROJECT_ID"
         value = var.project_id
       }
@@ -401,6 +411,7 @@ resource "google_cloud_run_v2_service" "payment_worker" {
 # padel-notification-worker
 # ---------------------------------------------------------------------------
 
+
 resource "google_cloud_run_v2_service" "notification_worker" {
   name     = "padel-notification-worker"
   location = var.region
@@ -472,6 +483,26 @@ resource "google_cloud_run_v2_service" "notification_worker" {
             version = "latest"
           }
         }
+      }
+
+      env {
+        name = "SENDGRID_API_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["sendgrid-api-key"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "SENDGRID_FROM_EMAIL"
+        value = var.sendgrid_from_email
+      }
+
+      env {
+        name  = "APP_BASE_URL"
+        value = var.app_base_url
       }
 
       env {

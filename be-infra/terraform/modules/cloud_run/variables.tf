@@ -40,3 +40,13 @@ variable "max_instance_count" {
   type    = number
   default = 20
 }
+
+variable "sendgrid_from_email" {
+  description = "From address used by the notification worker. Domain must be verified in SendGrid."
+  type        = string
+}
+
+variable "app_base_url" {
+  description = "Public base URL of the player web app, used in email links."
+  type        = string
+}
