@@ -32,6 +32,7 @@ extend _cleanup_tenant below to delete those FK children before deleting Club/Us
 
 import os
 import uuid
+from datetime import datetime, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -53,7 +54,7 @@ from app.db.models.base import Base
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.equipment import EquipmentInventory, EquipmentRental
-from app.db.models.membership import MembershipCreditLog, MembershipPlan, MembershipSubscription
+from app.db.models.membership import BillingPeriod, MembershipCreditLog, MembershipPlan, MembershipSubscription
 from app.db.models.court import CalendarReservation, Court
 from app.db.models.payment import Payment, PlatformFee
 from app.db.models.skill import SkillLevelHistory
@@ -409,12 +410,15 @@ async def _create_user(
     session_factory,
 ) -> User:
     async with session_factory() as session:
+        # Tests bypass the email-verification flow — fixtures are pre-verified
+        # so login works without first hitting /auth/verify-email.
         user = User(
             tenant_id=tenant_id,
             email=f"{email_prefix}-{uuid.uuid4().hex[:6]}@test.com",
             full_name=full_name,
             hashed_password=get_password_hash("Test1234!"),
             is_active=True,
+            email_verified_at=datetime.now(tz=timezone.utc),
             role=role,
         )
         session.add(user)
@@ -553,6 +557,31 @@ def owner_headers(owner, tenant):
 # ---------------------------------------------------------------------------
 # Club seed fixture
 # ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def default_plan(club, test_session_factory):
+    """Free basic membership plan flagged is_default for the `club` fixture.
+
+    Required by /auth/verify-email — registration always attaches a free basic
+    membership to the chosen club, so the verification tests need this plan to
+    exist. Cleaned up before the club fixture's teardown removes the plan rows.
+    """
+    async with test_session_factory() as session:
+        plan = MembershipPlan(
+            club_id=club.id,
+            name="Basic",
+            billing_period=BillingPeriod.monthly,
+            price=Decimal("0.00"),
+            trial_days=0,
+            is_default=True,
+            is_active=True,
+        )
+        session.add(plan)
+        await session.commit()
+        await session.refresh(plan)
+    yield plan
+    # No manual teardown — the `club` fixture deletes all plans for the club.
 
 
 @pytest_asyncio.fixture

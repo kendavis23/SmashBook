@@ -11,6 +11,7 @@ from app.db.models.user import NotificationChannel, TenantUserRole
 
 class UserRegister(BaseModel):
     tenant_subdomain: str
+    club_id: uuid.UUID
     email: EmailStr
     full_name: str
     password: str
@@ -21,6 +22,25 @@ class UserRegister(BaseModel):
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
         return v
+
+
+class RegisterResponse(BaseModel):
+    """Returned by POST /auth/register. No tokens — login is gated on email verification."""
+    user_id: uuid.UUID
+    email: EmailStr
+    message: str = "Check your email to verify your account."
+
+
+class EmailVerifyRequest(BaseModel):
+    token: str
+
+
+class EmailVerifyResponse(BaseModel):
+    user_id: uuid.UUID
+    email: EmailStr
+    club_id: uuid.UUID
+    membership_subscription_id: uuid.UUID
+    message: str = "Email verified. You can now log in."
 
 
 class UserLogin(BaseModel):

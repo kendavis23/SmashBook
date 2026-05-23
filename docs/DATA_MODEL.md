@@ -1,4 +1,4 @@
-_Last updated: 2026-05-21 07:30 UTC_
+_Last updated: 2026-05-23 14:30 UTC_
 
 # SmashBook Data Model
 
@@ -114,6 +114,7 @@ Role is stored directly on the user row (no separate `tenant_users` join table).
 | `skill_assigned_by` | UUID | FK → `users` (self-ref), nullable |
 | `skill_assigned_at` | TIMESTAMPTZ | Nullable |
 | `is_active` | BOOLEAN | |
+| `email_verified_at` | TIMESTAMPTZ | Nullable — set when the player clicks the verification link. Login is blocked while NULL. |
 | `stripe_customer_id` | VARCHAR(255) | Nullable |
 | `phone` | VARCHAR(50) | Nullable |
 | `photo_url` | VARCHAR(500) | Nullable — GCS path |
@@ -556,6 +557,7 @@ Club-defined subscription tiers (e.g. Silver, Gold, Platinum).
 | `discount_pct` | NUMERIC(5,2) | Nullable — % off court bookings |
 | `priority_booking_days` | INTEGER | Nullable — extra advance-booking window beyond club default |
 | `max_active_members` | INTEGER | Nullable — enrollment cap; `NULL` = unlimited |
+| `is_default` | BOOLEAN | Default `false` — exactly one per club marks the free basic plan auto-attached to a player on email verification. Enforced by partial unique index `uq_membership_plans_one_default_per_club` on `(club_id) WHERE is_default = TRUE`. |
 | `is_active` | BOOLEAN | Default `true` |
 | `stripe_price_id` | VARCHAR(255) | Nullable — Stripe recurring Price ID |
 | `created_at` | TIMESTAMPTZ | |
@@ -670,6 +672,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `3a758d32ab8d` | New table `wallet_club_debts` — deferred settlement of wallet debits to club Stripe Connect accounts |
 | `0fcac3948b73` | Add `stripe_price_id` to `subscription_plans`; add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` (`subscriptionstatus` enum) to `tenants` for SmashBook → org subscription billing |
 | `a3ad99663232` | Add `stripe_destination_payment_id` (indexed) to `payments` — connected-account-side payment id (`py_xxx`) so the `payout.paid` webhook can match destination-charge Connect payouts |
+| `32204403280f` | G6.1 — Player email-verification registration flow: `users`: add `email_verified_at` (back-filled to `NOW()` for existing rows); `membership_plans`: add `is_default` with partial unique index `uq_membership_plans_one_default_per_club` on `(club_id) WHERE is_default = TRUE` |
 
 To run migrations:
 ```bash

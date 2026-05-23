@@ -37,6 +37,7 @@ class User(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     skill_assigned_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     skill_assigned_at = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, nullable=False, default=True)
+    email_verified_at = Column(DateTime(timezone=True), nullable=True)
     stripe_customer_id = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
     photo_url = Column(String(500), nullable=True)

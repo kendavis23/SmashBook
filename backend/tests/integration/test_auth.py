@@ -3,13 +3,17 @@ Integration tests for /api/v1/auth endpoints.
 
 Coverage
 --------
-POST /auth/register  — success, duplicate email, unknown tenant, short password
-POST /auth/login     — success, wrong password, unknown email, inactive account,
-                       clubs list (player with membership, staff with profile,
-                       multi-club staff, inactive profile excluded,
-                       cancelled membership excluded, no clubs)
-POST /auth/refresh   — success, wrong token type, garbage token
-Cross-tenant        — token issued for tenant A rejected when presented to tenant B
+POST /auth/register      — success, duplicate email, unknown tenant, unknown club,
+                           short password, publishes email_verify event, no tokens
+POST /auth/verify-email  — success (creates basic membership + sets verified_at),
+                           idempotent re-click, invalid/expired token, no default plan
+POST /auth/login         — success, wrong password, unknown email, inactive account,
+                           unverified email blocked, clubs list (player with
+                           membership, staff with profile, multi-club staff,
+                           inactive profile excluded, cancelled membership excluded,
+                           no clubs)
+POST /auth/refresh       — success, wrong token type, garbage token
+Cross-tenant            — token issued for tenant A rejected when presented to tenant B
 
 Why these are integration tests (not unit tests)
 ------------------------------------------------
@@ -23,14 +27,14 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 
-from sqlalchemy import delete as sql_delete
+from sqlalchemy import delete as sql_delete, select
 
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_access_token, create_refresh_token, create_verify_token
 from app.db.models.club import Club
 from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipSubscription, MembershipStatus
 from app.db.models.staff import StaffProfile, StaffRole
 from app.db.models.tenant import Tenant as TenantModel
-from app.db.models.user import TenantUserRole
+from app.db.models.user import TenantUserRole, User
 from tests.integration.conftest import _create_user, _delete_user
 
 
@@ -40,39 +44,56 @@ from tests.integration.conftest import _create_user, _delete_user
 
 
 class TestRegister:
-    async def test_success(self, client, tenant):
-        resp = await client.post(
-            "/api/v1/auth/register",
-            json={
-                "tenant_subdomain": tenant.subdomain,
-                "email": f"new-{uuid.uuid4().hex[:6]}@example.com",
-                "full_name": "New Player",
-                "password": "Password1!",
-            },
-        )
+    def _payload(self, tenant, club, email=None):
+        return {
+            "tenant_subdomain": tenant.subdomain,
+            "club_id": str(club.id),
+            "email": email or f"new-{uuid.uuid4().hex[:6]}@example.com",
+            "full_name": "New Player",
+            "password": "Password1!",
+        }
+
+    async def test_success_returns_unverified_user_no_tokens(self, client, tenant, club):
+        payload = self._payload(tenant, club)
+        resp = await client.post("/api/v1/auth/register", json=payload)
         assert resp.status_code == 201
         body = resp.json()
-        assert "access_token" in body
-        assert "refresh_token" in body
-        assert body["token_type"] == "bearer"
+        assert "access_token" not in body
+        assert "refresh_token" not in body
+        assert body["email"] == payload["email"]
+        assert "user_id" in body
+        assert "verify" in body["message"].lower()
 
-    async def test_duplicate_email_returns_409(self, client, player, tenant):
+    async def test_creates_unverified_user_with_no_membership(
+        self, client, tenant, club, test_session_factory
+    ):
+        payload = self._payload(tenant, club)
+        resp = await client.post("/api/v1/auth/register", json=payload)
+        assert resp.status_code == 201
+        user_id = uuid.UUID(resp.json()["user_id"])
+
+        async with test_session_factory() as session:
+            user = await session.get(User, user_id)
+            assert user is not None
+            assert user.email_verified_at is None
+            sub = (await session.execute(
+                select(MembershipSubscription).where(MembershipSubscription.user_id == user_id)
+            )).scalar_one_or_none()
+            assert sub is None  # membership is created only at verification
+
+    async def test_duplicate_email_returns_409(self, client, player, tenant, club):
         resp = await client.post(
             "/api/v1/auth/register",
-            json={
-                "tenant_subdomain": tenant.subdomain,
-                "email": player.email,
-                "full_name": "Duplicate",
-                "password": "Password1!",
-            },
+            json=self._payload(tenant, club, email=player.email),
         )
         assert resp.status_code == 409
 
-    async def test_unknown_tenant_returns_404(self, client):
+    async def test_unknown_tenant_returns_404(self, client, club):
         resp = await client.post(
             "/api/v1/auth/register",
             json={
                 "tenant_subdomain": f"no-such-{uuid.uuid4().hex[:8]}",
+                "club_id": str(club.id),
                 "email": "someone@example.com",
                 "full_name": "Nobody",
                 "password": "Password1!",
@@ -80,52 +101,157 @@ class TestRegister:
         )
         assert resp.status_code == 404
 
-    async def test_short_password_returns_422(self, client, tenant):
+    async def test_unknown_club_returns_404(self, client, tenant):
         resp = await client.post(
             "/api/v1/auth/register",
             json={
                 "tenant_subdomain": tenant.subdomain,
-                "email": "newplayer@example.com",
-                "full_name": "New Player",
-                "password": "short",  # < 8 chars
+                "club_id": str(uuid.uuid4()),
+                "email": "ghost@example.com",
+                "full_name": "Ghost",
+                "password": "Password1!",
             },
         )
+        assert resp.status_code == 404
+
+    async def test_short_password_returns_422(self, client, tenant, club):
+        payload = self._payload(tenant, club, email="newplayer@example.com")
+        payload["password"] = "short"
+        resp = await client.post("/api/v1/auth/register", json=payload)
         assert resp.status_code == 422
 
-    async def test_publishes_welcome_event(self, client, tenant):
-        email = f"new-{uuid.uuid4().hex[:6]}@example.com"
+    async def test_publishes_email_verify_event(self, client, tenant, club):
+        payload = self._payload(tenant, club)
         with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
-            resp = await client.post(
-                "/api/v1/auth/register",
-                json={
-                    "tenant_subdomain": tenant.subdomain,
-                    "email": email,
-                    "full_name": "New Player",
-                    "password": "Password1!",
-                },
-            )
+            resp = await client.post("/api/v1/auth/register", json=payload)
         assert resp.status_code == 201
         mock_publish.assert_called_once()
-        event_type, payload = mock_publish.call_args.args
-        assert event_type == "welcome"
-        assert payload["email"] == email
-        assert payload["full_name"] == "New Player"
-        assert payload["tenant_name"] == tenant.name
-        assert "user_id" in payload
+        event_type, event_payload = mock_publish.call_args.args
+        assert event_type == "email_verify"
+        assert event_payload["email"] == payload["email"]
+        assert event_payload["full_name"] == "New Player"
+        assert event_payload["tenant_name"] == tenant.name
+        assert event_payload["club_id"] == str(club.id)
+        assert event_payload["club_name"] == club.name
+        assert "verify_url" in event_payload
+        assert "token=" in event_payload["verify_url"]
 
-    async def test_duplicate_email_skips_welcome(self, client, player, tenant):
+    async def test_duplicate_email_skips_verify_event(self, client, player, tenant, club):
         with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
             resp = await client.post(
                 "/api/v1/auth/register",
-                json={
-                    "tenant_subdomain": tenant.subdomain,
-                    "email": player.email,
-                    "full_name": "Duplicate",
-                    "password": "Password1!",
-                },
+                json=self._payload(tenant, club, email=player.email),
             )
         assert resp.status_code == 409
         mock_publish.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/auth/verify-email
+# ---------------------------------------------------------------------------
+
+
+class TestVerifyEmail:
+    async def _register(self, client, tenant, club):
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={
+                "tenant_subdomain": tenant.subdomain,
+                "club_id": str(club.id),
+                "email": f"v-{uuid.uuid4().hex[:6]}@example.com",
+                "full_name": "Verify Me",
+                "password": "Password1!",
+            },
+        )
+        assert resp.status_code == 201
+        return uuid.UUID(resp.json()["user_id"]), resp.json()["email"]
+
+    async def test_success_attaches_basic_membership_and_sets_verified_at(
+        self, client, tenant, club, default_plan, test_session_factory
+    ):
+        user_id, _ = await self._register(client, tenant, club)
+        token = create_verify_token({"sub": str(user_id), "cid": str(club.id)})
+
+        resp = await client.post("/api/v1/auth/verify-email", json={"token": token})
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["user_id"] == str(user_id)
+        assert body["club_id"] == str(club.id)
+        assert "membership_subscription_id" in body
+
+        async with test_session_factory() as session:
+            user = await session.get(User, user_id)
+            assert user.email_verified_at is not None
+            sub = await session.get(
+                MembershipSubscription, uuid.UUID(body["membership_subscription_id"])
+            )
+            assert sub is not None
+            assert sub.user_id == user_id
+            assert sub.club_id == club.id
+            assert sub.plan_id == default_plan.id
+            assert sub.status == MembershipStatus.active
+            assert sub.stripe_subscription_id is None  # free plan, no Stripe
+
+    async def test_idempotent_re_click_returns_same_membership(
+        self, client, tenant, club, default_plan, test_session_factory
+    ):
+        user_id, _ = await self._register(client, tenant, club)
+        token = create_verify_token({"sub": str(user_id), "cid": str(club.id)})
+
+        first = await client.post("/api/v1/auth/verify-email", json={"token": token})
+        assert first.status_code == 200
+        second = await client.post("/api/v1/auth/verify-email", json={"token": token})
+        assert second.status_code == 200
+        assert first.json()["membership_subscription_id"] == second.json()["membership_subscription_id"]
+
+        async with test_session_factory() as session:
+            subs = (await session.execute(
+                select(MembershipSubscription).where(MembershipSubscription.user_id == user_id)
+            )).scalars().all()
+            assert len(subs) == 1
+
+    async def test_publishes_welcome_event_on_verify(
+        self, client, tenant, club, default_plan
+    ):
+        user_id, email = await self._register(client, tenant, club)
+        token = create_verify_token({"sub": str(user_id), "cid": str(club.id)})
+
+        with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
+            resp = await client.post("/api/v1/auth/verify-email", json={"token": token})
+        assert resp.status_code == 200
+        # First call is the welcome event published from verify-email
+        called_types = [c.args[0] for c in mock_publish.call_args_list]
+        assert "welcome" in called_types
+
+    async def test_invalid_token_returns_400(self, client):
+        resp = await client.post("/api/v1/auth/verify-email", json={"token": "garbage"})
+        assert resp.status_code == 400
+
+    async def test_wrong_token_type_returns_400(self, client, player, club):
+        # Reset token is the wrong type; should be rejected even with a valid signature
+        from app.core.security import create_reset_token
+        reset = create_reset_token({"sub": str(player.id), "cid": str(club.id)})
+        resp = await client.post("/api/v1/auth/verify-email", json={"token": reset})
+        assert resp.status_code == 400
+
+    async def test_no_default_plan_returns_409(
+        self, client, tenant, club, test_session_factory
+    ):
+        # Note: no default_plan fixture used — club has no is_default plan
+        user_id, _ = await self._register(client, tenant, club)
+        token = create_verify_token({"sub": str(user_id), "cid": str(club.id)})
+
+        resp = await client.post("/api/v1/auth/verify-email", json={"token": token})
+        assert resp.status_code == 409
+
+        # User should remain unverified and have no membership
+        async with test_session_factory() as session:
+            user = await session.get(User, user_id)
+            assert user.email_verified_at is None
+            sub = (await session.execute(
+                select(MembershipSubscription).where(MembershipSubscription.user_id == user_id)
+            )).scalar_one_or_none()
+            assert sub is None
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +319,30 @@ class TestLogin:
             u = await session.get(User, player.id)
             u.is_active = True
             await session.commit()
+
+    async def test_unverified_email_returns_403(self, client, player, tenant, test_session_factory):
+        """Login must be blocked while email_verified_at is NULL."""
+        async with test_session_factory() as session:
+            u = await session.get(User, player.id)
+            u.email_verified_at = None
+            await session.commit()
+
+        try:
+            resp = await client.post(
+                "/api/v1/auth/login",
+                json={
+                    "tenant_subdomain": tenant.subdomain,
+                    "email": player.email,
+                    "password": "Test1234!",
+                },
+            )
+            assert resp.status_code == 403
+            assert "verify" in resp.json()["detail"].lower()
+        finally:
+            async with test_session_factory() as session:
+                u = await session.get(User, player.id)
+                u.email_verified_at = datetime.now(tz=timezone.utc)
+                await session.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -453,19 +603,43 @@ class TestLoginClubs:
         assert resp.status_code == 200
         assert resp.json()["clubs"] == []
 
-    async def test_register_returns_empty_clubs_list(self, client, tenant):
-        """Newly registered players have no membership yet — clubs must be empty."""
-        resp = await client.post(
+    async def test_verified_player_with_basic_membership_sees_club(
+        self, client, tenant, club, default_plan
+    ):
+        """End-to-end: register → verify → login returns club from basic membership."""
+        email = f"e2e-{uuid.uuid4().hex[:6]}@example.com"
+        reg = await client.post(
             "/api/v1/auth/register",
             json={
                 "tenant_subdomain": tenant.subdomain,
-                "email": f"newbie-{uuid.uuid4().hex[:6]}@example.com",
-                "full_name": "New Player",
+                "club_id": str(club.id),
+                "email": email,
+                "full_name": "E2E Player",
                 "password": "Password1!",
             },
         )
-        assert resp.status_code == 201
-        assert resp.json()["clubs"] == []
+        assert reg.status_code == 201
+        user_id = uuid.UUID(reg.json()["user_id"])
+
+        token = create_verify_token({"sub": str(user_id), "cid": str(club.id)})
+        verified = await client.post("/api/v1/auth/verify-email", json={"token": token})
+        assert verified.status_code == 200
+
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "tenant_subdomain": tenant.subdomain,
+                "email": email,
+                "password": "Password1!",
+            },
+        )
+        assert login.status_code == 200
+        body = login.json()
+        assert "access_token" in body
+        clubs = body["clubs"]
+        assert len(clubs) == 1
+        assert clubs[0]["club_id"] == str(club.id)
+        assert clubs[0]["role"] == "player"
 
 
 # ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-_Last updated: 2026-05-21_
+_Last updated: 2026-05-23_
 
 # SmashBook — Data Model Target State
 
@@ -108,6 +108,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | G4 | Sprint 4 | ✅ Applied (`8582075732fe`) | `payments`: add `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `dispute_status`, `club_id`; new table: `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id`; `booking_players`: add `discount_amount`, `discount_source` |
 | G5 | Sprint 5 | ❓ Pending verification — see note below | `bookings`: add `parent_booking_id` (self-ref for recurring series), `recurrence_end_date`; new table: `calendar_reservations`; `clubs`: add `default_skill_range_above`, `default_skill_range_below`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`; `equipment_inventory`: add `reorder_threshold` |
 | G6 | Sprint 6 | ⬜ Not started | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`; `skill_level_history`: add `change_source`, `club_id` |
+| G6.1 | Post-MVP | ✅ Applied (`32204403280f`) | Player registration email verification + free basic membership: `users`: add `email_verified_at`; `membership_plans`: add `is_default` with partial unique index per club |
 | G7 | Sprint 7 | ⬜ Not started | New tables: `ai_inference_log`, `ai_feature_flags`; `subscription_plans`: add `tournaments_enabled`, `messaging_enabled` (non-AI flags only — AI flags live in `ai_feature_flags`); `clubs`: add `latitude`, `longitude`, `timezone`, `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`, `weather_alerts_enabled` |
 | G8 | Sprint 8 | ⬜ Not started | New tables: `court_utilisation_snapshots`, `gap_detection_events`, `notification_templates`, `message_deliveries`; `bookings`: add `cancellation_risk_score`, `weather_alert_sent`, `campaign_id`; `support_tickets`: add `category`; `support_messages`: add `intent`, `booking_id` (covers former chat use cases) |
 | G9 | Sprint 9 | ⬜ Not started | New tables: `player_profiles` (with pgvector embedding), `player_engagement_scores`, `match_results`, `match_result_players`, `cancellation_predictions` |
@@ -209,7 +210,7 @@ Update the **Status** column when a migration has been applied and verified. The
 ## 2. Users & Authentication
 
 ### `users`
-**Changes from current:** Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel`. *(Migration group G1)*
+**Changes from current:** Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` *(Migration group G1)*; add `email_verified_at` for player email-verification registration flow *(Migration group G6.1)*.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -223,6 +224,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | `skill_assigned_by` | UUID | FK → `users` (self-ref), nullable |
 | `skill_assigned_at` | TIMESTAMPTZ | Nullable |
 | `is_active` | BOOLEAN | |
+| `email_verified_at` | TIMESTAMPTZ | **NEW** Nullable — set when the player clicks the verification link. Login is blocked while NULL. *(G6.1)* |
 | `stripe_customer_id` | VARCHAR(255) | Nullable |
 | `phone` | VARCHAR(50) | **NEW** Nullable |
 | `photo_url` | VARCHAR(500) | **NEW** Nullable — GCS path |
@@ -732,7 +734,7 @@ AI-generated per-player training suggestions from match analysis (Sprint 12).
 ## 11. Memberships
 
 ### `membership_plans`
-**Changes from current:** Add `sort_order` for display. Pricing moves out to `membership_plan_pricing` (multiple billing intervals per plan). Perks **stay as columns** — no separate perks table until a real customer asks for a perk that can't be expressed in a column. *(Migration group G10)*
+**Changes from current:** Add `is_default` to mark the free basic plan auto-assigned at player registration *(Migration group G6.1)*; add `sort_order` for display. Pricing moves out to `membership_plan_pricing` (multiple billing intervals per plan). Perks **stay as columns** — no separate perks table until a real customer asks for a perk that can't be expressed in a column. *(Migration group G10)*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -746,6 +748,7 @@ AI-generated per-player training suggestions from match analysis (Sprint 12).
 | `priority_booking_days` | INTEGER | Nullable — extra advance-booking window beyond club default |
 | `max_active_members` | INTEGER | Nullable — enrollment cap; `NULL` = unlimited |
 | `trial_days` | INTEGER | Default `0` |
+| `is_default` | BOOLEAN | **NEW** Default `false` — exactly one per club is the free "basic" plan auto-assigned at player registration. Enforced by partial unique index `(club_id) WHERE is_default = TRUE`. *(G6.1)* |
 | `is_active` | BOOLEAN | Default `true` |
 | `sort_order` | INTEGER | **NEW** For display ordering |
 | `created_at` | TIMESTAMPTZ | |

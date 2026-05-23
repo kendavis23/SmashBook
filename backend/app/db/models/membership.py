@@ -2,6 +2,7 @@ import enum
 from sqlalchemy import Column, String, ForeignKey, Numeric, Integer, Boolean, Text, Enum, DateTime, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import text as sa_text
 from .base import Base, UUIDMixin, TimestampMixin
 
 
@@ -28,6 +29,13 @@ class MembershipPlan(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "membership_plans"
     __table_args__ = (
         Index("ix_membership_plans_club_id", "club_id"),
+        # Exactly one default (free "basic") plan per club. Partial index so non-default rows are unconstrained.
+        Index(
+            "uq_membership_plans_one_default_per_club",
+            "club_id",
+            unique=True,
+            postgresql_where=sa_text("is_default"),
+        ),
     )
 
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
@@ -47,6 +55,10 @@ class MembershipPlan(Base, UUIDMixin, TimestampMixin):
 
     # Capacity cap
     max_active_members = Column(Integer, nullable=True)           # NULL = unlimited
+
+    # Free "basic" plan auto-assigned to a player on email verification.
+    # Exactly one per club enforced by uq_membership_plans_one_default_per_club.
+    is_default = Column(Boolean, nullable=False, default=False)
 
     is_active = Column(Boolean, nullable=False, default=True)
     stripe_price_id = Column(String(255), nullable=True)          # Stripe recurring Price ID
