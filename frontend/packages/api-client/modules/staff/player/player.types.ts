@@ -3,22 +3,16 @@ export type { UUID };
 
 export interface UserRegister {
     tenant_subdomain: string;
+    club_id: UUID;
     email: string;
     full_name: string;
     password: string;
 }
 
-export interface ClubSummary {
-    club_id: UUID;
-    club_name: string;
-    role: string;
-}
-
-export interface TokenResponse {
-    access_token: string;
-    refresh_token: string;
-    token_type: string;
-    clubs: ClubSummary[];
+export interface RegisterResponse {
+    user_id: UUID;
+    email: string;
+    message: string;
 }
 
 export interface SkillLevelUpdate {

@@ -1,10 +1,5 @@
 export { useUpdateProfile } from "./profile.hooks";
-export {
-    useRegisterPlayer,
-    useUpdateSkillLevel,
-    useGetSkillHistory,
-    useSearchPlayers,
-} from "./player.hooks";
+export { useUpdateSkillLevel, useGetSkillHistory, useSearchPlayers } from "./player.hooks";
 export {
     useListClubs,
     useCreateClub,

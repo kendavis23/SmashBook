@@ -50,9 +50,8 @@ export type {
 export type {
     PlayerSearchResult,
     PlayerSearchParams,
-    ClubSummary,
-    TokenResponse,
     RegisterPlayerInput,
+    RegisterPlayerResult,
     SkillLevelUpdateInput,
     SkillLevelHistoryItem,
     SkillLevelUpdateResult,

@@ -1,21 +1,11 @@
 import { fetcher } from "../../../core/fetcher";
 import type {
-    UserRegister,
-    TokenResponse,
     SkillLevelUpdate,
     SkillLevelUpdateResponse,
     SkillLevelHistoryItem,
 } from "./player.types";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
-
-export function registerPlayerEndpoint(data: UserRegister): Promise<TokenResponse> {
-    return fetcher<TokenResponse>("/api/v1/auth/register", {
-        method: "POST",
-        headers: JSON_HEADERS,
-        body: JSON.stringify(data),
-    });
-}
 
 export function updateSkillLevelEndpoint(
     playerId: string,

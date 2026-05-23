@@ -1,5 +1,5 @@
-import { Breadcrumb, AlertToast } from "@repo/ui";
-import { Users, RefreshCw, UserPlus, X } from "lucide-react";
+import { Breadcrumb } from "@repo/ui";
+import { Users, RefreshCw, X } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import type { FormEvent, JSX } from "react";
@@ -10,10 +10,6 @@ import PlayerProfileAutocomplete from "./PlayerProfileAutocomplete";
 
 type Props = {
     clubId: string | null;
-    canRegister: boolean;
-    onRegisterClick: () => void;
-    registerSuccessMsg: string;
-    onDismissSuccess: () => void;
 };
 
 function UpdateSkillDialog({
@@ -129,13 +125,7 @@ function UpdateSkillDialog({
     );
 }
 
-export default function PlayersView({
-    clubId,
-    canRegister,
-    onRegisterClick,
-    registerSuccessMsg,
-    onDismissSuccess,
-}: Props): JSX.Element {
+export default function PlayersView({ clubId }: Props): JSX.Element {
     const [selectedPlayer, setSelectedPlayer] = useState<PlayerSearchResult | null>(null);
     const [updatePlayer, setUpdatePlayer] = useState<PlayerSearchResult | null>(null);
     const [profileRefreshSignal, setProfileRefreshSignal] = useState(0);
@@ -143,14 +133,6 @@ export default function PlayersView({
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Players" }]} />
-
-            {registerSuccessMsg ? (
-                <AlertToast
-                    title={registerSuccessMsg}
-                    variant="success"
-                    onClose={onDismissSuccess}
-                />
-            ) : null}
 
             <section className="card-surface overflow-hidden">
                 <header className="flex flex-col gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
@@ -193,11 +175,6 @@ export default function PlayersView({
                         >
                             <RefreshCw size={14} /> Refresh
                         </button>
-                        {canRegister ? (
-                            <button onClick={onRegisterClick} className="btn-cta min-h-10 px-4">
-                                <UserPlus size={14} /> Register Player
-                            </button>
-                        ) : null}
                     </div>
                 </header>
 
@@ -210,7 +187,6 @@ export default function PlayersView({
                 </div>
             </section>
 
-            {/* Update skill dialog */}
             {updatePlayer ? (
                 <UpdateSkillDialog
                     playerId={updatePlayer.id}

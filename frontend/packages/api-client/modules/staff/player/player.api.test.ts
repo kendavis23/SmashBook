@@ -1,9 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import {
-    registerPlayerEndpoint,
-    updateSkillLevelEndpoint,
-    getSkillHistoryEndpoint,
-} from "./player.api";
+import { updateSkillLevelEndpoint, getSkillHistoryEndpoint } from "./player.api";
 
 vi.mock("../../../core/fetcher", () => ({ fetcher: vi.fn() }));
 
@@ -12,24 +8,6 @@ const mockFetcher = vi.mocked(fetcher);
 
 beforeEach(() => {
     mockFetcher.mockReset();
-});
-
-describe("registerPlayerEndpoint", () => {
-    it("calls POST /api/v1/auth/register with body", async () => {
-        mockFetcher.mockResolvedValue({});
-        const data = {
-            tenant_subdomain: "club-a",
-            email: "player@example.com",
-            full_name: "Test Player",
-            password: "password123",
-        };
-        await registerPlayerEndpoint(data);
-        expect(mockFetcher).toHaveBeenCalledWith("/api/v1/auth/register", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data),
-        });
-    });
 });
 
 describe("updateSkillLevelEndpoint", () => {
