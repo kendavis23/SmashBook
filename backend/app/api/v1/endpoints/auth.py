@@ -1,4 +1,6 @@
 import logging
+import uuid
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,23 +14,31 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     create_reset_token,
+    create_verify_token,
     get_password_hash,
     decode_token,
 )
 from app.db.models.club import Club
-from app.db.models.membership import MembershipSubscription, MembershipStatus
+from app.db.models.membership import (
+    MembershipPlan,
+    MembershipStatus,
+    MembershipSubscription,
+)
 from app.db.models.staff import StaffProfile
 from app.db.models.tenant import Tenant
 from app.db.models.user import User, TenantUserRole
 from app.db.models.wallet import Wallet
 from app.schemas.user import (
     ClubSummary,
-    UserRegister,
-    UserLogin,
-    TokenResponse,
-    RefreshRequest,
-    PasswordResetRequest,
+    EmailVerifyRequest,
+    EmailVerifyResponse,
     PasswordResetConfirm,
+    PasswordResetRequest,
+    RefreshRequest,
+    RegisterResponse,
+    TokenResponse,
+    UserLogin,
+    UserRegister,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,10 +56,26 @@ async def _get_active_tenant(subdomain: str, db: AsyncSession) -> Tenant:
     return tenant
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def _get_active_club(club_id: uuid.UUID, tenant_id: uuid.UUID, db: AsyncSession) -> Club:
+    result = await db.execute(
+        select(Club).where(Club.id == club_id, Club.tenant_id == tenant_id)
+    )
+    club = result.scalar_one_or_none()
+    if not club:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+    return club
+
+
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
-    """Register a new player account."""
+    """
+    Register a new player. Creates the user in an unverified state and emails a
+    verification link; the free basic membership at the chosen club is attached
+    in POST /auth/verify-email once the player clicks the link. Login is blocked
+    until verification.
+    """
     tenant = await _get_active_tenant(body.tenant_subdomain, db)
+    club = await _get_active_club(body.club_id, tenant.id, db)
 
     existing = await db.execute(
         select(User).where(User.email == body.email, User.tenant_id == tenant.id)
@@ -63,11 +89,107 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
         full_name=body.full_name,
         hashed_password=get_password_hash(body.password),
         role=TenantUserRole.player,
+        email_verified_at=None,
     )
     db.add(user)
-    await db.flush()  # Populate user.id before foreign key references
+    await db.flush()  # populate user.id
 
     db.add(Wallet(user_id=user.id))
+    await db.commit()
+
+    verify_token = create_verify_token({"sub": str(user.id), "cid": str(club.id)})
+    settings = get_settings()
+    verify_url = f"{settings.APP_BASE_URL}/verify-email?token={verify_token}"
+    try:
+        publish_notification_event("email_verify", {
+            "user_id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "tenant_name": tenant.name,
+            "club_id": str(club.id),
+            "club_name": club.name,
+            "verify_url": verify_url,
+        })
+    except Exception:
+        logger.exception(
+            "failed to publish email_verify event user_id=%s tenant_id=%s",
+            user.id, tenant.id,
+        )
+
+    return RegisterResponse(user_id=user.id, email=user.email)
+
+
+@router.post("/verify-email", response_model=EmailVerifyResponse)
+async def verify_email(body: EmailVerifyRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Confirm a player's email using the token emailed at registration.
+    On first verification, attaches the club's free basic membership.
+    Idempotent: re-clicking the link returns the existing membership.
+    """
+    payload = decode_token(body.token)
+    if not payload or payload.get("type") != "verify":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    user = await db.get(User, payload["sub"])
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired verification token",
+        )
+
+    club = await _get_active_club(uuid.UUID(payload["cid"]), user.tenant_id, db)
+
+    # Look up an existing basic membership (idempotency on re-click) or the
+    # club's default plan to create one. We do this before mutating user state
+    # so a missing default plan doesn't half-verify the account.
+    existing_sub_result = await db.execute(
+        select(MembershipSubscription).where(
+            MembershipSubscription.user_id == user.id,
+            MembershipSubscription.club_id == club.id,
+        )
+    )
+    subscription = existing_sub_result.scalar_one_or_none()
+
+    if subscription is None:
+        plan_result = await db.execute(
+            select(MembershipPlan).where(
+                MembershipPlan.club_id == club.id,
+                MembershipPlan.is_default,
+                MembershipPlan.is_active,
+            )
+        )
+        plan = plan_result.scalar_one_or_none()
+        if plan is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Club has no default membership plan configured",
+            )
+
+        now = datetime.now(tz=timezone.utc)
+        # Free basic plan — no Stripe involvement. Period_end is effectively a
+        # rolling annual window; renewals for paid plans happen via Stripe webhook,
+        # which doesn't apply here.
+        subscription = MembershipSubscription(
+            user_id=user.id,
+            plan_id=plan.id,
+            club_id=club.id,
+            status=MembershipStatus.active,
+            current_period_start=now,
+            current_period_end=now + timedelta(days=365),
+            credits_remaining=plan.booking_credits_per_period,
+            guest_passes_remaining=plan.guest_passes_per_period,
+            stripe_subscription_id=None,
+        )
+        db.add(subscription)
+        await db.flush()
+
+    if user.email_verified_at is None:
+        user.email_verified_at = datetime.now(tz=timezone.utc)
+        db.add(user)
+
     await db.commit()
 
     try:
@@ -75,18 +197,19 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
             "user_id": str(user.id),
             "email": user.email,
             "full_name": user.full_name,
-            "tenant_name": tenant.name,
+            "tenant_name": (await db.get(Tenant, user.tenant_id)).name,
         })
     except Exception:
         logger.exception(
             "failed to publish welcome event user_id=%s tenant_id=%s",
-            user.id, tenant.id,
+            user.id, user.tenant_id,
         )
 
-    token_data = {"sub": str(user.id), "tid": str(tenant.id)}
-    return TokenResponse(
-        access_token=create_access_token(token_data),
-        refresh_token=create_refresh_token(token_data),
+    return EmailVerifyResponse(
+        user_id=user.id,
+        email=user.email,
+        club_id=club.id,
+        membership_subscription_id=subscription.id,
     )
 
 
@@ -139,6 +262,11 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account is inactive")
+    if user.email_verified_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Please verify your email before logging in",
+        )
 
     clubs = await _get_user_clubs(user, db)
     token_data = {"sub": str(user.id), "tid": str(tenant.id)}

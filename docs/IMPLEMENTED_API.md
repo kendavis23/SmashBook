@@ -1,4 +1,4 @@
-_Last updated: 2026-05-19 00:00 UTC_
+_Last updated: 2026-05-23 14:30 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -10,8 +10,9 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/auth/register` | Register a new player account; returns access + refresh tokens. Publishes `welcome` event to `notification-events` → notification worker → SendGrid welcome email (best-effort; failure does not block registration) |
-| `POST` | `/api/v1/auth/login` | Login with email + password; returns access + refresh tokens |
+| `POST` | `/api/v1/auth/register` | Register a new player for a tenant + chosen club. Creates the user in an unverified state (no tokens returned) and publishes `email_verify` event to `notification-events` → notification worker → SendGrid email with a signed 24h verification link. The free basic membership at the chosen club is attached at verify time, not here. |
+| `POST` | `/api/v1/auth/verify-email` | Confirm a player's email using the token emailed at registration. Sets `users.email_verified_at`, creates the active `MembershipSubscription` against the club's `is_default` plan (no Stripe — free basic plan), and publishes a `welcome` event. Idempotent on re-click. Returns 409 if the club has no default plan configured. |
+| `POST` | `/api/v1/auth/login` | Login with email + password; returns access + refresh tokens. Returns 403 with "please verify your email" if `email_verified_at` is NULL. |
 | `POST` | `/api/v1/auth/refresh` | Exchange a refresh token for a new token pair |
 | `POST` | `/api/v1/auth/logout` | Stateless logout (client discards tokens) |
 | `POST` | `/api/v1/auth/password-reset/request` | Request a password-reset email; always 202 to prevent enumeration. Publishes `password_reset` event to `notification-events` → notification worker → SendGrid email with a signed 15-min reset link |

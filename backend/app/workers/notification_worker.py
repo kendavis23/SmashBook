@@ -61,6 +61,7 @@ async def process_notification_event(request: Request):
         "send_payment_receipt": dispatch_receipt,
         "send_club_announcement": dispatch_announcement,
         "password_reset": dispatch_password_reset,
+        "email_verify": dispatch_email_verify,
         "welcome": dispatch_welcome,
     }
 
@@ -82,6 +83,38 @@ async def process_notification_event(request: Request):
         raise
 
     return {"status": "ok"}
+
+
+async def dispatch_email_verify(payload: dict):
+    """
+    Verification email sent on player registration. The link expires in 24h
+    (see create_verify_token). The welcome email is sent separately, after
+    the player clicks through.
+    """
+    settings = get_settings()
+    email = payload.get("email")
+    if not email:
+        logger.warning("email_verify payload missing email user_id=%s", payload.get("user_id"))
+        return
+    full_name = payload.get("full_name") or "there"
+    tenant_name = payload.get("tenant_name") or "SmashBook"
+    club_name = payload.get("club_name") or tenant_name
+    verify_url = payload["verify_url"]
+    sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
+    message = Mail(
+        from_email=settings.SENDGRID_FROM_EMAIL,
+        to_emails=email,
+        subject=f"Verify your email to join {club_name}",
+        html_content=(
+            f"<p>Hi {full_name},</p>"
+            f"<p>Thanks for signing up at <strong>{club_name}</strong>. "
+            f"Click the link below to verify your email and finish setting up your account. "
+            f"This link expires in 24 hours.</p>"
+            f'<p><a href="{verify_url}">Verify my email</a></p>'
+            f"<p>If you did not sign up for {tenant_name}, you can safely ignore this email.</p>"
+        ),
+    )
+    _send_email(sg, message, event_type="email_verify", recipient=email)
 
 
 async def dispatch_password_reset(payload: dict):

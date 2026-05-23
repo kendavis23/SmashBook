@@ -4,6 +4,8 @@ _Last updated: 2026-05-23_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
+> **Working in `backend/app/ai/` or `backend/app/analytics/`?** Each of those subtrees has its own `CLAUDE.md` with domain-specific rules (provider routing, fallback contracts, read-replica usage, materialized view policy) and a local `docs/` folder. Those files layer on top of this one — read both.
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Scope Restrictions
@@ -25,25 +27,56 @@ SmashBook is a **multi-tenant SaaS platform for padel club management**. Tenants
 ```
 backend/
   app/
-    api/v1/endpoints/       # one file per domain
+    # Operational domain (Sprints 1-6) — bookings, payments, auth, messaging, etc.
+    api/v1/endpoints/       # one file per operational concern
+    services/               # operational business logic
+    workers/                # operational Pub/Sub consumers (email, notifications)
+    schemas/                # operational Pydantic models
+
+    # AI domain (Sprints 7-12) — see app/ai/CLAUDE.md
+    ai/
+      api/                  # endpoint modules + ai_router aggregator
+      services/             # ai_inference_service + feature services
+      workers/              # async AI workers (inference, embeddings)
+      schemas/
+      tests/
+      docs/                 # PROVIDER_ROUTING, FALLBACK_CATALOG, etc.
+
+    # Analytics domain — see app/analytics/CLAUDE.md
+    analytics/
+      api/                  # endpoint modules + analytics_router aggregator
+      services/             # aggregations, rollups
+      workers/              # scheduled jobs (view refresh, exports)
+      schemas/
+      tests/
+      docs/                 # REPORT_CATALOG, MATERIALIZED_VIEWS, QUERY_PATTERNS
+
+    # Shared (always relevant, stable)
     db/
-      models/               # SQLAlchemy ORM models — edit these for schema changes
+      models/               # ALL SQLAlchemy models — operational + AI + analytics
       migrations/versions/  # Alembic migration files — never edit manually
-    services/               # business logic, one class per domain
     middleware/             # TenantMiddleware, auth
-    schemas/                # Pydantic request/response models
-    core/                   # config, pubsub, security
-    workers/                # Cloud Run worker entry points (Pub/Sub consumers)
+    core/                   # config, pubsub, security, stripe_clients
+
   tests/
     unit/
     integration/
-docs/
+
+docs/                       # cross-cutting docs only — domain-local docs live in app/<domain>/docs/
   DATA_MODEL.md              # current live database state — always accurate
   DATA_MODEL_TARGET_STATE.md # target state — the migration blueprint
   ARCHITECTURE.md
   DEPLOYMENT.md
   API_TESTING.md
+  INFRASTRUCTURE.md
+  IMPLEMENTED_API.md
 ```
+
+**Where to put new code:**
+- AI feature (anything calling Anthropic / Vertex / pgvector, or that needs `ai_inference_log`) → `app/ai/`
+- Report, dashboard, export, scheduled aggregation → `app/analytics/`
+- Everything else (booking, payment, auth, messaging, staff, etc.) → existing operational tree
+- SQLAlchemy models, regardless of domain → `app/db/models/` (single source of truth)
 
 ---
 
