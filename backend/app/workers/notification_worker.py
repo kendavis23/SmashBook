@@ -40,7 +40,7 @@ def _send_email(sg: sendgrid.SendGridAPIClient, message: Mail, *, event_type: st
 async def health():
     return {"status": "ok"}
 
-@app.post("/")
+@app.post("/pubsub")
 async def process_notification_event(request: Request):
     envelope = await request.json()
     message = envelope.get("message", {})

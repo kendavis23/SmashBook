@@ -14,7 +14,7 @@ app = FastAPI()
 async def health():
     return {"status": "ok"}
 
-@app.post("/")
+@app.post("/pubsub")
 async def process_payment_event(request: Request):
     envelope = await request.json()
     message = envelope.get("message", {})

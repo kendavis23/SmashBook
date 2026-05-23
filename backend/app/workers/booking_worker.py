@@ -14,7 +14,7 @@ app = FastAPI()
 async def health():
     return {"status": "ok"}
 
-@app.post("/")
+@app.post("/pubsub")
 async def process_booking_event(request: Request):
     """Receive Pub/Sub push delivery for booking events."""
     envelope = await request.json()
