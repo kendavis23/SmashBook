@@ -1,6 +1,7 @@
 import logging
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode, urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -66,6 +67,19 @@ async def _get_active_club(club_id: uuid.UUID, tenant_id: uuid.UUID, db: AsyncSe
     return club
 
 
+def _tenant_url(tenant: Tenant, path: str, params: dict) -> str:
+    """
+    Build a tenant-scoped URL using the player's actual host.
+    Prefers tenant.custom_domain when set, otherwise prepends tenant.subdomain
+    to the root host parsed from APP_BASE_URL (e.g. APP_BASE_URL=https://smashbook.app
+    + subdomain=ace-player-staging → https://ace-player-staging.smashbook.app/...).
+    """
+    parsed = urlparse(get_settings().APP_BASE_URL)
+    scheme = parsed.scheme or "https"
+    host = tenant.custom_domain or f"{tenant.subdomain}.{parsed.netloc}"
+    return f"{scheme}://{host}{path}?{urlencode(params)}"
+
+
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
     """
@@ -98,8 +112,7 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     verify_token = create_verify_token({"sub": str(user.id), "cid": str(club.id)})
-    settings = get_settings()
-    verify_url = f"{settings.APP_BASE_URL}/verify-email?token={verify_token}"
+    verify_url = _tenant_url(tenant, "/verify-email", {"token": verify_token})
     try:
         publish_notification_event("email_verify", {
             "user_id": str(user.id),

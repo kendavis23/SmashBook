@@ -121,6 +121,9 @@ class TestRegister:
         assert resp.status_code == 422
 
     async def test_publishes_email_verify_event(self, client, tenant, club):
+        from urllib.parse import urlparse
+        from app.core.config import get_settings
+
         payload = self._payload(tenant, club)
         with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
             resp = await client.post("/api/v1/auth/register", json=payload)
@@ -133,8 +136,16 @@ class TestRegister:
         assert event_payload["tenant_name"] == tenant.name
         assert event_payload["club_id"] == str(club.id)
         assert event_payload["club_name"] == club.name
-        assert "verify_url" in event_payload
-        assert "token=" in event_payload["verify_url"]
+
+        # verify_url must use the tenant's subdomain prepended to APP_BASE_URL's host.
+        # e.g. APP_BASE_URL=https://smashbook.app, subdomain=ace-player-staging
+        #   →  https://ace-player-staging.smashbook.app/verify-email?token=...
+        root_host = urlparse(get_settings().APP_BASE_URL).netloc
+        parsed = urlparse(event_payload["verify_url"])
+        assert parsed.scheme == "https"
+        assert parsed.netloc == f"{tenant.subdomain}.{root_host}"
+        assert parsed.path == "/verify-email"
+        assert "token=" in parsed.query
 
     async def test_duplicate_email_skips_verify_event(self, client, player, tenant, club):
         with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
