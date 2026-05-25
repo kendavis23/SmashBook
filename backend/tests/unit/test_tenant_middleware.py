@@ -38,8 +38,18 @@ from app.middleware.tenant import _resolve_tenant  # noqa: E402
 # ---------------------------------------------------------------------------
 
 TENANT_ID = uuid.uuid4()
-TENANT_ACTIVE = SimpleNamespace(id=TENANT_ID, subdomain="raquetclub", is_active=True)
-TENANT_INACTIVE = SimpleNamespace(id=TENANT_ID, subdomain="raquetclub", is_active=False)
+TENANT_ACTIVE = SimpleNamespace(
+    id=TENANT_ID,
+    player_subdomain="raquetclub",
+    staff_subdomain="raquetclub-staff",
+    is_active=True,
+)
+TENANT_INACTIVE = SimpleNamespace(
+    id=TENANT_ID,
+    player_subdomain="raquetclub",
+    staff_subdomain="raquetclub-staff",
+    is_active=False,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -51,8 +61,10 @@ TENANT_INACTIVE = SimpleNamespace(id=TENANT_ID, subdomain="raquetclub", is_activ
 async def test_resolve_by_x_tenant_id_header():
     request = _make_request({"X-Tenant-ID": str(TENANT_ID)})
     with patch("app.middleware.tenant._fetch_by_id", AsyncMock(return_value=TENANT_ACTIVE)):
-        result = await _resolve_tenant(request)
-    assert result is TENANT_ACTIVE
+        tenant, portal = await _resolve_tenant(request)
+    assert tenant is TENANT_ACTIVE
+    # UUID-based resolution doesn't tell us which portal the request came from.
+    assert portal is None
 
 
 @pytest.mark.asyncio
@@ -63,9 +75,13 @@ async def test_resolve_by_x_tenant_id_malformed_falls_through():
         "X-Tenant-ID": "not-a-uuid",
         "X-Tenant-Subdomain": "raquetclub",
     })
-    with patch("app.middleware.tenant._fetch_by_subdomain", AsyncMock(return_value=TENANT_ACTIVE)):
-        result = await _resolve_tenant(request)
-    assert result is TENANT_ACTIVE
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(TENANT_ACTIVE, "player")),
+    ):
+        tenant, portal = await _resolve_tenant(request)
+    assert tenant is TENANT_ACTIVE
+    assert portal == "player"
 
 
 # ---------------------------------------------------------------------------
@@ -74,18 +90,38 @@ async def test_resolve_by_x_tenant_id_malformed_falls_through():
 
 
 @pytest.mark.asyncio
-async def test_resolve_by_x_tenant_subdomain_header():
+async def test_resolve_by_player_subdomain_tags_portal_player():
     request = _make_request({"X-Tenant-Subdomain": "raquetclub"})
-    with patch("app.middleware.tenant._fetch_by_subdomain", AsyncMock(return_value=TENANT_ACTIVE)) as mock:
-        result = await _resolve_tenant(request)
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(TENANT_ACTIVE, "player")),
+    ) as mock:
+        tenant, portal = await _resolve_tenant(request)
     mock.assert_awaited_once_with("raquetclub")
-    assert result is TENANT_ACTIVE
+    assert tenant is TENANT_ACTIVE
+    assert portal == "player"
+
+
+@pytest.mark.asyncio
+async def test_resolve_by_staff_subdomain_tags_portal_staff():
+    request = _make_request({"X-Tenant-Subdomain": "raquetclub-staff"})
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(TENANT_ACTIVE, "staff")),
+    ) as mock:
+        tenant, portal = await _resolve_tenant(request)
+    mock.assert_awaited_once_with("raquetclub-staff")
+    assert tenant is TENANT_ACTIVE
+    assert portal == "staff"
 
 
 @pytest.mark.asyncio
 async def test_resolve_subdomain_header_normalised_to_lowercase():
     request = _make_request({"X-Tenant-Subdomain": "  RaquetClub  "})
-    with patch("app.middleware.tenant._fetch_by_subdomain", AsyncMock(return_value=TENANT_ACTIVE)) as mock:
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(TENANT_ACTIVE, "player")),
+    ) as mock:
         await _resolve_tenant(request)
     mock.assert_awaited_once_with("raquetclub")
 
@@ -98,28 +134,36 @@ async def test_resolve_subdomain_header_normalised_to_lowercase():
 @pytest.mark.asyncio
 async def test_resolve_by_host_subdomain():
     request = _make_request({"host": "raquetclub.smashbook.app"})
-    with patch("app.middleware.tenant._fetch_by_subdomain", AsyncMock(return_value=TENANT_ACTIVE)) as mock:
-        result = await _resolve_tenant(request)
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(TENANT_ACTIVE, "player")),
+    ) as mock:
+        tenant, portal = await _resolve_tenant(request)
     mock.assert_awaited_once_with("raquetclub")
-    assert result is TENANT_ACTIVE
+    assert tenant is TENANT_ACTIVE
+    assert portal == "player"
 
 
 @pytest.mark.asyncio
 async def test_resolve_by_host_with_port():
     """Port suffix should be stripped before matching."""
     request = _make_request({"host": "raquetclub.smashbook.app:8000"})
-    with patch("app.middleware.tenant._fetch_by_subdomain", AsyncMock(return_value=TENANT_ACTIVE)) as mock:
-        result = await _resolve_tenant(request)
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(TENANT_ACTIVE, "player")),
+    ) as mock:
+        tenant, _portal = await _resolve_tenant(request)
     mock.assert_awaited_once_with("raquetclub")
-    assert result is TENANT_ACTIVE
+    assert tenant is TENANT_ACTIVE
 
 
 @pytest.mark.asyncio
 async def test_bare_platform_domain_returns_none():
     """A request to smashbook.app itself (no subdomain) should not resolve a tenant."""
     request = _make_request({"host": "smashbook.app"})
-    result = await _resolve_tenant(request)
-    assert result is None
+    tenant, portal = await _resolve_tenant(request)
+    assert tenant is None
+    assert portal is None
 
 
 # ---------------------------------------------------------------------------
@@ -130,10 +174,15 @@ async def test_bare_platform_domain_returns_none():
 @pytest.mark.asyncio
 async def test_resolve_by_custom_domain():
     request = _make_request({"host": "book.raquetclub.com"})
-    with patch("app.middleware.tenant._fetch_by_custom_domain", AsyncMock(return_value=TENANT_ACTIVE)) as mock:
-        result = await _resolve_tenant(request)
+    with patch(
+        "app.middleware.tenant._fetch_by_custom_domain",
+        AsyncMock(return_value=TENANT_ACTIVE),
+    ) as mock:
+        tenant, portal = await _resolve_tenant(request)
     mock.assert_awaited_once_with("book.raquetclub.com")
-    assert result is TENANT_ACTIVE
+    assert tenant is TENANT_ACTIVE
+    # Custom domain resolution doesn't disambiguate player vs staff portal.
+    assert portal is None
 
 
 # ---------------------------------------------------------------------------
@@ -144,25 +193,28 @@ async def test_resolve_by_custom_domain():
 @pytest.mark.asyncio
 async def test_localhost_returns_none():
     request = _make_request({"host": "localhost"})
-    result = await _resolve_tenant(request)
-    assert result is None
+    tenant, _ = await _resolve_tenant(request)
+    assert tenant is None
 
 
 @pytest.mark.asyncio
 async def test_loopback_returns_none():
     request = _make_request({"host": "127.0.0.1"})
-    result = await _resolve_tenant(request)
-    assert result is None
+    tenant, _ = await _resolve_tenant(request)
+    assert tenant is None
 
 
 @pytest.mark.asyncio
 async def test_localhost_with_subdomain_header_resolves():
     """Even on localhost, explicit X-Tenant-Subdomain should still work."""
     request = _make_request({"host": "localhost:8000", "X-Tenant-Subdomain": "raquetclub"})
-    with patch("app.middleware.tenant._fetch_by_subdomain", AsyncMock(return_value=TENANT_ACTIVE)) as mock:
-        result = await _resolve_tenant(request)
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(TENANT_ACTIVE, "player")),
+    ) as mock:
+        tenant, _ = await _resolve_tenant(request)
     mock.assert_awaited_once_with("raquetclub")
-    assert result is TENANT_ACTIVE
+    assert tenant is TENANT_ACTIVE
 
 
 # ---------------------------------------------------------------------------
@@ -173,9 +225,13 @@ async def test_localhost_with_subdomain_header_resolves():
 @pytest.mark.asyncio
 async def test_unknown_subdomain_returns_none():
     request = _make_request({"host": "unknown.smashbook.app"})
-    with patch("app.middleware.tenant._fetch_by_subdomain", AsyncMock(return_value=None)):
-        result = await _resolve_tenant(request)
-    assert result is None
+    with patch(
+        "app.middleware.tenant._fetch_by_subdomain",
+        AsyncMock(return_value=(None, None)),
+    ):
+        tenant, portal = await _resolve_tenant(request)
+    assert tenant is None
+    assert portal is None
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +277,34 @@ async def test_inactive_tenant_returns_503():
 
     middleware = TenantMiddleware(app=None)
 
-    with patch("app.middleware.tenant._resolve_tenant", AsyncMock(return_value=TENANT_INACTIVE)):
+    with patch(
+        "app.middleware.tenant._resolve_tenant",
+        AsyncMock(return_value=(TENANT_INACTIVE, "player")),
+    ):
         response = await middleware.dispatch(request, AsyncMock())
 
     assert response.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_active_tenant_sets_tenant_portal_on_request_state():
+    from app.middleware.tenant import TenantMiddleware
+
+    captured_state = {}
+
+    async def call_next(req):
+        captured_state["tenant"] = req.state.tenant
+        captured_state["portal"] = req.state.tenant_portal
+        return SimpleNamespace(status_code=200)
+
+    request = _make_request({"host": "raquetclub.smashbook.app"})
+    middleware = TenantMiddleware(app=None)
+
+    with patch(
+        "app.middleware.tenant._resolve_tenant",
+        AsyncMock(return_value=(TENANT_ACTIVE, "staff")),
+    ):
+        await middleware.dispatch(request, call_next)
+
+    assert captured_state["tenant"] is TENANT_ACTIVE
+    assert captured_state["portal"] == "staff"

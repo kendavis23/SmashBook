@@ -38,7 +38,7 @@ class TestPasswordResetRequest:
         with patch(PATCH_TARGET) as mock_publish:
             resp = await client.post(
                 "/api/v1/auth/password-reset/request",
-                json={"tenant_subdomain": tenant.subdomain, "email": player.email},
+                json={"tenant_subdomain": tenant.player_subdomain, "email": player.email},
             )
         assert resp.status_code == 202
         mock_publish.assert_called_once()
@@ -53,7 +53,7 @@ class TestPasswordResetRequest:
             resp = await client.post(
                 "/api/v1/auth/password-reset/request",
                 json={
-                    "tenant_subdomain": tenant.subdomain,
+                    "tenant_subdomain": tenant.player_subdomain,
                     "email": "nobody@example.com",
                 },
             )
@@ -75,7 +75,7 @@ class TestPasswordResetRequest:
             with patch(PATCH_TARGET) as mock_publish:
                 resp = await client.post(
                     "/api/v1/auth/password-reset/request",
-                    json={"tenant_subdomain": tenant.subdomain, "email": user.email},
+                    json={"tenant_subdomain": tenant.player_subdomain, "email": user.email},
                 )
             assert resp.status_code == 202
             mock_publish.assert_not_called()
@@ -108,7 +108,7 @@ class TestPasswordResetConfirm:
             login_resp = await client.post(
                 "/api/v1/auth/login",
                 json={
-                    "tenant_subdomain": tenant.subdomain,
+                    "tenant_subdomain": tenant.player_subdomain,
                     "email": user.email,
                     "password": "Updated99!",
                 },

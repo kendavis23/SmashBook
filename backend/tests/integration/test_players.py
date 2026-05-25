@@ -185,7 +185,9 @@ class TestGetMyProfile:
         async with test_session_factory() as session:
             t2 = TenantModel(
                 name="Other Club",
-                subdomain=subdomain_b,
+                trading_name="Other Club",
+                player_subdomain=subdomain_b,
+                staff_subdomain=f"{subdomain_b}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )
@@ -472,7 +474,7 @@ class TestGetMyBookings:
 
         subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other Club", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other Club", trading_name="Other Club", player_subdomain=subdomain_b, staff_subdomain=f"{subdomain_b}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.commit()
             await session.refresh(t2)
@@ -746,7 +748,7 @@ class TestGetMatchHistory:
 
         subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other Club", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other Club", trading_name="Other Club", player_subdomain=subdomain_b, staff_subdomain=f"{subdomain_b}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.commit()
             await session.refresh(t2)
@@ -871,7 +873,7 @@ class TestUpdateSkillLevel:
 
         subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other Club", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other Club", trading_name="Other Club", player_subdomain=subdomain_b, staff_subdomain=f"{subdomain_b}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.commit()
             await session.refresh(t2)
@@ -1100,7 +1102,7 @@ class TestSearchPlayers:
 
         subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other Club", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other Club", trading_name="Other Club", player_subdomain=subdomain_b, staff_subdomain=f"{subdomain_b}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.commit()
             await session.refresh(t2)

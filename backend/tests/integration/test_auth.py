@@ -46,7 +46,7 @@ from tests.integration.conftest import _create_user, _delete_user
 class TestRegister:
     def _payload(self, tenant, club, email=None):
         return {
-            "tenant_subdomain": tenant.subdomain,
+            "tenant_subdomain": tenant.player_subdomain,
             "club_id": str(club.id),
             "email": email or f"new-{uuid.uuid4().hex[:6]}@example.com",
             "full_name": "New Player",
@@ -105,7 +105,7 @@ class TestRegister:
         resp = await client.post(
             "/api/v1/auth/register",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "club_id": str(uuid.uuid4()),
                 "email": "ghost@example.com",
                 "full_name": "Ghost",
@@ -121,6 +121,9 @@ class TestRegister:
         assert resp.status_code == 422
 
     async def test_publishes_email_verify_event(self, client, tenant, club):
+        from urllib.parse import urlparse
+        from app.core.config import get_settings
+
         payload = self._payload(tenant, club)
         with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
             resp = await client.post("/api/v1/auth/register", json=payload)
@@ -133,8 +136,16 @@ class TestRegister:
         assert event_payload["tenant_name"] == tenant.name
         assert event_payload["club_id"] == str(club.id)
         assert event_payload["club_name"] == club.name
-        assert "verify_url" in event_payload
-        assert "token=" in event_payload["verify_url"]
+
+        # verify_url must use the tenant's subdomain prepended to APP_BASE_URL's host.
+        # e.g. APP_BASE_URL=https://smashbook.app, subdomain=ace-player-staging
+        #   →  https://ace-player-staging.smashbook.app/verify-email?token=...
+        root_host = urlparse(get_settings().APP_BASE_URL).netloc
+        parsed = urlparse(event_payload["verify_url"])
+        assert parsed.scheme == "https"
+        assert parsed.netloc == f"{tenant.player_subdomain}.{root_host}"
+        assert parsed.path == "/verify-email"
+        assert "token=" in parsed.query
 
     async def test_duplicate_email_skips_verify_event(self, client, player, tenant, club):
         with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
@@ -156,7 +167,7 @@ class TestVerifyEmail:
         resp = await client.post(
             "/api/v1/auth/register",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "club_id": str(club.id),
                 "email": f"v-{uuid.uuid4().hex[:6]}@example.com",
                 "full_name": "Verify Me",
@@ -264,7 +275,7 @@ class TestLogin:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "email": player.email,
                 "password": "Test1234!",
             },
@@ -279,7 +290,7 @@ class TestLogin:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "email": player.email,
                 "password": "wrongpassword",
             },
@@ -290,7 +301,7 @@ class TestLogin:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "email": "ghost@example.com",
                 "password": "Test1234!",
             },
@@ -308,7 +319,7 @@ class TestLogin:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "email": player.email,
                 "password": "Test1234!",
             },
@@ -331,7 +342,7 @@ class TestLogin:
             resp = await client.post(
                 "/api/v1/auth/login",
                 json={
-                    "tenant_subdomain": tenant.subdomain,
+                    "tenant_subdomain": tenant.player_subdomain,
                     "email": player.email,
                     "password": "Test1234!",
                 },
@@ -355,7 +366,7 @@ class TestLoginClubs:
 
     def _login_payload(self, tenant, user):
         return {
-            "tenant_subdomain": tenant.subdomain,
+            "tenant_subdomain": tenant.player_subdomain,
             "email": user.email,
             "password": "Test1234!",
         }
@@ -595,7 +606,7 @@ class TestLoginClubs:
         resp = await client.post(
             "/api/v1/auth/login",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "email": player.email,
                 "password": "Test1234!",
             },
@@ -611,7 +622,7 @@ class TestLoginClubs:
         reg = await client.post(
             "/api/v1/auth/register",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "club_id": str(club.id),
                 "email": email,
                 "full_name": "E2E Player",
@@ -628,7 +639,7 @@ class TestLoginClubs:
         login = await client.post(
             "/api/v1/auth/login",
             json={
-                "tenant_subdomain": tenant.subdomain,
+                "tenant_subdomain": tenant.player_subdomain,
                 "email": email,
                 "password": "Password1!",
             },
@@ -816,11 +827,13 @@ class TestCrossTenantRejection:
         A JWT issued for tenant A must be rejected when the X-Tenant-ID header
         identifies tenant B.  This prevents token reuse across tenants.
         """
-        subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
+        suffix_b = uuid.uuid4().hex[:8]
         async with test_session_factory() as session:
             t2 = TenantModel(
                 name="Other Club",
-                subdomain=subdomain_b,
+                trading_name="Other Club",
+                player_subdomain=f"other-{suffix_b}",
+                staff_subdomain=f"other-{suffix_b}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )

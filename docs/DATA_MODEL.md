@@ -1,4 +1,4 @@
-_Last updated: 2026-05-23 14:30 UTC_
+_Last updated: 2026-05-25 13:30 UTC_
 
 # SmashBook Data Model
 
@@ -81,8 +81,10 @@ Top-level organizational unit. Each tenant is a sports club operator.
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID | PK |
-| `name` | VARCHAR(255) | |
-| `subdomain` | VARCHAR(100) | UNIQUE — used for routing |
+| `name` | VARCHAR(255) | Legal / registration name (e.g. Stripe billing entity) |
+| `trading_name` | VARCHAR(255) | Public-facing brand shown in club UI and confirmation emails |
+| `player_subdomain` | VARCHAR(100) | UNIQUE — hosts the player site at `<player_subdomain>.smashbook.app` |
+| `staff_subdomain` | VARCHAR(100) | UNIQUE — hosts the staff portal at `<staff_subdomain>.smashbook.app` |
 | `custom_domain` | VARCHAR(255) | Nullable |
 | `plan_id` | UUID | FK → `subscription_plans` |
 | `is_active` | BOOLEAN | |
@@ -92,6 +94,10 @@ Top-level organizational unit. Each tenant is a sports club operator.
 | `subscription_status` | ENUM | Nullable — `trialing`, `active`, `past_due`, `canceled`, `suspended` (synced from Stripe; `suspended` is SmashBook's own state) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
+
+**Constraints:**
+- CHECK `player_subdomain <> staff_subdomain` (a single row cannot reuse the same value across both columns).
+- Cross-row, cross-column uniqueness (a subdomain string can appear in **at most one** of `player_subdomain`/`staff_subdomain` across **all** tenants) is enforced in the application layer at `POST /admin/onboard` and `PATCH /admin/tenants/{id}` — the per-column UNIQUE constraints alone do not catch a string moving between columns on different tenants.
 
 **Relationships:** `plan`, `clubs`, `users`, `tenant_users`
 
@@ -673,6 +679,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `0fcac3948b73` | Add `stripe_price_id` to `subscription_plans`; add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` (`subscriptionstatus` enum) to `tenants` for SmashBook → org subscription billing |
 | `a3ad99663232` | Add `stripe_destination_payment_id` (indexed) to `payments` — connected-account-side payment id (`py_xxx`) so the `payout.paid` webhook can match destination-charge Connect payouts |
 | `32204403280f` | G6.1 — Player email-verification registration flow: `users`: add `email_verified_at` (back-filled to `NOW()` for existing rows); `membership_plans`: add `is_default` with partial unique index `uq_membership_plans_one_default_per_club` on `(club_id) WHERE is_default = TRUE` |
+| `ac339fc8a081` | `tenants`: add `trading_name` (back-filled from `name`); rename `subdomain` → `player_subdomain`; add `staff_subdomain` (back-filled as `<player_subdomain>-staff`); add CHECK constraint `player_subdomain <> staff_subdomain` |
 
 To run migrations:
 ```bash

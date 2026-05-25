@@ -463,7 +463,7 @@ class TestCreateBooking:
         from app.db.models.tenant import Tenant as TenantModel
         subdomain = f"alien-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Alien", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Alien", trading_name="Alien", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.flush()
             alien_user = User(
@@ -1637,7 +1637,7 @@ class TestCalendarView:
         from app.db.models.tenant import Tenant as TenantModel
         subdomain = f"alien-cal-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Alien Cal", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Alien Cal", trading_name="Alien Cal", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.flush()
             alien = User(
@@ -2425,7 +2425,7 @@ class TestUpdateBooking:
         from app.db.models.tenant import Tenant as TenantModel
         subdomain = f"alien-upd-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Alien Update", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Alien Update", trading_name="Alien Update", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.flush()
             alien = User(
@@ -2621,7 +2621,7 @@ class TestRespondToInvite:
         from app.db.models.tenant import Tenant as TenantModel
         subdomain = f"alien-inv-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Alien Inv", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Alien Inv", trading_name="Alien Inv", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.flush()
             alien = User(
@@ -3102,7 +3102,7 @@ class TestCreateRecurringBooking:
         from app.db.models.tenant import Tenant as TenantModel
         subdomain = f"alien-rec-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Alien Rec", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Alien Rec", trading_name="Alien Rec", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.flush()
             alien = User(

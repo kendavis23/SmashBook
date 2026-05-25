@@ -385,11 +385,15 @@ async def plan(test_session_factory):
 
 @pytest_asyncio.fixture
 async def tenant(plan, test_session_factory):
-    subdomain = f"testclub-{uuid.uuid4().hex[:8]}"
+    suffix = uuid.uuid4().hex[:8]
+    player_subdomain = f"testclub-{suffix}"
+    staff_subdomain = f"testclub-{suffix}-staff"
     async with test_session_factory() as session:
         t = Tenant(
             name="Test Club",
-            subdomain=subdomain,
+            trading_name="Test Club",
+            player_subdomain=player_subdomain,
+            staff_subdomain=staff_subdomain,
             plan_id=plan.id,
             is_active=True,
         )

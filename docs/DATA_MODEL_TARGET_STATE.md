@@ -1,4 +1,4 @@
-_Last updated: 2026-05-23_
+_Last updated: 2026-05-25_
 
 # SmashBook — Data Model Target State
 
@@ -188,13 +188,15 @@ Update the **Status** column when a migration has been applied and verified. The
 ---
 
 ### `tenants`
-**Changes from current:** Add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` for SmashBook → org subscription billing.
+**Changes from current:** Add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` for SmashBook → org subscription billing. Add `trading_name` (public-facing brand); split `subdomain` into `player_subdomain` and `staff_subdomain` so player and staff portals can be hosted on distinct hosts (and so registration confirmation emails route back to the right portal).
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID | PK |
-| `name` | VARCHAR(255) | |
-| `subdomain` | VARCHAR(100) | UNIQUE |
+| `name` | VARCHAR(255) | Legal / registration name (Stripe billing entity) |
+| `trading_name` | VARCHAR(255) | Public-facing brand shown in club UI and confirmation emails |
+| `player_subdomain` | VARCHAR(100) | UNIQUE — `<player_subdomain>.smashbook.app` for the player site |
+| `staff_subdomain` | VARCHAR(100) | UNIQUE — `<staff_subdomain>.smashbook.app` for the staff portal |
 | `custom_domain` | VARCHAR(255) | Nullable |
 | `plan_id` | UUID | FK → `subscription_plans` |
 | `is_active` | BOOLEAN | |
@@ -204,6 +206,10 @@ Update the **Status** column when a migration has been applied and verified. The
 | `subscription_status` | ENUM | Nullable — `trialing`, `active`, `past_due`, `canceled`, `suspended` (synced from Stripe; `suspended` is SmashBook's own state) |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
+
+**Constraints:**
+- CHECK `player_subdomain <> staff_subdomain` (single-row distinctness).
+- Cross-row, cross-column uniqueness (a subdomain string can appear in at most one of `player_subdomain`/`staff_subdomain` across all tenants) is enforced in the application layer at write time.
 
 ---
 
