@@ -116,6 +116,7 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
         full_name=body.full_name,
         hashed_password=get_password_hash(body.password),
         role=TenantUserRole.player,
+        skill_level=club.skill_level_min,
         email_verified_at=None,
     )
     db.add(user)

@@ -81,6 +81,20 @@ class TestRegister:
             )).scalar_one_or_none()
             assert sub is None  # membership is created only at verification
 
+    async def test_assigns_default_skill_level_from_club_minimum(
+        self, client, tenant, club, test_session_factory
+    ):
+        payload = self._payload(tenant, club)
+        resp = await client.post("/api/v1/auth/register", json=payload)
+        assert resp.status_code == 201
+        user_id = uuid.UUID(resp.json()["user_id"])
+
+        async with test_session_factory() as session:
+            user = await session.get(User, user_id)
+            assert user is not None
+            assert user.skill_level is not None
+            assert user.skill_level == club.skill_level_min
+
     async def test_duplicate_email_returns_409(self, client, player, tenant, club):
         resp = await client.post(
             "/api/v1/auth/register",
