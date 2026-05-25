@@ -43,7 +43,9 @@ interface ManageTenantViewProps {
     tenant: TenantDetail;
     plans: Plan[];
     nameInput: string;
-    subdomainInput: string;
+    tradingNameInput: string;
+    playerSubdomainInput: string;
+    staffSubdomainInput: string;
     customDomainInput: string;
     isActiveInput: boolean;
     subscriptionStartDateInput: string;
@@ -61,7 +63,9 @@ interface ManageTenantViewProps {
     changePlanError: string | null;
     successMessage: string | null;
     onNameChange: (v: string) => void;
-    onSubdomainChange: (v: string) => void;
+    onTradingNameChange: (v: string) => void;
+    onPlayerSubdomainChange: (v: string) => void;
+    onStaffSubdomainChange: (v: string) => void;
     onCustomDomainChange: (v: string) => void;
     onIsActiveChange: (v: boolean) => void;
     onSubscriptionStartDateChange: (v: string) => void;
@@ -85,7 +89,9 @@ export default function ManageTenantView({
     tenant,
     plans,
     nameInput,
-    subdomainInput,
+    tradingNameInput,
+    playerSubdomainInput,
+    staffSubdomainInput,
     customDomainInput,
     isActiveInput,
     subscriptionStartDateInput,
@@ -103,7 +109,9 @@ export default function ManageTenantView({
     changePlanError,
     successMessage,
     onNameChange,
-    onSubdomainChange,
+    onTradingNameChange,
+    onPlayerSubdomainChange,
+    onStaffSubdomainChange,
     onCustomDomainChange,
     onIsActiveChange,
     onSubscriptionStartDateChange,
@@ -145,7 +153,8 @@ export default function ManageTenantView({
                                     {statusBadge(tenant.subscription_status, tenant.is_active)}
                                 </div>
                                 <p className="mt-0.5 text-sm text-muted-foreground">
-                                    {tenant.subdomain} · {tenant.plan_name}
+                                    {tenant.trading_name} · {tenant.player_subdomain} /{" "}
+                                    {tenant.staff_subdomain} · {tenant.plan_name}
                                 </p>
                             </div>
                         </div>
@@ -230,22 +239,42 @@ export default function ManageTenantView({
                             </div>
                             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <label>
-                                    <span className={labelCls}>Organisation name</span>
+                                    <span className={labelCls}>Legal name</span>
                                     <input
                                         className="input-base"
                                         value={nameInput}
                                         onChange={(e) => onNameChange(e.target.value)}
-                                        placeholder="Ace Padel Club"
+                                        placeholder="Ace Padel Ltd"
                                         autoComplete="off"
                                     />
                                 </label>
                                 <label>
-                                    <span className={labelCls}>Subdomain</span>
+                                    <span className={labelCls}>Trading name</span>
                                     <input
                                         className="input-base"
-                                        value={subdomainInput}
-                                        onChange={(e) => onSubdomainChange(e.target.value)}
-                                        placeholder="ace-padel"
+                                        value={tradingNameInput}
+                                        onChange={(e) => onTradingNameChange(e.target.value)}
+                                        placeholder="Ace Padel"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                                <label>
+                                    <span className={labelCls}>Player subdomain</span>
+                                    <input
+                                        className="input-base"
+                                        value={playerSubdomainInput}
+                                        onChange={(e) => onPlayerSubdomainChange(e.target.value)}
+                                        placeholder="ace-player"
+                                        autoComplete="off"
+                                    />
+                                </label>
+                                <label>
+                                    <span className={labelCls}>Staff subdomain</span>
+                                    <input
+                                        className="input-base"
+                                        value={staffSubdomainInput}
+                                        onChange={(e) => onStaffSubdomainChange(e.target.value)}
+                                        placeholder="ace-staff"
                                         autoComplete="off"
                                     />
                                 </label>

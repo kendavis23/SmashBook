@@ -130,20 +130,42 @@ export default function OnboardView({
                     {/* Tenant */}
                     <Card icon={<Globe size={14} />} title="Tenant">
                         <div className="grid grid-cols-2 gap-x-3 gap-y-3.5">
-                            <Field label="Tenant name" span2>
+                            <Field label="Legal name" hint="Billing entity name shown on Stripe">
                                 <input
                                     className="input-base"
                                     value={form.name}
                                     onChange={(e) => onFieldChange("name", e.target.value)}
-                                    placeholder="Ace Padel"
+                                    placeholder="Ace Padel Ltd"
                                 />
                             </Field>
-                            <Field label="Subdomain">
+                            <Field label="Trading name" hint="Brand shown in UI and emails">
                                 <input
                                     className="input-base"
-                                    value={form.subdomain}
-                                    onChange={(e) => onFieldChange("subdomain", e.target.value)}
-                                    placeholder="ace-padel"
+                                    value={form.trading_name}
+                                    onChange={(e) => onFieldChange("trading_name", e.target.value)}
+                                    placeholder="Ace Padel"
+                                    autoComplete="off"
+                                />
+                            </Field>
+                            <Field label="Player subdomain" hint="<slug>.smashbook.app">
+                                <input
+                                    className="input-base"
+                                    value={form.player_subdomain}
+                                    onChange={(e) =>
+                                        onFieldChange("player_subdomain", e.target.value)
+                                    }
+                                    placeholder="ace-player"
+                                    autoComplete="off"
+                                />
+                            </Field>
+                            <Field label="Staff subdomain" hint="<slug>.smashbook.app">
+                                <input
+                                    className="input-base"
+                                    value={form.staff_subdomain}
+                                    onChange={(e) =>
+                                        onFieldChange("staff_subdomain", e.target.value)
+                                    }
+                                    placeholder="ace-staff"
                                     autoComplete="off"
                                 />
                             </Field>

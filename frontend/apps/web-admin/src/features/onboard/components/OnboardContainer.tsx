@@ -16,7 +16,9 @@ function trimOrNull(value: string): string | null {
 function buildPayload(form: OnboardTenantFormState): TenantOnboardInput {
     return {
         name: form.name.trim(),
-        subdomain: form.subdomain.trim(),
+        trading_name: form.trading_name.trim(),
+        player_subdomain: form.player_subdomain.trim(),
+        staff_subdomain: form.staff_subdomain.trim(),
         plan_id: form.plan_id.trim(),
         subscription_start_date: form.subscription_start_date
             ? datetimeLocalToUTC(form.subscription_start_date)
@@ -37,7 +39,11 @@ function buildPayload(form: OnboardTenantFormState): TenantOnboardInput {
 function validateForm(form: OnboardTenantFormState, platformKey: string): string | null {
     if (!platformKey.trim()) return "Platform key is required.";
     if (!form.name.trim()) return "Tenant name is required.";
-    if (!form.subdomain.trim()) return "Subdomain is required.";
+    if (!form.trading_name.trim()) return "Trading name is required.";
+    if (!form.player_subdomain.trim()) return "Player subdomain is required.";
+    if (!form.staff_subdomain.trim()) return "Staff subdomain is required.";
+    if (form.player_subdomain.trim() === form.staff_subdomain.trim())
+        return "Player subdomain and staff subdomain must differ.";
     if (!form.plan_id.trim()) return "Plan ID is required.";
     if (form.clubs.length === 0) return "Add at least one club.";
     if (form.clubs.some((club) => !club.name.trim())) return "Every club needs a name.";
