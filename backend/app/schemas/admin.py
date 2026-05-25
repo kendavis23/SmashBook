@@ -10,9 +10,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 from app.db.models.tenant import SubscriptionStatus
+from app.schemas.onboarding import _validate_subdomain
 
 
 # -- Subscription Plans ------------------------------------------------------
@@ -82,7 +83,9 @@ class TenantSummary(BaseModel):
     """Lightweight tenant row for list views."""
     id: uuid.UUID
     name: str
-    subdomain: str
+    trading_name: str
+    player_subdomain: str
+    staff_subdomain: str
     custom_domain: Optional[str] = None
     plan_id: uuid.UUID
     plan_name: str
@@ -97,7 +100,9 @@ class TenantDetail(BaseModel):
     """Full tenant view for detail endpoint."""
     id: uuid.UUID
     name: str
-    subdomain: str
+    trading_name: str
+    player_subdomain: str
+    staff_subdomain: str
     custom_domain: Optional[str] = None
     plan_id: uuid.UUID
     plan_name: str
@@ -122,23 +127,31 @@ class TenantUpdate(BaseModel):
     Tenant row itself.
     """
     name: Optional[str] = None
-    subdomain: Optional[str] = None
+    trading_name: Optional[str] = None
+    player_subdomain: Optional[str] = None
+    staff_subdomain: Optional[str] = None
     custom_domain: Optional[str] = None
     is_active: Optional[bool] = None
     subscription_start_date: Optional[datetime] = None
     owner_email: Optional[EmailStr] = None
     owner_full_name: Optional[str] = None
 
-    @field_validator("subdomain")
+    @field_validator("player_subdomain", "staff_subdomain")
     @classmethod
     def subdomain_slug(cls, v: Optional[str]) -> Optional[str]:
         if v is None:
             return v
-        import re
-        v = v.strip().lower()
-        if not re.match(r"^[a-z0-9]([a-z0-9\-]{0,98}[a-z0-9])?$", v):
-            raise ValueError("subdomain must be lowercase alphanumeric with optional hyphens")
-        return v
+        return _validate_subdomain(v)
+
+    @model_validator(mode="after")
+    def subdomains_must_differ(self) -> "TenantUpdate":
+        if (
+            self.player_subdomain is not None
+            and self.staff_subdomain is not None
+            and self.player_subdomain == self.staff_subdomain
+        ):
+            raise ValueError("player_subdomain and staff_subdomain must differ")
+        return self
 
 
 class TenantActivateRequest(BaseModel):

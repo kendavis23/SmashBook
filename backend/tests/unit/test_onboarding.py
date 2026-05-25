@@ -32,7 +32,9 @@ PLAN_UNLIMITED = SimpleNamespace(id=PLAN_ID, name="pro", max_clubs=-1, max_court
 def _valid_request(**overrides) -> TenantOnboardRequest:
     defaults = dict(
         name="Padel Kings",
-        subdomain="padelkings",
+        trading_name="Padel Kings",
+        player_subdomain="padelkings",
+        staff_subdomain="padelkings-staff",
         plan_id=PLAN_ID,
         clubs=[ClubCreate(name="Padel Kings Club", currency="GBP")],
         owner=OwnerCreate(email="owner@padelkings.com", full_name="King Owner", password="s3cret"),
@@ -42,14 +44,25 @@ def _valid_request(**overrides) -> TenantOnboardRequest:
 
 
 def _make_db(plan=PLAN, subdomain_exists=False):
-    """Return a minimal AsyncSession mock."""
+    """Return a minimal AsyncSession mock.
+
+    When ``subdomain_exists`` is True, ``db.execute`` returns one row indicating
+    the requested player_subdomain is already taken on another tenant.
+    """
     db = AsyncMock()
 
     # db.get(SubscriptionPlan, id) → plan
     db.get = AsyncMock(return_value=plan)
 
-    # db.execute(select(Tenant)...) → scalar_one_or_none
+    # db.execute(select(Tenant.player_subdomain, Tenant.staff_subdomain).where(...))
+    # → .all() returning row tuples
     execute_result = MagicMock()
+    if subdomain_exists:
+        # Match the requested player_subdomain ("padelkings"); leaves the staff
+        # value distinct so cross-column hits one column only.
+        execute_result.all.return_value = [("padelkings", "padelkings-other-staff")]
+    else:
+        execute_result.all.return_value = []
     execute_result.scalar_one_or_none.return_value = (
         SimpleNamespace(id=uuid.uuid4()) if subdomain_exists else None
     )
@@ -199,7 +212,7 @@ async def test_onboard_aggregates_multiple_problems():
     errors = exc_info.value.detail["errors"]
     fields = {e["field"] for e in errors}
     assert "clubs" in fields
-    assert "subdomain" in fields
+    assert "player_subdomain" in fields
 
 
 @pytest.mark.asyncio
@@ -236,19 +249,24 @@ def test_subdomain_normalises_uppercase():
     """Uppercase input is silently lowercased (DNS is case-insensitive)."""
     req = TenantOnboardRequest(
         name="X",
-        subdomain="UpperCase",
+        trading_name="X",
+        player_subdomain="UpperCase",
+        staff_subdomain="UpperCase-Staff",
         plan_id=PLAN_ID,
         clubs=[ClubCreate(name="X")],
         owner=OwnerCreate(email="a@b.com", full_name="A", password="p"),
     )
-    assert req.subdomain == "uppercase"
+    assert req.player_subdomain == "uppercase"
+    assert req.staff_subdomain == "uppercase-staff"
 
 
 def test_rejects_empty_clubs():
     with pytest.raises(Exception):
         TenantOnboardRequest(
             name="X",
-            subdomain="valid",
+            trading_name="X",
+            player_subdomain="valid",
+            staff_subdomain="valid-staff",
             plan_id=PLAN_ID,
             clubs=[],
             owner=OwnerCreate(email="a@b.com", full_name="A", password="p"),
@@ -258,9 +276,25 @@ def test_rejects_empty_clubs():
 def test_subdomain_allows_hyphens():
     req = TenantOnboardRequest(
         name="X",
-        subdomain="my-club-name",
+        trading_name="X",
+        player_subdomain="my-club-name",
+        staff_subdomain="my-club-staff",
         plan_id=PLAN_ID,
         clubs=[ClubCreate(name="X")],
         owner=OwnerCreate(email="a@b.com", full_name="A", password="p"),
     )
-    assert req.subdomain == "my-club-name"
+    assert req.player_subdomain == "my-club-name"
+    assert req.staff_subdomain == "my-club-staff"
+
+
+def test_rejects_player_subdomain_equal_to_staff_subdomain():
+    with pytest.raises(Exception):
+        TenantOnboardRequest(
+            name="X",
+            trading_name="X",
+            player_subdomain="same",
+            staff_subdomain="same",
+            plan_id=PLAN_ID,
+            clubs=[ClubCreate(name="X")],
+            owner=OwnerCreate(email="a@b.com", full_name="A", password="p"),
+        )

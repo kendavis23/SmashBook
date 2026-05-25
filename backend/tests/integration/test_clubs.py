@@ -131,7 +131,9 @@ class TestListClubs:
         async with test_session_factory() as session:
             t2 = TenantModel(
                 name="Other Tenant",
-                subdomain=subdomain,
+                trading_name="Other Tenant",
+                player_subdomain=subdomain,
+                staff_subdomain=f"{subdomain}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )

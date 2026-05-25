@@ -267,7 +267,9 @@ class TestGetWalletErrors:
         async with test_session_factory() as session:
             t2 = TenantModel(
                 name="Other Tenant",
-                subdomain=subdomain_b,
+                trading_name="Other Tenant",
+                player_subdomain=subdomain_b,
+                staff_subdomain=f"{subdomain_b}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )
@@ -383,7 +385,9 @@ class TestWalletTopUp:
         async with test_session_factory() as session:
             t2 = TenantModel(
                 name="Other Tenant",
-                subdomain=subdomain_b,
+                trading_name="Other Tenant",
+                player_subdomain=subdomain_b,
+                staff_subdomain=f"{subdomain_b}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )
@@ -439,7 +443,7 @@ class TestSettleWalletDebts:
     async def test_wrong_tenant_returns_401(self, client, admin, tenant, plan, test_session_factory):
         subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other Tenant", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other Tenant", trading_name="Other Tenant", player_subdomain=subdomain_b, staff_subdomain=f"{subdomain_b}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.commit()
             await session.refresh(t2)
@@ -772,7 +776,7 @@ class TestWalletPayBooking:
     async def test_wrong_tenant_returns_401(self, client, player, tenant, plan, test_session_factory):
         subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other Tenant", subdomain=subdomain_b, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other Tenant", trading_name="Other Tenant", player_subdomain=subdomain_b, staff_subdomain=f"{subdomain_b}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.commit()
             await session.refresh(t2)

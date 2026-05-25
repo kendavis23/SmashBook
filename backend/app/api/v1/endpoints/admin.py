@@ -20,7 +20,7 @@ from typing import List, Optional
 
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -105,20 +105,39 @@ async def onboard_tenant(
                 "error": f"duplicate club name '{body.clubs[idxs[0]].name}' at indexes {idxs}",
             })
 
-    # Subdomain uniqueness (DB-level)
-    existing = await db.execute(select(Tenant).where(Tenant.subdomain == body.subdomain))
-    if existing.scalar_one_or_none():
-        # Subdomain conflict is a distinct error class — surface it as 409 alone
-        # if it's the only problem; otherwise include it in the aggregate 422.
-        if not errors:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Subdomain '{body.subdomain}' is already in use",
+    # Subdomain uniqueness — a string can appear in at most one of
+    # (player_subdomain, staff_subdomain) across all tenants. We check both
+    # requested values against both columns in a single query.
+    requested_subdomains = {body.player_subdomain, body.staff_subdomain}
+    existing_rows = (await db.execute(
+        select(Tenant.player_subdomain, Tenant.staff_subdomain).where(
+            or_(
+                Tenant.player_subdomain.in_(requested_subdomains),
+                Tenant.staff_subdomain.in_(requested_subdomains),
             )
-        errors.append({
-            "field": "subdomain",
-            "error": f"Subdomain '{body.subdomain}' is already in use",
-        })
+        )
+    )).all()
+    taken: set[str] = set()
+    for row_player, row_staff in existing_rows:
+        if row_player in requested_subdomains:
+            taken.add(row_player)
+        if row_staff in requested_subdomains:
+            taken.add(row_staff)
+
+    subdomain_conflicts: list[tuple[str, str]] = []
+    if body.player_subdomain in taken:
+        subdomain_conflicts.append(("player_subdomain", body.player_subdomain))
+    if body.staff_subdomain in taken:
+        subdomain_conflicts.append(("staff_subdomain", body.staff_subdomain))
+
+    if subdomain_conflicts and not errors:
+        # Subdomain conflicts alone surface as 409.
+        detail = "; ".join(
+            f"Subdomain '{val}' is already in use" for _, val in subdomain_conflicts
+        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+    for field, val in subdomain_conflicts:
+        errors.append({"field": field, "error": f"Subdomain '{val}' is already in use"})
 
     if errors:
         raise HTTPException(
@@ -129,7 +148,9 @@ async def onboard_tenant(
     # --- tenant ---
     tenant = Tenant(
         name=body.name,
-        subdomain=body.subdomain,
+        trading_name=body.trading_name,
+        player_subdomain=body.player_subdomain,
+        staff_subdomain=body.staff_subdomain,
         plan_id=body.plan_id,
         is_active=True,
         subscription_start_date=body.subscription_start_date,
@@ -250,7 +271,9 @@ async def _tenant_summary_row(
     return TenantSummary(
         id=tenant.id,
         name=tenant.name,
-        subdomain=tenant.subdomain,
+        trading_name=tenant.trading_name,
+        player_subdomain=tenant.player_subdomain,
+        staff_subdomain=tenant.staff_subdomain,
         custom_domain=tenant.custom_domain,
         plan_id=tenant.plan_id,
         plan_name=plan_name,
@@ -268,7 +291,9 @@ def _tenant_detail_row(
     return TenantDetail(
         id=tenant.id,
         name=tenant.name,
-        subdomain=tenant.subdomain,
+        trading_name=tenant.trading_name,
+        player_subdomain=tenant.player_subdomain,
+        staff_subdomain=tenant.staff_subdomain,
         custom_domain=tenant.custom_domain,
         plan_id=tenant.plan_id,
         plan_name=plan_name,
@@ -357,7 +382,8 @@ async def update_tenant(
     """
     Partial update for a tenant. Accepts any combination of:
 
-    - **Tenant fields**: ``name``, ``subdomain``, ``custom_domain``, ``is_active``,
+    - **Tenant fields**: ``name``, ``trading_name``, ``player_subdomain``,
+      ``staff_subdomain``, ``custom_domain``, ``is_active``,
       ``subscription_start_date``.
     - **Owner fields**: ``owner_email``, ``owner_full_name`` — applied to the
       tenant's single ``role=owner`` user.
@@ -377,16 +403,43 @@ async def update_tenant(
     }
     tenant_updates = {k: v for k, v in updates.items() if not k.startswith("owner_")}
 
-    # Subdomain uniqueness check
-    if "subdomain" in tenant_updates and tenant_updates["subdomain"] != tenant.subdomain:
-        existing = await db.execute(
-            select(Tenant).where(Tenant.subdomain == tenant_updates["subdomain"])
+    # Cross-row, cross-column subdomain uniqueness check.
+    # A subdomain string can appear in at most one of (player_subdomain,
+    # staff_subdomain) across all tenants — and never on a different tenant.
+    new_player = tenant_updates.get("player_subdomain")
+    new_staff = tenant_updates.get("staff_subdomain")
+    # If only one is updated, the other side must also not collide with the
+    # current value on the same row — guard against the new value matching
+    # the existing partner column.
+    if new_player is not None and new_player == tenant.staff_subdomain and new_staff is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="player_subdomain and staff_subdomain must differ",
         )
-        if existing.scalar_one_or_none():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Subdomain '{tenant_updates['subdomain']}' is already in use",
+    if new_staff is not None and new_staff == tenant.player_subdomain and new_player is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="player_subdomain and staff_subdomain must differ",
+        )
+
+    requested = {v for v in (new_player, new_staff) if v is not None}
+    if requested:
+        existing_rows = (await db.execute(
+            select(Tenant.id, Tenant.player_subdomain, Tenant.staff_subdomain).where(
+                Tenant.id != tenant.id,
+                or_(
+                    Tenant.player_subdomain.in_(requested),
+                    Tenant.staff_subdomain.in_(requested),
+                ),
             )
+        )).all()
+        for _row_id, row_player, row_staff in existing_rows:
+            for val in requested:
+                if val == row_player or val == row_staff:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Subdomain '{val}' is already in use",
+                    )
 
     # Owner update path
     if owner_updates:

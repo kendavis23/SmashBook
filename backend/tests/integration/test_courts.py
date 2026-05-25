@@ -88,7 +88,9 @@ class TestCreateCourt:
         async with test_session_factory() as session:
             t2 = TenantModel(
                 name="Other Tenant",
-                subdomain=subdomain,
+                trading_name="Other Tenant",
+                player_subdomain=subdomain,
+                staff_subdomain=f"{subdomain}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )
@@ -426,7 +428,7 @@ class TestListCourts:
 
         subdomain = f"other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other", trading_name="Other", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.flush()
             other_club = ClubModel(tenant_id=t2.id, name="Other Club", currency="GBP")
@@ -667,7 +669,7 @@ class TestCourtAvailability:
 
         subdomain = f"avail-other-{uuid.uuid4().hex[:8]}"
         async with test_session_factory() as session:
-            t2 = TenantModel(name="Other2", subdomain=subdomain, plan_id=plan.id, is_active=True)
+            t2 = TenantModel(name="Other2", trading_name="Other2", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
             session.add(t2)
             await session.flush()
             other_club = ClubModel(tenant_id=t2.id, name="Other Club", currency="GBP")

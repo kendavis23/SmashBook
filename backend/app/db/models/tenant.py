@@ -48,8 +48,14 @@ class SubscriptionPlan(Base, UUIDMixin):
 class Tenant(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "tenants"
 
+    # Legal / registration name (e.g. Stripe billing entity).
     name = Column(String(255), nullable=False)
-    subdomain = Column(String(100), nullable=False, unique=True)
+    # Public-facing brand name shown in club UI and confirmation emails.
+    trading_name = Column(String(255), nullable=False)
+    # Subdomain hosting the player site: <player_subdomain>.smashbook.app
+    player_subdomain = Column(String(100), nullable=False, unique=True)
+    # Subdomain hosting the staff portal: <staff_subdomain>.smashbook.app
+    staff_subdomain = Column(String(100), nullable=False, unique=True)
     custom_domain = Column(String(255), nullable=True)
     plan_id = Column(UUID(as_uuid=True), ForeignKey("subscription_plans.id"), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)

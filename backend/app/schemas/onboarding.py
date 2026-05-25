@@ -3,7 +3,17 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
+
+
+_SUBDOMAIN_RE = re.compile(r"^[a-z0-9]([a-z0-9\-]{0,98}[a-z0-9])?$")
+
+
+def _validate_subdomain(value: str) -> str:
+    value = value.strip().lower()
+    if not _SUBDOMAIN_RE.match(value):
+        raise ValueError("subdomain must be lowercase alphanumeric with optional hyphens")
+    return value
 
 
 class ClubCreate(BaseModel):
@@ -19,20 +29,29 @@ class OwnerCreate(BaseModel):
 
 
 class TenantOnboardRequest(BaseModel):
+    # Legal / registration name (Stripe billing entity).
     name: str
-    subdomain: str
+    # Public-facing brand shown in club UI and confirmation emails.
+    trading_name: str
+    # Hosts the player site: <player_subdomain>.smashbook.app
+    player_subdomain: str
+    # Hosts the staff portal: <staff_subdomain>.smashbook.app
+    staff_subdomain: str
     plan_id: uuid.UUID
     subscription_start_date: Optional[datetime] = None
     clubs: List[ClubCreate]
     owner: OwnerCreate
 
-    @field_validator("subdomain")
+    @field_validator("player_subdomain", "staff_subdomain")
     @classmethod
     def subdomain_slug(cls, v: str) -> str:
-        v = v.strip().lower()
-        if not re.match(r"^[a-z0-9]([a-z0-9\-]{0,98}[a-z0-9])?$", v):
-            raise ValueError("subdomain must be lowercase alphanumeric with optional hyphens")
-        return v
+        return _validate_subdomain(v)
+
+    @model_validator(mode="after")
+    def subdomains_must_differ(self) -> "TenantOnboardRequest":
+        if self.player_subdomain == self.staff_subdomain:
+            raise ValueError("player_subdomain and staff_subdomain must differ")
+        return self
 
     @field_validator("clubs")
     @classmethod

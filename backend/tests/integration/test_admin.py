@@ -117,9 +117,12 @@ async def cleanup_tenants(test_session_factory):
 
 def _onboard_payload(**overrides):
     """Build a minimal valid /admin/onboard request body."""
+    suffix = uuid.uuid4().hex[:6]
     body = {
         "name": "Padel Kings",
-        "subdomain": f"padelkings-{uuid.uuid4().hex[:6]}",
+        "trading_name": "Padel Kings",
+        "player_subdomain": f"padelkings-{suffix}",
+        "staff_subdomain": f"padelkings-{suffix}-staff",
         "plan_id": overrides.pop("plan_id"),
         "clubs": [{"name": "Padel Kings HQ", "currency": "GBP"}],
         "owner": {
@@ -276,16 +279,58 @@ class TestOnboard:
         errors = resp.json()["detail"]["errors"]
         assert any("duplicate club name" in e["error"] for e in errors)
 
-    async def test_duplicate_subdomain_returns_409(
+    async def test_duplicate_player_subdomain_returns_409(
         self, client, plan, tenant, cleanup_tenants
     ):
-        # `tenant` fixture already exists with a known subdomain — reuse it
-        body = _onboard_payload(plan_id=str(plan.id), subdomain=tenant.subdomain)
+        # `tenant` fixture already exists with a known player_subdomain — reuse it
+        body = _onboard_payload(
+            plan_id=str(plan.id), player_subdomain=tenant.player_subdomain
+        )
         resp = await client.post(
             "/api/v1/admin/onboard", json=body, headers=PLATFORM_HEADERS
         )
         assert resp.status_code == 409
-        assert tenant.subdomain in resp.json()["detail"]
+        assert tenant.player_subdomain in resp.json()["detail"]
+
+    async def test_duplicate_staff_subdomain_returns_409(
+        self, client, plan, tenant, cleanup_tenants
+    ):
+        # Reusing the existing tenant's staff_subdomain must conflict too.
+        body = _onboard_payload(
+            plan_id=str(plan.id), staff_subdomain=tenant.staff_subdomain
+        )
+        resp = await client.post(
+            "/api/v1/admin/onboard", json=body, headers=PLATFORM_HEADERS
+        )
+        assert resp.status_code == 409
+        assert tenant.staff_subdomain in resp.json()["detail"]
+
+    async def test_player_subdomain_colliding_with_existing_staff_returns_409(
+        self, client, plan, tenant, cleanup_tenants
+    ):
+        # Cross-column uniqueness: another tenant's staff_subdomain cannot be
+        # claimed as a new tenant's player_subdomain.
+        body = _onboard_payload(
+            plan_id=str(plan.id), player_subdomain=tenant.staff_subdomain
+        )
+        resp = await client.post(
+            "/api/v1/admin/onboard", json=body, headers=PLATFORM_HEADERS
+        )
+        assert resp.status_code == 409
+
+    async def test_same_request_player_equals_staff_returns_422(
+        self, client, plan, cleanup_tenants
+    ):
+        same = f"samesub-{uuid.uuid4().hex[:6]}"
+        body = _onboard_payload(
+            plan_id=str(plan.id),
+            player_subdomain=same,
+            staff_subdomain=same,
+        )
+        resp = await client.post(
+            "/api/v1/admin/onboard", json=body, headers=PLATFORM_HEADERS
+        )
+        assert resp.status_code == 422
 
 
 # ---------------------------------------------------------------------------
@@ -399,7 +444,9 @@ class TestListTenants:
         row = next(t for t in resp.json() if t["id"] == str(tenant.id))
         assert row["plan_name"] == "Pro Test Plan"
         assert row["club_count"] == 1
-        assert row["subdomain"] == tenant.subdomain
+        assert row["player_subdomain"] == tenant.player_subdomain
+        assert row["staff_subdomain"] == tenant.staff_subdomain
+        assert row["trading_name"] == tenant.trading_name
 
 
 class TestGetTenant:
@@ -464,24 +511,49 @@ class TestPatchTenant:
         assert resp.status_code == 200
         assert resp.json()["custom_domain"] == "myclub.example.com"
 
-    async def test_update_subdomain(self, client, tenant):
+    async def test_update_player_subdomain(self, client, tenant):
         new = f"renamed-{uuid.uuid4().hex[:6]}"
         resp = await client.patch(
             f"/api/v1/admin/tenants/{tenant.id}",
-            json={"subdomain": new},
+            json={"player_subdomain": new},
             headers=PLATFORM_HEADERS,
         )
         assert resp.status_code == 200
-        assert resp.json()["subdomain"] == new
+        assert resp.json()["player_subdomain"] == new
 
-    async def test_subdomain_conflict_returns_409(
+    async def test_update_staff_subdomain(self, client, tenant):
+        new = f"renamed-staff-{uuid.uuid4().hex[:6]}"
+        resp = await client.patch(
+            f"/api/v1/admin/tenants/{tenant.id}",
+            json={"staff_subdomain": new},
+            headers=PLATFORM_HEADERS,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["staff_subdomain"] == new
+
+    async def test_update_trading_name(self, client, tenant):
+        new = f"Public Brand {uuid.uuid4().hex[:6]}"
+        resp = await client.patch(
+            f"/api/v1/admin/tenants/{tenant.id}",
+            json={"trading_name": new},
+            headers=PLATFORM_HEADERS,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["trading_name"] == new
+        # Legal name untouched
+        assert resp.json()["name"] == tenant.name
+
+    async def test_player_subdomain_conflict_returns_409(
         self, client, tenant, plan, test_session_factory
     ):
-        # Seed a second tenant whose subdomain we'll try to steal
+        # Seed a second tenant whose player_subdomain we'll try to steal.
+        suffix = uuid.uuid4().hex[:6]
         async with test_session_factory() as session:
             other = Tenant(
                 name="Other",
-                subdomain=f"other-{uuid.uuid4().hex[:6]}",
+                trading_name="Other",
+                player_subdomain=f"other-{suffix}",
+                staff_subdomain=f"other-{suffix}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )
@@ -491,7 +563,15 @@ class TestPatchTenant:
         try:
             resp = await client.patch(
                 f"/api/v1/admin/tenants/{tenant.id}",
-                json={"subdomain": other.subdomain},
+                json={"player_subdomain": other.player_subdomain},
+                headers=PLATFORM_HEADERS,
+            )
+            assert resp.status_code == 409
+            # Cross-column: trying to steal the other tenant's staff_subdomain
+            # for our player_subdomain must also conflict.
+            resp = await client.patch(
+                f"/api/v1/admin/tenants/{tenant.id}",
+                json={"player_subdomain": other.staff_subdomain},
                 headers=PLATFORM_HEADERS,
             )
             assert resp.status_code == 409
@@ -501,6 +581,14 @@ class TestPatchTenant:
                 if obj:
                     await session.delete(obj)
                     await session.commit()
+
+    async def test_patch_player_equal_to_staff_returns_409(self, client, tenant):
+        resp = await client.patch(
+            f"/api/v1/admin/tenants/{tenant.id}",
+            json={"player_subdomain": tenant.staff_subdomain},
+            headers=PLATFORM_HEADERS,
+        )
+        assert resp.status_code == 409
 
     async def test_update_name_and_is_active(
         self, client, tenant, test_session_factory

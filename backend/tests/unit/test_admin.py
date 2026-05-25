@@ -74,7 +74,9 @@ def _make_tenant(**overrides):
     defaults = dict(
         id=uuid.uuid4(),
         name="Padel Kings",
-        subdomain="padelkings",
+        trading_name="Padel Kings",
+        player_subdomain="padelkings",
+        staff_subdomain="padelkings-staff",
         custom_domain=None,
         plan_id=uuid.uuid4(),
         is_active=True,
@@ -253,20 +255,35 @@ async def test_get_tenant_returns_detail():
 
 
 @pytest.mark.asyncio
-async def test_patch_tenant_subdomain_conflict():
-    t = _make_tenant(subdomain="old")
+async def test_patch_tenant_player_subdomain_conflict():
+    t = _make_tenant(player_subdomain="old", staff_subdomain="old-staff")
     p = _make_plan()
     db = _make_db(tenant=t, plan=p)
 
     # _load_tenant_with_plan: club count, then owner lookup.
-    # Then the subdomain conflict check.
+    # Then the subdomain conflict check (selects from other tenants).
+    conflict_result = MagicMock()
+    conflict_result.all.return_value = [
+        (uuid.uuid4(), "taken", "other-staff"),
+    ]
     db.execute = AsyncMock(side_effect=[db._count_result,
                                         db._owner_result,
-                                        db._subdomain_result])
-    db._subdomain_result.scalar_one_or_none.return_value = SimpleNamespace(id=uuid.uuid4())
+                                        conflict_result])
 
     with pytest.raises(HTTPException) as exc:
-        await update_tenant(t.id, TenantUpdate(subdomain="taken"), db)
+        await update_tenant(t.id, TenantUpdate(player_subdomain="taken"), db)
+    assert exc.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_patch_tenant_player_equal_to_staff_returns_409():
+    t = _make_tenant(player_subdomain="player", staff_subdomain="staff")
+    p = _make_plan()
+    db = _make_db(tenant=t, plan=p)
+
+    with pytest.raises(HTTPException) as exc:
+        # New player_subdomain equals existing staff_subdomain.
+        await update_tenant(t.id, TenantUpdate(player_subdomain="staff"), db)
     assert exc.value.status_code == 409
 
 

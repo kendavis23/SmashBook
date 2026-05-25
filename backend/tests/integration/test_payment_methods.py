@@ -103,7 +103,9 @@ class TestCreateSetupIntent:
         async with test_session_factory() as session:
             t2 = TenantModel(
                 name="Other Club B",
-                subdomain=subdomain_b,
+                trading_name="Other Club B",
+                player_subdomain=subdomain_b,
+                staff_subdomain=f"{subdomain_b}-staff",
                 plan_id=plan.id,
                 is_active=True,
             )
