@@ -171,7 +171,11 @@ export function useLogin(portalType: PortalType = "staff") {
 
             // Store only the clubs relevant to this portal.
             setTokens({ ...tokens, clubs: allowedClubs });
-            setTenantSubdomain(credentials.tenant_subdomain);
+
+            // Prefer the subdomain returned by the backend (matches the portal the
+            // user logged in from). Fall back to the value the user typed in case
+            // an older backend omits the field.
+            setTenantSubdomain(tokens.subdomain ?? credentials.tenant_subdomain);
 
             // Auto-select the first allowed club and its role immediately on login.
             const firstClub = allowedClubs[0]!;

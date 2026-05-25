@@ -48,7 +48,7 @@ describe("LoginPage", () => {
 
     it("renders all form fields and submit button", () => {
         render(<LoginPage />, { wrapper });
-        expect(screen.getByLabelText("Club")).toBeInTheDocument();
+        expect(screen.getByLabelText("Tenant Subdomain")).toBeInTheDocument();
         expect(screen.getByLabelText("Email")).toBeInTheDocument();
         expect(screen.getByLabelText("Password")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
@@ -63,7 +63,9 @@ describe("LoginPage", () => {
 
     it("calls mutate with form data on valid submit", () => {
         render(<LoginPage />, { wrapper });
-        fireEvent.change(screen.getByLabelText("Club"), { target: { value: "myclub" } });
+        fireEvent.change(screen.getByLabelText("Tenant Subdomain"), {
+            target: { value: "myclub" },
+        });
         fireEvent.change(screen.getByLabelText("Email"), { target: { value: "admin@test.com" } });
         fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret123" } });
         fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
@@ -78,7 +80,9 @@ describe("LoginPage", () => {
             options.onSuccess();
         });
         render(<LoginPage />, { wrapper });
-        fireEvent.change(screen.getByLabelText("Club"), { target: { value: "myclub" } });
+        fireEvent.change(screen.getByLabelText("Tenant Subdomain"), {
+            target: { value: "myclub" },
+        });
         fireEvent.change(screen.getByLabelText("Email"), { target: { value: "admin@test.com" } });
         fireEvent.change(screen.getByLabelText("Password"), { target: { value: "secret123" } });
         fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
@@ -111,7 +115,9 @@ describe("LoginPage", () => {
         render(<LoginPage />, { wrapper });
         fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
         expect(screen.getAllByText("Required")).toHaveLength(3);
-        fireEvent.change(screen.getByLabelText("Club"), { target: { value: "myclub" } });
+        fireEvent.change(screen.getByLabelText("Tenant Subdomain"), {
+            target: { value: "myclub" },
+        });
         fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
         expect(screen.getAllByText("Required")).toHaveLength(2);
     });
