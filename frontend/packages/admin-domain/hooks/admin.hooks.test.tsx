@@ -83,7 +83,9 @@ const mockPlan = {
 const mockTenantSummary = {
     id: TENANT_ID,
     name: "Ace Club",
-    subdomain: "ace",
+    trading_name: "Ace",
+    player_subdomain: "ace-player",
+    staff_subdomain: "ace-staff",
     custom_domain: null,
     plan_id: PLAN_ID,
     plan_name: "Starter",
@@ -119,7 +121,9 @@ describe("useOnboardTenant", () => {
         const { result } = renderHook(() => useOnboardTenant(PLATFORM_KEY), { wrapper: Wrapper });
         const data = {
             name: "Ace Club",
-            subdomain: "ace",
+            trading_name: "Ace",
+            player_subdomain: "ace-player",
+            staff_subdomain: "ace-staff",
             plan_id: PLAN_ID,
             clubs: [{ name: "Ace Club HQ" }],
             owner: { email: "owner@ace.com", full_name: "Owner", password: "secret" },
@@ -281,13 +285,15 @@ describe("useUpdateTenant", () => {
         });
         result.current.mutate({
             name: "Ace Club Updated",
-            subdomain: "ace-new",
+            player_subdomain: "ace-player-new",
+            staff_subdomain: "ace-staff-new",
             owner_email: "new@ace.com",
         });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(adminApi.updateTenantEndpoint).toHaveBeenCalledWith(PLATFORM_KEY, TENANT_ID, {
             name: "Ace Club Updated",
-            subdomain: "ace-new",
+            player_subdomain: "ace-player-new",
+            staff_subdomain: "ace-staff-new",
             owner_email: "new@ace.com",
         });
         expect(invalidate).toHaveBeenCalledWith(

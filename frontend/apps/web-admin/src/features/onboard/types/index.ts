@@ -13,7 +13,9 @@ export interface OnboardClubForm {
 
 export interface OnboardTenantFormState {
     name: string;
-    subdomain: string;
+    trading_name: string;
+    player_subdomain: string;
+    staff_subdomain: string;
     plan_id: string;
     subscription_start_date: string;
     clubs: OnboardClubForm[];
@@ -34,7 +36,9 @@ export const DEFAULT_CLUB: OnboardClubForm = {
 
 export const DEFAULT_ONBOARD_FORM: OnboardTenantFormState = {
     name: "",
-    subdomain: "",
+    trading_name: "",
+    player_subdomain: "",
+    staff_subdomain: "",
     plan_id: "",
     subscription_start_date: "",
     clubs: [{ ...DEFAULT_CLUB }],

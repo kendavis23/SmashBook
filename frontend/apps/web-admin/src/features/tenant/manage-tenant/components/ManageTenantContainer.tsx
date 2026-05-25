@@ -27,7 +27,9 @@ export default function ManageTenantContainer(): JSX.Element {
     const changePlan = useChangeTenantPlan(platformKey, tenantId);
 
     const [nameInput, setNameInput] = useState("");
-    const [subdomainInput, setSubdomainInput] = useState("");
+    const [tradingNameInput, setTradingNameInput] = useState("");
+    const [playerSubdomainInput, setPlayerSubdomainInput] = useState("");
+    const [staffSubdomainInput, setStaffSubdomainInput] = useState("");
     const [customDomainInput, setCustomDomainInput] = useState("");
     const [isActiveInput, setIsActiveInput] = useState(true);
     const [subscriptionStartDateInput, setSubscriptionStartDateInput] = useState("");
@@ -41,7 +43,9 @@ export default function ManageTenantContainer(): JSX.Element {
     useEffect(() => {
         if (tenant && !initialised) {
             setNameInput(tenant.name);
-            setSubdomainInput(tenant.subdomain);
+            setTradingNameInput(tenant.trading_name);
+            setPlayerSubdomainInput(tenant.player_subdomain);
+            setStaffSubdomainInput(tenant.staff_subdomain);
             setCustomDomainInput(tenant.custom_domain ?? "");
             setIsActiveInput(tenant.is_active);
             setSubscriptionStartDateInput(
@@ -60,7 +64,9 @@ export default function ManageTenantContainer(): JSX.Element {
             updateTenant.mutate(
                 {
                     name: nameInput.trim() || null,
-                    subdomain: subdomainInput.trim() || null,
+                    trading_name: tradingNameInput.trim() || null,
+                    player_subdomain: playerSubdomainInput.trim() || null,
+                    staff_subdomain: staffSubdomainInput.trim() || null,
                     custom_domain: customDomainInput.trim() || null,
                     is_active: isActiveInput,
                     subscription_start_date: subscriptionStartDateInput.trim() || null,
@@ -72,7 +78,9 @@ export default function ManageTenantContainer(): JSX.Element {
         },
         [
             nameInput,
-            subdomainInput,
+            tradingNameInput,
+            playerSubdomainInput,
+            staffSubdomainInput,
             customDomainInput,
             isActiveInput,
             subscriptionStartDateInput,
@@ -123,7 +131,9 @@ export default function ManageTenantContainer(): JSX.Element {
             tenant={tenant}
             plans={plans ?? []}
             nameInput={nameInput}
-            subdomainInput={subdomainInput}
+            tradingNameInput={tradingNameInput}
+            playerSubdomainInput={playerSubdomainInput}
+            staffSubdomainInput={staffSubdomainInput}
             customDomainInput={customDomainInput}
             isActiveInput={isActiveInput}
             subscriptionStartDateInput={subscriptionStartDateInput}
@@ -141,7 +151,9 @@ export default function ManageTenantContainer(): JSX.Element {
             changePlanError={(changePlan.error as Error | null)?.message ?? null}
             successMessage={successMessage}
             onNameChange={setNameInput}
-            onSubdomainChange={setSubdomainInput}
+            onTradingNameChange={setTradingNameInput}
+            onPlayerSubdomainChange={setPlayerSubdomainInput}
+            onStaffSubdomainChange={setStaffSubdomainInput}
             onCustomDomainChange={setCustomDomainInput}
             onIsActiveChange={setIsActiveInput}
             onSubscriptionStartDateChange={setSubscriptionStartDateInput}

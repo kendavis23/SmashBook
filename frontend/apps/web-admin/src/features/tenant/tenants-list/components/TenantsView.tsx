@@ -66,7 +66,9 @@ export default function TenantsView({
         ? tenants.filter(
               (t) =>
                   t.name.toLowerCase().includes(search.toLowerCase()) ||
-                  t.subdomain.toLowerCase().includes(search.toLowerCase())
+                  t.trading_name.toLowerCase().includes(search.toLowerCase()) ||
+                  t.player_subdomain.toLowerCase().includes(search.toLowerCase()) ||
+                  t.staff_subdomain.toLowerCase().includes(search.toLowerCase())
           )
         : tenants;
 
@@ -117,6 +119,7 @@ export default function TenantsView({
                                 value={search}
                                 onChange={(e) => handleSearch(e.target.value)}
                                 placeholder="Search by name or subdomain…"
+                                aria-label="Search tenants"
                                 className="h-10 w-64 rounded-lg border border-border bg-background pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                             />
                         </div>
@@ -153,7 +156,10 @@ export default function TenantsView({
                                             Name
                                         </th>
                                         <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
-                                            Subdomain
+                                            Player Subdomain
+                                        </th>
+                                        <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
+                                            Staff Subdomain
                                         </th>
                                         <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground whitespace-nowrap">
                                             Custom Domain
@@ -179,7 +185,7 @@ export default function TenantsView({
                                     {paginated.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={8}
+                                                colSpan={9}
                                                 className="py-12 text-center text-sm text-muted-foreground"
                                             >
                                                 No tenants match your search.
@@ -194,8 +200,11 @@ export default function TenantsView({
                                             <td className="px-3 py-3 text-sm font-medium text-foreground">
                                                 {tenant.name}
                                             </td>
-                                            <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
-                                                {tenant.subdomain}
+                                            <td className="px-3 py-3 text-sm text-muted-foreground">
+                                                {tenant.player_subdomain}
+                                            </td>
+                                            <td className="px-3 py-3 text-sm text-muted-foreground">
+                                                {tenant.staff_subdomain}
                                             </td>
                                             <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                                                 {tenant.custom_domain ?? (

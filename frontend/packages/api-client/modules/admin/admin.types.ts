@@ -21,7 +21,9 @@ export interface OwnerCreate {
 
 export interface TenantOnboardRequest {
     name: string;
-    subdomain: string;
+    trading_name: string;
+    player_subdomain: string;
+    staff_subdomain: string;
     plan_id: UUID;
     subscription_start_date?: string | null;
     clubs: ClubOnboardCreate[];
@@ -102,7 +104,9 @@ export interface PlanResponse {
 export interface TenantSummary {
     id: UUID;
     name: string;
-    subdomain: string;
+    trading_name: string;
+    player_subdomain: string;
+    staff_subdomain: string;
     custom_domain: string | null;
     plan_id: UUID;
     plan_name: string;
@@ -116,7 +120,9 @@ export interface TenantSummary {
 export interface TenantDetail {
     id: UUID;
     name: string;
-    subdomain: string;
+    trading_name: string;
+    player_subdomain: string;
+    staff_subdomain: string;
     custom_domain: string | null;
     plan_id: UUID;
     plan_name: string;
@@ -134,7 +140,9 @@ export interface TenantDetail {
 
 export interface TenantUpdate {
     name?: string | null;
-    subdomain?: string | null;
+    trading_name?: string | null;
+    player_subdomain?: string | null;
+    staff_subdomain?: string | null;
     custom_domain?: string | null;
     is_active?: boolean | null;
     subscription_start_date?: string | null;
