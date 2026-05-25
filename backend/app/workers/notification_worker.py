@@ -196,6 +196,7 @@ async def dispatch_welcome(payload: dict):
         return
     full_name = payload.get("full_name") or "there"
     tenant_name = payload.get("tenant_name") or "SmashBook"
+    login_url = payload.get("login_url") or settings.APP_BASE_URL
     sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
     message = Mail(
         from_email=settings.SENDGRID_FROM_EMAIL,
@@ -205,7 +206,7 @@ async def dispatch_welcome(payload: dict):
             f"<p>Hi {full_name},</p>"
             f"<p>Welcome to {tenant_name}. Your account is ready — "
             f"you can sign in any time at "
-            f'<a href="{settings.APP_BASE_URL}">{settings.APP_BASE_URL}</a> '
+            f'<a href="{login_url}">{login_url}</a> '
             f"to book courts, join games, and manage your profile.</p>"
             f"<p>See you on court.</p>"
         ),

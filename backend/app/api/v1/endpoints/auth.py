@@ -91,7 +91,9 @@ def _tenant_url(tenant: Tenant, subdomain: str, path: str, params: dict) -> str:
     parsed = urlparse(get_settings().APP_BASE_URL)
     scheme = parsed.scheme or "https"
     host = tenant.custom_domain or f"{subdomain}.{parsed.netloc}"
-    return f"{scheme}://{host}{path}?{urlencode(params)}"
+    query = urlencode(params)
+    suffix = f"?{query}" if query else ""
+    return f"{scheme}://{host}{path}{suffix}"
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
@@ -220,12 +222,14 @@ async def verify_email(body: EmailVerifyRequest, db: AsyncSession = Depends(get_
 
     await db.commit()
 
+    tenant = await db.get(Tenant, user.tenant_id)
     try:
         publish_notification_event("welcome", {
             "user_id": str(user.id),
             "email": user.email,
             "full_name": user.full_name,
-            "tenant_name": (await db.get(Tenant, user.tenant_id)).name,
+            "tenant_name": tenant.name,
+            "login_url": _tenant_url(tenant, tenant.player_subdomain, "/login", {}),
         })
     except Exception:
         logger.exception(
@@ -317,12 +321,14 @@ async def complete_invitation(body: CompleteInvitationRequest, db: AsyncSession 
 
     await db.commit()
 
+    tenant = await db.get(Tenant, user.tenant_id)
     try:
         publish_notification_event("welcome", {
             "user_id": str(user.id),
             "email": user.email,
             "full_name": user.full_name,
-            "tenant_name": (await db.get(Tenant, user.tenant_id)).name,
+            "tenant_name": tenant.name,
+            "login_url": _tenant_url(tenant, tenant.player_subdomain, "/login", {}),
         })
     except Exception:
         logger.exception(
