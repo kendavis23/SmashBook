@@ -278,7 +278,7 @@ async def _get_user_clubs(user: User, db: AsyncSession) -> list[ClubSummary]:
 @router.post("/login", response_model=TokenResponse)
 async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     """Login and receive access + refresh tokens."""
-    tenant, _origin_subdomain = await _get_active_tenant(body.tenant_subdomain, db)
+    tenant, origin_subdomain = await _get_active_tenant(body.tenant_subdomain, db)
 
     result = await db.execute(
         select(User).where(User.email == body.email, User.tenant_id == tenant.id)
@@ -300,6 +300,7 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
+        subdomain=origin_subdomain,
         clubs=clubs,
     )
 

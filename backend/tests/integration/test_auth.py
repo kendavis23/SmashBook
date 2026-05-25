@@ -299,6 +299,19 @@ class TestLogin:
         assert "access_token" in body
         assert "refresh_token" in body
         assert "clubs" in body
+        assert body["subdomain"] == tenant.player_subdomain
+
+    async def test_staff_login_echoes_staff_subdomain(self, client, player, tenant):
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "tenant_subdomain": tenant.staff_subdomain,
+                "email": player.email,
+                "password": "Test1234!",
+            },
+        )
+        assert resp.status_code == 200
+        assert resp.json()["subdomain"] == tenant.staff_subdomain
 
     async def test_wrong_password_returns_401(self, client, player, tenant):
         resp = await client.post(
