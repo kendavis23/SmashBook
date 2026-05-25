@@ -31,6 +31,7 @@ from app.db.models.user import User, TenantUserRole
 from app.db.models.wallet import Wallet
 from app.schemas.user import (
     ClubSummary,
+    CompleteInvitationRequest,
     EmailVerifyRequest,
     EmailVerifyResponse,
     PasswordResetConfirm,
@@ -216,6 +217,103 @@ async def verify_email(body: EmailVerifyRequest, db: AsyncSession = Depends(get_
     if user.email_verified_at is None:
         user.email_verified_at = datetime.now(tz=timezone.utc)
         db.add(user)
+
+    await db.commit()
+
+    try:
+        publish_notification_event("welcome", {
+            "user_id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "tenant_name": (await db.get(Tenant, user.tenant_id)).name,
+        })
+    except Exception:
+        logger.exception(
+            "failed to publish welcome event user_id=%s tenant_id=%s",
+            user.id, user.tenant_id,
+        )
+
+    return EmailVerifyResponse(
+        user_id=user.id,
+        email=user.email,
+        club_id=club.id,
+        membership_subscription_id=subscription.id,
+    )
+
+
+@router.post("/complete-invitation", response_model=EmailVerifyResponse)
+async def complete_invitation(body: CompleteInvitationRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Finalise a staff-initiated player invitation: set the player's password, mark
+    the email verified, and attach the club's free basic membership.
+    The token is the JWT (type=invite) embedded in the invitation email.
+    """
+    payload = decode_token(body.token)
+    if not payload or payload.get("type") != "invite":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired invitation token",
+        )
+
+    user = await db.get(User, payload["sub"])
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired invitation token",
+        )
+
+    # Single-use: once the account is activated, the invitation cannot be replayed
+    # to overwrite the password. The token is valid for 7 days, so anyone with the
+    # email link could otherwise take over the account post-activation.
+    if user.email_verified_at is not None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invitation has already been used",
+        )
+
+    club = await _get_active_club(uuid.UUID(payload["cid"]), user.tenant_id, db)
+
+    existing_sub_result = await db.execute(
+        select(MembershipSubscription).where(
+            MembershipSubscription.user_id == user.id,
+            MembershipSubscription.club_id == club.id,
+        )
+    )
+    subscription = existing_sub_result.scalar_one_or_none()
+
+    if subscription is None:
+        plan_result = await db.execute(
+            select(MembershipPlan).where(
+                MembershipPlan.club_id == club.id,
+                MembershipPlan.is_default,
+                MembershipPlan.is_active,
+            )
+        )
+        plan = plan_result.scalar_one_or_none()
+        if plan is None:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Club has no default membership plan configured",
+            )
+
+        now = datetime.now(tz=timezone.utc)
+        subscription = MembershipSubscription(
+            user_id=user.id,
+            plan_id=plan.id,
+            club_id=club.id,
+            status=MembershipStatus.active,
+            current_period_start=now,
+            current_period_end=now + timedelta(days=365),
+            credits_remaining=plan.booking_credits_per_period,
+            guest_passes_remaining=plan.guest_passes_per_period,
+            stripe_subscription_id=None,
+        )
+        db.add(subscription)
+        await db.flush()
+
+    user.hashed_password = get_password_hash(body.password)
+    user.email_verified_at = datetime.now(tz=timezone.utc)
+    db.add(user)
 
     await db.commit()
 

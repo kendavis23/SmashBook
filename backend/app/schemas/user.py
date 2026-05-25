@@ -43,6 +43,31 @@ class EmailVerifyResponse(BaseModel):
     message: str = "Email verified. You can now log in."
 
 
+class PlayerInviteRequest(BaseModel):
+    club_id: uuid.UUID
+    email: EmailStr
+    full_name: str
+
+
+class PlayerInviteResponse(BaseModel):
+    user_id: uuid.UUID
+    email: EmailStr
+    club_id: uuid.UUID
+    message: str = "Invitation email sent."
+
+
+class CompleteInvitationRequest(BaseModel):
+    token: str
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        return v
+
+
 class UserLogin(BaseModel):
     tenant_subdomain: str
     email: EmailStr

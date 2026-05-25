@@ -29,7 +29,14 @@ from unittest.mock import patch
 
 from sqlalchemy import delete as sql_delete, select
 
-from app.core.security import create_access_token, create_refresh_token, create_verify_token
+from app.core.security import (
+    create_access_token,
+    create_invite_token,
+    create_refresh_token,
+    create_verify_token,
+    get_password_hash,
+    verify_password,
+)
 from app.db.models.club import Club
 from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipSubscription, MembershipStatus
 from app.db.models.staff import StaffProfile, StaffRole
@@ -277,6 +284,177 @@ class TestVerifyEmail:
                 select(MembershipSubscription).where(MembershipSubscription.user_id == user_id)
             )).scalar_one_or_none()
             assert sub is None
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/auth/complete-invitation
+# ---------------------------------------------------------------------------
+
+
+class TestCompleteInvitation:
+    """
+    Mirrors TestVerifyEmail but for the staff-initiated invitation flow.
+
+    Seeds the invited user directly (placeholder hash, email_verified_at=None) so
+    each test exercises /auth/complete-invitation in isolation without depending
+    on the /players/invite endpoint.
+    """
+
+    async def _seed_invited_user(self, tenant, test_session_factory):
+        async with test_session_factory() as session:
+            user = User(
+                tenant_id=tenant.id,
+                email=f"inv-{uuid.uuid4().hex[:6]}@example.com",
+                full_name="Invited Player",
+                # bcrypt-valid placeholder — unknown plaintext, login can't succeed.
+                hashed_password=get_password_hash(uuid.uuid4().hex),
+                role=TenantUserRole.player,
+                email_verified_at=None,
+            )
+            session.add(user)
+            await session.commit()
+            await session.refresh(user)
+        return user
+
+    async def test_success_sets_password_verifies_email_and_creates_membership(
+        self, client, tenant, club, default_plan, test_session_factory
+    ):
+        user = await self._seed_invited_user(tenant, test_session_factory)
+        token = create_invite_token({"sub": str(user.id), "cid": str(club.id)})
+
+        resp = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": token, "password": "Password1!"},
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["user_id"] == str(user.id)
+        assert body["club_id"] == str(club.id)
+        assert "membership_subscription_id" in body
+
+        async with test_session_factory() as session:
+            refreshed = await session.get(User, user.id)
+            assert refreshed.email_verified_at is not None
+            assert verify_password("Password1!", refreshed.hashed_password)
+            sub = await session.get(
+                MembershipSubscription, uuid.UUID(body["membership_subscription_id"])
+            )
+            assert sub is not None
+            assert sub.user_id == user.id
+            assert sub.club_id == club.id
+            assert sub.plan_id == default_plan.id
+            assert sub.status == MembershipStatus.active
+            assert sub.stripe_subscription_id is None
+
+    async def test_login_works_after_completing_invitation(
+        self, client, tenant, club, default_plan, test_session_factory
+    ):
+        user = await self._seed_invited_user(tenant, test_session_factory)
+        token = create_invite_token({"sub": str(user.id), "cid": str(club.id)})
+
+        complete = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": token, "password": "Password1!"},
+        )
+        assert complete.status_code == 200
+
+        login = await client.post(
+            "/api/v1/auth/login",
+            json={
+                "tenant_subdomain": tenant.player_subdomain,
+                "email": user.email,
+                "password": "Password1!",
+            },
+        )
+        assert login.status_code == 200
+        body = login.json()
+        assert "access_token" in body
+        # Membership attaches the club to the login response
+        assert any(c["club_id"] == str(club.id) for c in body["clubs"])
+
+    async def test_replay_after_activation_returns_400(
+        self, client, tenant, club, default_plan, test_session_factory
+    ):
+        """Once email_verified_at is set, the invite link must not overwrite the password."""
+        user = await self._seed_invited_user(tenant, test_session_factory)
+        token = create_invite_token({"sub": str(user.id), "cid": str(club.id)})
+
+        first = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": token, "password": "Password1!"},
+        )
+        assert first.status_code == 200
+
+        second = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": token, "password": "Attacker99!"},
+        )
+        assert second.status_code == 400
+
+        # Original password still works; attacker's choice does not.
+        async with test_session_factory() as session:
+            refreshed = await session.get(User, user.id)
+            assert verify_password("Password1!", refreshed.hashed_password)
+            assert not verify_password("Attacker99!", refreshed.hashed_password)
+
+    async def test_publishes_welcome_event(
+        self, client, tenant, club, default_plan, test_session_factory
+    ):
+        user = await self._seed_invited_user(tenant, test_session_factory)
+        token = create_invite_token({"sub": str(user.id), "cid": str(club.id)})
+
+        with patch("app.api.v1.endpoints.auth.publish_notification_event") as mock_publish:
+            resp = await client.post(
+                "/api/v1/auth/complete-invitation",
+                json={"token": token, "password": "Password1!"},
+            )
+        assert resp.status_code == 200
+        called_types = [c.args[0] for c in mock_publish.call_args_list]
+        assert "welcome" in called_types
+
+    async def test_invalid_token_returns_400(self, client):
+        resp = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": "garbage", "password": "Password1!"},
+        )
+        assert resp.status_code == 400
+
+    async def test_wrong_token_type_returns_400(self, client, player, club):
+        """A verify-token (correct shape, wrong type) must be rejected."""
+        verify = create_verify_token({"sub": str(player.id), "cid": str(club.id)})
+        resp = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": verify, "password": "Password1!"},
+        )
+        assert resp.status_code == 400
+
+    async def test_short_password_returns_422(self, client, tenant, club, test_session_factory):
+        user = await self._seed_invited_user(tenant, test_session_factory)
+        token = create_invite_token({"sub": str(user.id), "cid": str(club.id)})
+        resp = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": token, "password": "short"},
+        )
+        assert resp.status_code == 422
+
+    async def test_no_default_plan_returns_409(
+        self, client, tenant, club, test_session_factory
+    ):
+        # Note: no default_plan fixture used — club has no is_default plan
+        user = await self._seed_invited_user(tenant, test_session_factory)
+        token = create_invite_token({"sub": str(user.id), "cid": str(club.id)})
+
+        resp = await client.post(
+            "/api/v1/auth/complete-invitation",
+            json={"token": token, "password": "Password1!"},
+        )
+        assert resp.status_code == 409
+
+        # User should remain unverified and password unchanged
+        async with test_session_factory() as session:
+            refreshed = await session.get(User, user.id)
+            assert refreshed.email_verified_at is None
+            assert not verify_password("Password1!", refreshed.hashed_password)
 
 
 # ---------------------------------------------------------------------------

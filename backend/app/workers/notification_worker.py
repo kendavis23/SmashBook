@@ -62,6 +62,7 @@ async def process_notification_event(request: Request):
         "send_club_announcement": dispatch_announcement,
         "password_reset": dispatch_password_reset,
         "email_verify": dispatch_email_verify,
+        "player_invite": dispatch_player_invite,
         "welcome": dispatch_welcome,
     }
 
@@ -115,6 +116,42 @@ async def dispatch_email_verify(payload: dict):
         ),
     )
     _send_email(sg, message, event_type="email_verify", recipient=email)
+
+
+async def dispatch_player_invite(payload: dict):
+    """
+    Staff-initiated player invitation email. Includes a 7-day link to
+    /complete-invitation where the recipient sets their password and finishes
+    verifying their email.
+    """
+    settings = get_settings()
+    email = payload.get("email")
+    if not email:
+        logger.warning("player_invite payload missing email user_id=%s", payload.get("user_id"))
+        return
+    full_name = payload.get("full_name") or "there"
+    tenant_name = payload.get("tenant_name") or "SmashBook"
+    club_name = payload.get("club_name") or tenant_name
+    invited_by = payload.get("invited_by")
+    invite_url = payload["invite_url"]
+    intro = (
+        f"{invited_by} has invited you" if invited_by else "You've been invited"
+    )
+    sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
+    message = Mail(
+        from_email=settings.SENDGRID_FROM_EMAIL,
+        to_emails=email,
+        subject=f"You're invited to join {club_name}",
+        html_content=(
+            f"<p>Hi {full_name},</p>"
+            f"<p>{intro} to join <strong>{club_name}</strong> on SmashBook. "
+            f"Click the link below to set your password and finish creating your account. "
+            f"This link expires in 7 days.</p>"
+            f'<p><a href="{invite_url}">Accept invitation</a></p>'
+            f"<p>If you weren't expecting this invitation, you can safely ignore this email.</p>"
+        ),
+    )
+    _send_email(sg, message, event_type="player_invite", recipient=email)
 
 
 async def dispatch_password_reset(payload: dict):

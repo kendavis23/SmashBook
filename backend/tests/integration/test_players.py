@@ -28,6 +28,7 @@ from app.db.models.booking import (
     PaymentStatus,
     PlayerRole,
 )
+from app.db.models.club import Club
 from app.db.models.court import Court
 from app.db.models.user import TenantUserRole, User
 
@@ -1120,3 +1121,215 @@ class TestSearchPlayers:
                 if obj:
                     await session.delete(obj)
                     await session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Tests — POST /players/invite
+# ---------------------------------------------------------------------------
+
+
+class TestInvitePlayer:
+    def _payload(self, club, email=None):
+        return {
+            "club_id": str(club.id),
+            "email": email or f"invite-{uuid.uuid4().hex[:6]}@example.com",
+            "full_name": "Invited Player",
+        }
+
+    async def test_success_returns_201_and_unverified_user(
+        self, client, club, staff_headers, test_session_factory
+    ):
+        from app.core.security import verify_password
+        from app.db.models.wallet import Wallet
+
+        payload = self._payload(club)
+        resp = await client.post(
+            "/api/v1/players/invite", headers=staff_headers, json=payload
+        )
+        assert resp.status_code == 201
+        body = resp.json()
+        assert body["email"] == payload["email"]
+        assert body["club_id"] == str(club.id)
+        assert "user_id" in body
+
+        user_id = uuid.UUID(body["user_id"])
+        async with test_session_factory() as session:
+            user = await session.get(User, user_id)
+            assert user is not None
+            assert user.email_verified_at is None
+            assert user.role == TenantUserRole.player
+            assert not verify_password("Password1!", user.hashed_password)
+            wallet = (await session.execute(
+                select(Wallet).where(Wallet.user_id == user_id)
+            )).scalar_one_or_none()
+            assert wallet is not None
+
+    async def test_assigns_default_skill_level_from_club_minimum(
+        self, client, club, staff_headers, test_session_factory
+    ):
+        resp = await client.post(
+            "/api/v1/players/invite", headers=staff_headers, json=self._payload(club)
+        )
+        assert resp.status_code == 201
+        user_id = uuid.UUID(resp.json()["user_id"])
+
+        async with test_session_factory() as session:
+            user = await session.get(User, user_id)
+            assert user.skill_level == club.skill_level_min
+
+    async def test_no_membership_created_at_invite_time(
+        self, client, club, staff_headers, test_session_factory
+    ):
+        from app.db.models.membership import MembershipSubscription
+
+        resp = await client.post(
+            "/api/v1/players/invite", headers=staff_headers, json=self._payload(club)
+        )
+        assert resp.status_code == 201
+        user_id = uuid.UUID(resp.json()["user_id"])
+
+        async with test_session_factory() as session:
+            sub = (await session.execute(
+                select(MembershipSubscription).where(MembershipSubscription.user_id == user_id)
+            )).scalar_one_or_none()
+            assert sub is None  # attached at /auth/complete-invitation
+
+    async def test_duplicate_email_returns_409(
+        self, client, player, club, staff_headers
+    ):
+        resp = await client.post(
+            "/api/v1/players/invite",
+            headers=staff_headers,
+            json=self._payload(club, email=player.email),
+        )
+        assert resp.status_code == 409
+
+    async def test_unknown_club_returns_404(self, client, staff_headers):
+        resp = await client.post(
+            "/api/v1/players/invite",
+            headers=staff_headers,
+            json={
+                "club_id": str(uuid.uuid4()),
+                "email": f"ghost-{uuid.uuid4().hex[:6]}@example.com",
+                "full_name": "Ghost",
+            },
+        )
+        assert resp.status_code == 404
+
+    async def test_club_in_other_tenant_returns_404(
+        self, client, staff_headers, plan, test_session_factory
+    ):
+        """Staff in tenant A can't invite into a club owned by tenant B."""
+        from app.db.models.tenant import Tenant as TenantModel
+
+        suffix = uuid.uuid4().hex[:8]
+        async with test_session_factory() as session:
+            t2 = TenantModel(
+                name="Other Tenant",
+                trading_name="Other Tenant",
+                player_subdomain=f"other-{suffix}",
+                staff_subdomain=f"other-{suffix}-staff",
+                plan_id=plan.id,
+                is_active=True,
+            )
+            session.add(t2)
+            await session.flush()
+            other_club = Club(
+                tenant_id=t2.id, name="Other Club", address="X", currency="GBP"
+            )
+            session.add(other_club)
+            await session.commit()
+            t2_id, other_club_id = t2.id, other_club.id
+
+        try:
+            resp = await client.post(
+                "/api/v1/players/invite",
+                headers=staff_headers,
+                json={
+                    "club_id": str(other_club_id),
+                    "email": f"x-{uuid.uuid4().hex[:6]}@example.com",
+                    "full_name": "Cross-tenant Invite",
+                },
+            )
+            assert resp.status_code == 404
+        finally:
+            async with test_session_factory() as session:
+                ob = await session.get(Club, other_club_id)
+                if ob:
+                    await session.delete(ob)
+                t = await session.get(TenantModel, t2_id)
+                if t:
+                    await session.delete(t)
+                await session.commit()
+
+    async def test_player_role_cannot_invite(
+        self, client, club, player_headers
+    ):
+        resp = await client.post(
+            "/api/v1/players/invite",
+            headers=player_headers,
+            json=self._payload(club),
+        )
+        assert resp.status_code == 403
+
+    async def test_unauthenticated_returns_403(self, client, club):
+        resp = await client.post(
+            "/api/v1/players/invite", json=self._payload(club)
+        )
+        assert resp.status_code == 403
+
+    async def test_invalid_email_returns_422(self, client, club, staff_headers):
+        resp = await client.post(
+            "/api/v1/players/invite",
+            headers=staff_headers,
+            json={
+                "club_id": str(club.id),
+                "email": "not-an-email",
+                "full_name": "Bad Email",
+            },
+        )
+        assert resp.status_code == 422
+
+    async def test_publishes_player_invite_event(
+        self, client, club, staff, staff_headers, tenant
+    ):
+        from unittest.mock import patch
+        from urllib.parse import urlparse, parse_qs
+        from app.core.config import get_settings
+
+        payload = self._payload(club)
+        with patch("app.api.v1.endpoints.players.publish_notification_event") as mock_publish:
+            resp = await client.post(
+                "/api/v1/players/invite", headers=staff_headers, json=payload
+            )
+        assert resp.status_code == 201
+        mock_publish.assert_called_once()
+        event_type, event_payload = mock_publish.call_args.args
+        assert event_type == "player_invite"
+        assert event_payload["email"] == payload["email"]
+        assert event_payload["full_name"] == "Invited Player"
+        assert event_payload["tenant_name"] == tenant.name
+        assert event_payload["club_id"] == str(club.id)
+        assert event_payload["club_name"] == club.name
+        assert event_payload["invited_by"] == staff.full_name
+
+        root_host = urlparse(get_settings().APP_BASE_URL).netloc
+        parsed = urlparse(event_payload["invite_url"])
+        assert parsed.scheme == "https"
+        assert parsed.netloc == f"{tenant.player_subdomain}.{root_host}"
+        assert parsed.path == "/complete-invitation"
+        assert "token" in parse_qs(parsed.query)
+
+    async def test_duplicate_email_skips_invite_event(
+        self, client, player, club, staff_headers
+    ):
+        from unittest.mock import patch
+
+        with patch("app.api.v1.endpoints.players.publish_notification_event") as mock_publish:
+            resp = await client.post(
+                "/api/v1/players/invite",
+                headers=staff_headers,
+                json=self._payload(club, email=player.email),
+            )
+        assert resp.status_code == 409
+        mock_publish.assert_not_called()

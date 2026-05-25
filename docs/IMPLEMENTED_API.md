@@ -1,4 +1,4 @@
-_Last updated: 2026-05-23 14:30 UTC_
+_Last updated: 2026-05-25 12:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -12,6 +12,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 |---|---|---|
 | `POST` | `/api/v1/auth/register` | Register a new player for a tenant + chosen club. Creates the user in an unverified state (no tokens returned) and publishes `email_verify` event to `notification-events` → notification worker → SendGrid email with a signed 24h verification link. The free basic membership at the chosen club is attached at verify time, not here. |
 | `POST` | `/api/v1/auth/verify-email` | Confirm a player's email using the token emailed at registration. Sets `users.email_verified_at`, creates the active `MembershipSubscription` against the club's `is_default` plan (no Stripe — free basic plan), and publishes a `welcome` event. Idempotent on re-click. Returns 409 if the club has no default plan configured. |
+| `POST` | `/api/v1/auth/complete-invitation` | Finalise a staff-initiated invitation: validates the JWT `invite` token, sets the player's password, marks the email verified, attaches the club's `is_default` membership, and publishes a `welcome` event. Single-use — rejects with 400 once `email_verified_at` is set so the invitation link can't be replayed within its 7-day TTL. Returns 400 for invalid/expired/wrong-type tokens, 409 if the club has no default plan. |
 | `POST` | `/api/v1/auth/login` | Login with email + password; returns access + refresh tokens. Returns 403 with "please verify your email" if `email_verified_at` is NULL. |
 | `POST` | `/api/v1/auth/refresh` | Exchange a refresh token for a new token pair |
 | `POST` | `/api/v1/auth/logout` | Stateless logout (client discards tokens) |
@@ -99,6 +100,7 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/v1/players` | List active players in the tenant, sorted by name; optional `?q=` name search and `?club_id=` (reserved for G9 club-scoped filtering via `player_profiles`) |
+| `POST` | `/api/v1/players/invite` | Staff only: invite a player to a club in the current tenant by `{email, full_name, club_id}`. Creates an unverified player with a placeholder password and a wallet, then publishes a `player_invite` event → SendGrid email with a signed 7-day link to `/complete-invitation`. Returns 404 if the club is not in the staff's tenant, 409 if the email is already registered. |
 | `GET` | `/api/v1/players/me` | Get current player's profile |
 | `PATCH` | `/api/v1/players/me` | Update current player's profile details |
 | `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time |

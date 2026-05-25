@@ -1,17 +1,30 @@
+import logging
+import secrets
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
+from urllib.parse import urlencode, urlparse
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import get_settings
+from app.core.pubsub import publish_notification_event
+from app.core.security import create_invite_token, get_password_hash
 from app.db.session import get_db, get_read_db
 from app.api.v1.dependencies.auth import get_current_user, require_staff
-from app.db.models.user import User
+from app.db.models.club import Club
+from app.db.models.tenant import Tenant
+from app.db.models.user import User, TenantUserRole
+from app.db.models.wallet import Wallet
 from app.schemas.user import (
     UserResponse, UserProfileUpdate, PlayerBookingItem, PlayerBookingsResponse,
-    PlayerSearchResult, SkillLevelUpdate, SkillLevelUpdateResponse, SkillLevelHistoryItem,
+    PlayerSearchResult, PlayerInviteRequest, PlayerInviteResponse,
+    SkillLevelUpdate, SkillLevelUpdateResponse, SkillLevelHistoryItem,
 )
 from app.services.player_service import PlayerService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/players", tags=["players"])
 
@@ -110,6 +123,82 @@ async def get_match_history(
     """
     svc = PlayerService(db)
     return await svc.get_booking_history(current_user.id, completed_only=True)
+
+
+@router.post("/invite", response_model=PlayerInviteResponse, status_code=status.HTTP_201_CREATED)
+async def invite_player(
+    body: PlayerInviteRequest,
+    current_user: User = Depends(require_staff),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Staff-initiated player registration. Creates an unverified player at the given club
+    in the staff's tenant and emails an invitation link. The recipient sets their
+    password and finalises verification by POSTing to /auth/complete-invitation, which
+    also attaches the club's free basic membership.
+    """
+    club_result = await db.execute(
+        select(Club).where(Club.id == body.club_id, Club.tenant_id == current_user.tenant_id)
+    )
+    club = club_result.scalar_one_or_none()
+    if not club:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+    existing = await db.execute(
+        select(User).where(User.email == body.email, User.tenant_id == current_user.tenant_id)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+
+    # Placeholder hash — bcrypt of an unknown random secret. The format is valid (so
+    # login's verify_password call won't raise), but the underlying password is
+    # unrecoverable. The real password is set at /auth/complete-invitation.
+    placeholder_password = get_password_hash(secrets.token_urlsafe(32))
+
+    user = User(
+        tenant_id=current_user.tenant_id,
+        email=body.email,
+        full_name=body.full_name,
+        hashed_password=placeholder_password,
+        role=TenantUserRole.player,
+        skill_level=club.skill_level_min,
+        email_verified_at=None,
+    )
+    db.add(user)
+    await db.flush()
+
+    db.add(Wallet(user_id=user.id))
+    await db.commit()
+
+    tenant = await db.get(Tenant, current_user.tenant_id)
+    invite_token = create_invite_token({"sub": str(user.id), "cid": str(club.id)})
+
+    parsed = urlparse(get_settings().APP_BASE_URL)
+    scheme = parsed.scheme or "https"
+    host = tenant.custom_domain or f"{tenant.player_subdomain}.{parsed.netloc}"
+    invite_url = (
+        f"{scheme}://{host}/complete-invitation?"
+        f"{urlencode({'token': invite_token})}"
+    )
+
+    try:
+        publish_notification_event("player_invite", {
+            "user_id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "tenant_name": tenant.name,
+            "club_id": str(club.id),
+            "club_name": club.name,
+            "invited_by": current_user.full_name,
+            "invite_url": invite_url,
+        })
+    except Exception:
+        logger.exception(
+            "failed to publish player_invite event user_id=%s tenant_id=%s",
+            user.id, tenant.id,
+        )
+
+    return PlayerInviteResponse(user_id=user.id, email=user.email, club_id=club.id)
 
 
 @router.get("", response_model=list[PlayerSearchResult])
