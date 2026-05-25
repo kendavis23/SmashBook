@@ -3,22 +3,31 @@ import { useNavigate } from "@tanstack/react-router";
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
 
+// On non-localhost hosts derive the subdomain from the first hostname segment.
+// e.g. rally-player.smashbook.app → "rally-player"
+function getTenantSubdomainFromHost(): string {
+    return window.location.hostname.split(".")[0] ?? "";
+}
+
 export default function LoginForm(): JSX.Element {
     const navigate = useNavigate();
     const { mutate, isPending, isError, error } = useLogin();
 
-    const [club, setClub] = useState("");
+    // Evaluated at render time so tests can override window.location.hostname.
+    const isLocalhost = window.location.hostname === "localhost";
+
+    const [tenantSubdomain, setTenantSubdomain] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [fieldErrors, setFieldErrors] = useState<{
-        club?: string;
+        tenant_subdomain?: string;
         email?: string;
         password?: string;
     }>({});
 
     const validate = (): boolean => {
-        const errors: { club?: string; email?: string; password?: string } = {};
-        if (!club) errors.club = "Required";
+        const errors: { tenant_subdomain?: string; email?: string; password?: string } = {};
+        if (isLocalhost && !tenantSubdomain) errors.tenant_subdomain = "Required";
         if (!email) errors.email = "Required";
         if (!password) errors.password = "Required";
         setFieldErrors(errors);
@@ -29,8 +38,10 @@ export default function LoginForm(): JSX.Element {
         e.preventDefault();
         if (!validate()) return;
 
+        const tenant_subdomain = isLocalhost ? tenantSubdomain : getTenantSubdomainFromHost();
+
         mutate(
-            { tenant_subdomain: club, email, password },
+            { tenant_subdomain, email, password },
             {
                 onSuccess: () => {
                     void navigate({ to: "/dashboard" });
@@ -59,23 +70,27 @@ export default function LoginForm(): JSX.Element {
                     </div>
                 )}
 
-                {/* Club */}
-                <div>
-                    <label htmlFor="club" className="text-sm text-muted-foreground">
-                        Club
-                    </label>
-                    <input
-                        id="club"
-                        type="text"
-                        placeholder="your-company"
-                        className="mt-1 w-full px-4 py-3 border border-border rounded-lg text-sm bg-background text-foreground outline-none focus:ring-2 focus:ring-blue-500"
-                        value={club}
-                        onChange={(e) => setClub(e.target.value)}
-                    />
-                    {fieldErrors.club && (
-                        <p className="text-xs text-red-500 mt-1">{fieldErrors.club}</p>
-                    )}
-                </div>
+                {/* Tenant Subdomain — only shown on localhost (dev). Derived from URL in production. */}
+                {isLocalhost && (
+                    <div>
+                        <label htmlFor="tenant_subdomain" className="text-sm text-muted-foreground">
+                            Tenant Subdomain
+                        </label>
+                        <input
+                            id="tenant_subdomain"
+                            type="text"
+                            placeholder="your-company"
+                            className="mt-1 w-full px-4 py-3 border border-border rounded-lg text-sm bg-background text-foreground outline-none focus:ring-2 focus:ring-blue-500"
+                            value={tenantSubdomain}
+                            onChange={(e) => setTenantSubdomain(e.target.value)}
+                        />
+                        {fieldErrors.tenant_subdomain && (
+                            <p className="text-xs text-red-500 mt-1">
+                                {fieldErrors.tenant_subdomain}
+                            </p>
+                        )}
+                    </div>
+                )}
 
                 {/* Email */}
                 <div>

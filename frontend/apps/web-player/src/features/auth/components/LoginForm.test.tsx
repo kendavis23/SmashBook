@@ -2,7 +2,7 @@ import { useLogin } from "../hooks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { JSX, ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import LoginForm from "./LoginForm";
 
@@ -34,7 +34,9 @@ function wrapper({ children }: { children: ReactNode }): JSX.Element {
     return <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>;
 }
 
-describe("LoginForm", () => {
+// jsdom sets window.location.hostname to "localhost", so IS_LOCALHOST is true
+// and the subdomain textbox is rendered in all tests below.
+describe("LoginForm (localhost — subdomain textbox visible)", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.mocked(useLogin).mockReturnValue({
@@ -45,7 +47,7 @@ describe("LoginForm", () => {
         } as unknown as ReturnType<typeof useLogin>);
     });
 
-    it("renders club, email and password inputs", () => {
+    it("renders subdomain, email and password inputs", () => {
         render(<LoginForm />, { wrapper });
         expect(screen.getByPlaceholderText("your-company")).toBeInTheDocument();
         expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
@@ -57,10 +59,20 @@ describe("LoginForm", () => {
         expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
     });
 
-    it("shows validation errors when submitting empty form", () => {
+    it("shows validation errors for all three fields when submitting empty form", () => {
         render(<LoginForm />, { wrapper });
         fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
         expect(screen.getAllByText("Required")).toHaveLength(3);
+        expect(mockMutate).not.toHaveBeenCalled();
+    });
+
+    it("shows validation errors for email and password only when subdomain is filled", () => {
+        render(<LoginForm />, { wrapper });
+        fireEvent.change(screen.getByPlaceholderText("your-company"), {
+            target: { value: "myclub" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+        expect(screen.getAllByText("Required")).toHaveLength(2);
         expect(mockMutate).not.toHaveBeenCalled();
     });
 
@@ -120,5 +132,59 @@ describe("LoginForm", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
         expect(mockNavigate).toHaveBeenCalledWith({ to: "/dashboard" });
+    });
+});
+
+describe("LoginForm (non-localhost — subdomain derived from URL)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        // Simulate a production hostname so IS_LOCALHOST re-evaluates to false.
+        Object.defineProperty(window, "location", {
+            value: { ...window.location, hostname: "rally-player.smashbook.app" },
+            writable: true,
+            configurable: true,
+        });
+        vi.mocked(useLogin).mockReturnValue({
+            mutate: mockMutate,
+            isPending: false,
+            isError: false,
+            error: null,
+        } as unknown as ReturnType<typeof useLogin>);
+    });
+
+    afterEach(() => {
+        // Restore jsdom default hostname for isolation.
+        Object.defineProperty(window, "location", {
+            value: { ...window.location, hostname: "localhost" },
+            writable: true,
+            configurable: true,
+        });
+    });
+
+    it("does not render the subdomain textbox", () => {
+        render(<LoginForm />, { wrapper });
+        expect(screen.queryByPlaceholderText("your-company")).not.toBeInTheDocument();
+    });
+
+    it("calls mutate with subdomain derived from hostname on valid submit", () => {
+        render(<LoginForm />, { wrapper });
+        fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+            target: { value: "player@test.com" },
+        });
+        fireEvent.change(screen.getByPlaceholderText("Enter password"), {
+            target: { value: "secret123" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+        expect(mockMutate).toHaveBeenCalledWith(
+            { tenant_subdomain: "rally-player", email: "player@test.com", password: "secret123" },
+            expect.objectContaining({ onSuccess: expect.any(Function) })
+        );
+    });
+
+    it("shows validation errors for email and password only (no subdomain error)", () => {
+        render(<LoginForm />, { wrapper });
+        fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+        expect(screen.getAllByText("Required")).toHaveLength(2);
+        expect(mockMutate).not.toHaveBeenCalled();
     });
 });

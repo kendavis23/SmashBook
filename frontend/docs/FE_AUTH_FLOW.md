@@ -1,4 +1,4 @@
-_Last updated: 2026-04-25 00:00 UTC_
+_Last updated: 2026-05-25 00:00 UTC_
 
 # FE Auth Flow
 
@@ -11,7 +11,7 @@ User fills form
   → LoginForm.tsx  (features/auth/components/LoginForm.tsx)
   → useLogin()     (apps/<app>/features/auth/hooks/index.ts)
        wraps useLogin(portalType) from packages/auth/hooks/index.ts
-      → loginService()   POST /api/v1/auth/login   → returns { access_token, refresh_token, clubs }
+      → loginService()   POST /api/v1/auth/login   → returns { access_token, refresh_token, subdomain, clubs }
       → if clubs[] is empty → clearAuth() + throw
            "Your account has no clubs assigned. Contact your administrator."
            (applies to ALL roles — owner, admin, staff, etc.)
@@ -22,7 +22,9 @@ User fills form
                player portal: "This portal is for players only. Please use your player account to log in."
                staff portal:  "This portal is for staff only. Player accounts cannot access the staff portal."
       → setTokens()      persists tokens + filtered clubs to Zustand store + localStorage
-      → setTenantSubdomain()
+      → setTenantSubdomain(tokens.subdomain ?? credentials.tenant_subdomain)
+           uses the subdomain returned by the backend (the portal the user came from);
+           falls back to the typed value for older backends that omit the field
       → setActiveClubId(clubs[0].club_id, clubs[0].club_name, clubs[0].role)
            auto-selects the first allowed club AND its role on login
       → getMeService()   GET /api/v1/players/me    → returns UserResponse
