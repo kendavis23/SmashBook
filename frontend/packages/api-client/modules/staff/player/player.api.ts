@@ -1,11 +1,21 @@
 import { fetcher } from "../../../core/fetcher";
 import type {
+    PlayerInviteRequest,
+    PlayerInviteResponse,
     SkillLevelUpdate,
     SkillLevelUpdateResponse,
     SkillLevelHistoryItem,
 } from "./player.types";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
+
+export function invitePlayerEndpoint(data: PlayerInviteRequest): Promise<PlayerInviteResponse> {
+    return fetcher<PlayerInviteResponse>("/api/v1/players/invite", {
+        method: "POST",
+        headers: JSON_HEADERS,
+        body: JSON.stringify(data),
+    });
+}
 
 export function updateSkillLevelEndpoint(
     playerId: string,

@@ -47,6 +47,7 @@ const ManageOpenMatchPage = lazy(
     () => import("../features/open-match/manage-open-match/pages/ManageOpenMatchPage")
 );
 const PlayersPage = lazy(() => import("../features/player/pages/PlayersPage"));
+const RegisterPlayerPage = lazy(() => import("../features/player/pages/RegisterPlayerPage"));
 const EquipmentPage = lazy(() => import("../features/equipment/pages/EquipmentPage"));
 const MySubscriptionPage = lazy(() => import("../features/subscription/pages/MySubscriptionPage"));
 const InvoicesPage = lazy(() => import("../features/subscription/pages/InvoicesPage"));
@@ -382,6 +383,13 @@ const playersRoute = createRoute({
     component: PlayersPage,
 });
 
+const registerPlayerRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/players/new",
+    beforeLoad: requireRole(["owner", "admin", "ops_lead", "staff", "front_desk"]),
+    component: RegisterPlayerPage,
+});
+
 const subscriptionRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/subscription",
@@ -462,6 +470,7 @@ const routeTree = rootRoute.addChildren([
         openMatchRoute,
         manageOpenMatchRoute,
         playersRoute,
+        registerPlayerRoute,
         subscriptionRoute,
         paymentRoute,
         invoicesRoute,

@@ -6,6 +6,7 @@ export {
     usePasswordResetRequest,
     usePasswordResetConfirm,
     useVerifyEmail,
+    useCompleteInvitation,
 } from "@repo/auth";
 
 import { useLogin as useLoginBase } from "@repo/auth";

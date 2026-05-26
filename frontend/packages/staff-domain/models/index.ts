@@ -52,6 +52,8 @@ export type {
     PlayerSearchParams,
     RegisterPlayerInput,
     RegisterPlayerResult,
+    PlayerInviteInput,
+    PlayerInviteResult,
     SkillLevelUpdateInput,
     SkillLevelHistoryItem,
     SkillLevelUpdateResult,

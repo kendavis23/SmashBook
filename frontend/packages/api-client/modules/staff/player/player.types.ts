@@ -15,6 +15,18 @@ export interface RegisterResponse {
     message: string;
 }
 
+export interface PlayerInviteRequest {
+    email: string;
+    full_name: string;
+    club_id: UUID;
+}
+
+export interface PlayerInviteResponse {
+    user_id: UUID;
+    email: string;
+    club_id: UUID;
+}
+
 export interface SkillLevelUpdate {
     new_level: number;
     reason?: string | null;

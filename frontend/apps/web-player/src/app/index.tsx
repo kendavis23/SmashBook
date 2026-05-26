@@ -28,6 +28,7 @@ const UnauthorizedPage = lazy(() => import("../features/auth/pages/UnauthorizedP
 const ForgotPasswordPage = lazy(() => import("../features/auth/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/pages/ResetPasswordPage"));
 const VerifyEmailPage = lazy(() => import("../features/auth/pages/VerifyEmailPage"));
+const CompleteInvitationPage = lazy(() => import("../features/auth/pages/CompleteInvitationPage"));
 
 function PageLoader() {
     return (
@@ -114,6 +115,15 @@ const verifyEmailRoute = createRoute({
     component: VerifyEmailPage,
 });
 
+const completeInvitationRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/complete-invitation",
+    validateSearch: (search: Record<string, unknown>) => ({
+        token: typeof search.token === "string" ? search.token : undefined,
+    }),
+    component: CompleteInvitationPage,
+});
+
 const dashboardLayoutRoute = createRoute({
     getParentRoute: () => rootRoute,
     id: "dashboard-layout",
@@ -183,6 +193,7 @@ const routeTree = rootRoute.addChildren([
     forgotPasswordRoute,
     resetPasswordRoute,
     verifyEmailRoute,
+    completeInvitationRoute,
     dashboardLayoutRoute.addChildren([
         dashboardRoute,
         bookingsRoute,

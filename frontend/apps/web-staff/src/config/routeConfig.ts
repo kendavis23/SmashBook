@@ -15,6 +15,7 @@ import {
     Receipt,
     Swords,
     User,
+    UserPlus,
     Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -198,6 +199,17 @@ export const ROUTES: RouteConfig[] = [
         subtitle: "View and manage registered players.",
         breadcrumb: ["People", "Players"],
         roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
+        group: "People",
+    },
+    {
+        key: "register-player",
+        path: "/players/new",
+        label: "Register Player",
+        icon: UserPlus,
+        title: "Register Player",
+        subtitle: "Invite a new player to join your club.",
+        breadcrumb: ["People", "Players", "Register Player"],
+        roles: ["owner", "admin", "ops_lead", "staff", "front_desk"],
         group: "People",
     },
     {

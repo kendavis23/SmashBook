@@ -41,7 +41,7 @@ describe("ROUTES", () => {
         expect(grouped["Operations"]).toContain("courts");
         expect(grouped["Booking"]).toContain("bookings");
         expect(grouped["Booking"]).toContain("calendar");
-        expect(grouped["People"]).toEqual(["staff", "trainers", "players"]);
+        expect(grouped["People"]).toEqual(["staff", "trainers", "players", "register-player"]);
         expect(grouped["Finance & Reports"]).toEqual(["finance", "reports"]);
         expect(grouped["Support"]).toContain("support");
         expect(grouped["Support"]).toContain("equipment");

@@ -15,6 +15,7 @@ import type {
     UserResponse,
     EmailVerifyRequest,
     EmailVerifyResponse,
+    CompleteInvitationRequest,
 } from "../types";
 
 const BASE = config.apiBaseUrl;
@@ -100,6 +101,18 @@ export async function confirmPasswordResetService(data: PasswordResetConfirm): P
         body: JSON.stringify(data),
     });
     if (!res.ok) throw await parseError(res);
+}
+
+export async function completeInvitationService(
+    data: CompleteInvitationRequest
+): Promise<EmailVerifyResponse> {
+    const res = await fetch(`${BASE}/api/v1/auth/complete-invitation`, {
+        method: "POST",
+        headers: buildAuthHeaders(),
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await parseError(res);
+    return res.json() as Promise<EmailVerifyResponse>;
 }
 
 export async function getMeService(

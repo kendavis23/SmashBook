@@ -12,6 +12,7 @@ import {
     confirmPasswordResetService,
     getMeService,
     verifyEmailService,
+    completeInvitationService,
 } from "../services";
 import { isTokenExpired } from "../utils";
 import type {
@@ -23,6 +24,7 @@ import type {
     UserResponse,
     TenantUserRole,
     EmailVerifyResponse,
+    CompleteInvitationRequest,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -279,5 +281,20 @@ export function useVerifyEmail(token: string) {
         queryFn: () => verifyEmailService({ token }),
         enabled: !!token,
         retry: false,
+    });
+}
+
+// ---------------------------------------------------------------------------
+// useCompleteInvitation — POST /api/v1/auth/complete-invitation
+//
+// Called from the invitation-acceptance page. The player sets their password
+// using the JWT (type=invite) embedded in the invitation email. Single-use —
+// the backend rejects the token if the account is already activated.
+// ---------------------------------------------------------------------------
+
+export function useCompleteInvitation() {
+    return useMutation({
+        mutationFn: (data: CompleteInvitationRequest): Promise<EmailVerifyResponse> =>
+            completeInvitationService(data),
     });
 }
