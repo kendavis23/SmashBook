@@ -14,6 +14,9 @@ export type {
     RefreshRequest,
     PasswordResetRequest,
     PasswordResetConfirm,
+    EmailVerifyRequest,
+    EmailVerifyResponse,
+    CompleteInvitationRequest,
     UserResponse,
     AuthTokens,
     AuthState,
@@ -43,6 +46,7 @@ export {
     usePasswordResetRequest,
     usePasswordResetConfirm,
     useVerifyEmail,
+    useCompleteInvitation,
     // Non-hook functions for api-client/fetcher.ts
     tryRefreshToken,
     signOut,

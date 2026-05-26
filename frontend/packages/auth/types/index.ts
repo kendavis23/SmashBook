@@ -73,6 +73,11 @@ export interface EmailVerifyResponse {
     membership_subscription_id: UUID;
 }
 
+export interface CompleteInvitationRequest {
+    token: string;
+    password: string;
+}
+
 export interface UserResponse {
     id: UUID;
     email: string;
