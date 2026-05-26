@@ -1,16 +1,23 @@
 import { type JSX } from "react";
 import { formatCurrency } from "@repo/ui";
-import { BadgeCheck, Check } from "lucide-react";
+import { BadgeCheck, Check, ArrowUp, ArrowDown } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
 
 type Props = {
     plan: MembershipPlan;
     isCurrent: boolean;
-    locked: boolean;
+    hasActiveMembership: boolean;
+    currentPlanPrice: number | null;
     onSelect: () => void;
 };
 
-export function MembershipPlanCard({ plan, isCurrent, locked, onSelect }: Props): JSX.Element {
+export function MembershipPlanCard({
+    plan,
+    isCurrent,
+    hasActiveMembership,
+    currentPlanPrice,
+    onSelect,
+}: Props): JSX.Element {
     const perks = [
         plan.booking_credits_per_period !== null &&
             `${plan.booking_credits_per_period} booking credits`,
@@ -20,16 +27,47 @@ export function MembershipPlanCard({ plan, isCurrent, locked, onSelect }: Props)
         plan.trial_days > 0 && `${plan.trial_days}-day free trial`,
     ].filter(Boolean) as string[];
 
+    const isUpgrade =
+        hasActiveMembership &&
+        !isCurrent &&
+        currentPlanPrice !== null &&
+        plan.price > currentPlanPrice;
+    const isDowngrade =
+        hasActiveMembership &&
+        !isCurrent &&
+        currentPlanPrice !== null &&
+        plan.price < currentPlanPrice;
+    const isSwitchSameTier =
+        hasActiveMembership &&
+        !isCurrent &&
+        currentPlanPrice !== null &&
+        plan.price === currentPlanPrice;
+
+    function getButtonLabel(): string {
+        if (isUpgrade) return "Upgrade to this plan";
+        if (isDowngrade) return "Downgrade to this plan";
+        if (isSwitchSameTier) return "Switch to this plan";
+        return "Select this plan";
+    }
+
     return (
         <div
             className={`relative flex h-full flex-col overflow-hidden rounded-xl border transition ${
                 isCurrent
-                    ? "border-cta bg-card"
-                    : locked
-                      ? "border-border bg-card opacity-60"
+                    ? "border-cta bg-card ring-1 ring-cta/20"
+                    : hasActiveMembership
+                      ? isUpgrade
+                          ? "border-border bg-card hover:border-cta/40 hover:shadow-sm"
+                          : "border-border bg-card hover:border-foreground/25 hover:shadow-sm"
                       : "border-border bg-card hover:border-foreground/25"
             }`}
         >
+            {isUpgrade && (
+                <div className="absolute right-0 top-0 rounded-bl-xl rounded-tr-xl bg-cta px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-cta-foreground">
+                    Recommended
+                </div>
+            )}
+
             <div className="flex flex-1 flex-col p-4">
                 <div className="mb-3 flex min-h-[4rem] items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -57,6 +95,18 @@ export function MembershipPlanCard({ plan, isCurrent, locked, onSelect }: Props)
                     <span className="ml-1 text-sm text-muted-foreground">
                         / {plan.billing_period === "annual" ? "year" : "month"}
                     </span>
+                    {isUpgrade && currentPlanPrice !== null && (
+                        <span className="ml-2 inline-flex items-center gap-0.5 text-xs font-semibold text-cta">
+                            <ArrowUp size={10} />
+                            {formatCurrency(Math.abs(plan.price - currentPlanPrice))} more
+                        </span>
+                    )}
+                    {isDowngrade && currentPlanPrice !== null && (
+                        <span className="ml-2 inline-flex items-center gap-0.5 text-xs font-medium text-muted-foreground">
+                            <ArrowDown size={10} />
+                            {formatCurrency(Math.abs(currentPlanPrice - plan.price))} less
+                        </span>
+                    )}
                 </div>
 
                 {perks.length > 0 && (
@@ -81,18 +131,20 @@ export function MembershipPlanCard({ plan, isCurrent, locked, onSelect }: Props)
                             <BadgeCheck size={13} />
                             Current plan
                         </div>
-                    ) : !locked ? (
+                    ) : (
                         <button
                             type="button"
                             onClick={onSelect}
-                            className="btn-cta min-h-10 w-full rounded-xl text-sm font-semibold transition-all"
+                            className={`inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-semibold transition-all ${
+                                isUpgrade
+                                    ? "btn-cta"
+                                    : "border border-border bg-card text-foreground hover:bg-muted"
+                            }`}
                         >
-                            Select this plan
+                            {isUpgrade && <ArrowUp size={13} />}
+                            {isDowngrade && <ArrowDown size={13} />}
+                            {getButtonLabel()}
                         </button>
-                    ) : (
-                        <div className="flex min-h-10 w-full items-center justify-center rounded-xl bg-muted text-xs font-semibold text-muted-foreground">
-                            Plan change unavailable
-                        </div>
                     )}
                 </div>
             </div>

@@ -6,6 +6,7 @@ import { MembershipPlanCard } from "./MembershipPlanCard";
 type Props = {
     clubId: string;
     currentPlanId: string | null;
+    currentPlanPrice: number | null;
     membershipStatus: string | null;
     onSelectPlan: (plan: MembershipPlan) => void;
 };
@@ -13,12 +14,13 @@ type Props = {
 export function PlansStep({
     clubId,
     currentPlanId,
+    currentPlanPrice,
     membershipStatus,
     onSelectPlan,
 }: Props): JSX.Element {
     const { data: plans, isLoading, error } = useListMembershipPlans(clubId);
     const activePlans = plans?.filter((p) => p.is_active) ?? [];
-    const locked = membershipStatus === "active" || membershipStatus === "trialing";
+    const hasActiveMembership = membershipStatus === "active" || membershipStatus === "trialing";
 
     return (
         <div className="space-y-4">
@@ -53,8 +55,9 @@ export function PlansStep({
                         <MembershipPlanCard
                             key={plan.id}
                             plan={plan}
-                            isCurrent={locked && plan.id === currentPlanId}
-                            locked={locked && plan.id !== currentPlanId}
+                            isCurrent={hasActiveMembership && plan.id === currentPlanId}
+                            hasActiveMembership={hasActiveMembership}
+                            currentPlanPrice={currentPlanPrice}
                             onSelect={() => onSelectPlan(plan)}
                         />
                     ))}

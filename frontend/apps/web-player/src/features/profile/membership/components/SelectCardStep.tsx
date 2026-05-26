@@ -7,13 +7,23 @@ import { BackButton, SectionHeader, CardRow } from "./MembershipPrimitives";
 
 type Props = {
     plan: MembershipPlan;
+    isPlanChange?: boolean;
+    hideBackButton?: boolean;
     onBack: () => void;
     onConfirm: (paymentMethodId: string) => void;
     isLoading: boolean;
     error: string | null;
 };
 
-export function SelectCardStep({ plan, onBack, onConfirm, isLoading, error }: Props): JSX.Element {
+export function SelectCardStep({
+    plan,
+    isPlanChange = false,
+    hideBackButton = false,
+    onBack,
+    onConfirm,
+    isLoading,
+    error,
+}: Props): JSX.Element {
     const { data: methods = [], isLoading: methodsLoading } = useListPaymentMethods();
     const defaultCard = methods.find((m) => m.is_default) ?? methods[0];
     const [selectedCardId, setSelectedCardId] = useState<string | null>(defaultCard?.id ?? null);
@@ -28,27 +38,36 @@ export function SelectCardStep({ plan, onBack, onConfirm, isLoading, error }: Pr
 
     return (
         <div className="space-y-4">
-            <BackButton label="Back to plans" onClick={onBack} />
+            {!hideBackButton && <BackButton label="Back to plans" onClick={onBack} />}
 
-            <section className="rounded-xl border border-border bg-card p-4">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <section className="rounded-xl border border-border bg-muted/40 p-4">
+                <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                        <h2 className="text-lg font-semibold tracking-tight text-foreground">
-                            Confirm subscription
-                        </h2>
-                        <p className="mt-1 text-sm text-muted-foreground">
+                        {!hideBackButton && (
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                                {isPlanChange ? "Confirm plan change" : "Confirm subscription"}
+                            </p>
+                        )}
+                        <p className="mt-0.5 text-sm font-medium text-foreground">
                             {plan.name}
-                            {plan.description ? ` · ${plan.description}` : ""}
+                            {plan.description ? (
+                                <span className="font-normal text-muted-foreground">
+                                    {" "}
+                                    · {plan.description}
+                                </span>
+                            ) : null}
                         </p>
+                        {isPlanChange && (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Changes take effect at your next billing cycle.
+                            </p>
+                        )}
                     </div>
-                    <div className="shrink-0 sm:text-right">
+                    <div className="shrink-0 text-right">
                         <p className="text-lg font-bold tracking-tight text-foreground">
                             {formatCurrency(plan.price)}
-                            <span className="text-sm font-medium text-muted-foreground">
-                                {" "}
-                                / {billingPeriod}
-                            </span>
                         </p>
+                        <p className="text-xs text-muted-foreground">/ {billingPeriod}</p>
                     </div>
                 </div>
                 {plan.trial_days > 0 && (
@@ -105,7 +124,7 @@ export function SelectCardStep({ plan, onBack, onConfirm, isLoading, error }: Pr
                 ) : selectedCard ? (
                     <>
                         <CreditCard size={15} />
-                        Confirm with ••{selectedCard.last4}
+                        {isPlanChange ? "Change plan" : "Confirm"} with ••{selectedCard.last4}
                     </>
                 ) : (
                     "Select a card to continue"
