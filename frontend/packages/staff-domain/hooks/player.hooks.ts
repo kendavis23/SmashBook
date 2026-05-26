@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { updateSkillLevelEndpoint, getSkillHistoryEndpoint } from "@repo/api-client/modules/staff";
+import {
+    updateSkillLevelEndpoint,
+    getSkillHistoryEndpoint,
+    invitePlayerEndpoint,
+} from "@repo/api-client/modules/staff";
 import { searchPlayersEndpoint } from "@repo/api-client/modules/share";
 import type {
+    PlayerInviteInput,
+    PlayerInviteResult,
     SkillLevelUpdateInput,
     SkillLevelUpdateResult,
     SkillLevelHistoryItem,
@@ -14,6 +20,16 @@ const playerKeys = {
     skillHistory: (playerId: string) => ["players", playerId, "skill-history"] as const,
     search: (params?: PlayerSearchParams) => ["players", "search", params] as const,
 };
+
+export function useInviteNewPlayer() {
+    const queryClient = useQueryClient();
+    return useMutation<PlayerInviteResult, Error, PlayerInviteInput>({
+        mutationFn: (data: PlayerInviteInput) => invitePlayerEndpoint(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["players", "search"] });
+        },
+    });
+}
 
 export function useUpdateSkillLevel(playerId: string) {
     const queryClient = useQueryClient();

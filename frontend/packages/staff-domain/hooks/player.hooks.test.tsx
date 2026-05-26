@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import React from "react";
 
 vi.mock("@repo/api-client/modules/staff", () => ({
+    invitePlayerEndpoint: vi.fn(),
     updateSkillLevelEndpoint: vi.fn(),
     getSkillHistoryEndpoint: vi.fn(),
 }));
@@ -14,7 +15,12 @@ vi.mock("@repo/api-client/modules/share", () => ({
 
 import * as staffApi from "@repo/api-client/modules/staff";
 import * as shareApi from "@repo/api-client/modules/share";
-import { useUpdateSkillLevel, useGetSkillHistory, useSearchPlayers } from "./player.hooks";
+import {
+    useInviteNewPlayer,
+    useUpdateSkillLevel,
+    useGetSkillHistory,
+    useSearchPlayers,
+} from "./player.hooks";
 
 function makeWrapper() {
     const client = new QueryClient({
@@ -46,9 +52,47 @@ const mockSkillResult = {
 };
 
 beforeEach(() => {
+    vi.mocked(staffApi.invitePlayerEndpoint).mockReset();
     vi.mocked(staffApi.updateSkillLevelEndpoint).mockReset();
     vi.mocked(staffApi.getSkillHistoryEndpoint).mockReset();
     vi.mocked(shareApi.searchPlayersEndpoint).mockReset();
+});
+
+const mockInviteResult = { user_id: "player-2", email: "jane@example.com", club_id: "club-1" };
+
+describe("useInviteNewPlayer", () => {
+    it("calls invitePlayerEndpoint with the correct args", async () => {
+        vi.mocked(staffApi.invitePlayerEndpoint).mockResolvedValue(mockInviteResult);
+        const { Wrapper } = makeWrapper();
+        const { result } = renderHook(() => useInviteNewPlayer(), { wrapper: Wrapper });
+        result.current.mutate({
+            email: "jane@example.com",
+            full_name: "Jane Doe",
+            club_id: "club-1",
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(staffApi.invitePlayerEndpoint).toHaveBeenCalledWith({
+            email: "jane@example.com",
+            full_name: "Jane Doe",
+            club_id: "club-1",
+        });
+    });
+
+    it("invalidates the player search cache on success", async () => {
+        vi.mocked(staffApi.invitePlayerEndpoint).mockResolvedValue(mockInviteResult);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useInviteNewPlayer(), { wrapper: Wrapper });
+        result.current.mutate({
+            email: "jane@example.com",
+            full_name: "Jane Doe",
+            club_id: "club-1",
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["players", "search"] })
+        );
+    });
 });
 
 describe("useUpdateSkillLevel", () => {

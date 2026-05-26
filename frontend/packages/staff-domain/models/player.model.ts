@@ -25,6 +25,18 @@ export interface RegisterPlayerResult {
     message: string;
 }
 
+export interface PlayerInviteInput {
+    email: string;
+    full_name: string;
+    club_id: UUID;
+}
+
+export interface PlayerInviteResult {
+    user_id: UUID;
+    email: string;
+    club_id: UUID;
+}
+
 export interface SkillLevelUpdateInput {
     new_level: number;
     reason?: string | null;
