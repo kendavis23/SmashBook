@@ -2,19 +2,16 @@ import { useCallback, useState, type JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { loadStripe } from "@stripe/stripe-js";
 import { config } from "@repo/config";
-import { BadgeCheck } from "lucide-react";
+import { BadgeCheck, ArrowUpDown } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
 import { useMyMembership, useSubscribeToMembership } from "@repo/player-domain/hooks";
 import { useAuth } from "../../store";
 import { PlansStep } from "./PlansStep";
-import { SelectCardStep } from "./SelectCardStep";
+import { PlanChangeModal } from "./PlanChangeModal";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
-type FlowStep =
-    | { id: "plans" }
-    | { id: "select_card"; plan: MembershipPlan }
-    | { id: "success"; plan: MembershipPlan };
+type SuccessState = { plan: MembershipPlan; wasPlanChange: boolean } | null;
 
 export default function MembershipPlansContainer(): JSX.Element {
     const { clubId } = useAuth();
@@ -22,20 +19,30 @@ export default function MembershipPlansContainer(): JSX.Element {
 
     const { data: membership } = useMyMembership(clubId ?? "", { enabled: true });
 
-    const [step, setStep] = useState<FlowStep>({ id: "plans" });
+    // Which plan is being checked out (null = modal closed)
+    const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
     const [subscribeError, setSubscribeError] = useState<string | null>(null);
     const [isConfirming, setIsConfirming] = useState(false);
+    const [success, setSuccess] = useState<SuccessState>(null);
 
     const subscribeMutation = useSubscribeToMembership(clubId ?? "");
     const { refetch: refetchMembership } = useMyMembership(clubId ?? "", { enabled: false });
 
     const handleSelectPlan = useCallback((plan: MembershipPlan) => {
         setSubscribeError(null);
-        setStep({ id: "select_card", plan });
+        setSelectedPlan(plan);
     }, []);
+
+    const handleCloseModal = useCallback(() => {
+        if (isConfirming) return; // prevent close while processing
+        setSelectedPlan(null);
+        setSubscribeError(null);
+    }, [isConfirming]);
 
     const handleSubscribe = useCallback(
         async (plan: MembershipPlan, paymentMethodId: string) => {
+            const wasPlanChange =
+                membership?.status === "active" || membership?.status === "trialing";
             setSubscribeError(null);
             setIsConfirming(true);
             try {
@@ -58,7 +65,8 @@ export default function MembershipPlansContainer(): JSX.Element {
                 }
 
                 await refetchMembership();
-                setStep({ id: "success", plan });
+                setSelectedPlan(null);
+                setSuccess({ plan, wasPlanChange: wasPlanChange ?? false });
             } catch (err) {
                 setSubscribeError(
                     (err as { message?: string })?.message ??
@@ -68,52 +76,47 @@ export default function MembershipPlansContainer(): JSX.Element {
                 setIsConfirming(false);
             }
         },
-        [subscribeMutation, refetchMembership]
+        [subscribeMutation, refetchMembership, membership]
     );
 
-    if (isConfirming) {
-        return (
-            <div className="w-full space-y-5">
-                <section className="card-surface overflow-hidden">
-                    <div className="px-5 py-6 sm:px-6">
-                        <div className="flex min-h-64 flex-col items-center justify-center gap-5 rounded-2xl border border-border bg-card/70 px-6 py-10 text-center">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-cta/20 bg-cta/5">
-                                <span className="h-7 w-7 animate-spin rounded-full border-4 border-border border-t-cta" />
-                            </div>
-                            <div>
-                                <p className="text-base font-semibold text-foreground">
-                                    Confirming subscription…
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    Authorizing your payment securely
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-        );
-    }
+    const hasActiveMembership =
+        membership?.status === "active" || membership?.status === "trialing";
+    const isPlanChange = hasActiveMembership;
 
-    if (step.id === "success") {
+    // Success screen (replaces the whole view after checkout)
+    if (success) {
         return (
             <div className="w-full space-y-5">
                 <section className="card-surface overflow-hidden">
                     <div className="px-5 py-6 sm:px-6">
                         <div className="flex flex-col items-center gap-5 rounded-xl border border-border bg-card px-6 py-10 text-center">
-                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-foreground">
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-success/10 text-success">
                                 <BadgeCheck size={28} />
                             </div>
                             <div>
                                 <p className="text-lg font-bold text-foreground">
-                                    You&apos;re now a member!
+                                    {success.wasPlanChange
+                                        ? "Plan updated!"
+                                        : "You're now a member!"}
                                 </p>
                                 <p className="mt-1 text-sm text-muted-foreground">
-                                    Successfully subscribed to{" "}
-                                    <span className="font-semibold text-foreground">
-                                        {step.plan.name}
-                                    </span>
-                                    .
+                                    {success.wasPlanChange ? (
+                                        <>
+                                            Your plan has been changed to{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {success.plan.name}
+                                            </span>
+                                            . Changes take effect at the next billing cycle.
+                                        </>
+                                    ) : (
+                                        <>
+                                            Successfully subscribed to{" "}
+                                            <span className="font-semibold text-foreground">
+                                                {success.plan.name}
+                                            </span>
+                                            .
+                                        </>
+                                    )}
                                 </p>
                             </div>
                             <button
@@ -132,63 +135,60 @@ export default function MembershipPlansContainer(): JSX.Element {
         );
     }
 
-    if (step.id === "select_card") {
-        return (
+    return (
+        <>
             <div className="w-full space-y-5">
                 <section className="card-surface overflow-hidden">
+                    <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                                    <BadgeCheck size={16} />
+                                </div>
+                                <div>
+                                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                        Membership Plans
+                                    </h1>
+                                    <p className="mt-0.5 text-sm text-muted-foreground">
+                                        {hasActiveMembership
+                                            ? "Upgrade, downgrade, or switch your plan"
+                                            : "Compare credits, discounts, and booking access"}
+                                    </p>
+                                </div>
+                            </div>
+                            {hasActiveMembership && (
+                                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-foreground">
+                                    <ArrowUpDown size={12} />
+                                    Plan: {membership?.plan.name}
+                                </span>
+                            )}
+                        </div>
+                    </header>
                     <div className="px-5 py-6 sm:px-6">
-                        <SelectCardStep
-                            plan={step.plan}
-                            onBack={() => setStep({ id: "plans" })}
-                            onConfirm={(paymentMethodId) =>
-                                void handleSubscribe(step.plan, paymentMethodId)
-                            }
-                            isLoading={subscribeMutation.isPending || isConfirming}
-                            error={subscribeError}
+                        <PlansStep
+                            clubId={clubId ?? ""}
+                            currentPlanId={membership?.plan.id ?? null}
+                            currentPlanPrice={membership?.plan.price ?? null}
+                            membershipStatus={membership?.status ?? null}
+                            onSelectPlan={handleSelectPlan}
                         />
                     </div>
                 </section>
             </div>
-        );
-    }
 
-    const locked = membership?.status === "active" || membership?.status === "trialing";
-
-    return (
-        <div className="w-full space-y-5">
-            <section className="card-surface overflow-hidden">
-                <header className="border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
-                    <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
-                                <BadgeCheck size={16} />
-                            </div>
-                            <div>
-                                <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                                    Membership Plans
-                                </h1>
-                                <p className="mt-0.5 text-sm text-muted-foreground">
-                                    Compare credits, discounts, and booking access
-                                </p>
-                            </div>
-                        </div>
-                        {locked && (
-                            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-success/20 bg-success/10 px-3 py-1.5 text-xs font-semibold text-success">
-                                <BadgeCheck size={13} />
-                                You already have an active plan
-                            </span>
-                        )}
-                    </div>
-                </header>
-                <div className="px-5 py-6 sm:px-6">
-                    <PlansStep
-                        clubId={clubId ?? ""}
-                        currentPlanId={membership?.plan.id ?? null}
-                        membershipStatus={membership?.status ?? null}
-                        onSelectPlan={handleSelectPlan}
-                    />
-                </div>
-            </section>
-        </div>
+            {/* Modal — renders over the plans grid via portal */}
+            {selectedPlan && (
+                <PlanChangeModal
+                    plan={selectedPlan}
+                    isPlanChange={isPlanChange}
+                    onClose={handleCloseModal}
+                    onConfirm={(paymentMethodId) =>
+                        void handleSubscribe(selectedPlan, paymentMethodId)
+                    }
+                    isLoading={subscribeMutation.isPending || isConfirming}
+                    error={subscribeError}
+                />
+            )}
+        </>
     );
 }
