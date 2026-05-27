@@ -1,4 +1,4 @@
-_Last updated: 2026-05-25 13:30 UTC_
+_Last updated: 2026-05-27 07:30 UTC_
 
 # SmashBook Data Model
 
@@ -590,6 +590,7 @@ A player's active subscription to a `MembershipPlan`.
 | `credits_remaining` | INTEGER | Not null — `0` = none remaining |
 | `guest_passes_remaining` | INTEGER | Nullable — `NULL` when plan has no guest passes |
 | `stripe_subscription_id` | VARCHAR(255) | Nullable |
+| `pending_plan_id` | UUID | FK → `membership_plans`, nullable — non-null when a downgrade is scheduled; the target plan is applied at `current_period_end` |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -680,6 +681,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `a3ad99663232` | Add `stripe_destination_payment_id` (indexed) to `payments` — connected-account-side payment id (`py_xxx`) so the `payout.paid` webhook can match destination-charge Connect payouts |
 | `32204403280f` | G6.1 — Player email-verification registration flow: `users`: add `email_verified_at` (back-filled to `NOW()` for existing rows); `membership_plans`: add `is_default` with partial unique index `uq_membership_plans_one_default_per_club` on `(club_id) WHERE is_default = TRUE` |
 | `ac339fc8a081` | `tenants`: add `trading_name` (back-filled from `name`); rename `subdomain` → `player_subdomain`; add `staff_subdomain` (back-filled as `<player_subdomain>-staff`); add CHECK constraint `player_subdomain <> staff_subdomain` |
+| `fa46b223afc9` | `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — records the target plan for a scheduled downgrade that applies at `current_period_end` |
 
 To run migrations:
 ```bash

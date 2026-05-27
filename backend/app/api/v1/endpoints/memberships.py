@@ -14,12 +14,14 @@ from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.db.session import get_db, get_read_db
 from app.schemas.membership import (
+    MembershipDowngradeRequest,
     MembershipPlanCreate,
     MembershipPlanResponse,
     MembershipPlanUpdate,
     MembershipSubscribeRequest,
     MembershipSubscribeResponse,
     MembershipSubscriptionResponse,
+    MembershipUpgradeRequest,
 )
 from app.services.membership_service import MembershipService
 
@@ -198,6 +200,161 @@ async def get_my_membership(
             detail="No membership found for this club",
         )
     return subscription
+
+
+@router.post(
+    "/{club_id}/memberships/me/upgrade",
+    response_model=MembershipSubscribeResponse,
+)
+async def upgrade_my_membership(
+    club_id: uuid.UUID,
+    body: MembershipUpgradeRequest,
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upgrade the calling player to a higher-priced membership plan immediately.
+
+    Stripe-native proration: the unused portion of the current period is
+    credited against the new plan's first charge, an immediate invoice is
+    emitted for the difference, and the renewal cycle restarts now (next
+    renewal one period from today). If the player is on the free default
+    plan, this is equivalent to a fresh subscribe with no credit.
+
+    Returns 400 if the new plan is not strictly higher-priced than the
+    current paid plan, 409 if the player is already on the target plan or
+    the plan is at capacity.
+    """
+    club = await _get_club(club_id, tenant.id, db)
+    new_plan = await _get_plan(body.plan_id, club_id, db)
+
+    result = await db.execute(
+        select(MembershipSubscription)
+        .where(
+            MembershipSubscription.club_id == club_id,
+            MembershipSubscription.user_id == current_user.id,
+            MembershipSubscription.status.in_([
+                MembershipStatus.active,
+                MembershipStatus.trialing,
+            ]),
+        )
+        .order_by(MembershipSubscription.created_at.desc())
+        .limit(1)
+    )
+    current_subscription = result.scalar_one_or_none()
+
+    svc = MembershipService(db)
+    return await svc.upgrade(
+        user=current_user,
+        current_subscription=current_subscription,
+        new_plan=new_plan,
+        club=club,
+        payment_method_id=body.payment_method_id,
+    )
+
+
+@router.post(
+    "/{club_id}/memberships/me/downgrade",
+    response_model=MembershipSubscriptionResponse,
+)
+async def downgrade_my_membership(
+    club_id: uuid.UUID,
+    body: MembershipDowngradeRequest,
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Schedule a downgrade to a lower-priced plan, applied at the next cycle.
+
+    The player keeps all benefits of the current plan until
+    ``current_period_end``. The existing Stripe subscription is set to
+    ``cancel_at_period_end=True`` and ``pending_plan_id`` is stored on the
+    local row. When Stripe emits ``customer.subscription.deleted`` at the
+    period boundary, the webhook handler provisions the new subscription
+    (free target = local-only row, paid target = fresh Stripe sub).
+
+    No immediate charge or proration. Returns 400 if the new plan is not
+    strictly cheaper than the current plan, 409 if a downgrade is already
+    scheduled or the player is already on the target plan.
+    """
+    club = await _get_club(club_id, tenant.id, db)
+    new_plan = await _get_plan(body.plan_id, club_id, db)
+
+    result = await db.execute(
+        select(MembershipSubscription)
+        .where(
+            MembershipSubscription.club_id == club_id,
+            MembershipSubscription.user_id == current_user.id,
+            MembershipSubscription.status.in_([
+                MembershipStatus.active,
+                MembershipStatus.trialing,
+            ]),
+        )
+        .order_by(MembershipSubscription.created_at.desc())
+        .limit(1)
+    )
+    current_subscription = result.scalar_one_or_none()
+    if current_subscription is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active membership found to downgrade",
+        )
+
+    svc = MembershipService(db)
+    updated = await svc.downgrade(
+        user=current_user,
+        current_subscription=current_subscription,
+        new_plan=new_plan,
+        club=club,
+    )
+    await db.refresh(updated, ["plan"])
+    return updated
+
+
+@router.post(
+    "/{club_id}/memberships/me/downgrade/cancel",
+    response_model=MembershipSubscriptionResponse,
+)
+async def cancel_pending_downgrade(
+    club_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Cancel a previously scheduled downgrade. Player remains on the current
+    plan and continues renewing normally. Stripe's ``cancel_at_period_end``
+    is reset to ``False`` and ``pending_plan_id`` is cleared.
+    """
+    await _get_club(club_id, tenant.id, db)
+
+    result = await db.execute(
+        select(MembershipSubscription)
+        .where(
+            MembershipSubscription.club_id == club_id,
+            MembershipSubscription.user_id == current_user.id,
+            MembershipSubscription.status.in_([
+                MembershipStatus.active,
+                MembershipStatus.trialing,
+            ]),
+        )
+        .options(selectinload(MembershipSubscription.plan))
+        .order_by(MembershipSubscription.created_at.desc())
+        .limit(1)
+    )
+    subscription = result.scalar_one_or_none()
+    if subscription is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active membership found",
+        )
+
+    svc = MembershipService(db)
+    updated = await svc.cancel_pending_downgrade(subscription)
+    await db.refresh(updated, ["plan"])
+    return updated
 
 
 @router.post(

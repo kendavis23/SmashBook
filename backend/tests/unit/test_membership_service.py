@@ -88,6 +88,7 @@ def _make_subscription(**kw):
         cancelled_at=None,
         credits_remaining=5,
         guest_passes_remaining=1,
+        pending_plan_id=None,
     )
     defaults.update(kw)
     return SimpleNamespace(**defaults)
@@ -340,6 +341,421 @@ async def test_subscribe_no_payment_method_required_if_trial():
         result = await svc.subscribe(user, plan, _make_club())
 
     assert result["status"] == MembershipStatus.trialing
+
+
+# ---------------------------------------------------------------------------
+# upgrade
+# ---------------------------------------------------------------------------
+
+
+def _fake_stripe_sub_retrieve(item_id="si_existing"):
+    """A retrieved Stripe subscription that exposes items.data[0].id."""
+    return {
+        "id": "sub_test_789",
+        "items": {"data": [{"id": item_id}]},
+        "status": "active",
+        "current_period_start": PERIOD_START_TS,
+        "current_period_end": PERIOD_END_TS,
+    }
+
+
+@pytest.mark.asyncio
+async def test_upgrade_swaps_price_with_proration_and_cycle_reset():
+    db = _make_db()
+    user = _make_user()
+    club = _make_club()
+    current_sub = _make_subscription()  # on PLAN_ID at price 29.99
+    new_plan_id = uuid.uuid4()
+    new_plan = _make_plan(id=new_plan_id, name="Gold", price=Decimal("49.99"),
+                          stripe_price_id="price_gold", booking_credits_per_period=10,
+                          guest_passes_per_period=3)
+    current_plan = _make_plan()  # price 29.99
+    db.get = AsyncMock(return_value=current_plan)
+
+    with patch("app.services.membership_service.stripe.Subscription.retrieve",
+               return_value=_fake_stripe_sub_retrieve()) as mock_retrieve, \
+         patch("app.services.membership_service.stripe.Subscription.modify",
+               return_value=_fake_stripe_sub()) as mock_modify:
+        svc = MembershipService(db)
+        result = await svc.upgrade(user, current_sub, new_plan, club)
+
+    mock_retrieve.assert_called_once_with("sub_test_789")
+    kwargs = mock_modify.call_args.kwargs
+    assert kwargs["proration_behavior"] == "always_invoice"
+    assert kwargs["billing_cycle_anchor"] == "now"
+    assert kwargs["items"] == [{"id": "si_existing", "price": "price_gold"}]
+
+    # Local row pivoted to new plan with new period and reset credits
+    assert current_sub.plan_id == new_plan_id
+    assert current_sub.credits_remaining == 10
+    assert current_sub.guest_passes_remaining == 3
+    assert result["client_secret"] == "pi_secret_abc"
+    assert result["credits_remaining"] == 10
+
+
+@pytest.mark.asyncio
+async def test_upgrade_writes_credit_log_when_credits_nonzero():
+    from app.db.models.membership import MembershipCreditLog
+
+    db = _make_db()
+    current_sub = _make_subscription()
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("49.99"),
+                          stripe_price_id="price_gold", booking_credits_per_period=10)
+    db.get = AsyncMock(return_value=_make_plan())
+
+    with patch("app.services.membership_service.stripe.Subscription.retrieve",
+               return_value=_fake_stripe_sub_retrieve()), \
+         patch("app.services.membership_service.stripe.Subscription.modify",
+               return_value=_fake_stripe_sub()):
+        svc = MembershipService(db)
+        await svc.upgrade(_make_user(), current_sub, new_plan, _make_club())
+
+    logs = [o for o in db._added if isinstance(o, MembershipCreditLog)]
+    assert len(logs) == 1
+    assert logs[0].delta == 10
+
+
+@pytest.mark.asyncio
+async def test_upgrade_from_free_plan_creates_fresh_subscription():
+    db = _make_db()
+    # No existing subscription — caller is on the free default plan.
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("19.99"),
+                          stripe_price_id="price_silver", booking_credits_per_period=5)
+
+    with patch("app.services.membership_service.stripe.Subscription.create",
+               return_value=_fake_stripe_sub()) as mock_create, \
+         patch("app.services.membership_service.stripe.Subscription.modify") as mock_modify:
+        svc = MembershipService(db)
+        result = await svc.upgrade(_make_user(), None, new_plan, _make_club())
+
+    # Path A — fresh Subscription.create, no modify call.
+    mock_create.assert_called_once()
+    mock_modify.assert_not_called()
+    kwargs = mock_create.call_args.kwargs
+    assert kwargs["payment_behavior"] == "default_incomplete"
+    assert result["credits_remaining"] == 5
+    assert result["client_secret"] == "pi_secret_abc"
+
+
+@pytest.mark.asyncio
+async def test_upgrade_from_free_plan_expires_old_local_row():
+    db = _make_db()
+    # Old row exists locally but has no stripe_subscription_id (free default plan).
+    old_sub = _make_subscription(stripe_subscription_id=None,
+                                  status=MembershipStatus.active)
+    # Current free plan priced at 0; new paid plan strictly higher
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("0.00")))
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("19.99"),
+                          stripe_price_id="price_silver")
+
+    with patch("app.services.membership_service.stripe.Subscription.create",
+               return_value=_fake_stripe_sub()):
+        svc = MembershipService(db)
+        await svc.upgrade(_make_user(), old_sub, new_plan, _make_club())
+
+    assert old_sub.status == MembershipStatus.expired
+
+
+@pytest.mark.asyncio
+async def test_upgrade_rejects_same_plan():
+    db = _make_db()
+    current_sub = _make_subscription()
+    same_plan = _make_plan()  # same PLAN_ID
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.upgrade(_make_user(), current_sub, same_plan, _make_club())
+    assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_upgrade_rejects_lower_priced_plan():
+    db = _make_db()
+    current_sub = _make_subscription()
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("49.99")))
+    cheaper_plan = _make_plan(id=uuid.uuid4(), price=Decimal("19.99"))
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.upgrade(_make_user(), current_sub, cheaper_plan, _make_club())
+    assert exc_info.value.status_code == 400
+    assert "higher" in exc_info.value.detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_upgrade_rejects_inactive_plan():
+    db = _make_db()
+    new_plan = _make_plan(id=uuid.uuid4(), is_active=False)
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.upgrade(_make_user(), _make_subscription(), new_plan, _make_club())
+    assert exc_info.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_upgrade_rejects_when_new_plan_at_capacity():
+    db = _make_db()
+    current_sub = _make_subscription()
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("19.99")))
+
+    cap_result = MagicMock()
+    cap_result.scalars.return_value.all.return_value = [_make_subscription() for _ in range(5)]
+    db.execute = AsyncMock(return_value=cap_result)
+
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("49.99"), max_active_members=5)
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.upgrade(_make_user(), current_sub, new_plan, _make_club())
+    assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_upgrade_raises_400_on_stripe_error():
+    db = _make_db()
+    current_sub = _make_subscription()
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("19.99")))
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("49.99"), stripe_price_id="price_gold")
+
+    with patch("app.services.membership_service.stripe.Subscription.retrieve",
+               return_value=_fake_stripe_sub_retrieve()), \
+         patch("app.services.membership_service.stripe.Subscription.modify",
+               side_effect=stripe.StripeError("card declined")):
+        svc = MembershipService(db)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.upgrade(_make_user(), current_sub, new_plan, _make_club())
+    assert exc_info.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_upgrade_raises_400_when_no_payment_method():
+    db = _make_db()
+    user = _make_user(default_payment_method_id=None)
+    current_sub = _make_subscription()
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("19.99")))
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("49.99"))
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.upgrade(user, current_sub, new_plan, _make_club())
+    assert exc_info.value.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# downgrade
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_downgrade_sets_cancel_at_period_end_and_pending_plan():
+    db = _make_db()
+    current_sub = _make_subscription()  # PLAN_ID at 29.99
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("29.99")))
+    cheaper_plan = _make_plan(id=uuid.uuid4(), name="Bronze",
+                              price=Decimal("9.99"))
+
+    with patch("app.services.membership_service.stripe.Subscription.modify") as mock_modify:
+        svc = MembershipService(db)
+        result = await svc.downgrade(_make_user(), current_sub, cheaper_plan, _make_club())
+
+    mock_modify.assert_called_once_with("sub_test_789", cancel_at_period_end=True)
+    assert current_sub.cancel_at_period_end is True
+    assert current_sub.pending_plan_id == cheaper_plan.id
+    # Player remains on the current plan locally until the cycle boundary.
+    assert current_sub.plan_id == PLAN_ID
+    assert result is current_sub
+
+
+@pytest.mark.asyncio
+async def test_downgrade_rejects_same_or_higher_price():
+    db = _make_db()
+    current_sub = _make_subscription()
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("29.99")))
+    # Same price
+    same_price = _make_plan(id=uuid.uuid4(), price=Decimal("29.99"))
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.downgrade(_make_user(), current_sub, same_price, _make_club())
+    assert exc_info.value.status_code == 400
+    assert "lower" in exc_info.value.detail.lower()
+
+
+@pytest.mark.asyncio
+async def test_downgrade_rejects_same_plan_id():
+    db = _make_db()
+    current_sub = _make_subscription()
+    same_plan = _make_plan()  # same PLAN_ID
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.downgrade(_make_user(), current_sub, same_plan, _make_club())
+    assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_downgrade_rejects_inactive_plan():
+    db = _make_db()
+    current_sub = _make_subscription()
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("9.99"), is_active=False)
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.downgrade(_make_user(), current_sub, new_plan, _make_club())
+    assert exc_info.value.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_downgrade_rejects_when_already_pending():
+    db = _make_db()
+    other_plan_id = uuid.uuid4()
+    current_sub = _make_subscription(pending_plan_id=other_plan_id)
+    new_plan = _make_plan(id=uuid.uuid4(), price=Decimal("9.99"))
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.downgrade(_make_user(), current_sub, new_plan, _make_club())
+    assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_downgrade_to_free_plan_without_stripe_sub_skips_modify():
+    # Player on a paid plan but local row has no stripe_subscription_id (rare).
+    db = _make_db()
+    current_sub = _make_subscription(stripe_subscription_id=None)
+    db.get = AsyncMock(return_value=_make_plan(price=Decimal("29.99")))
+    free_plan = _make_plan(id=uuid.uuid4(), price=Decimal("0.00"),
+                           stripe_price_id=None)
+
+    with patch("app.services.membership_service.stripe.Subscription.modify") as mock_modify:
+        svc = MembershipService(db)
+        await svc.downgrade(_make_user(), current_sub, free_plan, _make_club())
+
+    mock_modify.assert_not_called()
+    assert current_sub.pending_plan_id == free_plan.id
+
+
+@pytest.mark.asyncio
+async def test_cancel_pending_downgrade_clears_state_and_resumes_stripe():
+    db = _make_db()
+    target_id = uuid.uuid4()
+    sub = _make_subscription(pending_plan_id=target_id, cancel_at_period_end=True)
+
+    with patch("app.services.membership_service.stripe.Subscription.modify") as mock_modify:
+        svc = MembershipService(db)
+        await svc.cancel_pending_downgrade(sub)
+
+    mock_modify.assert_called_once_with("sub_test_789", cancel_at_period_end=False)
+    assert sub.pending_plan_id is None
+    assert sub.cancel_at_period_end is False
+
+
+@pytest.mark.asyncio
+async def test_cancel_pending_downgrade_rejects_when_none_scheduled():
+    db = _make_db()
+    sub = _make_subscription()  # pending_plan_id is None
+
+    svc = MembershipService(db)
+    with pytest.raises(HTTPException) as exc_info:
+        await svc.cancel_pending_downgrade(sub)
+    assert exc_info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_subscription_deleted_applies_pending_downgrade_to_free_plan():
+    """At the cycle boundary, downgrading to a free plan creates a local-only sub."""
+    db = _make_db()
+    free_plan_id = uuid.uuid4()
+    expiring = _make_subscription(pending_plan_id=free_plan_id)
+
+    sub_result = MagicMock()
+    sub_result.scalar_one_or_none.return_value = expiring
+    db.execute = AsyncMock(return_value=sub_result)
+
+    # db.get is called for: pending plan, user, club
+    free_plan = _make_plan(id=free_plan_id, price=Decimal("0.00"),
+                           stripe_price_id=None, booking_credits_per_period=0,
+                           guest_passes_per_period=None)
+    user = _make_user()
+    club = _make_club()
+    db.get = AsyncMock(side_effect=[free_plan, user, club])
+
+    event = {"data": {"object": {"id": "sub_test_789"}}}
+
+    with patch("app.services.membership_service.stripe.Subscription.create") as mock_create, \
+         patch("app.services.membership_service.publish_notification_event"):
+        svc = MembershipService(db)
+        await svc.handle_subscription_deleted(event)
+
+    # No Stripe sub created for the free plan target.
+    mock_create.assert_not_called()
+    # Old sub is expired and pending cleared.
+    assert expiring.status == MembershipStatus.expired
+    assert expiring.pending_plan_id is None
+    # A new MembershipSubscription was added pointing at the free plan.
+    new_subs = [
+        o for o in db._added
+        if hasattr(o, "plan_id") and o.plan_id == free_plan_id and o is not expiring
+    ]
+    assert len(new_subs) == 1
+    assert new_subs[0].stripe_subscription_id is None
+
+
+@pytest.mark.asyncio
+async def test_subscription_deleted_applies_pending_downgrade_to_paid_plan():
+    """At the cycle boundary, downgrading to a paid plan creates a fresh Stripe sub."""
+    db = _make_db()
+    paid_plan_id = uuid.uuid4()
+    expiring = _make_subscription(pending_plan_id=paid_plan_id)
+
+    sub_result = MagicMock()
+    sub_result.scalar_one_or_none.return_value = expiring
+    db.execute = AsyncMock(return_value=sub_result)
+
+    paid_plan = _make_plan(id=paid_plan_id, name="Bronze",
+                           price=Decimal("9.99"),
+                           stripe_price_id="price_bronze",
+                           booking_credits_per_period=3,
+                           guest_passes_per_period=0)
+    user = _make_user()
+    club = _make_club()
+    db.get = AsyncMock(side_effect=[paid_plan, user, club])
+
+    event = {"data": {"object": {"id": "sub_test_789"}}}
+
+    with patch("app.services.membership_service.stripe.Subscription.create",
+               return_value=_fake_stripe_sub()) as mock_create, \
+         patch("app.services.membership_service.publish_notification_event"):
+        svc = MembershipService(db)
+        await svc.handle_subscription_deleted(event)
+
+    mock_create.assert_called_once()
+    kwargs = mock_create.call_args.kwargs
+    assert kwargs["items"] == [{"price": "price_bronze"}]
+    assert expiring.status == MembershipStatus.expired
+    assert expiring.pending_plan_id is None
+
+
+@pytest.mark.asyncio
+async def test_subscription_deleted_without_pending_keeps_legacy_cancelled_behavior():
+    """No pending_plan_id → old code path: mark cancelled, no new sub created."""
+    db = _make_db()
+    sub = _make_subscription(status=MembershipStatus.active, cancelled_at=None)
+
+    sub_result = MagicMock()
+    sub_result.scalar_one_or_none.return_value = sub
+    db.execute = AsyncMock(return_value=sub_result)
+
+    event = {"data": {"object": {"id": "sub_test_789"}}}
+
+    with patch("app.services.membership_service.stripe.Subscription.create") as mock_create:
+        svc = MembershipService(db)
+        await svc.handle_subscription_deleted(event)
+
+    mock_create.assert_not_called()
+    assert sub.status == MembershipStatus.cancelled
+    assert sub.cancelled_at is not None
 
 
 # ---------------------------------------------------------------------------

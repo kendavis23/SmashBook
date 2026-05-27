@@ -64,7 +64,11 @@ class MembershipPlan(Base, UUIDMixin, TimestampMixin):
     stripe_price_id = Column(String(255), nullable=True)          # Stripe recurring Price ID
 
     club = relationship("Club", back_populates="membership_plans")
-    subscriptions = relationship("MembershipSubscription", back_populates="plan")
+    subscriptions = relationship(
+        "MembershipSubscription",
+        back_populates="plan",
+        foreign_keys="MembershipSubscription.plan_id",
+    )
 
 
 class MembershipSubscription(Base, UUIDMixin, TimestampMixin):
@@ -86,6 +90,11 @@ class MembershipSubscription(Base, UUIDMixin, TimestampMixin):
     cancel_at_period_end = Column(Boolean, nullable=False, default=False)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Scheduled downgrade target — non-null when the player has requested a
+    # downgrade that will be applied at current_period_end. Reset to NULL on
+    # apply or if the downgrade is cancelled.
+    pending_plan_id = Column(UUID(as_uuid=True), ForeignKey("membership_plans.id"), nullable=True)
+
     # Rolling credit balances for the current billing period
     credits_remaining = Column(Integer, nullable=False, default=0)
     guest_passes_remaining = Column(Integer, nullable=True)   # NULL when plan has no guest passes
@@ -93,7 +102,12 @@ class MembershipSubscription(Base, UUIDMixin, TimestampMixin):
     stripe_subscription_id = Column(String(255), nullable=True)
 
     user = relationship("User", back_populates="membership_subscriptions")
-    plan = relationship("MembershipPlan", back_populates="subscriptions")
+    plan = relationship(
+        "MembershipPlan",
+        back_populates="subscriptions",
+        foreign_keys=[plan_id],
+    )
+    pending_plan = relationship("MembershipPlan", foreign_keys=[pending_plan_id])
     club = relationship("Club", back_populates="membership_subscriptions")
     credit_logs = relationship("MembershipCreditLog", back_populates="subscription")
 

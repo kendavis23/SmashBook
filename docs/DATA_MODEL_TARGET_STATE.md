@@ -1,4 +1,4 @@
-_Last updated: 2026-05-25_
+_Last updated: 2026-05-27_
 
 # SmashBook — Data Model Target State
 
@@ -109,6 +109,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | G5 | Sprint 5 | ❓ Pending verification — see note below | `bookings`: add `parent_booking_id` (self-ref for recurring series), `recurrence_end_date`; new table: `calendar_reservations`; `clubs`: add `default_skill_range_above`, `default_skill_range_below`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`; `equipment_inventory`: add `reorder_threshold` |
 | G6 | Sprint 6 | ⬜ Not started | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`; `skill_level_history`: add `change_source`, `club_id` |
 | G6.1 | Post-MVP | ✅ Applied (`32204403280f`) | Player registration email verification + free basic membership: `users`: add `email_verified_at`; `membership_plans`: add `is_default` with partial unique index per club |
+| G6.2 | Post-MVP | ✅ Applied (`fa46b223afc9`) | Membership downgrade scheduling: `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — scheduled downgrade target applied at `current_period_end` |
 | G7 | Sprint 7 | ⬜ Not started | New tables: `ai_inference_log`, `ai_feature_flags`; `subscription_plans`: add `tournaments_enabled`, `messaging_enabled` (non-AI flags only — AI flags live in `ai_feature_flags`); `clubs`: add `latitude`, `longitude`, `timezone`, `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`, `weather_alerts_enabled` |
 | G8 | Sprint 8 | ⬜ Not started | New tables: `court_utilisation_snapshots`, `gap_detection_events`, `notification_templates`, `message_deliveries`; `bookings`: add `cancellation_risk_score`, `weather_alert_sent`, `campaign_id`; `support_tickets`: add `category`; `support_messages`: add `intent`, `booking_id` (covers former chat use cases) |
 | G9 | Sprint 9 | ⬜ Not started | New tables: `player_profiles` (with pgvector embedding), `player_engagement_scores`, `match_results`, `match_result_players`, `cancellation_predictions` |
@@ -784,7 +785,7 @@ One row per billing interval per plan. Replaces monolithic price/billing fields 
 ---
 
 ### `membership_subscriptions`
-**Changes from current:** Add `plan_pricing_id` to reference which pricing tier the subscriber chose. *(Migration group G10)*
+**Changes from current:** Add `pending_plan_id` to record a scheduled downgrade target applied at `current_period_end` *(Migration group G6.2 — applied `fa46b223afc9`)*. Add `plan_pricing_id` to reference which pricing tier the subscriber chose. *(Migration group G10)*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -801,6 +802,7 @@ One row per billing interval per plan. Replaces monolithic price/billing fields 
 | `credits_remaining` | INTEGER | Not null — `0` = none remaining |
 | `guest_passes_remaining` | INTEGER | Nullable |
 | `stripe_subscription_id` | VARCHAR(255) | Nullable |
+| `pending_plan_id` | UUID | FK → `membership_plans`, nullable — scheduled downgrade target, applied at `current_period_end` *(G6.2)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 

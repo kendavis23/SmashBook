@@ -578,9 +578,19 @@ async def _delete_membership_plan_with_subs(session_factory, plan_id):
     that point at it.  Needed because subscribe-endpoint tests create
     subscriptions via the API; pytest may tear down the plan fixture
     before the player fixture (which would otherwise cascade-delete subs).
+
+    Also clears `pending_plan_id` from any subscription that has this plan
+    scheduled as a downgrade target, so the plan row can be deleted without
+    violating the FK constraint.
     """
-    from sqlalchemy import select as sa_select
+    from sqlalchemy import select as sa_select, or_
     async with session_factory() as session:
+        # Clear pending downgrade references first so the plan can be deleted.
+        await session.execute(
+            sql_update(MembershipSubscription)
+            .where(MembershipSubscription.pending_plan_id == plan_id)
+            .values(pending_plan_id=None)
+        )
         sub_ids = (await session.execute(
             sa_select(MembershipSubscription.id).where(
                 MembershipSubscription.plan_id == plan_id
@@ -1117,3 +1127,480 @@ class TestCancelMyMembership:
             f"/api/v1/clubs/{club.id}/memberships/me/cancel"
         )
         assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/clubs/{id}/memberships/me/upgrade
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def gold_plan(club, test_session_factory):
+    """A higher-priced Gold plan — the target of upgrade tests."""
+    async with test_session_factory() as session:
+        plan = MembershipPlan(
+            club_id=club.id,
+            name="Gold",
+            billing_period=BillingPeriod.monthly,
+            price=Decimal("49.99"),
+            booking_credits_per_period=20,
+            guest_passes_per_period=4,
+            discount_pct=Decimal("15.00"),
+            priority_booking_days=3,
+        )
+        session.add(plan)
+        await session.commit()
+        await session.refresh(plan)
+    yield plan
+    await _delete_membership_plan_with_subs(test_session_factory, plan.id)
+
+
+class TestUpgradeMembership:
+    async def test_upgrade_from_paid_swaps_price_with_proration(
+        self, client, player, player_headers, club, membership_subscription,
+        gold_plan, test_session_factory,
+    ):
+        sub, _silver = membership_subscription
+        await _set_player_stripe(test_session_factory, player.id)
+
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(MembershipSubscription)
+                .where(MembershipSubscription.id == sub.id)
+                .values(stripe_subscription_id="sub_remote_existing")
+            )
+            await session.commit()
+
+        retrieved = {
+            "id": "sub_remote_existing",
+            "items": {"data": [{"id": "si_existing"}]},
+            "status": "active",
+        }
+
+        with patch("stripe.Product.create", return_value=_mock_stripe_obj("prod_g")), \
+             patch("stripe.Price.create", return_value=_mock_stripe_obj("price_g")), \
+             patch("stripe.Subscription.retrieve", return_value=retrieved), \
+             patch("stripe.Subscription.modify",
+                   return_value=_mock_stripe_sub(sub_id="sub_remote_existing")) as mock_modify, \
+             patch("app.services.membership_service.publish_notification_event"):
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+                json={"plan_id": str(gold_plan.id)},
+                headers=player_headers,
+            )
+
+        assert resp.status_code == 200, resp.json()
+        body = resp.json()
+        assert body["credits_remaining"] == 20
+        assert body["guest_passes_remaining"] == 4
+        assert body["stripe_subscription_id"] == "sub_remote_existing"
+
+        kwargs = mock_modify.call_args.kwargs
+        assert kwargs["proration_behavior"] == "always_invoice"
+        assert kwargs["billing_cycle_anchor"] == "now"
+        assert kwargs["items"] == [{"id": "si_existing", "price": "price_g"}]
+
+        # Local row pivoted to the Gold plan
+        async with test_session_factory() as session:
+            refreshed = await session.get(MembershipSubscription, sub.id)
+            assert refreshed.plan_id == gold_plan.id
+            assert refreshed.credits_remaining == 20
+
+    async def test_upgrade_from_free_default_creates_fresh_sub(
+        self, client, player, player_headers, club, gold_plan,
+        test_session_factory,
+    ):
+        # No existing MembershipSubscription row for this player.
+        await _set_player_stripe(test_session_factory, player.id)
+
+        with patch("stripe.Product.create", return_value=_mock_stripe_obj("prod_g")), \
+             patch("stripe.Price.create", return_value=_mock_stripe_obj("price_g")), \
+             patch("stripe.Subscription.create",
+                   return_value=_mock_stripe_sub(sub_id="sub_new")) as mock_create, \
+             patch("stripe.Subscription.modify") as mock_modify, \
+             patch("app.services.membership_service.publish_notification_event"):
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+                json={"plan_id": str(gold_plan.id)},
+                headers=player_headers,
+            )
+
+        assert resp.status_code == 200, resp.json()
+        body = resp.json()
+        assert body["stripe_subscription_id"] == "sub_new"
+        mock_create.assert_called_once()
+        mock_modify.assert_not_called()
+
+    async def test_rejects_lower_priced_plan(
+        self, client, player, player_headers, club, membership_subscription,
+        test_session_factory,
+    ):
+        # Currently on Silver (19.99). Try to "upgrade" to a cheaper plan.
+        await _set_player_stripe(test_session_factory, player.id)
+        async with test_session_factory() as session:
+            cheaper = MembershipPlan(
+                club_id=club.id,
+                name="Bronze",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("9.99"),
+            )
+            session.add(cheaper)
+            await session.commit()
+            cheaper_id = cheaper.id
+
+        try:
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+                json={"plan_id": str(cheaper_id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 400
+        finally:
+            await _delete_membership_plan_with_subs(test_session_factory, cheaper_id)
+
+    async def test_rejects_same_plan(
+        self, client, player, player_headers, club, membership_subscription,
+        test_session_factory,
+    ):
+        _sub, silver = membership_subscription
+        await _set_player_stripe(test_session_factory, player.id)
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+            json={"plan_id": str(silver.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 409
+
+    async def test_rejects_inactive_plan(
+        self, client, player, player_headers, club, membership_subscription,
+        gold_plan, test_session_factory,
+    ):
+        await _set_player_stripe(test_session_factory, player.id)
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(MembershipPlan)
+                .where(MembershipPlan.id == gold_plan.id)
+                .values(is_active=False)
+            )
+            await session.commit()
+
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+            json={"plan_id": str(gold_plan.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 400
+
+    async def test_plan_not_found_returns_404(
+        self, client, player_headers, club, membership_subscription,
+    ):
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+            json={"plan_id": str(uuid.uuid4())},
+            headers=player_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_no_payment_method_returns_400(
+        self, client, player, player_headers, club, membership_subscription,
+        gold_plan, test_session_factory,
+    ):
+        # Player has stripe_customer_id but no default_payment_method_id.
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(User)
+                .where(User.id == player.id)
+                .values(stripe_customer_id=STRIPE_CUSTOMER_ID,
+                        default_payment_method_id=None)
+            )
+            await session.commit()
+
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+            json={"plan_id": str(gold_plan.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 400
+
+    async def test_stripe_error_returns_400(
+        self, client, player, player_headers, club, membership_subscription,
+        gold_plan, test_session_factory,
+    ):
+        import stripe as stripe_mod
+        sub, _silver = membership_subscription
+        await _set_player_stripe(test_session_factory, player.id)
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(MembershipSubscription)
+                .where(MembershipSubscription.id == sub.id)
+                .values(stripe_subscription_id="sub_remote_existing")
+            )
+            await session.commit()
+
+        retrieved = {
+            "id": "sub_remote_existing",
+            "items": {"data": [{"id": "si_existing"}]},
+            "status": "active",
+        }
+        with patch("stripe.Product.create", return_value=_mock_stripe_obj("prod_g")), \
+             patch("stripe.Price.create", return_value=_mock_stripe_obj("price_g")), \
+             patch("stripe.Subscription.retrieve", return_value=retrieved), \
+             patch("stripe.Subscription.modify",
+                   side_effect=stripe_mod.StripeError("card declined")):
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+                json={"plan_id": str(gold_plan.id)},
+                headers=player_headers,
+            )
+        assert resp.status_code == 400
+
+    async def test_unauthenticated_returns_403(self, client, club, gold_plan):
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/upgrade",
+            json={"plan_id": str(gold_plan.id)},
+        )
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/clubs/{id}/memberships/me/downgrade
+# ---------------------------------------------------------------------------
+
+
+@pytest_asyncio.fixture
+async def bronze_plan(club, test_session_factory):
+    """A cheaper Bronze plan — the target of downgrade tests."""
+    async with test_session_factory() as session:
+        plan = MembershipPlan(
+            club_id=club.id,
+            name="Bronze",
+            billing_period=BillingPeriod.monthly,
+            price=Decimal("9.99"),
+            booking_credits_per_period=3,
+            stripe_price_id="price_bronze",
+        )
+        session.add(plan)
+        await session.commit()
+        await session.refresh(plan)
+    yield plan
+    await _delete_membership_plan_with_subs(test_session_factory, plan.id)
+
+
+@pytest_asyncio.fixture
+async def free_default_plan(club, test_session_factory):
+    """A free default plan with no Stripe price — typical downgrade target."""
+    async with test_session_factory() as session:
+        plan = MembershipPlan(
+            club_id=club.id,
+            name="Basic",
+            billing_period=BillingPeriod.monthly,
+            price=Decimal("0.00"),
+            booking_credits_per_period=0,
+            is_default=True,
+        )
+        session.add(plan)
+        await session.commit()
+        await session.refresh(plan)
+    yield plan
+    await _delete_membership_plan_with_subs(test_session_factory, plan.id)
+
+
+class TestDowngradeMembership:
+    async def test_downgrade_schedules_pending_plan_at_period_end(
+        self, client, player_headers, club, membership_subscription,
+        bronze_plan, test_session_factory,
+    ):
+        sub, _silver = membership_subscription
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(MembershipSubscription)
+                .where(MembershipSubscription.id == sub.id)
+                .values(stripe_subscription_id="sub_remote_existing")
+            )
+            await session.commit()
+
+        with patch("stripe.Subscription.modify") as mock_modify, \
+             patch("app.services.membership_service.publish_notification_event"):
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/downgrade",
+                json={"plan_id": str(bronze_plan.id)},
+                headers=player_headers,
+            )
+
+        assert resp.status_code == 200, resp.json()
+        body = resp.json()
+        assert body["pending_plan_id"] == str(bronze_plan.id)
+        assert body["cancel_at_period_end"] is True
+        # Player is still on Silver locally until the cycle boundary applies it.
+        assert body["plan"]["name"] == "Silver"
+
+        mock_modify.assert_called_once_with(
+            "sub_remote_existing", cancel_at_period_end=True,
+        )
+
+    async def test_downgrade_to_free_plan_succeeds(
+        self, client, player_headers, club, membership_subscription,
+        free_default_plan, test_session_factory,
+    ):
+        sub, _silver = membership_subscription
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(MembershipSubscription)
+                .where(MembershipSubscription.id == sub.id)
+                .values(stripe_subscription_id="sub_remote_existing")
+            )
+            await session.commit()
+
+        with patch("stripe.Subscription.modify"), \
+             patch("app.services.membership_service.publish_notification_event"):
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/downgrade",
+                json={"plan_id": str(free_default_plan.id)},
+                headers=player_headers,
+            )
+
+        assert resp.status_code == 200, resp.json()
+        assert resp.json()["pending_plan_id"] == str(free_default_plan.id)
+
+    async def test_rejects_higher_priced_plan(
+        self, client, player_headers, club, membership_subscription,
+        test_session_factory,
+    ):
+        # Currently on Silver (19.99). Try a more expensive plan via the downgrade endpoint.
+        async with test_session_factory() as session:
+            more_expensive = MembershipPlan(
+                club_id=club.id,
+                name="Platinum",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("99.99"),
+            )
+            session.add(more_expensive)
+            await session.commit()
+            target_id = more_expensive.id
+
+        try:
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/downgrade",
+                json={"plan_id": str(target_id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 400
+        finally:
+            await _delete_membership_plan_with_subs(test_session_factory, target_id)
+
+    async def test_rejects_same_plan(
+        self, client, player_headers, club, membership_subscription,
+    ):
+        _sub, silver = membership_subscription
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/downgrade",
+            json={"plan_id": str(silver.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 409
+
+    async def test_rejects_when_downgrade_already_scheduled(
+        self, client, player_headers, club, membership_subscription,
+        bronze_plan, test_session_factory,
+    ):
+        sub, _silver = membership_subscription
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(MembershipSubscription)
+                .where(MembershipSubscription.id == sub.id)
+                .values(pending_plan_id=bronze_plan.id,
+                        stripe_subscription_id="sub_remote_existing")
+            )
+            await session.commit()
+
+        async with test_session_factory() as session:
+            other = MembershipPlan(
+                club_id=club.id,
+                name="Another Bronze",
+                billing_period=BillingPeriod.monthly,
+                price=Decimal("4.99"),
+            )
+            session.add(other)
+            await session.commit()
+            other_id = other.id
+
+        try:
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/downgrade",
+                json={"plan_id": str(other_id)},
+                headers=player_headers,
+            )
+            assert resp.status_code == 409
+        finally:
+            await _delete_membership_plan_with_subs(test_session_factory, other_id)
+
+    async def test_no_active_subscription_returns_404(
+        self, client, player_headers, club, bronze_plan,
+    ):
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/downgrade",
+            json={"plan_id": str(bronze_plan.id)},
+            headers=player_headers,
+        )
+        assert resp.status_code == 404
+
+    async def test_unauthenticated_returns_403(self, client, club, bronze_plan):
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/downgrade",
+            json={"plan_id": str(bronze_plan.id)},
+        )
+        assert resp.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/clubs/{id}/memberships/me/downgrade/cancel
+# ---------------------------------------------------------------------------
+
+
+class TestCancelPendingDowngrade:
+    async def test_clears_pending_state(
+        self, client, player_headers, club, membership_subscription,
+        bronze_plan, test_session_factory,
+    ):
+        sub, _silver = membership_subscription
+        async with test_session_factory() as session:
+            await session.execute(
+                sql_update(MembershipSubscription)
+                .where(MembershipSubscription.id == sub.id)
+                .values(pending_plan_id=bronze_plan.id,
+                        cancel_at_period_end=True,
+                        stripe_subscription_id="sub_remote_existing")
+            )
+            await session.commit()
+
+        with patch("stripe.Subscription.modify") as mock_modify:
+            resp = await client.post(
+                f"/api/v1/clubs/{club.id}/memberships/me/downgrade/cancel",
+                headers=player_headers,
+            )
+
+        assert resp.status_code == 200, resp.json()
+        body = resp.json()
+        assert body["pending_plan_id"] is None
+        assert body["cancel_at_period_end"] is False
+        mock_modify.assert_called_once_with(
+            "sub_remote_existing", cancel_at_period_end=False,
+        )
+
+    async def test_returns_409_when_no_pending_downgrade(
+        self, client, player_headers, club, membership_subscription,
+    ):
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/downgrade/cancel",
+            headers=player_headers,
+        )
+        assert resp.status_code == 409
+
+    async def test_returns_404_when_no_active_subscription(
+        self, client, player_headers, club,
+    ):
+        resp = await client.post(
+            f"/api/v1/clubs/{club.id}/memberships/me/downgrade/cancel",
+            headers=player_headers,
+        )
+        assert resp.status_code == 404

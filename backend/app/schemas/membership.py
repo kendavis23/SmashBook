@@ -25,6 +25,15 @@ class MembershipSubscribeResponse(BaseModel):
     client_secret: Optional[str] = None
 
 
+class MembershipUpgradeRequest(BaseModel):
+    plan_id: uuid.UUID
+    payment_method_id: Optional[str] = None
+
+
+class MembershipDowngradeRequest(BaseModel):
+    plan_id: uuid.UUID
+
+
 class MembershipPlanCreate(BaseModel):
     name: str
     description: Optional[str] = None
@@ -83,5 +92,8 @@ class MembershipSubscriptionResponse(BaseModel):
     credits_remaining: int
     guest_passes_remaining: Optional[int] = None
     plan: MembershipPlanResponse
+    # Non-null when a downgrade is scheduled. The target plan takes effect
+    # at current_period_end.
+    pending_plan_id: Optional[uuid.UUID] = None
 
     model_config = {"from_attributes": True}

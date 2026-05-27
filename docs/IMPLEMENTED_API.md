@@ -1,4 +1,4 @@
-_Last updated: 2026-05-25 12:00 UTC_
+_Last updated: 2026-05-27 13:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -120,6 +120,9 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | `PATCH` | `/api/v1/clubs/{club_id}/membership-plans/{plan_id}` | Update a membership plan (admin+) |
 | `POST` | `/api/v1/clubs/{club_id}/memberships/subscribe` | Player: subscribe to a membership plan. Stripe Product+Price provisioned lazily on first subscribe. Returns `client_secret` for non-trial plans (frontend must confirm with Stripe.js). Enforces duplicate-subscription and enrollment-cap guards. |
 | `GET` | `/api/v1/clubs/{club_id}/memberships/me` | Get calling player's membership subscription for this club |
+| `POST` | `/api/v1/clubs/{club_id}/memberships/me/upgrade` | Player: upgrade to a higher-priced plan immediately. Uses Stripe-native proration (`proration_behavior=always_invoice`, `billing_cycle_anchor=now`) so the unused portion of the current period is credited against the new plan's first charge and the renewal cycle restarts now. From the free default plan, behaves as a fresh subscribe. Returns 400 if new plan ≤ current plan price, 409 if same plan or at capacity. |
+| `POST` | `/api/v1/clubs/{club_id}/memberships/me/downgrade` | Player: schedule a downgrade to a strictly lower-priced plan, applied at the next cycle boundary. Sets Stripe `cancel_at_period_end=True` and stores `pending_plan_id` on the local row. No immediate charge or proration — benefits are retained until `current_period_end`, at which point the `customer.subscription.deleted` webhook provisions the new plan (free target = local-only row, paid target = fresh Stripe subscription). Returns 400 if new plan ≥ current plan price, 409 if a downgrade is already scheduled or the player is already on the target. |
+| `POST` | `/api/v1/clubs/{club_id}/memberships/me/downgrade/cancel` | Player: reverse a scheduled downgrade. Flips Stripe `cancel_at_period_end` back to `false` and clears `pending_plan_id`. Returns 409 if no downgrade is scheduled. |
 | `POST` | `/api/v1/clubs/{club_id}/memberships/me/cancel` | Player: cancel active membership at period end. Benefits continue until period end. Stripe `cancel_at_period_end=True` set immediately. |
 
 **Webhook events now handled** (via `POST /api/v1/payments/stripe/webhook`):
