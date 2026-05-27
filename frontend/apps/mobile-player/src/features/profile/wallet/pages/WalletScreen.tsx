@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useGetWallet } from "@repo/player-domain";
+import { formatCurrency } from "../../../../lib";
 import { TransactionTile } from "../components/TransactionTile";
 import { TopUpSheet } from "../components/TopUpSheet";
 
@@ -14,11 +15,8 @@ function formatBalance(amount: number | string | null | undefined): string {
     if (amount == null || amount === "") return "£0.00";
     const n = typeof amount === "string" ? parseFloat(amount) : amount;
     if (!Number.isFinite(n)) return "£0.00";
-    return new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "GBP",
-        minimumFractionDigits: 2,
-    }).format(n);
+    const result = formatCurrency(n);
+    return result === "—" ? "£0.00" : result;
 }
 
 export function WalletScreen(): JSX.Element {

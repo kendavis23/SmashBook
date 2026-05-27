@@ -2,14 +2,7 @@ import { Pressable, Text, View } from "react-native";
 import type { JSX } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import type { MembershipPlan } from "@repo/player-domain";
-
-function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "GBP",
-        minimumFractionDigits: 2,
-    }).format(amount);
-}
+import { formatCurrency } from "../../../../lib";
 
 type Props = {
     plan: MembershipPlan;

@@ -1,4 +1,4 @@
-Last updated: 2026-05-20 00:00 UTC\_
+_Last updated: 2026-05-27 00:00 UTC_
 
 # Mobile Player Development Guide
 
@@ -212,6 +212,81 @@ Use semantic token class names (`bg-background`, `text-foreground`, `border-bord
 
 ---
 
+## Date and Time Formatting
+
+**Never use `new Date(iso).toLocaleString()`, `toLocaleDateString()`, or `toLocaleTimeString()`** to display API dates. These methods shift times by the device's local timezone — a booking at `10:00Z` displays as `15:30` on a device set to IST (UTC+5:30).
+
+Always use the helpers from `@/src/lib` (mobile-local copies of the UTC-safe formatters — `@repo/ui` is web-only and cannot be imported into Metro):
+
+| Helper              | Output example           | When to use              |
+| ------------------- | ------------------------ | ------------------------ |
+| `formatUTCDateTime` | `Apr 17, 2026, 10:00 AM` | Full date + time display |
+| `formatUTCDate`     | `Apr 17, 2026`           | Date-only display        |
+| `formatUTCTime`     | `10:00 AM`               | Time-only display        |
+
+```tsx
+import { formatUTCDate, formatUTCTime, formatUTCDateTime } from "../../lib"; // adjust depth
+
+// Display a booking date
+<Text>{formatUTCDate(booking.start_datetime)}</Text>
+
+// Display a time range
+<Text>{formatUTCTime(booking.start_datetime)} – {formatUTCTime(booking.end_datetime)}</Text>
+
+// Display full date + time
+<Text>{formatUTCDateTime(booking.start_datetime)}</Text>
+```
+
+**Building a datetime for the API** — when composing a `start_datetime` from a date picker (`"YYYY-MM-DD"`) and a time picker (`"HH:MM"`), never use `new Date(...).toISOString()` — it converts local time to UTC. Use `datetimeLocalToUTC` from `@repo/ui` instead:
+
+```tsx
+import { datetimeLocalToUTC } from "../../lib"; // adjust depth
+
+// Correct — treats the picker value as UTC, appends Z without shifting
+const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
+
+// Wrong — shifts the local time to UTC (adds 5:30 offset on an IST device)
+const startDatetime = new Date(`${form.bookingDate}T${form.startTime}:00`).toISOString();
+```
+
+**Computing a UTC calendar date** (e.g. a filter default of "today") — use `Date.UTC` to avoid off-by-one near midnight:
+
+```tsx
+// Correct — always produces today's UTC calendar date regardless of device timezone
+const todayUtc = new Date().toISOString().slice(0, 10);
+
+// Correct — 3 months ago in UTC
+const threeMonthsAgo = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, now.getUTCDate())
+);
+const fromIso = threeMonthsAgo.toISOString().slice(0, 10);
+```
+
+**Rule:** every ISO string from the API must go through `formatUTCDate`, `formatUTCTime`, or `formatUTCDateTime` before display. Never write inline `new Date(iso).toLocale*()` calls in feature files.
+
+---
+
+## Currency Formatting
+
+Always use `formatCurrency` from `@/src/lib`. Never write inline `new Intl.NumberFormat(...)` or `.toFixed()` calls in feature files.
+
+```tsx
+import { formatCurrency } from "../../lib"; // adjust depth
+
+// Display a monetary amount
+<Text>{formatCurrency(booking.total_price)}</Text>;
+```
+
+`formatCurrency` returns `"—"` for `null` / `undefined` / `NaN`. If a feature needs a zero fallback instead, wrap the call:
+
+```tsx
+const display = formatCurrency(amount) === "—" ? "£0.00" : formatCurrency(amount);
+```
+
+**Rule:** every numeric monetary value from the API must be formatted through `formatCurrency` before display. Import from `@/src/lib` — never define a local currency formatter in a feature file.
+
+---
+
 ## Forms
 
 Use React Hook Form with Zod via `<Controller>` for every input:
@@ -285,6 +360,8 @@ const { control, handleSubmit } = useForm<FormValues>({
 5. Register the route in the relevant `_layout.tsx` if it is a stack/tab screen.
 6. Use `@repo/player-domain` hooks for server data.
 7. Style with NativeWind `className`; no `StyleSheet.create` and no inline styles except native/animated exceptions.
+8. Format all dates with `formatUTCDate` / `formatUTCTime` / `formatUTCDateTime` from `@repo/ui`.
+9. Format all monetary amounts with `formatCurrency` from `@repo/ui`.
 
 ---
 

@@ -19,6 +19,7 @@
         },
         "plugins": [
             "expo-router",
+            "expo-dev-client",
             [
                 "@stripe/stripe-react-native",
                 {

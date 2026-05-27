@@ -2,6 +2,7 @@ import { type JSX } from "react";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { WalletTransaction } from "@repo/player-domain";
+import { formatUTCDate, formatUTCTime, formatCurrency } from "../../../../lib";
 
 type Props = {
     transaction: WalletTransaction;
@@ -11,21 +12,8 @@ function formatAmount(amount: number | string | null | undefined): string {
     if (amount == null || amount === "") return "£0.00";
     const n = typeof amount === "string" ? parseFloat(amount) : amount;
     if (!Number.isFinite(n)) return "£0.00";
-    return new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "GBP",
-        minimumFractionDigits: 2,
-    }).format(Math.abs(n));
-}
-
-function formatDate(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function formatTime(iso: string): string {
-    const d = new Date(iso);
-    return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    const result = formatCurrency(Math.abs(n));
+    return result === "—" ? "£0.00" : result;
 }
 
 function labelFromType(type: string): string {
@@ -60,7 +48,7 @@ export function TransactionTile({ transaction: tx }: Props): JSX.Element {
                 </Text>
                 <View className="flex-row items-center gap-1.5 mt-0.5 flex-wrap">
                     <Text className="text-[12px] text-[#9CA3AF]">
-                        {formatDate(tx.created_at)} · {formatTime(tx.created_at)}
+                        {formatUTCDate(tx.created_at)} · {formatUTCTime(tx.created_at)}
                     </Text>
                     {!!tx.reference && (
                         <Text className="text-[12px] text-[#9CA3AF]" numberOfLines={1}>

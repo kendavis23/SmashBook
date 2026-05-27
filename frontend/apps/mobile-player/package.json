@@ -4,7 +4,7 @@
     "private": true,
     "main": "expo-router/entry",
     "scripts": {
-        "start": "expo start",
+        "start": "expo start --dev-client",
         "android": "expo run:android",
         "ios": "expo run:ios",
         "lint": "eslint src --ext .ts,.tsx",
@@ -20,6 +20,7 @@
         "@stripe/stripe-react-native": "^0.66.0",
         "@tanstack/react-query": "5.62.9",
         "expo": "~54.0.34",
+        "expo-dev-client": "^56.0.16",
         "expo-router": "~6.0.23",
         "expo-status-bar": "~3.0.9",
         "nativewind": "4.2.3",
