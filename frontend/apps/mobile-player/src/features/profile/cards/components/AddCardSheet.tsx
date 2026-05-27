@@ -209,8 +209,8 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
                                 <View className="flex-row items-center gap-2 rounded-xl bg-[#F0FDF4] px-3.5 py-3">
                                     <Ionicons name="shield-checkmark" size={15} color="#22C55E" />
                                     <Text className="flex-1 text-[12px] leading-5 text-[#166534]">
-                                        Card details are entered directly into Stripe&apos;s secure field
-                                        — your card number never touches our servers.
+                                        Card details are entered directly into Stripe&apos;s secure
+                                        field — your card number never touches our servers.
                                     </Text>
                                 </View>
 

@@ -2,25 +2,8 @@ import { ScrollView, Text, View, Pressable } from "react-native";
 import { useState, type JSX } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import type { MembershipSubscription } from "@repo/player-domain";
+import { formatUTCDate, formatCurrency } from "../../../../lib";
 import { STATUS_STYLES, FALLBACK_STYLE } from "../constants/membershipConstants";
-
-// ─── helpers ────────────────────────────────────────────────────────────────
-
-function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-    });
-}
-
-function formatCurrency(amount: number): string {
-    return new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "GBP",
-        minimumFractionDigits: 2,
-    }).format(amount);
-}
 
 // ─── sub-components ─────────────────────────────────────────────────────────
 
@@ -141,7 +124,7 @@ export function MyMembershipView({
                             color="rgba(255,255,255,0.45)"
                         />
                         <Text className="text-[12px] text-white/45">
-                            Renews {formatDate(membership.current_period_end)}
+                            Renews {formatUTCDate(membership.current_period_end)}
                         </Text>
                     </View>
                 </View>
@@ -161,10 +144,13 @@ export function MyMembershipView({
                 </View>
 
                 <InfoRow label="Price" value={`${formatCurrency(plan.price)} / ${billingPeriod}`} />
-                <InfoRow label="Period start" value={formatDate(membership.current_period_start)} />
+                <InfoRow
+                    label="Period start"
+                    value={formatUTCDate(membership.current_period_start)}
+                />
                 <InfoRow
                     label="Period end"
-                    value={formatDate(membership.current_period_end)}
+                    value={formatUTCDate(membership.current_period_end)}
                     last={!membership.cancel_at_period_end}
                 />
 
@@ -177,8 +163,8 @@ export function MyMembershipView({
                             style={{ marginTop: 1 }}
                         />
                         <Text className="flex-1 text-[12px] font-medium leading-5 text-[#92400E]">
-                            Cancels on {formatDate(membership.current_period_end)} — you keep full
-                            access until then
+                            Cancels on {formatUTCDate(membership.current_period_end)} — you keep
+                            full access until then
                         </Text>
                     </View>
                 )}
@@ -282,7 +268,7 @@ export function MyMembershipView({
                                 <Text className="mt-1.5 text-[13px] leading-5 text-[#6B7280]">
                                     You&apos;ll keep full access until{" "}
                                     <Text className="font-semibold text-[#111827]">
-                                        {formatDate(membership.current_period_end)}
+                                        {formatUTCDate(membership.current_period_end)}
                                     </Text>
                                     . After that, your membership will not renew.
                                 </Text>
