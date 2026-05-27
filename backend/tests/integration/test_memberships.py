@@ -583,7 +583,7 @@ async def _delete_membership_plan_with_subs(session_factory, plan_id):
     scheduled as a downgrade target, so the plan row can be deleted without
     violating the FK constraint.
     """
-    from sqlalchemy import select as sa_select, or_
+    from sqlalchemy import select as sa_select
     async with session_factory() as session:
         # Clear pending downgrade references first so the plan can be deleted.
         await session.execute(
