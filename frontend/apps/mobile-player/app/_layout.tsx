@@ -31,6 +31,22 @@ export default function RootLayout() {
                     name="profile-notifications"
                     options={{ headerShown: false, animation: "slide_from_right" }}
                 />
+                <Stack.Screen
+                    name="profile-membership"
+                    options={{ headerShown: false, animation: "slide_from_right" }}
+                />
+                <Stack.Screen
+                    name="profile-plans"
+                    options={{ headerShown: false, animation: "slide_from_right" }}
+                />
+                <Stack.Screen
+                    name="profile-cards"
+                    options={{ headerShown: false, animation: "slide_from_right" }}
+                />
+                <Stack.Screen
+                    name="profile-wallet"
+                    options={{ headerShown: false, animation: "slide_from_right" }}
+                />
             </Stack>
         </AppProviders>
     );
