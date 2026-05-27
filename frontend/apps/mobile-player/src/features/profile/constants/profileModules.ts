@@ -27,12 +27,14 @@ export const PROFILE_MODULE_GROUPS: ProfileModuleRow[][] = [
             icon: "ribbon",
             iconBgClassName: "bg-[#F59E0B]",
             label: "My Membership",
+            href: "/profile-membership",
         },
         {
             id: "plans",
             icon: "list",
             iconBgClassName: "bg-[#06B6D4]",
             label: "Plans",
+            href: "/profile-plans",
         },
     ],
 ];
