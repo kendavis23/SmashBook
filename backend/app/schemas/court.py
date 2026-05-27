@@ -51,6 +51,61 @@ class CourtAvailabilityResponse(BaseModel):
     slots: list[TimeSlot]
 
 
+# ---------------------------------------------------------------------------
+# Club availability (GET /api/v1/clubs/{club_id}/availability)
+# ---------------------------------------------------------------------------
+
+
+class AvailabilityCourt(BaseModel):
+    id: uuid.UUID
+    name: str
+    surface_type: SurfaceType
+    has_lighting: bool
+    lighting_surcharge: Optional[Decimal] = None
+
+    model_config = {"from_attributes": True}
+
+
+class AvailabilitySlotCourt(BaseModel):
+    court_id: uuid.UUID
+    price: Optional[Decimal] = None
+    price_label: Optional[str] = None
+
+
+class AvailabilityExistingMatch(BaseModel):
+    booking_id: uuid.UUID
+    court_id: uuid.UUID
+    slots_available: int
+    min_skill_level: Optional[Decimal] = None
+    max_skill_level: Optional[Decimal] = None
+    total_price: Optional[Decimal] = None
+
+
+class AvailabilitySlot(BaseModel):
+    start_time: str  # "HH:MM" UTC
+    end_time: str    # "HH:MM" UTC
+    available_count: int
+    available_courts: list[AvailabilitySlotCourt]
+    existing_matches: list[AvailabilityExistingMatch]
+
+
+class AvailabilityDay(BaseModel):
+    date: date
+    slots: list[AvailabilitySlot]
+
+
+class AvailabilityCursor(BaseModel):
+    date: date
+    from_time: str  # "HH:MM" UTC — start of next page
+
+
+class ClubAvailabilityResponse(BaseModel):
+    club_id: uuid.UUID
+    courts: list[AvailabilityCourt]
+    days: list[AvailabilityDay]
+    next_cursor: Optional[AvailabilityCursor] = None
+
+
 class CalendarReservationCreate(BaseModel):
     club_id: uuid.UUID
     court_id: Optional[uuid.UUID] = None

@@ -8,13 +8,13 @@ Responsibilities:
   - Recurring booking creation (leagues, coaching sessions)
 """
 import uuid
-from datetime import datetime, timedelta
+from datetime import date as DateType, datetime, time as TimeType, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
 from dateutil.rrule import rrulestr
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -27,12 +27,14 @@ from app.db.models.booking import (
     PaymentStatus,
     PlayerRole,
 )
-from app.db.models.club import Club
-from app.db.models.court import CalendarReservation, CalendarReservationType, Court
+from app.db.models.club import Club, OperatingHours, PricingRule
+from app.db.models.court import CalendarReservation, CalendarReservationType, Court, SurfaceType
 from app.db.models.user import User
 from app.services.pricing_service import PricingService
 
 _MAX_OCCURRENCES = 104  # safety cap: ~2 years of weekly sessions
+_AVAILABILITY_DEFAULT_LIMIT = 40
+_AVAILABILITY_MAX_SCAN_DAYS = 60  # safety cap when end_date is omitted
 
 
 class CourtService:
@@ -321,3 +323,288 @@ class CourtService:
             loaded.append(r.scalar_one())
 
         return {"created": loaded, "skipped": skipped}
+
+    # ------------------------------------------------------------------
+    # Club availability — bookable slots + joinable open matches
+    # ------------------------------------------------------------------
+
+    async def get_availability(
+        self,
+        tenant_id: uuid.UUID,
+        club_id: uuid.UUID,
+        start_date: DateType,
+        end_date: Optional[DateType],
+        surface: Optional[SurfaceType],
+        from_time: Optional[TimeType],
+        to_time: Optional[TimeType],
+        skill_level: Optional[Decimal],
+        limit: int = _AVAILABILITY_DEFAULT_LIMIT,
+    ) -> dict:
+        """
+        Chronologically-ordered list of slots (per day) the requesting user can act on:
+        either book an empty court ("initiate a match") or join an existing open game.
+
+        Behaviour:
+          - Slots are sized by `club.booking_duration_minutes` within club operating hours.
+          - `from_time`/`to_time` (if provided) clamp every day in the range.
+          - `surface` filters which courts are considered (does NOT filter existing matches,
+            since the match's court is what it is — its surface is implicit in `courts[]`).
+          - `skill_level` filters joinable open games: only games whose skill range contains
+            the level (or have no skill restriction) are shown. Has no effect on empty courts.
+          - A slot is omitted entirely if it has neither available courts nor joinable matches.
+          - When `end_date` is None: scan forward (up to a safety cap of _AVAILABILITY_MAX_SCAN_DAYS)
+            until `limit` slot rows are emitted, then return a `next_cursor` for the FE.
+          - When `end_date` is given: return every matching slot in the range, no cap, no cursor.
+          - Past slots and slots violating `min_booking_notice_hours` / `max_advance_booking_days`
+            are dropped from `available_courts`. They can still surface as `existing_matches`
+            because those bookings already exist — joining doesn't create a new booking.
+        """
+        if end_date is not None and end_date < start_date:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="end_date must be on or after start_date",
+            )
+
+        club_result = await self.db.execute(
+            select(Club).where(Club.id == club_id, Club.tenant_id == tenant_id)
+        )
+        club = club_result.scalar_one_or_none()
+        if not club:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+        court_stmt = select(Court).where(Court.club_id == club_id, Court.is_active)
+        if surface is not None:
+            court_stmt = court_stmt.where(Court.surface_type == surface)
+        courts_result = await self.db.execute(court_stmt)
+        courts: list[Court] = list(courts_result.scalars().all())
+
+        if not courts:
+            return {
+                "club_id": club_id,
+                "courts": [],
+                "days": [],
+                "next_cursor": None,
+            }
+
+        court_ids = [c.id for c in courts]
+
+        # Determine scan boundary
+        if end_date is not None:
+            scan_end = end_date
+            apply_limit = False
+        else:
+            scan_end = start_date + timedelta(days=_AVAILABILITY_MAX_SCAN_DAYS - 1)
+            apply_limit = True
+
+        range_start_dt = datetime.combine(start_date, TimeType.min, tzinfo=timezone.utc)
+        range_end_dt = datetime.combine(scan_end + timedelta(days=1), TimeType.min, tzinfo=timezone.utc)
+
+        # Bookings in range across our courts
+        bookings_result = await self.db.execute(
+            select(Booking)
+            .options(selectinload(Booking.players))
+            .where(
+                Booking.court_id.in_(court_ids),
+                Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+                Booking.start_datetime < range_end_dt,
+                Booking.end_datetime > range_start_dt,
+            )
+        )
+        bookings: list[Booking] = list(bookings_result.scalars().unique().all())
+
+        bookings_by_court: dict[uuid.UUID, list[Booking]] = {cid: [] for cid in court_ids}
+        for b in bookings:
+            bookings_by_court[b.court_id].append(b)
+
+        # Calendar reservations in range (court-specific OR club-wide where court_id IS NULL)
+        reservations_result = await self.db.execute(
+            select(CalendarReservation).where(
+                CalendarReservation.club_id == club_id,
+                or_(
+                    CalendarReservation.court_id.in_(court_ids),
+                    CalendarReservation.court_id.is_(None),
+                ),
+                CalendarReservation.start_datetime < range_end_dt,
+                CalendarReservation.end_datetime > range_start_dt,
+            )
+        )
+        reservations: list[CalendarReservation] = list(reservations_result.scalars().all())
+
+        reservations_by_court: dict[Optional[uuid.UUID], list[CalendarReservation]] = {}
+        for r in reservations:
+            reservations_by_court.setdefault(r.court_id, []).append(r)
+
+        # Operating hours and pricing rules — pull once, group by weekday
+        oh_result = await self.db.execute(
+            select(OperatingHours).where(
+                OperatingHours.club_id == club_id,
+                or_(OperatingHours.valid_from.is_(None), OperatingHours.valid_from <= scan_end),
+                or_(OperatingHours.valid_until.is_(None), OperatingHours.valid_until >= start_date),
+            )
+        )
+        oh_records: list[OperatingHours] = list(oh_result.scalars().all())
+
+        pricing_result = await self.db.execute(
+            select(PricingRule).where(
+                PricingRule.club_id == club_id,
+                PricingRule.is_active.is_(True),
+                or_(PricingRule.valid_from.is_(None), PricingRule.valid_from <= scan_end),
+                or_(PricingRule.valid_until.is_(None), PricingRule.valid_until >= start_date),
+            )
+        )
+        pricing_rules: list[PricingRule] = list(pricing_result.scalars().all())
+
+        pricing_by_dow: dict[int, list[PricingRule]] = {}
+        for rule in pricing_rules:
+            pricing_by_dow.setdefault(rule.day_of_week, []).append(rule)
+
+        slot_duration = timedelta(minutes=club.booking_duration_minutes)
+        now = datetime.now(tz=timezone.utc)
+        notice_cutoff = now + timedelta(hours=club.min_booking_notice_hours)
+        advance_limit = now + timedelta(days=club.max_advance_booking_days)
+
+        days_out: list[dict] = []
+        emitted_count = 0
+        next_cursor: Optional[dict] = None
+        cursor_set = False
+
+        def _select_pricing(day_rules: list[PricingRule], slot_start_t: TimeType, query_date: DateType) -> tuple[Optional[Decimal], Optional[str]]:
+            for rule in day_rules:
+                if not (rule.start_time <= slot_start_t < rule.end_time):
+                    continue
+                if rule.valid_from is not None and rule.valid_from > query_date:
+                    continue
+                if rule.valid_until is not None and rule.valid_until < query_date:
+                    continue
+                if rule.incentive_price is not None and (
+                    rule.incentive_expires_at is None or rule.incentive_expires_at > now
+                ):
+                    return Decimal(str(rule.incentive_price)), (rule.incentive_label or rule.label)
+                return Decimal(str(rule.price_per_slot)), rule.label
+            return None, None
+
+        current = start_date
+        while current <= scan_end and not cursor_set:
+            dow = current.weekday()
+            day_oh = [oh for oh in oh_records if oh.day_of_week == dow
+                      and (oh.valid_from is None or oh.valid_from <= current)
+                      and (oh.valid_until is None or oh.valid_until >= current)]
+            if not day_oh:
+                current += timedelta(days=1)
+                continue
+            # Prefer seasonal (valid_from set) over the catch-all row
+            oh = next((h for h in day_oh if h.valid_from is not None), day_oh[0])
+
+            window_open = datetime.combine(current, oh.open_time, tzinfo=timezone.utc)
+            window_close = datetime.combine(current, oh.close_time, tzinfo=timezone.utc)
+            if from_time is not None:
+                clamp_open = datetime.combine(current, from_time, tzinfo=timezone.utc)
+                if clamp_open > window_open:
+                    window_open = clamp_open
+            if to_time is not None:
+                clamp_close = datetime.combine(current, to_time, tzinfo=timezone.utc)
+                if clamp_close < window_close:
+                    window_close = clamp_close
+            if window_open >= window_close:
+                current += timedelta(days=1)
+                continue
+
+            day_rules = pricing_by_dow.get(dow, [])
+            day_slots: list[dict] = []
+
+            slot_start = window_open
+            while slot_start + slot_duration <= window_close and not cursor_set:
+                slot_end = slot_start + slot_duration
+
+                bookable = slot_start >= notice_cutoff and slot_start <= advance_limit
+
+                available_courts: list[dict] = []
+                existing_matches: list[dict] = []
+
+                for court in courts:
+                    overlap_booking = next(
+                        (
+                            b for b in bookings_by_court.get(court.id, [])
+                            if b.start_datetime < slot_end and b.end_datetime > slot_start
+                        ),
+                        None,
+                    )
+                    overlap_reservation = next(
+                        (
+                            r for r in (
+                                reservations_by_court.get(court.id, [])
+                                + reservations_by_court.get(None, [])
+                            )
+                            if r.start_datetime < slot_end and r.end_datetime > slot_start
+                        ),
+                        None,
+                    )
+
+                    if overlap_reservation is not None:
+                        continue  # court blocked at this slot
+
+                    if overlap_booking is None:
+                        if not bookable:
+                            continue
+                        price, price_label = _select_pricing(day_rules, slot_start.time(), current)
+                        available_courts.append({
+                            "court_id": court.id,
+                            "price": price,
+                            "price_label": price_label,
+                        })
+                        continue
+
+                    # Court has a booking — only surface it if it's a joinable open game
+                    if not overlap_booking.is_open_game:
+                        continue
+                    accepted = sum(
+                        1 for p in overlap_booking.players
+                        if p.invite_status == InviteStatus.accepted
+                    )
+                    slots_left = max(0, (overlap_booking.max_players or 0) - accepted)
+                    if slots_left <= 0:
+                        continue
+                    if skill_level is not None:
+                        if overlap_booking.min_skill_level is not None and Decimal(str(overlap_booking.min_skill_level)) > skill_level:
+                            continue
+                        if overlap_booking.max_skill_level is not None and Decimal(str(overlap_booking.max_skill_level)) < skill_level:
+                            continue
+                    existing_matches.append({
+                        "booking_id": overlap_booking.id,
+                        "court_id": court.id,
+                        "slots_available": slots_left,
+                        "min_skill_level": overlap_booking.min_skill_level,
+                        "max_skill_level": overlap_booking.max_skill_level,
+                        "total_price": overlap_booking.total_price,
+                    })
+
+                if available_courts or existing_matches:
+                    if apply_limit and emitted_count >= limit:
+                        next_cursor = {
+                            "date": current,
+                            "from_time": slot_start.strftime("%H:%M"),
+                        }
+                        cursor_set = True
+                        break
+                    day_slots.append({
+                        "start_time": slot_start.strftime("%H:%M"),
+                        "end_time": slot_end.strftime("%H:%M"),
+                        "available_count": len(available_courts),
+                        "available_courts": available_courts,
+                        "existing_matches": existing_matches,
+                    })
+                    emitted_count += 1
+
+                slot_start = slot_end
+
+            if day_slots:
+                days_out.append({"date": current, "slots": day_slots})
+
+            current += timedelta(days=1)
+
+        return {
+            "club_id": club_id,
+            "courts": courts,
+            "days": days_out,
+            "next_cursor": next_cursor,
+        }

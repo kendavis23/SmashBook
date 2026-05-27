@@ -1,4 +1,4 @@
-_Last updated: 2026-05-27 13:00 UTC_
+_Last updated: 2026-05-27 14:30 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -81,6 +81,7 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | `GET` | `/api/v1/clubs/{club_id}/pricing-rules` | Get all peak/off-peak pricing windows |
 | `PUT` | `/api/v1/clubs/{club_id}/pricing-rules` | Replace all pricing rules for the club (admin+) |
 | `POST` | `/api/v1/clubs/{club_id}/stripe/connect` | Initiate Stripe Connect Express onboarding; returns one-time URL (admin+) |
+| `GET` | `/api/v1/clubs/{club_id}/availability` | Chronological list of bookable slots + joinable open matches. Query params: `start_date` (required), `end_date`, `surface`, `from_time`, `to_time`, `skill_level`. When `end_date` is omitted, returns up to 40 slot rows + `next_cursor` for FE paging |
 
 ---
 

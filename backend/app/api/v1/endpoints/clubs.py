@@ -1,8 +1,10 @@
 import uuid
-from typing import List
+from datetime import date as DateType, datetime
+from decimal import Decimal
+from typing import List, Optional
 
 import stripe
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +12,9 @@ from app.api.v1.dependencies.auth import get_current_user, require_admin
 from app.api.v1.dependencies.tenant import get_tenant
 from app.core.config import get_settings
 from app.db.models.club import Club, OperatingHours, PricingRule
+from app.db.models.court import SurfaceType
 from app.db.models.tenant import SubscriptionPlan, Tenant
+from app.db.models.user import User
 from app.db.session import get_db, get_read_db
 from app.schemas.club import (
     ClubCreate,
@@ -23,6 +27,16 @@ from app.schemas.club import (
     StripeConnectRequest,
     StripeConnectResponse,
 )
+from app.schemas.court import (
+    AvailabilityCourt,
+    AvailabilityCursor,
+    AvailabilityDay,
+    AvailabilityExistingMatch,
+    AvailabilitySlot,
+    AvailabilitySlotCourt,
+    ClubAvailabilityResponse,
+)
+from app.services.court_service import CourtService
 
 router = APIRouter(prefix="/clubs", tags=["clubs"])
 
@@ -118,6 +132,76 @@ async def get_club(club_id: uuid.UUID, db: AsyncSession = Depends(get_read_db)):
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
     return club
+
+
+@router.get("/{club_id}/availability", response_model=ClubAvailabilityResponse)
+async def get_club_availability(
+    club_id: uuid.UUID,
+    start_date: DateType = Query(..., description="First date to search (YYYY-MM-DD, UTC)"),
+    end_date: Optional[DateType] = Query(default=None, description="Last date to search (inclusive). If omitted, scan forward up to 40 slot rows and return next_cursor."),
+    surface: Optional[SurfaceType] = Query(default=None, description="Filter empty-court availability by surface type"),
+    from_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to start at HH:MM UTC"),
+    to_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to end at HH:MM UTC"),
+    skill_level: Optional[Decimal] = Query(default=None, description="Filter joinable open matches to those whose skill range includes this level"),
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """
+    Chronologically-ordered slot list for booking a court or joining an open match.
+
+    Each slot may carry both `available_courts` (empty courts the user can book) and
+    `existing_matches` (joinable open games at that time). Slots with neither are omitted.
+    When `end_date` is omitted, up to 40 slot rows are returned plus a `next_cursor`
+    the FE can use to request the next page.
+    """
+    try:
+        parsed_from = datetime.strptime(from_time, "%H:%M").time() if from_time else None
+        parsed_to = datetime.strptime(to_time, "%H:%M").time() if to_time else None
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Invalid time format. Use HH:MM",
+        )
+    if parsed_from is not None and parsed_to is not None and parsed_from >= parsed_to:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="from_time must be earlier than to_time",
+        )
+
+    svc = CourtService(db)
+    data = await svc.get_availability(
+        tenant_id=tenant.id,
+        club_id=club_id,
+        start_date=start_date,
+        end_date=end_date,
+        surface=surface,
+        from_time=parsed_from,
+        to_time=parsed_to,
+        skill_level=skill_level,
+    )
+
+    return ClubAvailabilityResponse(
+        club_id=data["club_id"],
+        courts=[AvailabilityCourt.model_validate(c) for c in data["courts"]],
+        days=[
+            AvailabilityDay(
+                date=day["date"],
+                slots=[
+                    AvailabilitySlot(
+                        start_time=s["start_time"],
+                        end_time=s["end_time"],
+                        available_count=s["available_count"],
+                        available_courts=[AvailabilitySlotCourt(**c) for c in s["available_courts"]],
+                        existing_matches=[AvailabilityExistingMatch(**m) for m in s["existing_matches"]],
+                    )
+                    for s in day["slots"]
+                ],
+            )
+            for day in data["days"]
+        ],
+        next_cursor=AvailabilityCursor(**data["next_cursor"]) if data["next_cursor"] else None,
+    )
 
 
 @router.patch("/{club_id}/settings", response_model=ClubSettingsResponse)
