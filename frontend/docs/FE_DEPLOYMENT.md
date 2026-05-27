@@ -1,4 +1,4 @@
-_Last updated: 2026-05-17 00:00 UTC_
+_Last updated: 2026-05-27 00:00 UTC_
 
 # Frontend Deployment
 
@@ -362,7 +362,25 @@ Deploy steps:
 
 ### SPA routing
 
-GCS `not_found_page` is set to `index.html` — handles client-side routing.
+SPA routing is handled by a **Cloudflare URL Rewrite Rule** at the edge (zone-level, `http_request_transform` phase), provisioned in Layer 1 via `modules/spa_routing`. It rewrites all non-asset requests to `/index.html` before they reach GCS — so hard-refreshing a deep route (e.g. `/clubs`) returns HTTP 200, not 404. This is an edge rewrite (not a redirect) — the browser URL stays unchanged.
+
+The rule matches **by subdomain naming convention**, not a blanket `*.smashbook.app` wildcard, so non-frontend subdomains (`backend`, `api`, `ws`, etc.) are never affected:
+
+| Pattern matched | Portal |
+| ------------------------------------------ | ----------------------- |
+| `<slug>-staging.smashbook.app` | Staff portal — staging |
+| `<slug>-player-staging.smashbook.app` | Player portal — staging |
+| `<slug>-player.smashbook.app` | Player portal — production |
+| `<slug>.smashbook.app` (no reserved suffix) | Staff portal — production |
+
+Reserved suffixes explicitly excluded from the production staff pattern: `staging`, `player`, `api`, `backend`, `admin`, `ws`, `mail`, `cdn`. Additional exclusions (`admin.smashbook.app`, `smashbook.app`) are also hardcoded.
+
+**Adding a new frontend subdomain convention?** Add a matching pattern to `modules/spa_routing/main.tf`.  
+**Adding a new non-frontend subdomain** (e.g. `ws.smashbook.app`)? Add `and http.host ne "ws.smashbook.app"` to the exclusion block in the same file.
+
+Rule is created once in Layer 1 — no per-client change needed when onboarding new clients.
+
+GCS `not_found_page` is also set to `index.html` as a secondary fallback only.
 
 ---
 

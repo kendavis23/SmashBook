@@ -22,6 +22,18 @@ provider "cloudflare" {
 }
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# SHARED — SPA Routing (zone-level Cloudflare URL rewrite — created once)
+# Rewrites all non-asset requests to /index.html at the edge so hard-refreshing
+# a deep React route (e.g. /clubs) doesn't return a GCS 404.
+# Covers every *.smashbook.app subdomain automatically — no per-client change.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+module "spa_routing" {
+  source             = "./modules/spa_routing"
+  cloudflare_zone_id = var.cloudflare_zone_id
+}
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # SHARED — Cloud Armor (one policy, referenced by both backend buckets)
 # ═══════════════════════════════════════════════════════════════════════════════
 

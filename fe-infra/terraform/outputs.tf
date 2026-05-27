@@ -55,3 +55,8 @@ output "armor_policy_name" {
   description = "Cloud Armor security policy name (Cloudflare-only allowlist)"
   value       = module.armor.policy_name
 }
+
+output "spa_routing_ruleset_id" {
+  description = "Cloudflare Ruleset ID for the zone-level SPA URL rewrite rule"
+  value       = module.spa_routing.ruleset_id
+}
