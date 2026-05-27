@@ -17,7 +17,16 @@
             },
             "package": "app.smashbook.mobile"
         },
-        "plugins": ["expo-router"],
+        "plugins": [
+            "expo-router",
+            [
+                "@stripe/stripe-react-native",
+                {
+                    "merchantIdentifier": "merchant.app.smashbook.mobile",
+                    "enableGooglePay": false
+                }
+            ]
+        ],
         "experiments": {
             "typedRoutes": true
         }
