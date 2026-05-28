@@ -1,4 +1,4 @@
-export type { UUID } from "../../staff/common";
+export type { UUID } from "../common";
 
 export type {
     BillingPeriod,
@@ -19,12 +19,22 @@ export interface MembershipSubscriptionResponse {
     cancelled_at: string | null;
     credits_remaining: number;
     guest_passes_remaining: number | null;
+    pending_plan_id: string | null;
     plan: MembershipPlanResponse;
 }
 
 export interface MembershipSubscribeRequest {
     plan_id: string;
     payment_method_id?: string | null;
+}
+
+export interface MembershipUpgradeRequest {
+    plan_id: string;
+    payment_method_id?: string | null;
+}
+
+export interface MembershipDowngradeRequest {
+    plan_id: string;
 }
 
 export interface MembershipSubscribeResponse {

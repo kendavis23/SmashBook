@@ -1,3 +1,13 @@
+export type {
+    ClubAvailabilityCourt,
+    ClubAvailabilitySlotCourt,
+    ClubAvailabilityExistingMatch,
+    ClubAvailabilitySlot,
+    ClubAvailabilityDay,
+    ClubAvailabilityCursor,
+    ClubAvailability,
+    ClubAvailabilityParams,
+} from "./club.model";
 export type { PlayerSearchResult, PlayerSearchParams } from "./player.model";
 export type { ItemType, ItemCondition, EquipmentItem } from "./equipment.model";
 export type { SurfaceType, Court, TimeSlot, CourtAvailability } from "./court.model";
@@ -51,4 +61,6 @@ export type {
     MembershipSubscription,
     MembershipSubscribeInput,
     MembershipSubscribeResult,
+    MembershipUpgradeInput,
+    MembershipDowngradeInput,
 } from "./membership.model";

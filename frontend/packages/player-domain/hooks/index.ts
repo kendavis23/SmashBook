@@ -1,3 +1,4 @@
+export { useGetClubAvailability } from "./club.hooks";
 export {
     useMyProfile,
     useUpdateMyProfile,
@@ -34,4 +35,7 @@ export {
     useMyMembership,
     useSubscribeToMembership,
     useCancelMyMembership,
+    useUpgradeMyMembership,
+    useDowngradeMyMembership,
+    useCancelPendingDowngrade,
 } from "./membership.hooks";

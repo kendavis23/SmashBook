@@ -3,6 +3,9 @@ import {
     cancelMyMembershipEndpoint,
     getMyMembershipEndpoint,
     subscribeToPlanEndpoint,
+    upgradeMyMembershipEndpoint,
+    downgradeMyMembershipEndpoint,
+    cancelPendingDowngradeEndpoint,
 } from "@repo/api-client/modules/player";
 import { listMembershipPlansEndpoint } from "@repo/api-client/modules/share";
 import type {
@@ -10,6 +13,8 @@ import type {
     MembershipSubscribeInput,
     MembershipSubscribeResult,
     MembershipSubscription,
+    MembershipUpgradeInput,
+    MembershipDowngradeInput,
 } from "../models";
 
 const membershipKeys = {
@@ -47,6 +52,36 @@ export function useCancelMyMembership(clubId: string) {
     const queryClient = useQueryClient();
     return useMutation<MembershipSubscription, Error, void>({
         mutationFn: () => cancelMyMembershipEndpoint(clubId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: membershipKeys.me(clubId) });
+        },
+    });
+}
+
+export function useUpgradeMyMembership(clubId: string) {
+    const queryClient = useQueryClient();
+    return useMutation<MembershipSubscribeResult, Error, MembershipUpgradeInput>({
+        mutationFn: (data) => upgradeMyMembershipEndpoint(clubId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: membershipKeys.me(clubId) });
+        },
+    });
+}
+
+export function useDowngradeMyMembership(clubId: string) {
+    const queryClient = useQueryClient();
+    return useMutation<MembershipSubscription, Error, MembershipDowngradeInput>({
+        mutationFn: (data) => downgradeMyMembershipEndpoint(clubId, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: membershipKeys.me(clubId) });
+        },
+    });
+}
+
+export function useCancelPendingDowngrade(clubId: string) {
+    const queryClient = useQueryClient();
+    return useMutation<MembershipSubscription, Error, void>({
+        mutationFn: () => cancelPendingDowngradeEndpoint(clubId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: membershipKeys.me(clubId) });
         },

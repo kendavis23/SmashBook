@@ -1,3 +1,5 @@
+export * from "./club/club.api";
+export * from "./club/club.types";
 export * from "./profile/profile.api";
 export * from "./profile/profile.types";
 export * from "./booking/booking.api";

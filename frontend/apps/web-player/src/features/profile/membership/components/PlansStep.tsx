@@ -8,6 +8,7 @@ type Props = {
     currentPlanId: string | null;
     currentPlanPrice: number | null;
     membershipStatus: string | null;
+    pendingPlanId: string | null;
     onSelectPlan: (plan: MembershipPlan) => void;
 };
 
@@ -16,6 +17,7 @@ export function PlansStep({
     currentPlanId,
     currentPlanPrice,
     membershipStatus,
+    pendingPlanId,
     onSelectPlan,
 }: Props): JSX.Element {
     const { data: plans, isLoading, error } = useListMembershipPlans(clubId);
@@ -58,6 +60,7 @@ export function PlansStep({
                             isCurrent={hasActiveMembership && plan.id === currentPlanId}
                             hasActiveMembership={hasActiveMembership}
                             currentPlanPrice={currentPlanPrice}
+                            pendingPlanId={pendingPlanId}
                             onSelect={() => onSelectPlan(plan)}
                         />
                     ))}
