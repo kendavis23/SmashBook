@@ -1,12 +1,14 @@
 import { useState, type JSX } from "react";
 import { formatUTCDate, formatCurrency } from "@repo/ui";
-import { BadgeCheck, CreditCard, Ticket, Users } from "lucide-react";
+import { BadgeCheck, CreditCard, Ticket, Users, ArrowDown, CalendarX } from "lucide-react";
+import type { MembershipPlan } from "@repo/player-domain/models";
 import type { MembershipSubscription } from "../../types";
 import { STATUS_STYLES, FALLBACK_STYLE } from "./membershipConstants";
 import { StatRow, SectionHeader } from "./MembershipPrimitives";
 
 type Props = {
     membership: MembershipSubscription;
+    allPlans: MembershipPlan[];
     onCancel: () => void;
     isCancelling: boolean;
     cancelError: string | null;
@@ -17,6 +19,7 @@ type Props = {
 
 export function CurrentMembershipCard({
     membership,
+    allPlans,
     onCancel,
     isCancelling,
     cancelError,
@@ -26,11 +29,32 @@ export function CurrentMembershipCard({
 }: Props): JSX.Element {
     const [showConfirm, setShowConfirm] = useState(false);
     const { plan, status } = membership;
+    const pendingPlan = membership.pending_plan_id
+        ? (allPlans.find((p) => p.id === membership.pending_plan_id) ?? null)
+        : null;
     const style = STATUS_STYLES[status] ?? FALLBACK_STYLE;
     const billingPeriod = plan.billing_period === "annual" ? "year" : "month";
 
     return (
         <div className="space-y-4">
+            {membership.pending_plan_id && (
+                <PendingDowngradeSection
+                    currentPlanName={plan.name}
+                    pendingPlanName={pendingPlan?.name ?? null}
+                    periodEnd={membership.current_period_end}
+                    onCancelDowngrade={onCancelPendingDowngrade}
+                    isCancelling={isCancellingPendingDowngrade}
+                    error={cancelPendingDowngradeError}
+                />
+            )}
+
+            {membership.cancel_at_period_end && !membership.pending_plan_id && (
+                <CancellationNotice
+                    planName={plan.name}
+                    periodEnd={membership.current_period_end}
+                />
+            )}
+
             <section className="overflow-hidden rounded-xl border border-border bg-card">
                 <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="flex min-w-0 items-start gap-3">
@@ -115,25 +139,6 @@ export function CurrentMembershipCard({
                 </section>
             </div>
 
-            {membership.pending_plan_id && (
-                <PendingDowngradeSection
-                    periodEnd={membership.current_period_end}
-                    onStayWithCurrentPlan={onCancelPendingDowngrade}
-                    isCancelling={isCancellingPendingDowngrade}
-                    error={cancelPendingDowngradeError}
-                />
-            )}
-
-            {membership.cancel_at_period_end && !membership.pending_plan_id && (
-                <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm font-medium text-warning">
-                    Your membership cancels on{" "}
-                    <span className="font-semibold">
-                        {formatUTCDate(membership.current_period_end)}
-                    </span>{" "}
-                    — you keep full access until then.
-                </div>
-            )}
-
             {((plan.booking_credits_per_period ?? 0) > 0 ||
                 (plan.guest_passes_per_period ?? 0) > 0 ||
                 (plan.max_active_members ?? 0) > 0) && (
@@ -183,46 +188,110 @@ export function CurrentMembershipCard({
 }
 
 function PendingDowngradeSection({
+    currentPlanName,
+    pendingPlanName,
     periodEnd,
-    onStayWithCurrentPlan,
+    onCancelDowngrade,
     isCancelling,
     error,
 }: {
+    currentPlanName: string;
+    pendingPlanName: string | null;
     periodEnd: string;
-    onStayWithCurrentPlan: () => void;
+    onCancelDowngrade: () => void;
     isCancelling: boolean;
     error: string | null;
 }): JSX.Element {
     return (
-        <div className="rounded-xl border border-warning/25 bg-warning/10 p-4 space-y-3">
-            <div>
-                <p className="text-sm font-semibold text-warning">Plan change scheduled</p>
-                <p className="mt-1 text-xs text-warning/80">
-                    Your membership will switch to a lower plan at the end of your current billing
-                    period on <span className="font-semibold">{formatUTCDate(periodEnd)}</span>. You
-                    keep all current benefits until then.
+        <div className="overflow-hidden rounded-xl border border-destructive/25 bg-destructive/5">
+            <div className="flex items-start gap-3 border-b border-destructive/15 px-4 py-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+                    <ArrowDown size={15} />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-destructive">Downgrade scheduled</p>
+                    <p className="mt-0.5 text-xs leading-5 text-destructive/70">
+                        {pendingPlanName ? (
+                            <>
+                                Switching from{" "}
+                                <span className="font-semibold text-destructive/90">
+                                    {currentPlanName}
+                                </span>{" "}
+                                →{" "}
+                                <span className="font-semibold text-destructive/90">
+                                    {pendingPlanName}
+                                </span>{" "}
+                                on{" "}
+                                <span className="font-semibold text-destructive/90">
+                                    {formatUTCDate(periodEnd)}
+                                </span>
+                                .
+                            </>
+                        ) : (
+                            <>
+                                Your plan downgrades on{" "}
+                                <span className="font-semibold text-destructive/90">
+                                    {formatUTCDate(periodEnd)}
+                                </span>
+                                .
+                            </>
+                        )}{" "}
+                        You keep all current benefits until then.
+                    </p>
+                </div>
+            </div>
+            <div className="px-4 py-3 space-y-2">
+                {error && (
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                        {error}
+                    </div>
+                )}
+                <button
+                    type="button"
+                    onClick={onCancelDowngrade}
+                    disabled={isCancelling}
+                    className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-destructive px-4 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90 disabled:opacity-50"
+                >
+                    {isCancelling ? (
+                        <>
+                            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-destructive-foreground/40 border-t-destructive-foreground" />
+                            Reverting…
+                        </>
+                    ) : (
+                        <>
+                            <ArrowDown size={14} className="rotate-180" />
+                            Cancel downgrade — stay on {currentPlanName}
+                        </>
+                    )}
+                </button>
+            </div>
+        </div>
+    );
+}
+
+function CancellationNotice({
+    planName,
+    periodEnd,
+}: {
+    planName: string;
+    periodEnd: string;
+}): JSX.Element {
+    return (
+        <div className="overflow-hidden rounded-xl border-2 border-warning/50 bg-warning/10">
+            <div className="flex items-center gap-3 border-b border-warning/25 bg-warning/15 px-4 py-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warning/25 text-warning">
+                    <CalendarX size={17} />
+                </div>
+                <p className="text-sm font-bold text-warning">Membership ending soon</p>
+            </div>
+            <div className="px-4 py-3.5">
+                <p className="text-sm leading-6 text-warning/90">
+                    Your <span className="font-bold text-warning">{planName}</span> membership will
+                    not renew after{" "}
+                    <span className="font-bold text-warning">{formatUTCDate(periodEnd)}</span>. You
+                    keep full access until then.
                 </p>
             </div>
-            {error && (
-                <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
-                    {error}
-                </div>
-            )}
-            <button
-                type="button"
-                onClick={onStayWithCurrentPlan}
-                disabled={isCancelling}
-                className="btn-outline min-h-9 w-full text-xs font-semibold disabled:opacity-50"
-            >
-                {isCancelling ? (
-                    <span className="flex items-center justify-center gap-2">
-                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-border border-t-foreground" />
-                        Reverting…
-                    </span>
-                ) : (
-                    "Stay with my current plan — keep things as they are"
-                )}
-            </button>
         </div>
     );
 }

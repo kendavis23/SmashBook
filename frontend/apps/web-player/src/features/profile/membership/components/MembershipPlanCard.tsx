@@ -1,6 +1,6 @@
 import { type JSX } from "react";
 import { formatCurrency } from "@repo/ui";
-import { BadgeCheck, Check, ArrowUp, ArrowDown } from "lucide-react";
+import { BadgeCheck, Check, ArrowUp, ArrowDown, Clock } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
 
 type Props = {
@@ -8,6 +8,7 @@ type Props = {
     isCurrent: boolean;
     hasActiveMembership: boolean;
     currentPlanPrice: number | null;
+    pendingPlanId: string | null;
     onSelect: () => void;
 };
 
@@ -16,6 +17,7 @@ export function MembershipPlanCard({
     isCurrent,
     hasActiveMembership,
     currentPlanPrice,
+    pendingPlanId,
     onSelect,
 }: Props): JSX.Element {
     const perks = [
@@ -43,8 +45,13 @@ export function MembershipPlanCard({
         currentPlanPrice !== null &&
         plan.price === currentPlanPrice;
 
+    const isPendingDowngrade = pendingPlanId === plan.id;
+    // Another downgrade is already pending for a different plan
+    const isDowngradeBlocked = isDowngrade && pendingPlanId !== null && !isPendingDowngrade;
+
     function getButtonLabel(): string {
         if (isUpgrade) return "Upgrade to this plan";
+        if (isDowngradeBlocked) return "Cancel pending downgrade first";
         if (isDowngrade) return "Downgrade to this plan";
         if (isSwitchSameTier) return "Switch to this plan";
         return "Select this plan";
@@ -55,16 +62,23 @@ export function MembershipPlanCard({
             className={`relative flex h-full flex-col overflow-hidden rounded-xl border transition ${
                 isCurrent
                     ? "border-cta bg-card ring-1 ring-cta/20"
-                    : hasActiveMembership
-                      ? isUpgrade
-                          ? "border-border bg-card hover:border-cta/40 hover:shadow-sm"
-                          : "border-border bg-card hover:border-foreground/25 hover:shadow-sm"
-                      : "border-border bg-card hover:border-foreground/25"
+                    : isPendingDowngrade
+                      ? "border-warning/40 bg-card ring-1 ring-warning/20"
+                      : hasActiveMembership
+                        ? isUpgrade
+                            ? "border-border bg-card hover:border-cta/40 hover:shadow-sm"
+                            : "border-border bg-card hover:border-foreground/25 hover:shadow-sm"
+                        : "border-border bg-card hover:border-foreground/25"
             }`}
         >
             {isUpgrade && (
                 <div className="absolute right-0 top-0 rounded-bl-xl rounded-tr-xl bg-cta px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-cta-foreground">
                     Recommended
+                </div>
+            )}
+            {isPendingDowngrade && (
+                <div className="absolute right-0 top-0 rounded-bl-xl rounded-tr-xl bg-warning/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-warning">
+                    Scheduled
                 </div>
             )}
 
@@ -131,18 +145,26 @@ export function MembershipPlanCard({
                             <BadgeCheck size={13} />
                             Current plan
                         </div>
+                    ) : isPendingDowngrade ? (
+                        <div className="flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-warning/25 bg-warning/10 text-xs font-semibold text-warning">
+                            <Clock size={13} />
+                            Switching at period end
+                        </div>
                     ) : (
                         <button
                             type="button"
-                            onClick={onSelect}
+                            onClick={isDowngradeBlocked ? undefined : onSelect}
+                            disabled={isDowngradeBlocked}
                             className={`inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-xl text-sm font-semibold transition-all ${
                                 isUpgrade
                                     ? "btn-cta"
-                                    : "border border-border bg-card text-foreground hover:bg-muted"
+                                    : isDowngradeBlocked
+                                      ? "cursor-not-allowed border border-border bg-muted/50 text-muted-foreground opacity-60"
+                                      : "border border-border bg-card text-foreground hover:bg-muted"
                             }`}
                         >
                             {isUpgrade && <ArrowUp size={13} />}
-                            {isDowngrade && <ArrowDown size={13} />}
+                            {isDowngrade && !isDowngradeBlocked && <ArrowDown size={13} />}
                             {getButtonLabel()}
                         </button>
                     )}

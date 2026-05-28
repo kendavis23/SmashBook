@@ -2,10 +2,12 @@ import { useCallback, useState, type JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { loadStripe } from "@stripe/stripe-js";
 import { config } from "@repo/config";
-import { BadgeCheck, Star, Zap } from "lucide-react";
+import { formatCurrency } from "@repo/ui";
+import { BadgeCheck, Star, Zap, ArrowUp } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
 import {
     useMyMembership,
+    useListMembershipPlans,
     useCancelMyMembership,
     useSubscribeToMembership,
     useCancelPendingDowngrade,
@@ -26,6 +28,7 @@ export default function MyMembershipContainer(): JSX.Element {
     const navigate = useNavigate();
 
     const { data: membership, isLoading, error } = useMyMembership(clubId ?? "", { enabled: true });
+    const { data: allPlans } = useListMembershipPlans(clubId ?? "");
 
     const [step, setStep] = useState<FlowStep>({ id: "current" });
     const [subscribeError, setSubscribeError] = useState<string | null>(null);
@@ -233,15 +236,34 @@ export default function MyMembershipContainer(): JSX.Element {
                 </header>
                 <div className="px-5 py-6 sm:px-6">
                     {membership ? (
-                        <CurrentMembershipCard
-                            membership={membership}
-                            onCancel={() => void handleCancel()}
-                            isCancelling={cancelMutation.isPending}
-                            cancelError={cancelError}
-                            onCancelPendingDowngrade={() => void handleCancelPendingDowngrade()}
-                            isCancellingPendingDowngrade={cancelPendingDowngradeMutation.isPending}
-                            cancelPendingDowngradeError={cancelPendingDowngradeError}
-                        />
+                        <>
+                            <CurrentMembershipCard
+                                membership={membership}
+                                allPlans={allPlans ?? []}
+                                onCancel={() => void handleCancel()}
+                                isCancelling={cancelMutation.isPending}
+                                cancelError={cancelError}
+                                onCancelPendingDowngrade={() => void handleCancelPendingDowngrade()}
+                                isCancellingPendingDowngrade={
+                                    cancelPendingDowngradeMutation.isPending
+                                }
+                                cancelPendingDowngradeError={cancelPendingDowngradeError}
+                            />
+                            {(membership.status === "active" || membership.status === "trialing") &&
+                                !membership.cancel_at_period_end &&
+                                !membership.pending_plan_id &&
+                                (allPlans ?? []).some((p) => p.price > membership.plan.price) && (
+                                    <UpgradeCTABanner
+                                        currentPlanName={membership.plan.name}
+                                        nextPlan={
+                                            (allPlans ?? [])
+                                                .filter((p) => p.price > membership.plan.price)
+                                                .sort((a, b) => a.price - b.price)[0] ?? null
+                                        }
+                                        onBrowsePlans={handleBrowsePlans}
+                                    />
+                                )}
+                        </>
                     ) : (
                         <div className="rounded-xl border border-border bg-card p-4">
                             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -272,6 +294,44 @@ export default function MyMembershipContainer(): JSX.Element {
                     )}
                 </div>
             </section>
+        </div>
+    );
+}
+
+function UpgradeCTABanner({
+    currentPlanName,
+    nextPlan,
+    onBrowsePlans,
+}: {
+    currentPlanName: string;
+    nextPlan: MembershipPlan | null;
+    onBrowsePlans: () => void;
+}): JSX.Element {
+    return (
+        <div className="mt-4 flex flex-col gap-3 rounded-xl border border-cta/20 bg-cta/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cta/10 text-cta">
+                    <ArrowUp size={15} />
+                </div>
+                <div>
+                    <p className="text-sm font-semibold text-foreground">
+                        Upgrade from {currentPlanName}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                        {nextPlan
+                            ? `Get more credits, passes, and perks — from ${formatCurrency(nextPlan.price)} / ${nextPlan.billing_period === "annual" ? "year" : "month"}`
+                            : "Get more credits, passes, and perks with a higher plan."}
+                    </p>
+                </div>
+            </div>
+            <button
+                type="button"
+                onClick={onBrowsePlans}
+                className="btn-cta min-h-9 shrink-0 px-4 text-xs font-semibold sm:self-center"
+            >
+                <Zap size={13} />
+                See upgrade options
+            </button>
         </div>
     );
 }
