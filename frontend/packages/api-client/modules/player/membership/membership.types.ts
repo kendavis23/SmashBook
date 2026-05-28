@@ -1,4 +1,4 @@
-export type { UUID } from "../../staff/common";
+export type { UUID } from "../common";
 
 export type {
     BillingPeriod,

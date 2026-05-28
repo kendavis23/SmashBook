@@ -1,4 +1,4 @@
-import type { UUID } from "../../staff/common";
+import type { UUID } from "../common";
 export type { UUID };
 
 export type TenantUserRole = "player";

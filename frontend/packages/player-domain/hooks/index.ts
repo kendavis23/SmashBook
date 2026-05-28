@@ -1,3 +1,4 @@
+export { useGetClubAvailability } from "./club.hooks";
 export {
     useMyProfile,
     useUpdateMyProfile,
