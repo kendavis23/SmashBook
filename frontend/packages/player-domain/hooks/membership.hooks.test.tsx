@@ -7,12 +7,18 @@ import {
     useMyMembership,
     useSubscribeToMembership,
     useCancelMyMembership,
+    useUpgradeMyMembership,
+    useDowngradeMyMembership,
+    useCancelPendingDowngrade,
 } from "./membership.hooks";
 
 vi.mock("@repo/api-client/modules/player", () => ({
     getMyMembershipEndpoint: vi.fn(),
     subscribeToPlanEndpoint: vi.fn(),
     cancelMyMembershipEndpoint: vi.fn(),
+    upgradeMyMembershipEndpoint: vi.fn(),
+    downgradeMyMembershipEndpoint: vi.fn(),
+    cancelPendingDowngradeEndpoint: vi.fn(),
 }));
 
 vi.mock("@repo/api-client/modules/share", () => ({
@@ -89,6 +95,9 @@ beforeEach(() => {
     vi.mocked(playerApi.getMyMembershipEndpoint).mockReset();
     vi.mocked(playerApi.subscribeToPlanEndpoint).mockReset();
     vi.mocked(playerApi.cancelMyMembershipEndpoint).mockReset();
+    vi.mocked(playerApi.upgradeMyMembershipEndpoint).mockReset();
+    vi.mocked(playerApi.downgradeMyMembershipEndpoint).mockReset();
+    vi.mocked(playerApi.cancelPendingDowngradeEndpoint).mockReset();
 });
 
 const mockSubscribeResult = {
@@ -173,6 +182,65 @@ describe("useCancelMyMembership", () => {
         });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
         expect(playerApi.cancelMyMembershipEndpoint).toHaveBeenCalledWith(CLUB_ID);
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["membership", "me", CLUB_ID] })
+        );
+    });
+});
+
+describe("useUpgradeMyMembership", () => {
+    it("calls endpoint with correct args and invalidates membership query", async () => {
+        vi.mocked(playerApi.upgradeMyMembershipEndpoint).mockResolvedValue(mockSubscribeResult);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useUpgradeMyMembership(CLUB_ID), {
+            wrapper: Wrapper,
+        });
+        const input = { plan_id: "plan-2", payment_method_id: "pm_123" };
+        await act(async () => {
+            result.current.mutate(input);
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(playerApi.upgradeMyMembershipEndpoint).toHaveBeenCalledWith(CLUB_ID, input);
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["membership", "me", CLUB_ID] })
+        );
+    });
+});
+
+describe("useDowngradeMyMembership", () => {
+    it("calls endpoint with correct args and invalidates membership query", async () => {
+        vi.mocked(playerApi.downgradeMyMembershipEndpoint).mockResolvedValue(mockSubscription);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useDowngradeMyMembership(CLUB_ID), {
+            wrapper: Wrapper,
+        });
+        const input = { plan_id: "plan-1" };
+        await act(async () => {
+            result.current.mutate(input);
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(playerApi.downgradeMyMembershipEndpoint).toHaveBeenCalledWith(CLUB_ID, input);
+        expect(invalidate).toHaveBeenCalledWith(
+            expect.objectContaining({ queryKey: ["membership", "me", CLUB_ID] })
+        );
+    });
+});
+
+describe("useCancelPendingDowngrade", () => {
+    it("calls endpoint and invalidates membership query", async () => {
+        vi.mocked(playerApi.cancelPendingDowngradeEndpoint).mockResolvedValue(mockSubscription);
+        const { Wrapper, client } = makeWrapper();
+        const invalidate = vi.spyOn(client, "invalidateQueries");
+        const { result } = renderHook(() => useCancelPendingDowngrade(CLUB_ID), {
+            wrapper: Wrapper,
+        });
+        await act(async () => {
+            result.current.mutate();
+        });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(playerApi.cancelPendingDowngradeEndpoint).toHaveBeenCalledWith(CLUB_ID);
         expect(invalidate).toHaveBeenCalledWith(
             expect.objectContaining({ queryKey: ["membership", "me", CLUB_ID] })
         );

@@ -34,4 +34,7 @@ export {
     useMyMembership,
     useSubscribeToMembership,
     useCancelMyMembership,
+    useUpgradeMyMembership,
+    useDowngradeMyMembership,
+    useCancelPendingDowngrade,
 } from "./membership.hooks";

@@ -4,14 +4,21 @@ import { loadStripe } from "@stripe/stripe-js";
 import { config } from "@repo/config";
 import { BadgeCheck, ArrowUpDown } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
-import { useMyMembership, useSubscribeToMembership } from "@repo/player-domain/hooks";
+import {
+    useMyMembership,
+    useSubscribeToMembership,
+    useUpgradeMyMembership,
+    useDowngradeMyMembership,
+} from "@repo/player-domain/hooks";
 import { useAuth } from "../../store";
 import { PlansStep } from "./PlansStep";
 import { PlanChangeModal } from "./PlanChangeModal";
 
 const stripePromise = loadStripe(config.stripePublishableKey);
 
-type SuccessState = { plan: MembershipPlan; wasPlanChange: boolean } | null;
+export type PlanIntent = "subscribe" | "upgrade" | "downgrade";
+
+type SuccessState = { plan: MembershipPlan; intent: PlanIntent } | null;
 
 export default function MembershipPlansContainer(): JSX.Element {
     const { clubId } = useAuth();
@@ -19,37 +26,60 @@ export default function MembershipPlansContainer(): JSX.Element {
 
     const { data: membership } = useMyMembership(clubId ?? "", { enabled: true });
 
-    // Which plan is being checked out (null = modal closed)
     const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
-    const [subscribeError, setSubscribeError] = useState<string | null>(null);
+    const [actionError, setActionError] = useState<string | null>(null);
     const [isConfirming, setIsConfirming] = useState(false);
     const [success, setSuccess] = useState<SuccessState>(null);
 
     const subscribeMutation = useSubscribeToMembership(clubId ?? "");
+    const upgradeMutation = useUpgradeMyMembership(clubId ?? "");
+    const downgradeMutation = useDowngradeMyMembership(clubId ?? "");
     const { refetch: refetchMembership } = useMyMembership(clubId ?? "", { enabled: false });
 
+    const hasActiveMembership =
+        membership?.status === "active" || membership?.status === "trialing";
+
+    function getPlanIntent(plan: MembershipPlan): PlanIntent {
+        if (!hasActiveMembership || membership?.plan.id === plan.id) return "subscribe";
+        if (plan.price > (membership?.plan.price ?? 0)) return "upgrade";
+        return "downgrade";
+    }
+
     const handleSelectPlan = useCallback((plan: MembershipPlan) => {
-        setSubscribeError(null);
+        setActionError(null);
         setSelectedPlan(plan);
     }, []);
 
     const handleCloseModal = useCallback(() => {
-        if (isConfirming) return; // prevent close while processing
+        if (isConfirming) return;
         setSelectedPlan(null);
-        setSubscribeError(null);
+        setActionError(null);
     }, [isConfirming]);
 
-    const handleSubscribe = useCallback(
+    const handleConfirm = useCallback(
         async (plan: MembershipPlan, paymentMethodId: string) => {
-            const wasPlanChange =
-                membership?.status === "active" || membership?.status === "trialing";
-            setSubscribeError(null);
+            const intent = getPlanIntent(plan);
+            setActionError(null);
             setIsConfirming(true);
             try {
-                const result = await subscribeMutation.mutateAsync({
-                    plan_id: plan.id,
-                    payment_method_id: paymentMethodId,
-                });
+                if (intent === "downgrade") {
+                    await downgradeMutation.mutateAsync({ plan_id: plan.id });
+                    await refetchMembership();
+                    setSelectedPlan(null);
+                    setSuccess({ plan, intent });
+                    return;
+                }
+
+                const result =
+                    intent === "upgrade"
+                        ? await upgradeMutation.mutateAsync({
+                              plan_id: plan.id,
+                              payment_method_id: paymentMethodId,
+                          })
+                        : await subscribeMutation.mutateAsync({
+                              plan_id: plan.id,
+                              payment_method_id: paymentMethodId,
+                          });
 
                 if (result.client_secret) {
                     const stripe = await stripePromise;
@@ -58,7 +88,7 @@ export default function MembershipPlansContainer(): JSX.Element {
                         result.client_secret
                     );
                     if (stripeError) {
-                        setSubscribeError(stripeError.message ?? "Payment confirmation failed.");
+                        setActionError(stripeError.message ?? "Payment confirmation failed.");
                         setIsConfirming(false);
                         return;
                     }
@@ -66,25 +96,53 @@ export default function MembershipPlansContainer(): JSX.Element {
 
                 await refetchMembership();
                 setSelectedPlan(null);
-                setSuccess({ plan, wasPlanChange: wasPlanChange ?? false });
+                setSuccess({ plan, intent });
             } catch (err) {
-                setSubscribeError(
-                    (err as { message?: string })?.message ??
-                        "Subscription failed — please try again."
+                setActionError(
+                    (err as { message?: string })?.message ?? "Action failed — please try again."
                 );
             } finally {
                 setIsConfirming(false);
             }
         },
-        [subscribeMutation, refetchMembership, membership]
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [subscribeMutation, upgradeMutation, downgradeMutation, refetchMembership, membership]
     );
 
-    const hasActiveMembership =
-        membership?.status === "active" || membership?.status === "trialing";
-    const isPlanChange = hasActiveMembership;
+    const isActionPending =
+        subscribeMutation.isPending ||
+        upgradeMutation.isPending ||
+        downgradeMutation.isPending ||
+        isConfirming;
 
     // Success screen (replaces the whole view after checkout)
     if (success) {
+        const heading =
+            success.intent === "upgrade"
+                ? "Plan upgraded!"
+                : success.intent === "downgrade"
+                  ? "Downgrade scheduled!"
+                  : "You're now a member!";
+        const body =
+            success.intent === "upgrade" ? (
+                <>
+                    You have been upgraded to{" "}
+                    <span className="font-semibold text-foreground">{success.plan.name}</span>.
+                    Billing restarts today.
+                </>
+            ) : success.intent === "downgrade" ? (
+                <>
+                    Your plan will change to{" "}
+                    <span className="font-semibold text-foreground">{success.plan.name}</span> at
+                    the end of your current billing period.
+                </>
+            ) : (
+                <>
+                    Successfully subscribed to{" "}
+                    <span className="font-semibold text-foreground">{success.plan.name}</span>.
+                </>
+            );
+
         return (
             <div className="w-full space-y-5">
                 <section className="card-surface overflow-hidden">
@@ -94,30 +152,8 @@ export default function MembershipPlansContainer(): JSX.Element {
                                 <BadgeCheck size={28} />
                             </div>
                             <div>
-                                <p className="text-lg font-bold text-foreground">
-                                    {success.wasPlanChange
-                                        ? "Plan updated!"
-                                        : "You're now a member!"}
-                                </p>
-                                <p className="mt-1 text-sm text-muted-foreground">
-                                    {success.wasPlanChange ? (
-                                        <>
-                                            Your plan has been changed to{" "}
-                                            <span className="font-semibold text-foreground">
-                                                {success.plan.name}
-                                            </span>
-                                            . Changes take effect at the next billing cycle.
-                                        </>
-                                    ) : (
-                                        <>
-                                            Successfully subscribed to{" "}
-                                            <span className="font-semibold text-foreground">
-                                                {success.plan.name}
-                                            </span>
-                                            .
-                                        </>
-                                    )}
-                                </p>
+                                <p className="text-lg font-bold text-foreground">{heading}</p>
+                                <p className="mt-1 text-sm text-muted-foreground">{body}</p>
                             </div>
                             <button
                                 type="button"
@@ -176,17 +212,16 @@ export default function MembershipPlansContainer(): JSX.Element {
                 </section>
             </div>
 
-            {/* Modal — renders over the plans grid via portal */}
             {selectedPlan && (
                 <PlanChangeModal
                     plan={selectedPlan}
-                    isPlanChange={isPlanChange}
+                    planIntent={getPlanIntent(selectedPlan)}
                     onClose={handleCloseModal}
                     onConfirm={(paymentMethodId) =>
-                        void handleSubscribe(selectedPlan, paymentMethodId)
+                        void handleConfirm(selectedPlan, paymentMethodId)
                     }
-                    isLoading={subscribeMutation.isPending || isConfirming}
-                    error={subscribeError}
+                    isLoading={isActionPending}
+                    error={actionError}
                 />
             )}
         </>

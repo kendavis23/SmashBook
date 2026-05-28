@@ -51,4 +51,6 @@ export type {
     MembershipSubscription,
     MembershipSubscribeInput,
     MembershipSubscribeResult,
+    MembershipUpgradeInput,
+    MembershipDowngradeInput,
 } from "./membership.model";

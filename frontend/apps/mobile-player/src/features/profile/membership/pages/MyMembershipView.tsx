@@ -42,6 +42,9 @@ type Props = {
     onCancel: () => void;
     isCancelling: boolean;
     cancelError: string | null;
+    onCancelPendingDowngrade: () => void;
+    isCancellingDowngrade: boolean;
+    cancelDowngradeError: string | null;
 };
 
 export function MyMembershipView({
@@ -49,6 +52,9 @@ export function MyMembershipView({
     onCancel,
     isCancelling,
     cancelError,
+    onCancelPendingDowngrade,
+    isCancellingDowngrade,
+    cancelDowngradeError,
 }: Props): JSX.Element {
     const [showConfirm, setShowConfirm] = useState(false);
     const { plan, status } = membership;
@@ -151,24 +157,64 @@ export function MyMembershipView({
                 <InfoRow
                     label="Period end"
                     value={formatUTCDate(membership.current_period_end)}
-                    last={!membership.cancel_at_period_end}
+                    last
                 />
-
-                {membership.cancel_at_period_end && (
-                    <View className="mx-4 mb-3.5 mt-1 flex-row items-start gap-2 rounded-xl bg-[#FEF3C7] px-3.5 py-3">
-                        <Ionicons
-                            name="warning-outline"
-                            size={14}
-                            color="#D97706"
-                            style={{ marginTop: 1 }}
-                        />
-                        <Text className="flex-1 text-[12px] font-medium leading-5 text-[#92400E]">
-                            Cancels on {formatUTCDate(membership.current_period_end)} — you keep
-                            full access until then
-                        </Text>
-                    </View>
-                )}
             </View>
+
+            {/* ── Scheduled changes ─────────────────────────────────── */}
+            {(membership.cancel_at_period_end || membership.pending_plan_id !== null) && (
+                <>
+                    <SectionLabel label="Scheduled changes" />
+                    <View className="mb-5 overflow-hidden rounded-[20px] bg-white shadow-sm">
+                        <View className="flex-row items-center gap-3 border-b border-[#F3F4F6] px-4 py-3.5">
+                            <View className="h-8 w-8 items-center justify-center rounded-xl bg-[#FFF7ED]">
+                                <Ionicons name="time-outline" size={16} color="#F59E0B" />
+                            </View>
+                            <Text className="text-[15px] font-semibold text-[#111827]">
+                                Takes effect at period end
+                            </Text>
+                        </View>
+
+                        <View className="mx-4 mb-1 mt-3 flex-row items-start gap-2 rounded-xl bg-[#FEF3C7] px-3.5 py-3">
+                            <Ionicons
+                                name="warning-outline"
+                                size={14}
+                                color="#D97706"
+                                style={{ marginTop: 1 }}
+                            />
+                            <Text className="flex-1 text-[12px] font-medium leading-5 text-[#92400E]">
+                                {membership.cancel_at_period_end
+                                    ? `Your membership cancels on ${formatUTCDate(membership.current_period_end)}. You keep full access until then.`
+                                    : `Your plan change takes effect on ${formatUTCDate(membership.current_period_end)}.`}
+                            </Text>
+                        </View>
+
+                        {!!cancelDowngradeError && (
+                            <View className="mx-4 mb-1 flex-row items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
+                                <Ionicons name="alert-circle-outline" size={14} color="#EF4444" />
+                                <Text className="flex-1 text-[12px] font-medium text-red-600">
+                                    {cancelDowngradeError}
+                                </Text>
+                            </View>
+                        )}
+
+                        <Pressable
+                            className="mx-4 mb-4 mt-2 flex-row items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] py-3 active:opacity-70 disabled:opacity-50"
+                            accessibilityRole="button"
+                            accessibilityLabel="Stay with current plan"
+                            disabled={isCancellingDowngrade}
+                            onPress={onCancelPendingDowngrade}
+                        >
+                            <Ionicons name="shield-checkmark-outline" size={15} color="#374151" />
+                            <Text className="text-[14px] font-semibold text-[#374151]">
+                                {isCancellingDowngrade
+                                    ? "Restoring plan…"
+                                    : "Stay with current plan"}
+                            </Text>
+                        </Pressable>
+                    </View>
+                </>
+            )}
 
             {/* ── Usage ─────────────────────────────────────────────── */}
             <SectionLabel label="Usage" />

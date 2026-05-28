@@ -34,12 +34,22 @@ export interface MembershipSubscription {
     cancelled_at: string | null;
     credits_remaining: number;
     guest_passes_remaining: number | null;
+    pending_plan_id: UUID | null;
     plan: MembershipPlan;
 }
 
 export interface MembershipSubscribeInput {
     plan_id: UUID;
     payment_method_id?: string | null;
+}
+
+export interface MembershipUpgradeInput {
+    plan_id: UUID;
+    payment_method_id?: string | null;
+}
+
+export interface MembershipDowngradeInput {
+    plan_id: UUID;
 }
 
 export interface MembershipSubscribeResult {

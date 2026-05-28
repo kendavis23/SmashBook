@@ -8,6 +8,7 @@ import {
     useMyMembership,
     useCancelMyMembership,
     useSubscribeToMembership,
+    useCancelPendingDowngrade,
 } from "@repo/player-domain/hooks";
 import { useAuth } from "../../store";
 import { CurrentMembershipCard } from "./CurrentMembershipCard";
@@ -30,9 +31,13 @@ export default function MyMembershipContainer(): JSX.Element {
     const [subscribeError, setSubscribeError] = useState<string | null>(null);
     const [isConfirming, setIsConfirming] = useState(false);
     const [cancelError, setCancelError] = useState<string | null>(null);
+    const [cancelPendingDowngradeError, setCancelPendingDowngradeError] = useState<string | null>(
+        null
+    );
 
     const cancelMutation = useCancelMyMembership(clubId ?? "");
     const subscribeMutation = useSubscribeToMembership(clubId ?? "");
+    const cancelPendingDowngradeMutation = useCancelPendingDowngrade(clubId ?? "");
     const { refetch: refetchMembership } = useMyMembership(clubId ?? "", { enabled: false });
 
     const handleCancel = useCallback(async () => {
@@ -45,6 +50,17 @@ export default function MyMembershipContainer(): JSX.Element {
             );
         }
     }, [cancelMutation]);
+
+    const handleCancelPendingDowngrade = useCallback(async () => {
+        setCancelPendingDowngradeError(null);
+        try {
+            await cancelPendingDowngradeMutation.mutateAsync();
+        } catch (err) {
+            setCancelPendingDowngradeError(
+                (err as { message?: string })?.message ?? "Failed to revert — please try again."
+            );
+        }
+    }, [cancelPendingDowngradeMutation]);
 
     const handleBrowsePlans = useCallback(() => {
         void navigate({ to: "/profile/memberships/plans" });
@@ -222,6 +238,9 @@ export default function MyMembershipContainer(): JSX.Element {
                             onCancel={() => void handleCancel()}
                             isCancelling={cancelMutation.isPending}
                             cancelError={cancelError}
+                            onCancelPendingDowngrade={() => void handleCancelPendingDowngrade()}
+                            isCancellingPendingDowngrade={cancelPendingDowngradeMutation.isPending}
+                            cancelPendingDowngradeError={cancelPendingDowngradeError}
                         />
                     ) : (
                         <div className="rounded-xl border border-border bg-card p-4">

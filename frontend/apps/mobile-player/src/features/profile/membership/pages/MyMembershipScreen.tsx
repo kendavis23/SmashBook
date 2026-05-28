@@ -5,7 +5,11 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@repo/auth";
-import { useMyMembership, useCancelMyMembership } from "@repo/player-domain";
+import {
+    useMyMembership,
+    useCancelMyMembership,
+    useCancelPendingDowngrade,
+} from "@repo/player-domain";
 import { MyMembershipView } from "./MyMembershipView";
 
 export function MyMembershipScreen(): JSX.Element {
@@ -14,7 +18,9 @@ export function MyMembershipScreen(): JSX.Element {
 
     const { data: membership, isLoading, error } = useMyMembership(clubId ?? "");
     const cancelMutation = useCancelMyMembership(clubId ?? "");
+    const cancelDowngradeMutation = useCancelPendingDowngrade(clubId ?? "");
     const [cancelError, setCancelError] = useState<string | null>(null);
+    const [cancelDowngradeError, setCancelDowngradeError] = useState<string | null>(null);
 
     const handleCancel = useCallback(async () => {
         setCancelError(null);
@@ -26,6 +32,18 @@ export function MyMembershipScreen(): JSX.Element {
             );
         }
     }, [cancelMutation]);
+
+    const handleCancelPendingDowngrade = useCallback(async () => {
+        setCancelDowngradeError(null);
+        try {
+            await cancelDowngradeMutation.mutateAsync();
+        } catch (err) {
+            setCancelDowngradeError(
+                (err as { message?: string })?.message ??
+                    "Failed to restore plan — please try again."
+            );
+        }
+    }, [cancelDowngradeMutation]);
 
     return (
         <SafeAreaView className="flex-1 bg-[#F2F3F7]">
@@ -100,6 +118,9 @@ export function MyMembershipScreen(): JSX.Element {
                     onCancel={() => void handleCancel()}
                     isCancelling={cancelMutation.isPending}
                     cancelError={cancelError}
+                    onCancelPendingDowngrade={() => void handleCancelPendingDowngrade()}
+                    isCancellingDowngrade={cancelDowngradeMutation.isPending}
+                    cancelDowngradeError={cancelDowngradeError}
                 />
             )}
         </SafeAreaView>

@@ -2,11 +2,12 @@ import { useEffect, type JSX } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
+import type { PlanIntent } from "./MembershipPlansContainer";
 import { SelectCardStep } from "./SelectCardStep";
 
 type Props = {
     plan: MembershipPlan;
-    isPlanChange: boolean;
+    planIntent: PlanIntent;
     onClose: () => void;
     onConfirm: (paymentMethodId: string) => void;
     isLoading: boolean;
@@ -15,7 +16,7 @@ type Props = {
 
 export function PlanChangeModal({
     plan,
-    isPlanChange,
+    planIntent,
     onClose,
     onConfirm,
     isLoading,
@@ -52,7 +53,11 @@ export function PlanChangeModal({
                 <div className="flex items-center justify-between border-b border-border px-5 py-4">
                     <div>
                         <h2 className="text-base font-semibold text-foreground">
-                            {isPlanChange ? "Change your plan" : "Subscribe to plan"}
+                            {planIntent === "upgrade"
+                                ? "Upgrade your plan"
+                                : planIntent === "downgrade"
+                                  ? "Downgrade your plan"
+                                  : "Subscribe to plan"}
                         </h2>
                         <p className="mt-0.5 text-xs text-muted-foreground">{plan.name}</p>
                     </div>
@@ -71,7 +76,7 @@ export function PlanChangeModal({
                 <div className="overflow-y-auto px-5 py-5" style={{ maxHeight: "80dvh" }}>
                     <SelectCardStep
                         plan={plan}
-                        isPlanChange={isPlanChange}
+                        planIntent={planIntent}
                         onBack={onClose}
                         hideBackButton
                         onConfirm={onConfirm}

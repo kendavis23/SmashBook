@@ -10,6 +10,9 @@ type Props = {
     onCancel: () => void;
     isCancelling: boolean;
     cancelError: string | null;
+    onCancelPendingDowngrade: () => void;
+    isCancellingPendingDowngrade: boolean;
+    cancelPendingDowngradeError: string | null;
 };
 
 export function CurrentMembershipCard({
@@ -17,6 +20,9 @@ export function CurrentMembershipCard({
     onCancel,
     isCancelling,
     cancelError,
+    onCancelPendingDowngrade,
+    isCancellingPendingDowngrade,
+    cancelPendingDowngradeError,
 }: Props): JSX.Element {
     const [showConfirm, setShowConfirm] = useState(false);
     const { plan, status } = membership;
@@ -80,12 +86,6 @@ export function CurrentMembershipCard({
                             label="Period end"
                             value={formatUTCDate(membership.current_period_end)}
                         />
-                        {membership.cancel_at_period_end && (
-                            <div className="mx-3 my-2 rounded-lg border border-warning/25 bg-warning/10 px-3 py-2 text-xs font-medium text-warning">
-                                Cancels on {formatUTCDate(membership.current_period_end)} — you keep
-                                full access until then
-                            </div>
-                        )}
                     </div>
                 </section>
 
@@ -114,6 +114,25 @@ export function CurrentMembershipCard({
                     </div>
                 </section>
             </div>
+
+            {membership.pending_plan_id && (
+                <PendingDowngradeSection
+                    periodEnd={membership.current_period_end}
+                    onStayWithCurrentPlan={onCancelPendingDowngrade}
+                    isCancelling={isCancellingPendingDowngrade}
+                    error={cancelPendingDowngradeError}
+                />
+            )}
+
+            {membership.cancel_at_period_end && !membership.pending_plan_id && (
+                <div className="rounded-xl border border-warning/25 bg-warning/10 px-4 py-3 text-sm font-medium text-warning">
+                    Your membership cancels on{" "}
+                    <span className="font-semibold">
+                        {formatUTCDate(membership.current_period_end)}
+                    </span>{" "}
+                    — you keep full access until then.
+                </div>
+            )}
 
             {((plan.booking_credits_per_period ?? 0) > 0 ||
                 (plan.guest_passes_per_period ?? 0) > 0 ||
@@ -159,6 +178,51 @@ export function CurrentMembershipCard({
                     onCancel={onCancel}
                 />
             )}
+        </div>
+    );
+}
+
+function PendingDowngradeSection({
+    periodEnd,
+    onStayWithCurrentPlan,
+    isCancelling,
+    error,
+}: {
+    periodEnd: string;
+    onStayWithCurrentPlan: () => void;
+    isCancelling: boolean;
+    error: string | null;
+}): JSX.Element {
+    return (
+        <div className="rounded-xl border border-warning/25 bg-warning/10 p-4 space-y-3">
+            <div>
+                <p className="text-sm font-semibold text-warning">Plan change scheduled</p>
+                <p className="mt-1 text-xs text-warning/80">
+                    Your membership will switch to a lower plan at the end of your current billing
+                    period on <span className="font-semibold">{formatUTCDate(periodEnd)}</span>. You
+                    keep all current benefits until then.
+                </p>
+            </div>
+            {error && (
+                <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
+                    {error}
+                </div>
+            )}
+            <button
+                type="button"
+                onClick={onStayWithCurrentPlan}
+                disabled={isCancelling}
+                className="btn-outline min-h-9 w-full text-xs font-semibold disabled:opacity-50"
+            >
+                {isCancelling ? (
+                    <span className="flex items-center justify-center gap-2">
+                        <span className="h-3 w-3 animate-spin rounded-full border-2 border-border border-t-foreground" />
+                        Reverting…
+                    </span>
+                ) : (
+                    "Stay with my current plan — keep things as they are"
+                )}
+            </button>
         </div>
     );
 }
