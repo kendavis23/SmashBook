@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.pubsub import publish_notification_event
-from app.db.models.booking import Booking, BookingPlayer, BookingStatus, InviteStatus, PaymentStatus
+from app.db.models.booking import Booking, BookingPlayer, BookingStatus, PaymentStatus
 from app.db.models.club import Club
 from app.db.models.payment import Payment, PlatformFee, PlatformFeeType
 from app.db.models.payment import PaymentMethod as PaymentMethodEnum
@@ -30,6 +30,7 @@ from app.db.models.payment import PaymentState
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import User
 from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction, WalletTransactionSource, WalletTransactionType
+from app.services.booking_confirmation import should_confirm
 
 logger = logging.getLogger(__name__)
 
@@ -442,12 +443,9 @@ class PaymentService:
         )
         all_players = result.scalars().all()
         booking = await self.db.get(Booking, payment.booking_id)
-        if booking and booking.status == BookingStatus.pending:
-            max_p = booking.max_players or 4
-            accepted = [p for p in all_players if p.invite_status == InviteStatus.accepted]
-            if len(accepted) >= max_p and all(p.payment_status == PaymentStatus.paid for p in accepted):
-                booking.status = BookingStatus.confirmed
-                self.db.add(booking)
+        if booking and booking.status == BookingStatus.pending and should_confirm(booking, all_players):
+            booking.status = BookingStatus.confirmed
+            self.db.add(booking)
 
         await self.db.commit()
 
@@ -791,12 +789,9 @@ class PaymentService:
             )
             all_players = all_bp_result.scalars().all()
             booking = await self.db.get(Booking, source_id)
-            if booking and booking.status == BookingStatus.pending:
-                max_p = booking.max_players or 4
-                accepted = [p for p in all_players if p.invite_status == InviteStatus.accepted]
-                if len(accepted) >= max_p and all(p.payment_status == PaymentStatus.paid for p in accepted):
-                    booking.status = BookingStatus.confirmed
-                    self.db.add(booking)
+            if booking and booking.status == BookingStatus.pending and should_confirm(booking, all_players):
+                booking.status = BookingStatus.confirmed
+                self.db.add(booking)
 
             user = await self.db.get(User, user_id)
             receipt_payload = {

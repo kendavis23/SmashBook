@@ -1,4 +1,4 @@
-_Last updated: 2026-05-27 07:30 UTC_
+_Last updated: 2026-05-29 13:10 UTC_
 
 # SmashBook Data Model
 
@@ -286,6 +286,7 @@ Staff-created blocks that restrict booking on the calendar. The `maintenance` ty
 | `discount_amount` | NUMERIC(10,2) | Nullable |
 | `discount_source` | ENUM | Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
 | `membership_subscription_id` | UUID | FK → `membership_subscriptions`, nullable |
+| `hold_expires_at` | TIMESTAMPTZ | Nullable — court-level hold deadline; cleared when the first player pays. Null = live/staff booking that always blocks the court |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -312,10 +313,14 @@ Links players to a booking and tracks their individual payment status.
 | `amount_due` | NUMERIC(10,2) | |
 | `discount_amount` | NUMERIC(10,2) | Nullable — per-player discount applied at invite time |
 | `discount_source` | ENUM | Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
+| `payment_deadline` | TIMESTAMPTZ | Nullable — slot-level hold deadline; cleared on payment. Staff/credit-paid slots get none |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
 **Constraints:** `UNIQUE(booking_id, user_id)`
+
+**Indexes:**
+- `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` — partial index serving the expiry-sweep query
 
 ---
 
@@ -682,6 +687,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `32204403280f` | G6.1 — Player email-verification registration flow: `users`: add `email_verified_at` (back-filled to `NOW()` for existing rows); `membership_plans`: add `is_default` with partial unique index `uq_membership_plans_one_default_per_club` on `(club_id) WHERE is_default = TRUE` |
 | `ac339fc8a081` | `tenants`: add `trading_name` (back-filled from `name`); rename `subdomain` → `player_subdomain`; add `staff_subdomain` (back-filled as `<player_subdomain>-staff`); add CHECK constraint `player_subdomain <> staff_subdomain` |
 | `fa46b223afc9` | `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — records the target plan for a scheduled downgrade that applies at `current_period_end` |
+| `92c0f1557d7e` | G4.1 — Court hold expiry & auto-release: `bookings`: add `hold_expires_at` (court-level hold); `booking_players`: add `payment_deadline` (slot-level hold) + partial index `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` |
 
 To run migrations:
 ```bash

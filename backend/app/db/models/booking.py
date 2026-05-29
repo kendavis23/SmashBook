@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Integer, ForeignKey, Numeric, Text, Boolean, Enum, DateTime, Date, Time, Index, UniqueConstraint
+from sqlalchemy import Column, String, Integer, ForeignKey, Numeric, Text, Boolean, Enum, DateTime, Date, Time, Index, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin
@@ -86,6 +86,7 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     discount_amount = Column(Numeric(10, 2), nullable=True)
     discount_source = Column(Enum(DiscountSource), nullable=True)
     membership_subscription_id = Column(UUID(as_uuid=True), ForeignKey("membership_subscriptions.id"), nullable=True)
+    hold_expires_at = Column(DateTime(timezone=True), nullable=True)  # court-level hold; null once first player pays or for staff bookings
 
     club = relationship("Club", back_populates="bookings")
     court = relationship("Court", back_populates="bookings")
@@ -99,6 +100,11 @@ class BookingPlayer(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "booking_players"
     __table_args__ = (
         UniqueConstraint("booking_id", "user_id", name="uq_booking_players_booking_user"),
+        Index(
+            "ix_booking_players_deadline",
+            "payment_deadline",
+            postgresql_where=text("payment_status = 'pending'"),
+        ),
     )
 
     booking_id = Column(UUID(as_uuid=True), ForeignKey("bookings.id"), nullable=False)
@@ -109,6 +115,7 @@ class BookingPlayer(Base, UUIDMixin, TimestampMixin):
     discount_amount = Column(Numeric(10, 2), nullable=True)
     discount_source = Column(Enum(DiscountSource), nullable=True)
     invite_status = Column(Enum(InviteStatus), nullable=False, default=InviteStatus.accepted)
+    payment_deadline = Column(DateTime(timezone=True), nullable=True)  # slot-level hold; null once paid or for staff bookings
 
     booking = relationship("Booking", back_populates="players")
     user = relationship("User")
