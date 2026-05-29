@@ -147,33 +147,33 @@ export function NewReservationModalView({
                         icon={<MapPin size={13} />}
                         label="Court"
                         value={lockedCourtName ?? "—"}
-                        color="text-violet-600"
-                        bg="bg-violet-500/10"
-                        ring="ring-violet-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<CalendarDays size={13} />}
                         label="Date"
                         value={formattedDate}
-                        color="text-blue-600"
-                        bg="bg-blue-500/10"
-                        ring="ring-blue-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<Clock size={13} />}
                         label="Time"
                         value={formatTimeRange(lockedStartTime, lockedEndTime)}
-                        color="text-amber-600"
-                        bg="bg-amber-500/10"
-                        ring="ring-amber-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<Tag size={13} />}
                         label="Type"
                         value={reservationTypeLabel}
-                        color="text-cta"
-                        bg="bg-cta/10"
-                        ring="ring-cta/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                 </div>
 

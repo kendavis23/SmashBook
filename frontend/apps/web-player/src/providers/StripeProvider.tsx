@@ -3,7 +3,9 @@ import { Elements } from "@stripe/react-stripe-js";
 import type { ReactNode } from "react";
 import { config } from "@repo/config";
 
-const stripePromise = loadStripe(config.stripePublishableKey);
+const stripePromise = loadStripe(config.stripePublishableKey, {
+    developerTools: { assistant: { enabled: false } },
+});
 
 export function StripeProvider({ children }: { children: ReactNode }) {
     return <Elements stripe={stripePromise}>{children}</Elements>;

@@ -272,30 +272,35 @@ export default function BookCourtView({
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Book Court" }]} />
-            <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                {/* Page header */}
-                <header className="flex flex-col gap-3 border-b border-border/60 bg-gradient-to-b from-muted/20 to-transparent px-6 py-5 sm:px-7 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-center gap-3.5">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cta/10 text-cta ring-1 ring-cta/20">
-                            <CalendarDays size={18} />
-                        </div>
-                        <div>
-                            <h1 className="text-[17px] font-semibold tracking-tight text-foreground">
-                                Book a Court
-                            </h1>
-                            <p className="text-xs text-muted-foreground">
-                                Find and reserve your perfect court
-                            </p>
+            <section className="card-surface overflow-hidden">
+                {/* Header */}
+                <header className="flex flex-row items-center justify-between gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                                <CalendarDays size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                        Book a Court
+                                    </h1>
+                                </div>
+                                <p className="mt-0.5 text-sm text-muted-foreground">
+                                    Find and reserve your perfect court
+                                </p>
+                            </div>
                         </div>
                     </div>
-                    <button
-                        onClick={onRefresh}
-                        className="btn-outline flex w-fit items-center gap-2 rounded-xl px-4 text-sm"
-                        aria-label="Refresh courts"
-                    >
-                        <RefreshCw size={13} />
-                        Refresh
-                    </button>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <button
+                            onClick={onRefresh}
+                            className="btn-outline min-h-10 px-4"
+                            aria-label="Refresh court availability"
+                        >
+                            <RefreshCw size={14} /> Refresh
+                        </button>
+                    </div>
                 </header>
 
                 {/* Filters */}
