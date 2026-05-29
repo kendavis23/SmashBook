@@ -1,4 +1,4 @@
-_Last updated: 2026-05-27_
+_Last updated: 2026-05-29_
 
 # SmashBook — Data Model Target State
 
@@ -106,6 +106,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | G2 | Sprint 2 | ✅ Applied (`17206ff810ef`) | `operating_hours`: add `valid_from`, `valid_until` for seasonal variations |
 | G3 | Sprint 3 | ❓ Pending verification — see note below | `bookings`: add `min_skill_level`, `max_skill_level`, `invite_confirmed`; `booking_players`: add `invite_status`; new table: `waitlist_entries` |
 | G4 | Sprint 4 | ✅ Applied (`8582075732fe`) | `payments`: add `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `dispute_status`, `club_id`; new table: `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id`; `booking_players`: add `discount_amount`, `discount_source` |
+| G4.1 | Sprint 4 (court holds) | ✅ Applied (`92c0f1557d7e`) | Court hold expiry & auto-release: `bookings`: add `hold_expires_at`; `booking_players`: add `payment_deadline` + partial index `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` |
 | G5 | Sprint 5 | ❓ Pending verification — see note below | `bookings`: add `parent_booking_id` (self-ref for recurring series), `recurrence_end_date`; new table: `calendar_reservations`; `clubs`: add `default_skill_range_above`, `default_skill_range_below`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`; `equipment_inventory`: add `reorder_threshold` |
 | G6 | Sprint 6 | ⬜ Not started | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`; `skill_level_history`: add `change_source`, `club_id` |
 | G6.1 | Post-MVP | ✅ Applied (`32204403280f`) | Player registration email verification + free basic membership: `users`: add `email_verified_at`; `membership_plans`: add `is_default` with partial unique index per club |
@@ -380,6 +381,7 @@ No changes from current state.
 | `video_upload_path` | VARCHAR(500) | GCS path, nullable |
 | `discount_amount` | NUMERIC(10,2) | **NEW** Nullable *(G4)* |
 | `discount_source` | ENUM | **NEW** Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` *(G4)* |
+| `hold_expires_at` | TIMESTAMPTZ | **NEW** Nullable — court-level hold deadline (created `now()+5min`); cleared when the first player pays. Null = live booking with a paid player or a staff booking (always blocks the court). Drives conflict-check exclusion + sweep cancellation *(G4.1)* |
 | `promo_code_id` | UUID | **NEW** FK → `promo_codes`, nullable |
 | `membership_subscription_id` | UUID | **NEW** FK → `membership_subscriptions`, nullable *(G4)* |
 | `campaign_id` | UUID | **NEW** FK → `campaigns`, nullable |
@@ -413,10 +415,14 @@ No changes from current state.
 | `discount_source` | ENUM | **NEW** Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` *(G4)* |
 | `invite_status` | ENUM | **NEW** `pending`, `accepted`, `declined` — default `accepted` for organiser *(G3)* |
 | `team` | ENUM | **NEW** Nullable — `team1`, `team2` — used for tournament/doubles match bookings *(G12)* |
+| `payment_deadline` | TIMESTAMPTZ | **NEW** Nullable — slot-level hold deadline (set `now()+5min` when a player commits an unpaid slot); cleared on payment. Drives freeing the slot only (booking survives if another player has paid). Staff/credit-paid slots get none *(G4.1)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
 **Constraints:** `UNIQUE(booking_id, user_id)`
+
+**Indexes (new):**
+- `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` — partial index; serves the expiry-sweep hot path *(G4.1)*
 
 ---
 
