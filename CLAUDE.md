@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-05-23_
+_Last updated: 2026-05-29_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -33,7 +33,7 @@ backend/
     workers/                # operational Pub/Sub consumers (email, notifications)
     schemas/                # operational Pydantic models
 
-    # AI domain (Sprints 7-12) — see app/ai/CLAUDE.md
+    # AI domain (Sprints 8-12) — see app/ai/CLAUDE.md
     ai/
       api/                  # endpoint modules + ai_router aggregator
       services/             # ai_inference_service + feature services
@@ -42,7 +42,7 @@ backend/
       tests/
       docs/                 # PROVIDER_ROUTING, FALLBACK_CATALOG, etc.
 
-    # Analytics domain — see app/analytics/CLAUDE.md
+    # Analytics domain (Sprint 7) — see app/analytics/CLAUDE.md
     analytics/
       api/                  # endpoint modules + analytics_router aggregator
       services/             # aggregations, rollups
@@ -328,16 +328,19 @@ Every new endpoint needs at minimum:
 
 Migration groups in `DATA_MODEL_TARGET_STATE.md` map to sprints. Implement the group before starting that sprint's feature work.
 
-| Sprints | Phase | Focus | Migration groups |
+**Re-prioritised 2026-05-29** to **Analytics → AI infrastructure → CRM → Tournaments**, driven by the analytics-first ROI story (multi-site operators). G7–G12 were redefined in place; G1–G6 are unchanged. **Descoped entirely:** all weather features, and all equipment/maintenance AI. See the re-prioritisation + descope notes at the top of `DATA_MODEL_TARGET_STATE.md`.
+
+| Sprint | Phase | Focus | Migration group |
 |---|---|---|---|
 | 1–2 | MVP | Auth, tenant/club setup, court discovery | G1, G2 |
 | 3–4 | MVP | Core booking flow, payments, wallet | G3, G4 |
-| 5–6 | MVP | Staff admin, reservations, reporting, support, discounts | G5, G6 |
-| 7–8 | Phase 1 AI | Dynamic pricing, gap detection, smart notifications, autonomous finance | G7, G8 |
-| 9 | Phase 2 AI | Matchmaking, Fill the Court, cancellation prediction, skill ELO | G9 |
-| 10 | Phase 2 AI | Churn scoring, segmentation, campaigns, operational AI | G10 |
-| 11 | Phase 3 AI | Conversational booking, AI support chatbot | G11 |
-| 12 | Phase 3 AI | Video analysis, training recommendations, market intelligence | G12 |
+| 5–6 | MVP / **Foundation** | Staff admin, reservations, support, discounts; **G3/G5 table reconciliation** (`waitlist_entries`, `calendar_reservations`) — prerequisite for the re-prioritised roadmap | G5, G6 |
+| 7 | **Analytics** | Site + player performance analytics: `court_utilisation_snapshots`, aspirational `users` demographics, report materialized views | G7 |
+| 8 | **AI infrastructure** | `ai_inference_log` / `ai_feature_flags`, dynamic pricing, payment anomaly detection, revenue forecasting | G8 |
+| 9 | **CRM I** | Player profiles + engagement/churn scoring, delivery infra, gap detection, matchmaking, cancellation prediction | G9 |
+| 10 | **CRM II** | Campaigns, AI recommendations, re-engagement, membership tiers | G10 |
+| 11 | **Tournaments + match/skill** | Tournaments, registrations, match results, skill ELO | G11 |
+| 12+ | Phase 3 (deferred) | Conversational booking, AI support chatbot, training recommendations, video analysis, market intelligence | G12 |
 
 ---
 
