@@ -131,7 +131,6 @@ export default function BookCourtContainer(): JSX.Element {
     const params: ClubAvailabilityParams = {
         start_date: date,
         end_date: date,
-        /* surface on ClubAvailabilityParams uses a separate enum from the court model */
         ...(surface ? { surface: surface as ClubAvailabilityParams["surface"] } : {}),
         ...(fromTime ? { from_time: fromTime } : {}),
         ...(toTime ? { to_time: toTime } : {}),

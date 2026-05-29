@@ -10,7 +10,6 @@ export function getClubAvailabilityEndpoint(
     if (params.surface) query.set("surface", params.surface);
     if (params.from_time) query.set("from_time", params.from_time);
     if (params.to_time) query.set("to_time", params.to_time);
-    if (params.skill_level != null) query.set("skill_level", String(params.skill_level));
     return fetcher<ClubAvailabilityResponse>(
         `/api/v1/clubs/${clubId}/availability?${query.toString()}`
     );

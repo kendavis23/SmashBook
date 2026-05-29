@@ -57,5 +57,4 @@ export interface GetClubAvailabilityParams {
     surface?: SurfaceType;
     from_time?: string;
     to_time?: string;
-    skill_level?: number;
 }
