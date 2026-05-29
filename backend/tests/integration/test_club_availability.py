@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, time as TimeType, timezone
 from decimal import Decimal
 
-from sqlalchemy import delete as sql_delete
+from sqlalchemy import delete as sql_delete, update as sql_update
 
 
 # ---------------------------------------------------------------------------
@@ -106,7 +106,7 @@ async def _seed_pricing_rule(club_id, session_factory, day_of_week,
 async def _seed_booking(court_id, club_id, user_id, start_dt, end_dt,
                          session_factory, is_open_game=False, max_players=4,
                          min_skill=None, max_skill=None, total_price=None,
-                         accepted_player_ids=None):
+                         accepted_player_ids=None, declined_player_ids=None):
     from app.db.models.booking import (
         Booking, BookingPlayer, BookingStatus, BookingType,
         InviteStatus, PaymentStatus, PlayerRole,
@@ -146,9 +146,31 @@ async def _seed_booking(court_id, club_id, user_id, start_dt, end_dt,
                 payment_status=PaymentStatus.pending,
                 amount_due=Decimal("0.00"),
             ))
+        for pid in (declined_player_ids or []):
+            session.add(BookingPlayer(
+                booking_id=b.id,
+                user_id=pid,
+                role=PlayerRole.player,
+                invite_status=InviteStatus.declined,
+                payment_status=PaymentStatus.pending,
+                amount_due=Decimal("0.00"),
+            ))
         await session.commit()
         await session.refresh(b)
     return b
+
+
+async def _set_user_skill(user_id, skill, session_factory):
+    """Set a user's skill_level so the availability endpoint (which reads it from the
+    requestor) filters open matches against it."""
+    from app.db.models.user import User
+    async with session_factory() as session:
+        await session.execute(
+            sql_update(User).where(User.id == user_id).values(
+                skill_level=Decimal(str(skill)) if skill is not None else None
+            )
+        )
+        await session.commit()
 
 
 async def _seed_reservation(club_id, court_id, start_dt, end_dt, user_id,
@@ -346,7 +368,7 @@ class TestBookingsAndReservations:
         try:
             resp = await client.get(
                 f"/api/v1/clubs/{club.id}/availability",
-                params={"start_date": MON, "end_date": MON, "skill_level": "3"},
+                params={"start_date": MON, "end_date": MON},
                 headers=player_headers,
             )
             assert resp.status_code == 200
@@ -368,13 +390,15 @@ class TestBookingsAndReservations:
             await _cleanup_operating_hours([oh.id], test_session_factory)
 
     async def test_skill_level_filters_open_games(
-        self, client, staff_headers, player_headers, club, staff, test_session_factory
+        self, client, staff_headers, player_headers, club, staff, player, test_session_factory
     ):
         c1 = await _make_court(client, staff_headers, club, name="C1")
         c2 = await _make_court(client, staff_headers, club, name="C2")
         await _set_club_booking_window(club.id, test_session_factory)
         oh = await _seed_operating_hours(club.id, test_session_factory, 0,
                                           open_time="09:00", close_time="12:00")
+        # Requestor's own skill (3.0) drives the filter — no skill param is sent.
+        await _set_user_skill(player.id, "3.0", test_session_factory)
         # Two open games at 09:00 — one fits skill=3, one doesn't
         in_range = await _seed_booking(
             uuid.UUID(c1), club.id, staff.id,
@@ -393,7 +417,7 @@ class TestBookingsAndReservations:
         try:
             resp = await client.get(
                 f"/api/v1/clubs/{club.id}/availability",
-                params={"start_date": MON, "end_date": MON, "skill_level": "3"},
+                params={"start_date": MON, "end_date": MON},
                 headers=player_headers,
             )
             assert resp.status_code == 200
@@ -406,13 +430,15 @@ class TestBookingsAndReservations:
             await _cleanup_operating_hours([oh.id], test_session_factory)
 
     async def test_open_game_with_null_skill_range_always_included(
-        self, client, staff_headers, player_headers, club, staff, test_session_factory
+        self, client, staff_headers, player_headers, club, staff, player, test_session_factory
     ):
         c1 = await _make_court(client, staff_headers, club, name="C1")
         await _make_court(client, staff_headers, club, name="C2")
         await _set_club_booking_window(club.id, test_session_factory)
         oh = await _seed_operating_hours(club.id, test_session_factory, 0,
                                           open_time="09:00", close_time="10:30")
+        # Even a high-skill requestor sees a game with no skill restriction.
+        await _set_user_skill(player.id, "7.0", test_session_factory)
         booking = await _seed_booking(
             uuid.UUID(c1), club.id, staff.id,
             datetime(2030, 1, 7, 9, 0, tzinfo=timezone.utc),
@@ -424,7 +450,7 @@ class TestBookingsAndReservations:
         try:
             resp = await client.get(
                 f"/api/v1/clubs/{club.id}/availability",
-                params={"start_date": MON, "end_date": MON, "skill_level": "7"},
+                params={"start_date": MON, "end_date": MON},
                 headers=player_headers,
             )
             assert resp.status_code == 200
@@ -460,6 +486,79 @@ class TestBookingsAndReservations:
             assert resp.status_code == 200
             slot = resp.json()["days"][0]["slots"][0]
             assert slot["existing_matches"] == []
+        finally:
+            await _cleanup_bookings([booking.id], test_session_factory)
+            await _cleanup_operating_hours([oh.id], test_session_factory)
+
+    async def test_open_game_user_already_in_is_excluded(
+        self, client, staff_headers, player_headers, club, staff, player, test_session_factory
+    ):
+        """A non-full open game the requestor is already an accepted player in is hidden,
+        while a separate game they are not in still appears."""
+        c1 = await _make_court(client, staff_headers, club, name="C1")
+        c2 = await _make_court(client, staff_headers, club, name="C2")
+        await _set_club_booking_window(club.id, test_session_factory)
+        oh = await _seed_operating_hours(club.id, test_session_factory, 0,
+                                          open_time="09:00", close_time="10:30")
+        # Game the requestor is already in (2 slots still free) → must be hidden
+        mine = await _seed_booking(
+            uuid.UUID(c1), club.id, staff.id,
+            datetime(2030, 1, 7, 9, 0, tzinfo=timezone.utc),
+            datetime(2030, 1, 7, 10, 30, tzinfo=timezone.utc),
+            test_session_factory,
+            is_open_game=True, max_players=4,
+            accepted_player_ids=[player.id],
+        )
+        # Game the requestor is not in → must appear
+        other = await _seed_booking(
+            uuid.UUID(c2), club.id, staff.id,
+            datetime(2030, 1, 7, 9, 0, tzinfo=timezone.utc),
+            datetime(2030, 1, 7, 10, 30, tzinfo=timezone.utc),
+            test_session_factory,
+            is_open_game=True, max_players=4,
+        )
+        try:
+            resp = await client.get(
+                f"/api/v1/clubs/{club.id}/availability",
+                params={"start_date": MON, "end_date": MON},
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            slot = next(s for s in resp.json()["days"][0]["slots"] if s["start_time"] == "09:00")
+            ids = [m["booking_id"] for m in slot["existing_matches"]]
+            assert str(mine.id) not in ids
+            assert str(other.id) in ids
+        finally:
+            await _cleanup_bookings([mine.id, other.id], test_session_factory)
+            await _cleanup_operating_hours([oh.id], test_session_factory)
+
+    async def test_open_game_user_previously_declined_still_shown(
+        self, client, staff_headers, player_headers, club, staff, player, test_session_factory
+    ):
+        """A slot the requestor declined/left does not count as 'already in' — the game
+        stays visible so they can re-join."""
+        c1 = await _make_court(client, staff_headers, club, name="C1")
+        await _make_court(client, staff_headers, club, name="C2")
+        await _set_club_booking_window(club.id, test_session_factory)
+        oh = await _seed_operating_hours(club.id, test_session_factory, 0,
+                                          open_time="09:00", close_time="10:30")
+        booking = await _seed_booking(
+            uuid.UUID(c1), club.id, staff.id,
+            datetime(2030, 1, 7, 9, 0, tzinfo=timezone.utc),
+            datetime(2030, 1, 7, 10, 30, tzinfo=timezone.utc),
+            test_session_factory,
+            is_open_game=True, max_players=4,
+            declined_player_ids=[player.id],
+        )
+        try:
+            resp = await client.get(
+                f"/api/v1/clubs/{club.id}/availability",
+                params={"start_date": MON, "end_date": MON},
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            slot = resp.json()["days"][0]["slots"][0]
+            assert any(m["booking_id"] == str(booking.id) for m in slot["existing_matches"])
         finally:
             await _cleanup_bookings([booking.id], test_session_factory)
             await _cleanup_operating_hours([oh.id], test_session_factory)

@@ -337,7 +337,7 @@ class CourtService:
         surface: Optional[SurfaceType],
         from_time: Optional[TimeType],
         to_time: Optional[TimeType],
-        skill_level: Optional[Decimal],
+        requesting_user: User,
         limit: int = _AVAILABILITY_DEFAULT_LIMIT,
     ) -> dict:
         """
@@ -349,8 +349,11 @@ class CourtService:
           - `from_time`/`to_time` (if provided) clamp every day in the range.
           - `surface` filters which courts are considered (does NOT filter existing matches,
             since the match's court is what it is — its surface is implicit in `courts[]`).
-          - `skill_level` filters joinable open games: only games whose skill range contains
-            the level (or have no skill restriction) are shown. Has no effect on empty courts.
+          - Joinable open games are filtered to the requesting user's own skill level: only games
+            whose skill range contains it (or have no skill restriction) are shown. A user with no
+            skill level set sees all open games. Has no effect on empty courts.
+          - Open games the requesting user is already an active player in (accepted/pending) are
+            excluded from `existing_matches`. Games they declined/left remain so they can re-join.
           - A slot is omitted entirely if it has neither available courts nor joinable matches.
           - When `end_date` is None: scan forward (up to a safety cap of _AVAILABILITY_MAX_SCAN_DAYS)
             until `limit` slot rows are emitted, then return a `next_cursor` for the FE.
@@ -364,6 +367,13 @@ class CourtService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail="end_date must be on or after start_date",
             )
+
+        # Skill filter is driven by the requestor's own profile; None = no filtering.
+        user_skill = (
+            Decimal(str(requesting_user.skill_level))
+            if requesting_user.skill_level is not None
+            else None
+        )
 
         club_result = await self.db.execute(
             select(Club).where(Club.id == club_id, Club.tenant_id == tenant_id)
@@ -564,10 +574,17 @@ class CourtService:
                     slots_left = max(0, (overlap_booking.max_players or 0) - accepted)
                     if slots_left <= 0:
                         continue
-                    if skill_level is not None:
-                        if overlap_booking.min_skill_level is not None and Decimal(str(overlap_booking.min_skill_level)) > skill_level:
+                    # Hide games the requestor is already actively part of (they can't re-join);
+                    # a declined/released slot is left visible so they can join again.
+                    if any(
+                        p.user_id == requesting_user.id and p.invite_status != InviteStatus.declined
+                        for p in overlap_booking.players
+                    ):
+                        continue
+                    if user_skill is not None:
+                        if overlap_booking.min_skill_level is not None and Decimal(str(overlap_booking.min_skill_level)) > user_skill:
                             continue
-                        if overlap_booking.max_skill_level is not None and Decimal(str(overlap_booking.max_skill_level)) < skill_level:
+                        if overlap_booking.max_skill_level is not None and Decimal(str(overlap_booking.max_skill_level)) < user_skill:
                             continue
                     existing_matches.append({
                         "booking_id": overlap_booking.id,

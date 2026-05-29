@@ -1,6 +1,5 @@
 import uuid
 from datetime import date as DateType, datetime
-from decimal import Decimal
 from typing import List, Optional
 
 import stripe
@@ -142,7 +141,6 @@ async def get_club_availability(
     surface: Optional[SurfaceType] = Query(default=None, description="Filter empty-court availability by surface type"),
     from_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to start at HH:MM UTC"),
     to_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to end at HH:MM UTC"),
-    skill_level: Optional[Decimal] = Query(default=None, description="Filter joinable open matches to those whose skill range includes this level"),
     current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_read_db),
@@ -154,6 +152,9 @@ async def get_club_availability(
     `existing_matches` (joinable open games at that time). Slots with neither are omitted.
     When `end_date` is omitted, up to 40 slot rows are returned plus a `next_cursor`
     the FE can use to request the next page.
+
+    Joinable open matches are filtered to those whose skill range includes the requesting
+    user's own skill level, and open games the user is already part of are excluded.
     """
     try:
         parsed_from = datetime.strptime(from_time, "%H:%M").time() if from_time else None
@@ -178,7 +179,7 @@ async def get_club_availability(
         surface=surface,
         from_time=parsed_from,
         to_time=parsed_to,
-        skill_level=skill_level,
+        requesting_user=current_user,
     )
 
     return ClubAvailabilityResponse(
