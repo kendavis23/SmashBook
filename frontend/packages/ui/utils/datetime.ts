@@ -55,6 +55,15 @@ export function formatUTCTime(iso: string): string {
     return `${hour12}:${minute} ${ampm}`;
 }
 
+/** Formats a plain time string ("HH:MM" or "HH:MM:SS") as "10:00 AM" */
+export function formatPlainTime(t: string): string {
+    const [hourStr = "0", minute = "00"] = t.split(":");
+    const hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minute} ${ampm}`;
+}
+
 /**
  * Converts a datetime-local input value ("YYYY-MM-DDTHH:mm") to a UTC ISO string
  * ("YYYY-MM-DDTHH:mm:00Z") without any timezone conversion.

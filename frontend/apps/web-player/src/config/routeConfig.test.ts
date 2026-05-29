@@ -34,7 +34,7 @@ describe("ROUTES", () => {
         }, {});
 
         expect(grouped["Overview"]).toEqual(["dashboard"]);
-        expect(grouped["Operations"]).toEqual(["bookings", "my-games"]);
+        expect(grouped["Operations"]).toEqual(["book-court", "bookings", "my-games"]);
         expect(grouped["Manage"]).toEqual(["account", "payments", "memberships"]);
     });
 
