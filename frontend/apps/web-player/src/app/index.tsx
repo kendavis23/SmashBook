@@ -12,6 +12,7 @@ import { lazy, Suspense } from "react";
 import { getAccessToken } from "@repo/auth";
 import { DashboardLayout } from "../layout/dashboard";
 
+const BookCourtPage = lazy(() => import("../features/dashboard2/pages/BookCourtPage"));
 const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
 const DashboardPage = lazy(() => import("../features/dashboard/pages/DashboardPage"));
 const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
@@ -136,6 +137,18 @@ const dashboardRoute = createRoute({
     component: DashboardPage,
 });
 
+const bookCourtRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/book-court",
+    validateSearch: (search: Record<string, unknown>) => ({
+        date: typeof search.date === "string" ? search.date : undefined,
+        surface: typeof search.surface === "string" ? search.surface : undefined,
+        from: typeof search.from === "string" ? search.from : undefined,
+        to: typeof search.to === "string" ? search.to : undefined,
+    }),
+    component: BookCourtPage,
+});
+
 const bookingsRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/bookings",
@@ -196,6 +209,7 @@ const routeTree = rootRoute.addChildren([
     completeInvitationRoute,
     dashboardLayoutRoute.addChildren([
         dashboardRoute,
+        bookCourtRoute,
         bookingsRoute,
         myGamesRoute,
         profileRoute,
