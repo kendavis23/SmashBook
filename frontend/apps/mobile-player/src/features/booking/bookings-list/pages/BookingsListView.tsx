@@ -4,7 +4,6 @@ import { Ionicons } from "@expo/vector-icons";
 import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
 import { BookingCard } from "../components/BookingCard";
 import { BookingsTabBar } from "../components/BookingsTabBar";
-import { BookingStatsBar } from "../components/BookingStatsBar";
 
 type Props = {
     upcoming: PlayerBookingItem[];
@@ -33,18 +32,35 @@ function EmptyState({
 }): JSX.Element {
     const isUpcoming = tab === "upcoming";
     return (
-        <View className="mt-8 items-center gap-4 px-8">
-            <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-white">
+        <View style={{ marginTop: 48, alignItems: "center", gap: 12, paddingHorizontal: 32 }}>
+            <View
+                style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 20,
+                    backgroundColor: isUpcoming ? "#EFF6FF" : "#F1F5F9",
+                    alignItems: "center",
+                    justifyContent: "center",
+                }}
+            >
                 <Ionicons
                     name={isUpcoming ? "calendar-outline" : "time-outline"}
-                    size={36}
-                    color={isUpcoming ? "#2563EB" : "#9CA3AF"}
+                    size={28}
+                    color={isUpcoming ? "#2563EB" : "#94A3B8"}
                 />
             </View>
-            <Text className="text-center text-[17px] font-bold text-[#111827]">
+            <Text
+                style={{
+                    fontSize: 16,
+                    fontWeight: "700",
+                    color: "#0F172A",
+                    textAlign: "center",
+                    letterSpacing: -0.2,
+                }}
+            >
                 {isUpcoming ? "No upcoming bookings" : "No past bookings"}
             </Text>
-            <Text className="text-center text-[13px] leading-5 text-[#9CA3AF]">
+            <Text style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", lineHeight: 20 }}>
                 {isUpcoming
                     ? "Book a court to get started!"
                     : "Your past bookings will appear here."}
@@ -54,10 +70,21 @@ function EmptyState({
                     onPress={onNewBooking}
                     accessibilityRole="button"
                     accessibilityLabel="Book a court"
-                    className="mt-1 flex-row items-center gap-2 rounded-[14px] bg-[#2563EB] px-6 py-3.5 active:opacity-75"
+                    style={{
+                        marginTop: 4,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        borderRadius: 22,
+                        backgroundColor: "#2563EB",
+                        paddingHorizontal: 22,
+                        paddingVertical: 12,
+                    }}
                 >
                     <Ionicons name="add" size={16} color="#FFFFFF" />
-                    <Text className="text-[14px] font-semibold text-white">Book a Court</Text>
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>
+                        Book a Court
+                    </Text>
                 </Pressable>
             ) : null}
         </View>
@@ -81,35 +108,89 @@ export function BookingsListView({
 
     if (isLoading) {
         return (
-            <View className="flex-1 items-center justify-center gap-3 bg-[#F2F3F7]">
-                <View className="h-14 w-14 items-center justify-center rounded-[20px] bg-white shadow-sm">
+            <View
+                style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    backgroundColor: "#F1F5F9",
+                }}
+            >
+                <View
+                    style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 16,
+                        backgroundColor: "#EFF6FF",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
                     <ActivityIndicator size="small" color="#2563EB" />
                 </View>
-                <Text className="text-[14px] font-medium text-[#9CA3AF]">Loading bookings…</Text>
+                <Text style={{ fontSize: 13, fontWeight: "500", color: "#94A3B8" }}>
+                    Loading bookings…
+                </Text>
             </View>
         );
     }
 
     if (error) {
         return (
-            <View className="flex-1 items-center justify-center gap-4 bg-[#F2F3F7] px-8">
-                <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-red-50">
-                    <Ionicons name="alert-circle-outline" size={30} color="#EF4444" />
+            <View
+                style={{
+                    flex: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 12,
+                    backgroundColor: "#F1F5F9",
+                    paddingHorizontal: 32,
+                }}
+            >
+                <View
+                    style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 16,
+                        backgroundColor: "#FEF2F2",
+                        alignItems: "center",
+                        justifyContent: "center",
+                    }}
+                >
+                    <Ionicons name="alert-circle-outline" size={26} color="#EF4444" />
                 </View>
-                <Text className="text-center text-[17px] font-bold text-[#111827]">
+                <Text
+                    style={{
+                        fontSize: 16,
+                        fontWeight: "700",
+                        color: "#0F172A",
+                        textAlign: "center",
+                    }}
+                >
                     Failed to load bookings
                 </Text>
-                <Text className="text-center text-[13px] leading-5 text-[#9CA3AF]">
+                <Text
+                    style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", lineHeight: 20 }}
+                >
                     {error.message ?? "Something went wrong. Please try again."}
                 </Text>
                 <Pressable
                     onPress={onRefresh}
                     accessibilityRole="button"
                     accessibilityLabel="Retry loading bookings"
-                    className="mt-1 flex-row items-center gap-2 rounded-[14px] bg-[#2563EB] px-6 py-3.5 active:opacity-75"
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        borderRadius: 22,
+                        backgroundColor: "#2563EB",
+                        paddingHorizontal: 22,
+                        paddingVertical: 12,
+                    }}
                 >
-                    <Ionicons name="refresh-outline" size={16} color="#FFFFFF" />
-                    <Text className="text-[14px] font-semibold text-white">Retry</Text>
+                    <Ionicons name="refresh-outline" size={15} color="#FFFFFF" />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>Retry</Text>
                 </Pressable>
             </View>
         );
@@ -119,13 +200,12 @@ export function BookingsListView({
         <FlatList
             data={items}
             keyExtractor={(item) => item.booking_id}
-            contentContainerClassName="pb-[120px] gap-3 pt-4"
+            contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
             showsVerticalScrollIndicator={false}
+            style={{ backgroundColor: "#F1F5F9" }}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             ListHeaderComponent={
-                <View className="gap-4 pb-1 px-5">
-                    {/* Stats */}
-                    <BookingStatsBar upcoming={upcoming} past={past} />
-                    {/* Tab bar */}
+                <View style={{ gap: 12, paddingBottom: 8, paddingHorizontal: 16 }}>
                     <BookingsTabBar
                         activeTab={activeTab}
                         upcomingCount={upcoming.length}
@@ -135,7 +215,7 @@ export function BookingsListView({
             }
             ListEmptyComponent={<EmptyState tab={activeTab} onNewBooking={onNewBooking} />}
             renderItem={({ item }) => (
-                <View className="px-5">
+                <View style={{ paddingHorizontal: 16 }}>
                     <BookingCard
                         booking={item}
                         showActions={showActions}

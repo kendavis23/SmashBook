@@ -20,9 +20,8 @@ export function BookScreen(): JSX.Element {
     const [newBookingVisible, setNewBookingVisible] = useState(false);
     const [pendingPayment, setPendingPayment] = useState<PlayerBookingItem | null>(null);
 
-    // Build YYYY-MM-DD strings from UTC date parts to avoid local-TZ date shifts near midnight.
     const now = new Date();
-    const todayUtc = now.toISOString().slice(0, 10); // always UTC calendar date
+    const todayUtc = now.toISOString().slice(0, 10);
     const threeMonthsAgo = new Date(
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, now.getUTCDate())
     );
@@ -64,7 +63,6 @@ export function BookScreen(): JSX.Element {
     }, []);
 
     const handlePayClick = useCallback((item: PlayerBookingItem) => {
-        // Payment flow placeholder — store item and show payment UI when available
         setPendingPayment(item);
     }, []);
 
@@ -91,90 +89,196 @@ export function BookScreen(): JSX.Element {
         []
     );
 
+    const upcomingCount = upcomingData?.upcoming?.length ?? 0;
+
     return (
-        <SafeAreaView className="flex-1 bg-[#F2F3F7]">
-            <StatusBar style="dark" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+            <StatusBar style="light" />
 
-            {/* Header */}
-            <View className="flex-row items-center justify-between bg-[#F2F3F7] px-5 pb-2 pt-1 android:pt-3.5">
-                <View>
-                    <Text className="text-[22px] font-bold text-[#111827]">My Bookings</Text>
-                    <Text className="text-[12px] text-[#9CA3AF]">
-                        {(upcomingData?.upcoming?.length ?? 0) > 0
-                            ? `${upcomingData?.upcoming?.length ?? 0} upcoming court sessions`
-                            : "Manage your court sessions"}
-                    </Text>
-                </View>
+            {/* Blue hero header — mirrors HomeView */}
+            <View
+                style={{
+                    backgroundColor: "#2563EB",
+                    paddingHorizontal: 20,
+                    paddingTop: 8,
+                    paddingBottom: 28,
+                }}
+            >
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <View style={{ flex: 1 }}>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                fontWeight: "500",
+                                letterSpacing: 0.3,
+                            }}
+                        >
+                            Your schedule
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: 26,
+                                fontWeight: "700",
+                                color: "#FFFFFF",
+                                marginTop: 2,
+                                letterSpacing: -0.3,
+                            }}
+                        >
+                            My Bookings
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                marginTop: 4,
+                                fontWeight: "400",
+                            }}
+                        >
+                            {upcomingCount > 0
+                                ? `${upcomingCount} upcoming court session${upcomingCount !== 1 ? "s" : ""}`
+                                : "No upcoming sessions"}
+                        </Text>
+                    </View>
 
-                <View className="flex-row items-center gap-2">
-                    {/* Refresh */}
-                    <Pressable
-                        onPress={handleRefresh}
-                        disabled={isLoading}
-                        accessibilityRole="button"
-                        accessibilityLabel="Refresh bookings"
-                        hitSlop={12}
-                        className="h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm active:opacity-50 disabled:opacity-40"
-                    >
-                        <Ionicons name="refresh-outline" size={20} color="#111827" />
-                    </Pressable>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        {/* Refresh */}
+                        <Pressable
+                            onPress={handleRefresh}
+                            disabled={isLoading}
+                            accessibilityRole="button"
+                            accessibilityLabel="Refresh bookings"
+                            hitSlop={12}
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                backgroundColor: "rgba(255,255,255,0.18)",
+                                borderWidth: 1,
+                                borderColor: "rgba(255,255,255,0.25)",
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+                        </Pressable>
 
-                    {/* New Booking FAB */}
-                    <Pressable
-                        onPress={() => setNewBookingVisible(true)}
-                        accessibilityRole="button"
-                        accessibilityLabel="New booking"
-                        className="h-11 w-11 items-center justify-center rounded-full bg-[#2563EB] shadow-sm active:opacity-80"
-                    >
-                        <Ionicons name="add" size={22} color="#FFFFFF" />
-                    </Pressable>
+                        {/* New booking */}
+                        <Pressable
+                            onPress={() => setNewBookingVisible(true)}
+                            accessibilityRole="button"
+                            accessibilityLabel="New booking"
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 20,
+                                backgroundColor: "#FFFFFF",
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Ionicons name="add" size={22} color="#2563EB" />
+                        </Pressable>
+                    </View>
                 </View>
             </View>
 
-            {/* Pending payment banner */}
-            {pendingPayment ? (
-                <View className="mx-5 mb-2 flex-row items-center gap-3 rounded-[16px] border border-[#DBEAFE] bg-[#EFF6FF] px-4 py-3">
-                    <Ionicons name="card-outline" size={18} color="#2563EB" />
-                    <View className="flex-1">
-                        <Text className="text-[13px] font-semibold text-[#111827]">
-                            Payment pending for {pendingPayment.court_name}
-                        </Text>
-                        <Text className="text-[11px] text-[#9CA3AF]">Payment flow coming soon</Text>
-                    </View>
-                    <Pressable
-                        onPress={() => setPendingPayment(null)}
-                        accessibilityRole="button"
-                        accessibilityLabel="Dismiss payment banner"
+            {/* White card lifted over hero — mirrors HomeView */}
+            <View
+                style={{
+                    flex: 1,
+                    backgroundColor: "#F1F5F9",
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    marginTop: -16,
+                    overflow: "hidden",
+                    shadowColor: "#1E3A8A",
+                    shadowOffset: { width: 0, height: -4 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 12,
+                    elevation: 6,
+                }}
+            >
+                {/* Pending payment banner */}
+                {pendingPayment ? (
+                    <View
+                        style={{
+                            marginHorizontal: 16,
+                            marginTop: 12,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: "#DBEAFE",
+                            backgroundColor: "#EFF6FF",
+                            paddingHorizontal: 14,
+                            paddingVertical: 11,
+                        }}
                     >
-                        <Ionicons name="close" size={16} color="#9CA3AF" />
-                    </Pressable>
-                </View>
-            ) : null}
+                        <View
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 10,
+                                backgroundColor: "#DBEAFE",
+                                alignItems: "center",
+                                justifyContent: "center",
+                            }}
+                        >
+                            <Ionicons name="card-outline" size={16} color="#2563EB" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text
+                                style={{ fontSize: 13, fontWeight: "600", color: "#1E40AF" }}
+                                numberOfLines={1}
+                            >
+                                Payment pending · {pendingPayment.court_name}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: "#93C5FD", marginTop: 1 }}>
+                                Payment flow coming soon
+                            </Text>
+                        </View>
+                        <Pressable
+                            onPress={() => setPendingPayment(null)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Dismiss payment banner"
+                            hitSlop={8}
+                        >
+                            <Ionicons name="close" size={16} color="#93C5FD" />
+                        </Pressable>
+                    </View>
+                ) : null}
 
-            {/* Main list */}
-            <BookingsListView
-                upcoming={upcomingData?.upcoming ?? []}
-                past={pastData?.past ?? []}
-                activeTab={activeTab}
-                isLoading={isLoading}
-                error={error}
-                onTabChange={handleTabChange}
-                onRefresh={handleRefresh}
-                onManageClick={handleManageClick}
-                onPayClick={handlePayClick}
-                onInvitePlayer={handleInvitePlayer}
-                onRespondInvite={handleRespondInvite}
-                onNewBooking={() => setNewBookingVisible(true)}
-            />
+                {/* Main list */}
+                <BookingsListView
+                    upcoming={upcomingData?.upcoming ?? []}
+                    past={pastData?.past ?? []}
+                    activeTab={activeTab}
+                    isLoading={isLoading}
+                    error={error}
+                    onTabChange={handleTabChange}
+                    onRefresh={handleRefresh}
+                    onManageClick={handleManageClick}
+                    onPayClick={handlePayClick}
+                    onInvitePlayer={handleInvitePlayer}
+                    onRespondInvite={handleRespondInvite}
+                    onNewBooking={() => setNewBookingVisible(true)}
+                />
+            </View>
 
-            {/* Booking detail sheet */}
             <BookingDetailSheet
                 selected={selectedBooking}
                 onClose={() => setSelectedBooking(null)}
                 onPayClick={handlePayClick}
             />
 
-            {/* New booking sheet */}
             <NewBookingSheet
                 visible={newBookingVisible}
                 clubId={clubId ?? null}
