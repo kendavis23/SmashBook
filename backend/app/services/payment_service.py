@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.pubsub import publish_notification_event
-from app.db.models.booking import Booking, BookingPlayer, BookingStatus, PaymentStatus
+from app.db.models.booking import Booking, BookingPlayer, BookingStatus, InviteStatus, PaymentStatus
 from app.db.models.club import Club
 from app.db.models.payment import Payment, PlatformFee, PlatformFeeType
 from app.db.models.payment import PaymentMethod as PaymentMethodEnum
@@ -435,6 +435,7 @@ class PaymentService:
         bp = result.scalar_one_or_none()
         if bp:
             bp.payment_status = PaymentStatus.paid
+            bp.payment_deadline = None  # slot is paid — no longer subject to the sweep
             self.db.add(bp)
 
         # Confirm only when all slots are filled and every accepted player has paid
@@ -443,8 +444,12 @@ class PaymentService:
         )
         all_players = result.scalars().all()
         booking = await self.db.get(Booking, payment.booking_id)
-        if booking and booking.status == BookingStatus.pending and should_confirm(booking, all_players):
-            booking.status = BookingStatus.confirmed
+        if booking:
+            # First payment clears the court hold; once null it stays null, so this is
+            # idempotent for later payments.
+            booking.hold_expires_at = None
+            if booking.status == BookingStatus.pending and should_confirm(booking, all_players):
+                booking.status = BookingStatus.confirmed
             self.db.add(booking)
 
         await self.db.commit()
@@ -507,6 +512,21 @@ class PaymentService:
         payment.failure_reason = failure_reason
         payment.retry_count = (payment.retry_count or 0) + 1
         self.db.add(payment)
+
+        # Free the player's held slot immediately — the card attempt failed, so the slot
+        # should not keep blocking. The booking is cancelled only if this leaves it with
+        # no paid player (organiser-never-paid case).
+        booking = await self.db.get(Booking, payment.booking_id)
+        bp_result = await self.db.execute(
+            sa_select(BookingPlayer).where(
+                BookingPlayer.booking_id == payment.booking_id,
+                BookingPlayer.user_id == payment.user_id,
+            )
+        )
+        failed_bp = bp_result.scalar_one_or_none()
+        if booking and failed_bp and failed_bp.payment_status != PaymentStatus.paid:
+            await self._free_player_slot(booking, failed_bp)
+
         await self.db.commit()
 
         try:
@@ -534,6 +554,98 @@ class PaymentService:
                 "failed to publish payment_failed_staff event payment_id=%s booking_id=%s",
                 payment.id, payment.booking_id,
             )
+
+    async def _free_player_slot(self, booking: Booking, bp: BookingPlayer) -> None:
+        """Release one unpaid slot; cancel the booking if no paid player remains.
+
+        Marking the slot ``declined`` (rather than deleting it) frees it for the conflict
+        check while preserving the row's history; the join-dedup path reactivates it if
+        the player retries. Does not modify the caller's transaction boundary.
+        """
+        bp.invite_status = InviteStatus.declined
+        bp.payment_deadline = None
+        self.db.add(bp)
+
+        result = await self.db.execute(
+            sa_select(BookingPlayer).where(BookingPlayer.booking_id == booking.id)
+        )
+        players = result.scalars().all()
+        has_paid_player = any(
+            p.invite_status == InviteStatus.accepted and p.payment_status == PaymentStatus.paid
+            for p in players
+        )
+        if booking.status == BookingStatus.pending and not has_paid_player:
+            # Organiser never paid (or last paid player gone) → cancel and free the court.
+            booking.status = BookingStatus.cancelled
+            booking.hold_expires_at = None
+            self.db.add(booking)
+
+    async def release_expired_holds(self) -> dict:
+        """Backstop sweep that frees slots whose payment deadline has elapsed.
+
+        This is the only release path that catches abandonment (the player closed the
+        screen — no Stripe webhook fires). For each expired pending slot it cancels any
+        in-flight card PaymentIntent, then frees the slot; freeing the last paid slot
+        cancels the booking and releases the court. If the PI has already succeeded on
+        Stripe's side (supersede raises 409), the slot is reconciled to paid instead of
+        released. Idempotent — a second run finds nothing once slots are freed.
+
+        Rows are locked ``FOR UPDATE SKIP LOCKED`` so concurrent ticks never double-process
+        the same slot. Served by the partial index ``ix_booking_players_deadline``.
+        """
+        now = datetime.now(timezone.utc)
+        result = await self.db.execute(
+            sa_select(BookingPlayer)
+            .where(
+                BookingPlayer.payment_status == PaymentStatus.pending,
+                BookingPlayer.payment_deadline.is_not(None),
+                BookingPlayer.payment_deadline < now,
+            )
+            .with_for_update(skip_locked=True)
+        )
+        expired = result.scalars().all()
+
+        released = 0
+        reconciled = 0
+        cancelled_bookings = 0
+        for bp in expired:
+            booking = await self.db.get(Booking, bp.booking_id)
+            if booking is None:
+                continue
+
+            try:
+                await self.supersede_pending_stripe_payment(bp.booking_id, bp.user_id)
+            except HTTPException as exc:
+                if exc.status_code != status.HTTP_409_CONFLICT:
+                    raise
+                # The card payment actually went through — reconcile the slot to paid
+                # rather than releasing it, and let it confirm the booking if now complete.
+                bp.payment_status = PaymentStatus.paid
+                bp.payment_deadline = None
+                self.db.add(bp)
+                booking.hold_expires_at = None
+                if booking.status == BookingStatus.pending:
+                    all_players = (await self.db.execute(
+                        sa_select(BookingPlayer).where(BookingPlayer.booking_id == booking.id)
+                    )).scalars().all()
+                    if should_confirm(booking, all_players):
+                        booking.status = BookingStatus.confirmed
+                self.db.add(booking)
+                reconciled += 1
+                continue
+
+            was_cancelled = booking.status == BookingStatus.cancelled
+            await self._free_player_slot(booking, bp)
+            released += 1
+            if not was_cancelled and booking.status == BookingStatus.cancelled:
+                cancelled_bookings += 1
+
+        await self.db.commit()
+        return {
+            "released": released,
+            "reconciled": reconciled,
+            "cancelled_bookings": cancelled_bookings,
+        }
 
     async def issue_refund(self, booking_id: str, user_id: str,
                             amount: float = None, reason: str = None) -> dict:
@@ -782,6 +894,7 @@ class PaymentService:
             bp = bp_result.scalar_one_or_none()
             if bp:
                 bp.payment_status = PaymentStatus.paid
+                bp.payment_deadline = None  # slot is paid — no longer subject to the sweep
                 self.db.add(bp)
 
             all_bp_result = await self.db.execute(
@@ -789,8 +902,11 @@ class PaymentService:
             )
             all_players = all_bp_result.scalars().all()
             booking = await self.db.get(Booking, source_id)
-            if booking and booking.status == BookingStatus.pending and should_confirm(booking, all_players):
-                booking.status = BookingStatus.confirmed
+            if booking:
+                # First payment clears the court hold; idempotent once null.
+                booking.hold_expires_at = None
+                if booking.status == BookingStatus.pending and should_confirm(booking, all_players):
+                    booking.status = BookingStatus.confirmed
                 self.db.add(booking)
 
             user = await self.db.get(User, user_id)

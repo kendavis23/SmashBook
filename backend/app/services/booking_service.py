@@ -25,7 +25,7 @@ from typing import Optional
 import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -56,9 +56,18 @@ _STAFF_ROLES = {
 
 _GRID_ENFORCED_TYPES = {BookingType.regular}
 
+# How long a player-initiated unpaid slot (and the court, until the first payment)
+# is held before the release sweep may free it.
+HOLD_WINDOW = timedelta(minutes=5)
+
 
 def _is_staff(user: User) -> bool:
     return user.role in _STAFF_ROLES
+
+
+def _hold_until() -> datetime:
+    """Deadline for a freshly-created unpaid hold: now + the hold window."""
+    return datetime.now(tz=timezone.utc) + HOLD_WINDOW
 
 
 def _accepted_count(players: list[BookingPlayer]) -> int:
@@ -147,9 +156,23 @@ class BookingService:
             )
 
     async def _check_no_conflict(self, court_id: uuid.UUID, start: datetime, end: datetime, exclude_booking_id: Optional[uuid.UUID] = None) -> None:
+        now = datetime.now(tz=timezone.utc)
         stmt = select(Booking.id).where(
             Booking.court_id == court_id,
-            Booking.status.in_([BookingStatus.pending, BookingStatus.confirmed]),
+            # A confirmed booking always blocks. A pending booking blocks only while its
+            # court hold is still live — an expired (but not yet swept) hold frees the slot
+            # immediately, closing the race between expiry and the release sweep. A NULL
+            # hold is a paid/staff booking that always blocks.
+            or_(
+                Booking.status == BookingStatus.confirmed,
+                and_(
+                    Booking.status == BookingStatus.pending,
+                    or_(
+                        Booking.hold_expires_at.is_(None),
+                        Booking.hold_expires_at > now,
+                    ),
+                ),
+            ),
             Booking.start_datetime < end,
             Booking.end_datetime > start,
         )
@@ -460,6 +483,14 @@ class BookingService:
                 discount_amount=organiser_discount_amount,
                 discount_source=organiser_discount_source,
             )
+            # Player-initiated unpaid booking: hold the slot and the court for the
+            # organiser. Staff placements and credit-paid (already-paid) slots get no
+            # deadline — they never auto-expire. The court hold mirrors the organiser's
+            # slot deadline and is cleared the moment any player pays.
+            if not is_staff and organiser_payment_status == PaymentStatus.pending:
+                hold = _hold_until()
+                organiser_bp.payment_deadline = hold
+                booking.hold_expires_at = hold
             self.db.add(organiser_bp)
             created_players.append(organiser_bp)
             if breakdown and breakdown.credit_consumed:
@@ -753,7 +784,11 @@ class BookingService:
         if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Booking is no longer available")
 
-        if any(p.user_id == requesting_user.id for p in booking.players):
+        # A declined row is a slot the player abandoned (or that the release sweep
+        # freed) — it must not block a fresh join, but the UNIQUE(booking_id, user_id)
+        # constraint forbids a second row, so we reactivate it below instead of inserting.
+        existing_bp = next((p for p in booking.players if p.user_id == requesting_user.id), None)
+        if existing_bp is not None and existing_bp.invite_status != InviteStatus.declined:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You are already part of this booking")
 
         accepted = _accepted_count(booking.players)
@@ -791,17 +826,33 @@ class BookingService:
             if (breakdown and breakdown.credit_consumed)
             else PaymentStatus.pending
         )
-        bp = BookingPlayer(
-            booking=booking,
-            user=requesting_user,
-            role=PlayerRole.player,
-            invite_status=InviteStatus.accepted,
-            payment_status=join_payment_status,
-            amount_due=amount_due,
-            discount_amount=discount_amount,
-            discount_source=discount_source,
-        )
-        self.db.add(bp)
+        # Hold this player's slot until they pay (self-join is always player-initiated).
+        # Credit-paid slots are already paid and never expire. The court hold is the
+        # organiser's concern and is untouched here.
+        slot_deadline = _hold_until() if join_payment_status == PaymentStatus.pending else None
+        if existing_bp is not None:
+            # Reactivate the previously-declined slot in place (unique constraint).
+            bp = existing_bp
+            bp.role = PlayerRole.player
+            bp.invite_status = InviteStatus.accepted
+            bp.payment_status = join_payment_status
+            bp.amount_due = amount_due
+            bp.discount_amount = discount_amount
+            bp.discount_source = discount_source
+            bp.payment_deadline = slot_deadline
+        else:
+            bp = BookingPlayer(
+                booking=booking,
+                user=requesting_user,
+                role=PlayerRole.player,
+                invite_status=InviteStatus.accepted,
+                payment_status=join_payment_status,
+                amount_due=amount_due,
+                discount_amount=discount_amount,
+                discount_source=discount_source,
+                payment_deadline=slot_deadline,
+            )
+            self.db.add(bp)
         await self.db.flush()
 
         if breakdown and breakdown.credit_consumed:
@@ -850,8 +901,11 @@ class BookingService:
         if booking.status in (BookingStatus.cancelled, BookingStatus.completed):
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Cannot invite to a cancelled or completed booking")
 
-        # Block re-invite only if they have an active (pending/accepted) entry
-        if any(p.user_id == invited_user_id and p.invite_status != InviteStatus.declined for p in booking.players):
+        # Block re-invite only if they have an active (pending/accepted) entry. A declined
+        # row (player abandoned, or the release sweep freed the slot) is reactivated in
+        # place below — UNIQUE(booking_id, user_id) forbids inserting a second row.
+        existing_bp = next((p for p in booking.players if p.user_id == invited_user_id), None)
+        if existing_bp is not None and existing_bp.invite_status != InviteStatus.declined:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Player is already part of this booking")
 
         # Verify invited user exists in tenant
@@ -879,17 +933,29 @@ class BookingService:
             discount_amount = None
             discount_source = None
 
-        bp = BookingPlayer(
-            booking=booking,
-            user=invited_user,
-            role=PlayerRole.player,
-            invite_status=InviteStatus.pending,
-            payment_status=PaymentStatus.pending,
-            amount_due=amount_due,
-            discount_amount=discount_amount,
-            discount_source=discount_source,
-        )
-        self.db.add(bp)
+        if existing_bp is not None:
+            # Reactivate the previously-declined invite in place. payment_deadline stays
+            # None — it is set only when the invitee accepts (see respond_to_invite).
+            bp = existing_bp
+            bp.role = PlayerRole.player
+            bp.invite_status = InviteStatus.pending
+            bp.payment_status = PaymentStatus.pending
+            bp.amount_due = amount_due
+            bp.discount_amount = discount_amount
+            bp.discount_source = discount_source
+            bp.payment_deadline = None
+        else:
+            bp = BookingPlayer(
+                booking=booking,
+                user=invited_user,
+                role=PlayerRole.player,
+                invite_status=InviteStatus.pending,
+                payment_status=PaymentStatus.pending,
+                amount_due=amount_due,
+                discount_amount=discount_amount,
+                discount_source=discount_source,
+            )
+            self.db.add(bp)
         await self.db.flush()
 
         return await self._load_booking(booking.id)
@@ -954,6 +1020,11 @@ class BookingService:
                 bp.discount_amount = None
                 bp.discount_source = None
                 bp.membership_subscription_id = None
+
+            # Hold the accepted-but-unpaid slot. Staff accepting on someone's behalf is a
+            # deliberate placement and never auto-expires; an already-paid slot has no deadline.
+            if not _is_staff(requesting_user) and bp.payment_status == PaymentStatus.pending:
+                bp.payment_deadline = _hold_until()
 
             # If the last slot just filled, discard all remaining pending invitations.
             if _accepted_count(booking.players) >= booking.max_players:
