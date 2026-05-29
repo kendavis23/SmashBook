@@ -13,37 +13,110 @@ export function MyGamesScreen(): JSX.Element {
         void refetch();
     }, [refetch]);
 
+    const totalGames = data?.length ?? 0;
+
     return (
-        <SafeAreaView className="flex-1 bg-[#F2F3F7]">
-            <StatusBar style="dark" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+            <StatusBar style="light" />
 
-            {/* Header */}
-            <View className="flex-row items-center justify-between bg-[#F2F3F7] px-5 pb-2 pt-1 android:pt-3.5">
-                {/* Left: title block */}
-                <View>
-                    <Text className="text-[22px] font-bold text-[#111827]">My Games</Text>
-                    <Text className="text-[12px] text-[#9CA3AF]">Your full match history</Text>
-                </View>
-
-                {/* Refresh */}
-                <Pressable
-                    onPress={handleRefresh}
-                    disabled={isLoading}
-                    accessibilityRole="button"
-                    accessibilityLabel="Refresh match history"
-                    hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm active:opacity-50 disabled:opacity-40"
+            {/* Hero header — fixed, does not scroll */}
+            <View
+                style={{
+                    backgroundColor: "#2563EB",
+                    paddingHorizontal: 20,
+                    paddingTop: 8,
+                    paddingBottom: 28,
+                }}
+            >
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                    }}
                 >
-                    <Ionicons name="refresh-outline" size={20} color="#111827" />
-                </Pressable>
+                    <View style={{ flex: 1 }}>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                fontWeight: "500",
+                                letterSpacing: 0.3,
+                            }}
+                        >
+                            Your history
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: 26,
+                                fontWeight: "700",
+                                color: "#FFFFFF",
+                                marginTop: 2,
+                                letterSpacing: -0.3,
+                            }}
+                        >
+                            My Games
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                marginTop: 4,
+                                fontWeight: "400",
+                            }}
+                        >
+                            {totalGames > 0
+                                ? `${totalGames} game${totalGames !== 1 ? "s" : ""} in your history`
+                                : "Your full match history"}
+                        </Text>
+                    </View>
+
+                    {/* Refresh */}
+                    <Pressable
+                        onPress={handleRefresh}
+                        disabled={isLoading}
+                        accessibilityRole="button"
+                        accessibilityLabel="Refresh match history"
+                        hitSlop={12}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            backgroundColor: "rgba(255,255,255,0.18)",
+                            borderWidth: 1,
+                            borderColor: "rgba(255,255,255,0.25)",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+                    </Pressable>
+                </View>
             </View>
 
-            <MyGamesView
-                games={data ?? []}
-                isLoading={isLoading}
-                error={error}
-                onRefresh={handleRefresh}
-            />
+            {/* Content card — lifts over hero */}
+            <View
+                style={{
+                    flex: 1,
+                    backgroundColor: "#F1F5F9",
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    marginTop: -16,
+                    overflow: "hidden",
+                    shadowColor: "#1E3A8A",
+                    shadowOffset: { width: 0, height: -4 },
+                    shadowOpacity: 0.06,
+                    shadowRadius: 12,
+                    elevation: 6,
+                }}
+            >
+                <MyGamesView
+                    games={data ?? []}
+                    isLoading={isLoading}
+                    error={error}
+                    onRefresh={handleRefresh}
+                />
+            </View>
         </SafeAreaView>
     );
 }

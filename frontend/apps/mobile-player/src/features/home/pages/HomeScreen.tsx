@@ -152,8 +152,8 @@ export function HomeScreen(): JSX.Element {
     const handleRefresh = useCallback(() => void refetch(), [refetch]);
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F3F7" }} edges={["top"]}>
-            <StatusBar style="dark" />
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+            <StatusBar style="light" />
             <HomeView
                 userName={profile?.full_name}
                 date={date}

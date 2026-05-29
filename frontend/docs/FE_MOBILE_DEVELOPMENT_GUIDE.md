@@ -1,4 +1,4 @@
-_Last updated: 2026-05-27 00:00 UTC_
+_Last updated: 2026-05-30 12:00 UTC_
 
 # Mobile Player Development Guide
 
@@ -329,6 +329,281 @@ const { control, handleSubmit } = useForm<FormValues>({
 | Platform classes     | Use NativeWind `ios:` / `android:` prefixes                                            |
 | `accessibilityLabel` | Required on all interactive elements                                                   |
 | `accessibilityRole`  | Set `"button"`, `"link"`, `"checkbox"` on `Pressable`                                  |
+
+---
+
+## Blue Hero Header Pattern
+
+Every main tab screen uses the same two-part layout: a fixed blue hero header that bleeds into the status bar, and a scrollable slate content area that lifts over it with rounded top corners. Use this pattern on every new tab screen — never a plain white header.
+
+### Layout tree
+
+```
+SafeAreaView          backgroundColor: "#2563EB"  edges={["top"]}
+  StatusBar           style="light"
+  View                hero header — FIXED, never scrolls
+  ScrollView          scrollable content — lifts over hero with rounded top corners
+    ...content
+```
+
+**The header must be outside the `ScrollView`.** Placing it inside (as a first child of `ScrollView`) causes it to scroll away. `BookScreen.tsx` and `HomeView.tsx` both follow this structure.
+
+---
+
+### Exact style values
+
+#### Outer wrapper (rendered by the Screen container)
+
+```tsx
+<SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+```
+
+`backgroundColor: "#2563EB"` fills the status bar notch area on iOS/Android notched devices with the same blue. `edges={["top"]}` means safe-area padding is applied only at the top — the bottom is handled by the tab bar.
+
+#### Hero header (fixed, does not scroll)
+
+```tsx
+<View
+    style={{
+        backgroundColor: "#2563EB",
+        paddingHorizontal: 20,   // left/right gutters
+        paddingTop: 8,           // space below the safe-area notch
+        paddingBottom: 28,       // extra bottom padding — creates overlap room for the card below
+    }}
+>
+```
+
+Inner row layout (title left, action buttons right):
+
+```tsx
+<View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
+    <View style={{ flex: 1 }}>
+        {/* Eyebrow — small label above the title */}
+        <Text style={{ fontSize: 13, color: "#BFDBFE", fontWeight: "500", letterSpacing: 0.3 }}>
+            Eyebrow label
+        </Text>
+        {/* Page title */}
+        <Text
+            style={{
+                fontSize: 26,
+                fontWeight: "700",
+                color: "#FFFFFF",
+                marginTop: 2,
+                letterSpacing: -0.3,
+            }}
+        >
+            Page Title
+        </Text>
+        {/* Subtitle */}
+        <Text style={{ fontSize: 13, color: "#BFDBFE", marginTop: 4, fontWeight: "400" }}>
+            Supporting detail
+        </Text>
+    </View>
+
+    {/* Action buttons — see button styles below */}
+</View>
+```
+
+Text colour reference:
+
+| Role               | Color     | Token equivalent |
+| ------------------ | --------- | ---------------- |
+| Title              | `#FFFFFF` | white            |
+| Eyebrow / subtitle | `#BFDBFE` | blue-200         |
+| Background         | `#2563EB` | blue-600         |
+
+#### Scrollable content card (lifts over hero)
+
+```tsx
+<ScrollView
+    style={{
+        flex: 1,
+        backgroundColor: "#F1F5F9",      // slate-100 — not pure white
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        marginTop: -16,                  // pulls card up 16 px into the hero overlap zone
+    }}
+    showsVerticalScrollIndicator={false}
+    contentContainerStyle={{ paddingBottom: 120 }}  // clears the tab bar
+>
+```
+
+The `marginTop: -16` + `paddingBottom: 28` on the hero together create the visual lift effect where the card appears to float over the blue area.
+
+If the screen content is not scrollable (e.g. it contains its own `FlatList` or `SectionList`), replace `ScrollView` with a plain `View` using the same `style` block but omit `contentContainerStyle`:
+
+```tsx
+<View
+    style={{
+        flex: 1,
+        backgroundColor: "#F1F5F9",
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        marginTop: -16,
+        overflow: "hidden",
+        shadowColor: "#1E3A8A",
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 12,
+        elevation: 6,
+    }}
+>
+```
+
+---
+
+### Full shell (copy this for a new screen)
+
+```tsx
+import { type JSX } from "react";
+import { ScrollView, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+
+export function MyScreen(): JSX.Element {
+    return (
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+            <StatusBar style="light" />
+
+            {/* ── Hero header — fixed, does not scroll ── */}
+            <View
+                style={{
+                    backgroundColor: "#2563EB",
+                    paddingHorizontal: 20,
+                    paddingTop: 8,
+                    paddingBottom: 28,
+                }}
+            >
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                    }}
+                >
+                    <View style={{ flex: 1 }}>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                fontWeight: "500",
+                                letterSpacing: 0.3,
+                            }}
+                        >
+                            Eyebrow label
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: 26,
+                                fontWeight: "700",
+                                color: "#FFFFFF",
+                                marginTop: 2,
+                                letterSpacing: -0.3,
+                            }}
+                        >
+                            Page Title
+                        </Text>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                marginTop: 4,
+                                fontWeight: "400",
+                            }}
+                        >
+                            Supporting detail
+                        </Text>
+                    </View>
+                    {/* action buttons go here */}
+                </View>
+            </View>
+
+            {/* ── Scrollable content — lifts over hero ── */}
+            <ScrollView
+                style={{
+                    flex: 1,
+                    backgroundColor: "#F1F5F9",
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    marginTop: -16,
+                }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 120 }}
+            >
+                {/* content here */}
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+```
+
+---
+
+### Header action buttons
+
+Right-side icon buttons sit inside the hero row. Two styles:
+
+| Style         | When to use                                       | `style` values                                                                                     |
+| ------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Frosted glass | Secondary action (refresh, filter, notifications) | `backgroundColor: "rgba(255,255,255,0.18)", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)"` |
+| White fill    | Primary action (new booking, add)                 | `backgroundColor: "#FFFFFF"` — icon color `#2563EB`                                                |
+
+Both buttons share: `width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center"`.
+
+```tsx
+{
+    /* Frosted glass — secondary */
+}
+<Pressable
+    onPress={onRefresh}
+    accessibilityRole="button"
+    accessibilityLabel="Refresh"
+    hitSlop={12}
+    style={{
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "rgba(255,255,255,0.18)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.25)",
+        alignItems: "center",
+        justifyContent: "center",
+    }}
+>
+    <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+</Pressable>;
+
+{
+    /* White fill — primary */
+}
+<Pressable
+    onPress={onAdd}
+    accessibilityRole="button"
+    accessibilityLabel="New booking"
+    style={{
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "#FFFFFF",
+        alignItems: "center",
+        justifyContent: "center",
+    }}
+>
+    <Ionicons name="add" size={22} color="#2563EB" />
+</Pressable>;
+```
+
+---
+
+### Rules
+
+- **Header outside `ScrollView`** — the hero `View` must be a sibling of `ScrollView`, never a child.
+- **`SafeAreaView` background must be `#2563EB`** so the status bar notch area fills blue on all devices.
+- **`StatusBar style="light"`** — keeps clock/battery icons white on the blue background.
+- **`paddingBottom: 28` on the hero + `marginTop: -16` on the scroll area** creates the overlap lift.
+- **Content card background is `#F1F5F9`** (slate-100) — white (`#FFFFFF`) is only for individual cards inside it.
+- **`contentContainerStyle={{ paddingBottom: 120 }}`** on `ScrollView` — prevents the last card from hiding behind the tab bar.
+- Reference implementations: `HomeView.tsx` (scrollable content), `BookScreen.tsx` (list content).
 
 ---
 

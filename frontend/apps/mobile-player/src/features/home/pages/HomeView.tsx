@@ -36,26 +36,14 @@ type Props = {
 
 function EmptySlots(): JSX.Element {
     return (
-        <View style={{ alignItems: "center", paddingVertical: 32, paddingHorizontal: 24 }}>
-            <View
-                style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    backgroundColor: "#F3F4F6",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 12,
-                }}
-            >
-                <Ionicons name="calendar-outline" size={26} color="#9CA3AF" />
+        <View className="items-center py-8 px-6">
+            <View className="w-14 h-14 rounded-full bg-slate-100 items-center justify-center mb-3">
+                <Ionicons name="calendar-outline" size={26} color="#94A3B8" />
             </View>
-            <Text
-                style={{ fontSize: 14, fontWeight: "600", color: "#374151", textAlign: "center" }}
-            >
+            <Text className="text-sm font-semibold text-slate-700 text-center">
                 No slots available
             </Text>
-            <Text style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 4 }}>
+            <Text className="text-xs text-slate-400 text-center mt-1">
                 Try a different date or clear the filters
             </Text>
         </View>
@@ -64,26 +52,14 @@ function EmptySlots(): JSX.Element {
 
 function SelectSlotPrompt(): JSX.Element {
     return (
-        <View style={{ alignItems: "center", paddingVertical: 40, paddingHorizontal: 24 }}>
-            <View
-                style={{
-                    width: 56,
-                    height: 56,
-                    borderRadius: 28,
-                    backgroundColor: "#EFF6FF",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    marginBottom: 12,
-                }}
-            >
-                <Ionicons name="time-outline" size={26} color="#2563EB" />
+        <View className="items-center py-10 px-6">
+            <View className="w-14 h-14 rounded-full bg-blue-50 items-center justify-center mb-3">
+                <Ionicons name="time-outline" size={26} color="#3B82F6" />
             </View>
-            <Text
-                style={{ fontSize: 14, fontWeight: "600", color: "#374151", textAlign: "center" }}
-            >
+            <Text className="text-sm font-semibold text-slate-700 text-center">
                 Pick a time slot above
             </Text>
-            <Text style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", marginTop: 4 }}>
+            <Text className="text-xs text-slate-400 text-center mt-1">
                 Available courts will appear here
             </Text>
         </View>
@@ -155,269 +131,299 @@ export function HomeView({
     const visibleCourts = filteredCourts();
 
     return (
-        <ScrollView
-            style={{ flex: 1, backgroundColor: "#F2F3F7" }}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 120 }}
-        >
-            {/* Header */}
+        <View style={{ flex: 1, backgroundColor: "#2563EB" }}>
+            {/* Hero Header — fixed, does not scroll */}
             <View
                 style={{
-                    backgroundColor: "#FFFFFF",
+                    backgroundColor: "#2563EB",
                     paddingHorizontal: 20,
-                    paddingTop: 16,
-                    paddingBottom: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#F3F4F6",
+                    paddingTop: 8,
+                    paddingBottom: 28,
                 }}
             >
                 <View
                     style={{
                         flexDirection: "row",
-                        alignItems: "center",
+                        alignItems: "flex-start",
                         justifyContent: "space-between",
                     }}
                 >
-                    <View>
-                        <Text style={{ fontSize: 13, color: "#9CA3AF", fontWeight: "500" }}>
+                    <View style={{ flex: 1 }}>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                fontWeight: "500",
+                                letterSpacing: 0.3,
+                            }}
+                        >
                             {greeting()}
                         </Text>
                         <Text
                             style={{
-                                fontSize: 22,
-                                fontWeight: "800",
-                                color: "#111827",
+                                fontSize: 26,
+                                fontWeight: "700",
+                                color: "#FFFFFF",
                                 marginTop: 2,
+                                letterSpacing: -0.3,
                             }}
                         >
                             {userName ? userName.split(" ")[0] : "Player"} 👋
                         </Text>
+                        <Text
+                            style={{
+                                fontSize: 13,
+                                color: "#BFDBFE",
+                                marginTop: 4,
+                                fontWeight: "400",
+                            }}
+                        >
+                            Book or join a court session
+                        </Text>
                     </View>
+
+                    {/* Refresh button */}
                     <Pressable
                         onPress={onRefresh}
                         disabled={isLoading}
                         accessibilityRole="button"
                         accessibilityLabel="Refresh availability"
                         hitSlop={12}
-                        className="active:opacity-50"
                         style={{
                             width: 40,
                             height: 40,
                             borderRadius: 20,
-                            backgroundColor: "#F3F4F6",
+                            backgroundColor: "rgba(255,255,255,0.18)",
+                            borderWidth: 1,
+                            borderColor: "rgba(255,255,255,0.25)",
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
                         {isLoading ? (
-                            <ActivityIndicator size="small" color="#2563EB" />
+                            <ActivityIndicator size="small" color="#FFFFFF" />
                         ) : (
-                            <Ionicons name="refresh-outline" size={18} color="#374151" />
+                            <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
                         )}
                     </Pressable>
                 </View>
-
-                {/* Subtitle */}
-                <View
-                    style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                        marginTop: 10,
-                        backgroundColor: "#EFF6FF",
-                        borderRadius: 12,
-                        paddingHorizontal: 12,
-                        paddingVertical: 8,
-                    }}
-                >
-                    <Ionicons name="tennisball-outline" size={15} color="#2563EB" />
-                    <Text style={{ fontSize: 13, color: "#2563EB", fontWeight: "600" }}>
-                        Book a court for today
-                    </Text>
-                </View>
             </View>
 
-            {/* Filters */}
-            <View
+            {/* Scrollable content lifted over hero */}
+            <ScrollView
                 style={{
-                    backgroundColor: "#FFFFFF",
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#F3F4F6",
+                    flex: 1,
+                    backgroundColor: "#F1F5F9",
+                    borderTopLeftRadius: 24,
+                    borderTopRightRadius: 24,
+                    marginTop: -16,
                 }}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 120 }}
             >
-                <FilterBar
-                    date={date}
-                    surface={surface}
-                    fromTime={fromTime}
-                    toTime={toTime}
-                    showAvailableSlot={showAvailableSlot}
-                    showOpenGame={showOpenGame}
-                    onDateChange={onDateChange}
-                    onSurfaceChange={onSurfaceChange}
-                    onFromTimeChange={onFromTimeChange}
-                    onToTimeChange={onToTimeChange}
-                    onToggleAvailable={onToggleAvailable}
-                    onToggleOpenGame={onToggleOpenGame}
-                    onClear={onClear}
-                />
-            </View>
-
-            {/* Error state */}
-            {error && !isLoading && (
+                {/* White card lifted over hero */}
                 <View
                     style={{
-                        margin: 16,
-                        backgroundColor: "#FEF2F2",
-                        borderRadius: 16,
-                        borderWidth: 1,
-                        borderColor: "#FECACA",
-                        padding: 16,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 10,
+                        backgroundColor: "#F1F5F9",
+                        borderTopLeftRadius: 24,
+                        borderTopRightRadius: 24,
+                        overflow: "hidden",
+                        shadowColor: "#1E3A8A",
+                        shadowOffset: { width: 0, height: -4 },
+                        shadowOpacity: 0.06,
+                        shadowRadius: 12,
+                        elevation: 6,
                     }}
                 >
-                    <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-                    <Text style={{ flex: 1, fontSize: 13, color: "#EF4444" }}>
-                        Failed to load availability. Pull to refresh.
-                    </Text>
+                    {/* Date Picker */}
+                    <FilterBar
+                        date={date}
+                        surface={surface}
+                        fromTime={fromTime}
+                        toTime={toTime}
+                        showAvailableSlot={showAvailableSlot}
+                        showOpenGame={showOpenGame}
+                        onDateChange={onDateChange}
+                        onSurfaceChange={onSurfaceChange}
+                        onFromTimeChange={onFromTimeChange}
+                        onToTimeChange={onToTimeChange}
+                        onToggleAvailable={onToggleAvailable}
+                        onToggleOpenGame={onToggleOpenGame}
+                        onClear={onClear}
+                    />
                 </View>
-            )}
 
-            {/* Time slots section */}
-            <View style={{ marginTop: 14, paddingHorizontal: 16, marginBottom: 2 }}>
-                <View
-                    style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 8,
-                    }}
-                >
-                    <Text style={{ fontSize: 16, fontWeight: "800", color: "#111827" }}>Times</Text>
-                    {filteredSlots.length > 0 && (
-                        <View
+                {/* Error state */}
+                {error && !isLoading && (
+                    <View
+                        style={{
+                            marginHorizontal: 16,
+                            marginTop: 12,
+                            backgroundColor: "#FEF2F2",
+                            borderRadius: 16,
+                            borderWidth: 1,
+                            borderColor: "#FECACA",
+                            padding: 14,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                        }}
+                    >
+                        <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
+                        <Text style={{ flex: 1, fontSize: 13, color: "#EF4444" }}>
+                            Failed to load availability. Pull to refresh.
+                        </Text>
+                    </View>
+                )}
+
+                {/* Quick Time Slots */}
+                <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 12,
+                        }}
+                    >
+                        <Text
                             style={{
-                                backgroundColor: "#F8FAFC",
-                                borderRadius: 999,
-                                paddingHorizontal: 9,
-                                paddingVertical: 5,
+                                fontSize: 16,
+                                fontWeight: "700",
+                                color: "#0F172A",
+                                letterSpacing: -0.1,
                             }}
                         >
-                            <Text style={{ fontSize: 11, color: "#9CA3AF", fontWeight: "700" }}>
+                            Quick time slots
+                        </Text>
+                        {filteredSlots.length > 0 && (
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#3B82F6" }}>
                                 {filteredSlots.length} slot{filteredSlots.length !== 1 ? "s" : ""}
+                            </Text>
+                        )}
+                    </View>
+
+                    {isLoading && (
+                        <View style={{ alignItems: "center", paddingVertical: 32 }}>
+                            <ActivityIndicator size="large" color="#2563EB" />
+                            <Text style={{ marginTop: 10, fontSize: 13, color: "#94A3B8" }}>
+                                Loading courts…
                             </Text>
                         </View>
                     )}
+
+                    {!isLoading && !error && filteredSlots.length === 0 && <EmptySlots />}
+
+                    {!isLoading && filteredSlots.length > 0 && (
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ paddingBottom: 4 }}
+                        >
+                            {filteredSlots.map((slot) => (
+                                <SlotCard
+                                    key={slot.start_time}
+                                    slot={slot}
+                                    isSelected={selectedSlot?.start_time === slot.start_time}
+                                    onPress={() => onSelectSlot(slot)}
+                                />
+                            ))}
+                        </ScrollView>
+                    )}
                 </View>
 
-                {isLoading && (
-                    <View style={{ alignItems: "center", paddingVertical: 32 }}>
-                        <ActivityIndicator size="large" color="#2563EB" />
-                        <Text style={{ marginTop: 10, fontSize: 13, color: "#9CA3AF" }}>
-                            Loading courts…
-                        </Text>
-                    </View>
-                )}
-
-                {!isLoading && !error && filteredSlots.length === 0 && <EmptySlots />}
-
-                {!isLoading && filteredSlots.length > 0 && (
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ paddingBottom: 4 }}
+                {/* Available Courts */}
+                <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            marginBottom: 12,
+                        }}
                     >
-                        {filteredSlots.map((slot) => (
-                            <SlotCard
-                                key={slot.start_time}
-                                slot={slot}
-                                isSelected={selectedSlot?.start_time === slot.start_time}
-                                onPress={() => onSelectSlot(slot)}
-                            />
-                        ))}
-                    </ScrollView>
-                )}
-            </View>
-
-            {/* Courts section */}
-            <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-                {/* Section header */}
-                <View
-                    style={{
-                        flexDirection: "row",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        marginBottom: 10,
-                        gap: 12,
-                    }}
-                >
-                    <View style={{ flex: 1 }}>
-                        <Text style={{ fontSize: 15, fontWeight: "700", color: "#111827" }}>
-                            {selectedSlot ? "Courts" : "Select a Time"}
-                        </Text>
-                        {selectedSlot && (
-                            <Text style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>
-                                {formatPlainTime(selectedSlot.start_time)} –{" "}
-                                {formatPlainTime(selectedSlot.end_time)}
-                            </Text>
-                        )}
-                    </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        {selectedSlot && visibleCourts.length > 0 && (
-                            <View
+                        <View>
+                            <Text
                                 style={{
-                                    backgroundColor: "#EFF6FF",
-                                    borderRadius: 999,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 6,
+                                    fontSize: 16,
+                                    fontWeight: "700",
+                                    color: "#0F172A",
+                                    letterSpacing: -0.1,
                                 }}
                             >
-                                <Text style={{ fontSize: 12, fontWeight: "800", color: "#2563EB" }}>
+                                Available courts
+                            </Text>
+                            {selectedSlot && (
+                                <View
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        gap: 5,
+                                        marginTop: 3,
+                                    }}
+                                >
+                                    <Ionicons name="time-outline" size={12} color="#94A3B8" />
+                                    <Text
+                                        style={{
+                                            fontSize: 12,
+                                            color: "#64748B",
+                                            fontWeight: "500",
+                                        }}
+                                    >
+                                        {formatPlainTime(selectedSlot.start_time)} –{" "}
+                                        {formatPlainTime(selectedSlot.end_time)}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            {selectedSlot && visibleCourts.length > 0 && (
+                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#3B82F6" }}>
                                     {visibleCourts.length} court
                                     {visibleCourts.length !== 1 ? "s" : ""}
                                 </Text>
-                            </View>
-                        )}
-                        <FilterButton
-                            surface={surface}
-                            fromTime={fromTime}
-                            toTime={toTime}
-                            showAvailableSlot={showAvailableSlot}
-                            showOpenGame={showOpenGame}
-                            onSurfaceChange={onSurfaceChange}
-                            onFromTimeChange={onFromTimeChange}
-                            onToTimeChange={onToTimeChange}
-                            onToggleAvailable={onToggleAvailable}
-                            onToggleOpenGame={onToggleOpenGame}
-                            onClear={onClear}
-                        />
+                            )}
+                            <FilterButton
+                                surface={surface}
+                                fromTime={fromTime}
+                                toTime={toTime}
+                                showAvailableSlot={showAvailableSlot}
+                                showOpenGame={showOpenGame}
+                                onSurfaceChange={onSurfaceChange}
+                                onFromTimeChange={onFromTimeChange}
+                                onToTimeChange={onToTimeChange}
+                                onToggleAvailable={onToggleAvailable}
+                                onToggleOpenGame={onToggleOpenGame}
+                                onClear={onClear}
+                            />
+                        </View>
                     </View>
+
+                    {!isLoading && !selectedSlot && <SelectSlotPrompt />}
+
+                    {!isLoading && selectedSlot && visibleCourts.length === 0 && (
+                        <View style={{ alignItems: "center", paddingVertical: 24 }}>
+                            <Text style={{ fontSize: 13, color: "#94A3B8", textAlign: "center" }}>
+                                No courts match your filters for this slot
+                            </Text>
+                        </View>
+                    )}
+
+                    {selectedSlot &&
+                        visibleCourts.map((court) => (
+                            <CourtCard
+                                key={court.id}
+                                court={court}
+                                slot={selectedSlot}
+                                isJoining={isJoining}
+                                joiningBookingId={joiningBookingId}
+                                onBook={onBook}
+                                onJoin={onJoin}
+                            />
+                        ))}
                 </View>
-
-                {!isLoading && !selectedSlot && <SelectSlotPrompt />}
-
-                {!isLoading && selectedSlot && visibleCourts.length === 0 && (
-                    <View style={{ alignItems: "center", paddingVertical: 24 }}>
-                        <Text style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center" }}>
-                            No courts match your filters for this slot
-                        </Text>
-                    </View>
-                )}
-
-                {selectedSlot &&
-                    visibleCourts.map((court) => (
-                        <CourtCard
-                            key={court.id}
-                            court={court}
-                            slot={selectedSlot}
-                            isJoining={isJoining}
-                            joiningBookingId={joiningBookingId}
-                            onBook={onBook}
-                            onJoin={onJoin}
-                        />
-                    ))}
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 }

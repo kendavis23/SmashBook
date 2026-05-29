@@ -25,14 +25,14 @@ export function BookingCard({
 }: Props): JSX.Element {
     const statusCfg = STATUS_CONFIG[booking.status] ?? {
         label: booking.status,
-        bg: "#F3F4F6",
-        text: "#374151",
-        dot: "#9CA3AF",
+        bg: "#F1F5F9",
+        text: "#475569",
+        dot: "#94A3B8",
     };
     const paymentCfg = PAYMENT_CONFIG[booking.payment_status] ?? {
         label: booking.payment_status,
-        bg: "#F3F4F6",
-        text: "#374151",
+        bg: "#F1F5F9",
+        text: "#475569",
     };
     const inviteCfg = INVITE_CONFIG[booking.invite_status] ?? null;
 
@@ -42,103 +42,192 @@ export function BookingCard({
 
     return (
         <View
-            className="overflow-hidden rounded-[22px] bg-white shadow-sm"
+            style={{
+                backgroundColor: "#FFFFFF",
+                borderRadius: 18,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                overflow: "hidden",
+                shadowColor: "#1E3A8A",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                elevation: 2,
+            }}
             accessibilityRole="none"
         >
-            {/* Top accent bar */}
-            <View style={{ backgroundColor: statusCfg.dot, height: 3 }} />
+            {/* Top accent line — status colour */}
+            <View style={{ height: 3, backgroundColor: statusCfg.dot }} />
 
-            <View className="gap-3 px-4 pb-4 pt-4">
-                {/* Row 1: Court name + status badge */}
-                <View className="flex-row items-start justify-between gap-2">
-                    <View className="min-w-0 flex-1 flex-row items-center gap-2.5">
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 11 }}>
+                {/* Row 1: Court icon + name + status badge */}
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                    }}
+                >
+                    <View
+                        style={{
+                            flex: 1,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            minWidth: 0,
+                        }}
+                    >
                         <View
-                            style={{ backgroundColor: isOrganiser ? "#EFF6FF" : "#F3F4F6" }}
-                            className="h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
+                            style={{
+                                width: 36,
+                                height: 36,
+                                borderRadius: 11,
+                                backgroundColor: isOrganiser ? "#EFF6FF" : "#F1F5F9",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                            }}
                         >
                             <Ionicons
                                 name="tennisball"
-                                size={18}
-                                color={isOrganiser ? "#2563EB" : "#9CA3AF"}
+                                size={17}
+                                color={isOrganiser ? "#2563EB" : "#94A3B8"}
                             />
                         </View>
                         <Text
-                            className="flex-1 text-[16px] font-bold text-[#111827]"
+                            style={{
+                                flex: 1,
+                                fontSize: 16,
+                                fontWeight: "700",
+                                color: "#0F172A",
+                                letterSpacing: -0.3,
+                            }}
                             numberOfLines={1}
                         >
                             {booking.court_name}
                         </Text>
                     </View>
 
-                    {/* Status pill */}
                     <View
-                        style={{ backgroundColor: statusCfg.bg }}
-                        className="shrink-0 flex-row items-center gap-1.5 rounded-full px-2.5 py-1"
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 5,
+                            backgroundColor: statusCfg.bg,
+                            borderRadius: 20,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            flexShrink: 0,
+                        }}
                     >
                         <View
-                            style={{ backgroundColor: statusCfg.dot }}
-                            className="h-1.5 w-1.5 rounded-full"
+                            style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: statusCfg.dot,
+                            }}
                         />
-                        <Text
-                            style={{ color: statusCfg.text }}
-                            className="text-[11px] font-semibold"
-                        >
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: statusCfg.text }}>
                             {statusCfg.label}
                         </Text>
                     </View>
                 </View>
 
                 {/* Divider */}
-                <View className="h-px bg-[#F3F4F6]" />
+                <View style={{ height: 1, backgroundColor: "#F1F5F9" }} />
 
                 {/* Row 2: Date + Time */}
-                <View className="flex-row gap-4">
-                    <View className="flex-1 flex-row items-center gap-1.5">
-                        <Ionicons name="calendar-outline" size={13} color="#9CA3AF" />
-                        <Text className="text-[12px] font-medium text-[#6B7280]" numberOfLines={1}>
+                <View style={{ flexDirection: "row", gap: 16 }}>
+                    <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 5 }}>
+                        <Ionicons name="calendar-outline" size={13} color="#94A3B8" />
+                        <Text
+                            style={{ fontSize: 12, fontWeight: "500", color: "#64748B" }}
+                            numberOfLines={1}
+                        >
                             {formatBookingDate(booking.start_datetime)}
                         </Text>
                     </View>
-                    <View className="flex-row items-center gap-1.5">
-                        <Ionicons name="time-outline" size={13} color="#9CA3AF" />
-                        <Text className="text-[12px] font-medium text-[#6B7280]">
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+                        <Ionicons name="time-outline" size={13} color="#94A3B8" />
+                        <Text style={{ fontSize: 12, fontWeight: "500", color: "#64748B" }}>
                             {formatBookingTimeRange(booking.start_datetime, booking.end_datetime)}
                         </Text>
                     </View>
                 </View>
 
-                {/* Row 3: Type + Role + Invite badge */}
-                <View className="flex-row flex-wrap gap-2">
-                    <View className="flex-row items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1">
-                        <Ionicons name="layers-outline" size={12} color="#6B7280" />
-                        <Text className="text-[11px] font-medium text-[#6B7280]">
+                {/* Row 3: Type + Role + Invite tags */}
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            borderRadius: 20,
+                            borderWidth: 1,
+                            borderColor: "#E2E8F0",
+                            backgroundColor: "#F8FAFC",
+                            paddingHorizontal: 9,
+                            paddingVertical: 4,
+                        }}
+                    >
+                        <Ionicons name="layers-outline" size={11} color="#94A3B8" />
+                        <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B" }}>
                             {formatBookingType(booking.booking_type)}
                         </Text>
                     </View>
 
                     <View
-                        style={{ backgroundColor: isOrganiser ? "#EFF6FF" : "#F9FAFB" }}
-                        className="flex-row items-center gap-1.5 rounded-full border border-[#E5E7EB] px-2.5 py-1"
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            borderRadius: 20,
+                            borderWidth: 1,
+                            borderColor: isOrganiser ? "#BFDBFE" : "#E2E8F0",
+                            backgroundColor: isOrganiser ? "#EFF6FF" : "#F8FAFC",
+                            paddingHorizontal: 9,
+                            paddingVertical: 4,
+                        }}
                     >
                         <Ionicons
                             name={isOrganiser ? "star-outline" : "person-outline"}
-                            size={12}
-                            color={isOrganiser ? "#2563EB" : "#6B7280"}
+                            size={11}
+                            color={isOrganiser ? "#2563EB" : "#94A3B8"}
                         />
                         <Text
-                            style={{ color: isOrganiser ? "#2563EB" : "#6B7280" }}
-                            className="text-[11px] font-semibold"
+                            style={{
+                                fontSize: 11,
+                                fontWeight: "600",
+                                color: isOrganiser ? "#2563EB" : "#64748B",
+                            }}
                         >
                             {isOrganiser ? "Organiser" : "Player"}
                         </Text>
                     </View>
 
                     {inviteCfg ? (
-                        <View className="flex-row items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1">
-                            <Ionicons name="mail-outline" size={12} color={inviteCfg.color} />
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 4,
+                                borderRadius: 20,
+                                borderWidth: 1,
+                                borderColor: "#E2E8F0",
+                                backgroundColor: "#F8FAFC",
+                                paddingHorizontal: 9,
+                                paddingVertical: 4,
+                            }}
+                        >
+                            <Ionicons name="mail-outline" size={11} color={inviteCfg.color} />
                             <Text
-                                style={{ color: inviteCfg.color }}
-                                className="text-[11px] font-semibold"
+                                style={{
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                    color: inviteCfg.color,
+                                }}
                             >
                                 {inviteCfg.label}
                             </Text>
@@ -146,36 +235,71 @@ export function BookingCard({
                     ) : null}
                 </View>
 
-                {/* Row 4: Payment + Amount + Actions */}
-                <View className="flex-row items-center justify-between gap-2">
-                    <View className="flex-row items-center gap-2">
+                {/* Row 4: Payment badge + amount + action buttons */}
+                <View
+                    style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 8,
+                    }}
+                >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                         <View
-                            style={{ backgroundColor: paymentCfg.bg }}
-                            className="rounded-full px-2.5 py-1"
+                            style={{
+                                backgroundColor: paymentCfg.bg,
+                                borderRadius: 20,
+                                paddingHorizontal: 10,
+                                paddingVertical: 4,
+                            }}
                         >
                             <Text
-                                style={{ color: paymentCfg.text }}
-                                className="text-[11px] font-semibold"
+                                style={{
+                                    fontSize: 11,
+                                    fontWeight: "600",
+                                    color: paymentCfg.text,
+                                }}
                             >
                                 {paymentCfg.label}
                             </Text>
                         </View>
-                        <Text className="text-[15px] font-bold text-[#111827]">
+                        <Text
+                            style={{
+                                fontSize: 17,
+                                fontWeight: "700",
+                                color: "#0F172A",
+                                letterSpacing: -0.4,
+                            }}
+                        >
                             {formatAmount(booking.amount_due)}
                         </Text>
                     </View>
 
                     {showActions ? (
-                        <View className="flex-row items-center gap-2">
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                             {showPay ? (
                                 <Pressable
                                     onPress={() => onPayClick(booking)}
                                     accessibilityRole="button"
                                     accessibilityLabel="Pay for booking"
-                                    className="flex-row items-center gap-1.5 rounded-[12px] bg-[#2563EB] px-3 py-2 active:opacity-75"
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        gap: 5,
+                                        borderRadius: 22,
+                                        backgroundColor: "#2563EB",
+                                        paddingHorizontal: 16,
+                                        paddingVertical: 8,
+                                    }}
                                 >
-                                    <Ionicons name="card-outline" size={14} color="#FFFFFF" />
-                                    <Text className="text-[12px] font-semibold text-white">
+                                    <Ionicons name="card-outline" size={13} color="#FFFFFF" />
+                                    <Text
+                                        style={{
+                                            fontSize: 13,
+                                            fontWeight: "600",
+                                            color: "#FFFFFF",
+                                        }}
+                                    >
                                         Pay
                                     </Text>
                                 </Pressable>
@@ -184,10 +308,26 @@ export function BookingCard({
                                 onPress={() => onManageClick(booking)}
                                 accessibilityRole="button"
                                 accessibilityLabel={`View booking at ${booking.court_name}`}
-                                className="flex-row items-center gap-1.5 rounded-[12px] border border-[#E5E7EB] bg-white px-3 py-2 active:opacity-75"
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    borderRadius: 22,
+                                    borderWidth: 1,
+                                    borderColor: "#E2E8F0",
+                                    backgroundColor: "#FFFFFF",
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 8,
+                                }}
                             >
-                                <Ionicons name="eye-outline" size={14} color="#374151" />
-                                <Text className="text-[12px] font-semibold text-[#374151]">
+                                <Ionicons name="eye-outline" size={13} color="#475569" />
+                                <Text
+                                    style={{
+                                        fontSize: 13,
+                                        fontWeight: "600",
+                                        color: "#475569",
+                                    }}
+                                >
                                     View
                                 </Text>
                             </Pressable>

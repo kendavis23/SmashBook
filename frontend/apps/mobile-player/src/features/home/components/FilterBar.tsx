@@ -34,38 +34,38 @@ type FilterControlProps = {
 type IconName = ComponentProps<typeof Ionicons>["name"];
 type DateOption = {
     iso: string;
-    label: string;
+    topLabel: string;
     shortLabel: string;
-    monthLabel: string;
+    bottomLabel: string;
 };
 
 function buildDateOption(offset: number): DateOption {
     const d = new Date();
     d.setUTCDate(d.getUTCDate() + offset);
     const iso = d.toISOString().slice(0, 10);
-    const label =
-        offset === 0
-            ? "Today"
-            : offset === 1
-              ? "Tomorrow"
-              : d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+    const weekday = d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+
+    const topLabel =
+        offset === 0 ? "TOD" : offset === 1 ? "TOM" : weekday.toUpperCase().slice(0, 3);
+    const bottomLabel = weekday.charAt(0).toUpperCase() + weekday.slice(1);
 
     return {
         iso,
-        label,
+        topLabel,
         shortLabel: String(d.getUTCDate()),
-        monthLabel: d.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }),
+        bottomLabel,
     };
 }
 
 function buildDateOptionFromIso(iso: string): DateOption {
     const d = new Date(`${iso}T00:00:00.000Z`);
+    const weekday = d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
 
     return {
         iso,
-        label: d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" }),
+        topLabel: weekday.toUpperCase().slice(0, 3),
         shortLabel: String(d.getUTCDate()),
-        monthLabel: d.toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }),
+        bottomLabel: weekday.charAt(0).toUpperCase() + weekday.slice(1),
     };
 }
 
@@ -238,7 +238,7 @@ export function FilterButton({
                             paddingHorizontal: 5,
                         }}
                     >
-                        <Text style={{ fontSize: 10, fontWeight: "800", color: "#FFFFFF" }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: "#FFFFFF" }}>
                             {activeFilterCount}
                         </Text>
                     </View>
@@ -293,7 +293,7 @@ export function FilterButton({
                                 marginBottom: 20,
                             }}
                         >
-                            <Text style={{ fontSize: 22, fontWeight: "800", color: "#111827" }}>
+                            <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827" }}>
                                 Filters
                             </Text>
                             <Pressable
@@ -303,7 +303,7 @@ export function FilterButton({
                                 hitSlop={10}
                                 className="active:opacity-60"
                             >
-                                <Text style={{ fontSize: 15, fontWeight: "800", color: "#2563EB" }}>
+                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#2563EB" }}>
                                     Reset
                                 </Text>
                             </Pressable>
@@ -312,7 +312,7 @@ export function FilterButton({
                         <Text
                             style={{
                                 fontSize: 15,
-                                fontWeight: "800",
+                                fontWeight: "700",
                                 color: "#111827",
                                 marginBottom: 12,
                             }}
@@ -350,7 +350,7 @@ export function FilterButton({
                         <Text
                             style={{
                                 fontSize: 15,
-                                fontWeight: "800",
+                                fontWeight: "700",
                                 color: "#111827",
                                 marginBottom: 12,
                             }}
@@ -379,7 +379,7 @@ export function FilterButton({
                         <Text
                             style={{
                                 fontSize: 15,
-                                fontWeight: "800",
+                                fontWeight: "700",
                                 color: "#111827",
                                 marginBottom: 12,
                             }}
@@ -419,7 +419,7 @@ export function FilterButton({
                                 elevation: 8,
                             }}
                         >
-                            <Text style={{ fontSize: 16, fontWeight: "800", color: "#FFFFFF" }}>
+                            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>
                                 Apply Filters
                             </Text>
                         </Pressable>
@@ -444,18 +444,15 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                 style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 10,
-                    paddingLeft: 16,
-                    paddingRight: 16,
-                    paddingTop: 10,
-                    paddingBottom: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 10,
                 }}
             >
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     style={{ flex: 1 }}
-                    contentContainerStyle={{ paddingRight: 2 }}
+                    contentContainerStyle={{ gap: 6 }}
                 >
                     {quickDaysWithSelection.map((day) => {
                         const isSelected = date === day.iso;
@@ -464,45 +461,54 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                 key={day.iso}
                                 onPress={() => onDateChange(day.iso)}
                                 accessibilityRole="button"
-                                accessibilityLabel={`Select date ${day.label}`}
+                                accessibilityLabel={`Select date ${day.topLabel} ${day.shortLabel}`}
                                 accessibilityState={{ selected: isSelected }}
                                 className="active:opacity-75"
-                                style={{ marginRight: 8 }}
+                                style={{ marginRight: 6 }}
                             >
                                 <View
                                     style={{
-                                        backgroundColor: isSelected ? "#2563EB" : "#FFFFFF",
-                                        borderWidth: 1.25,
-                                        borderColor: isSelected ? "#2563EB" : "#E5E7EB",
-                                        borderRadius: 18,
-                                        width: 64,
-                                        height: 64,
+                                        backgroundColor: isSelected ? "#2563EB" : "#F8FAFC",
+                                        borderWidth: 1,
+                                        borderColor: isSelected ? "#2563EB" : "#E2E8F0",
+                                        borderRadius: 14,
+                                        width: 54,
+                                        paddingVertical: 8,
                                         alignItems: "center",
                                         justifyContent: "center",
+                                        elevation: 0,
                                     }}
                                 >
                                     <Text
                                         style={{
-                                            fontSize: 10,
-                                            fontWeight: "800",
-                                            color: isSelected ? "#BFDBFE" : "#A1A7B3",
-                                            textTransform: "uppercase",
-                                            letterSpacing: 0,
+                                            fontSize: 9,
+                                            fontWeight: "600",
+                                            color: isSelected ? "#BFDBFE" : "#94A3B8",
+                                            letterSpacing: 0.5,
                                         }}
                                     >
-                                        {day.label === "Today" || day.label === "Tomorrow"
-                                            ? day.label.slice(0, 3)
-                                            : day.label}
+                                        {day.topLabel}
                                     </Text>
                                     <Text
                                         style={{
                                             fontSize: 18,
-                                            fontWeight: "800",
-                                            color: isSelected ? "#FFFFFF" : "#111827",
-                                            marginTop: 2,
+                                            fontWeight: "700",
+                                            color: isSelected ? "#FFFFFF" : "#1E293B",
+                                            marginTop: 1,
+                                            letterSpacing: -0.3,
                                         }}
                                     >
                                         {day.shortLabel}
+                                    </Text>
+                                    <Text
+                                        style={{
+                                            fontSize: 9,
+                                            fontWeight: "500",
+                                            color: isSelected ? "#93C5FD" : "#94A3B8",
+                                            marginTop: 1,
+                                        }}
+                                    >
+                                        {day.bottomLabel}
                                     </Text>
                                 </View>
                             </Pressable>
@@ -516,17 +522,18 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                     accessibilityLabel="Open calendar"
                     className="active:opacity-75"
                     style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 24,
-                        borderWidth: 1.25,
-                        borderColor: "#E5E7EB",
-                        backgroundColor: "#FFFFFF",
+                        width: 44,
+                        height: 44,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: "#E2E8F0",
+                        backgroundColor: "#F8FAFC",
                         alignItems: "center",
                         justifyContent: "center",
+                        marginLeft: 8,
                     }}
                 >
-                    <Ionicons name="calendar-clear-outline" size={20} color="#111827" />
+                    <Ionicons name="calendar-clear-outline" size={18} color="#475569" />
                 </Pressable>
             </View>
 
@@ -570,7 +577,7 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                             }}
                         >
                             <View>
-                                <Text style={{ fontSize: 22, fontWeight: "800", color: "#111827" }}>
+                                <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827" }}>
                                     Select Date
                                 </Text>
                                 <Text
@@ -613,7 +620,7 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                             setIsCalendarOpen(false);
                                         }}
                                         accessibilityRole="button"
-                                        accessibilityLabel={`Select ${day.label} ${day.shortLabel} ${day.monthLabel}`}
+                                        accessibilityLabel={`Select ${day.topLabel} ${day.shortLabel}`}
                                         accessibilityState={{ selected: isSelected }}
                                         className="active:opacity-75"
                                         style={{
@@ -630,17 +637,17 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                         <Text
                                             style={{
                                                 fontSize: 9,
-                                                fontWeight: "800",
+                                                fontWeight: "700",
                                                 color: isSelected ? "#BFDBFE" : "#9CA3AF",
                                                 textTransform: "uppercase",
                                             }}
                                         >
-                                            {day.label.slice(0, 3)}
+                                            {day.topLabel}
                                         </Text>
                                         <Text
                                             style={{
                                                 fontSize: 15,
-                                                fontWeight: "800",
+                                                fontWeight: "700",
                                                 color: isSelected ? "#FFFFFF" : "#111827",
                                                 marginTop: 2,
                                             }}

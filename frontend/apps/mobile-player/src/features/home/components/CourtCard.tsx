@@ -157,7 +157,7 @@ export function CourtCard({
             >
                 {price !== null ? (
                     <View>
-                        <Text style={{ fontSize: 20, fontWeight: "800", color: "#111827" }}>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827" }}>
                             {formatCurrency(price)}
                         </Text>
                         <Text

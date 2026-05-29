@@ -10,6 +10,8 @@ type Props = {
 };
 
 export function SlotCard({ slot, isSelected, onPress }: Props): JSX.Element {
+    const courtCount = slot.available_courts.length;
+
     return (
         <Pressable
             onPress={onPress}
@@ -20,23 +22,22 @@ export function SlotCard({ slot, isSelected, onPress }: Props): JSX.Element {
         >
             <View
                 style={{
-                    borderWidth: isSelected ? 2 : 1.5,
-                    borderColor: isSelected ? "#2563EB" : "#E5E7EB",
-                    backgroundColor: isSelected ? "#EFF6FF" : "#FFFFFF",
-                    borderRadius: 16,
-                    width: 104,
-                    height: 88,
+                    borderWidth: 1,
+                    borderColor: isSelected ? "#2563EB" : "#E2E8F0",
+                    backgroundColor: isSelected ? "#2563EB" : "#F8FAFC",
+                    borderRadius: 14,
+                    width: 100,
                     paddingHorizontal: 12,
-                    alignItems: "center",
-                    justifyContent: "center",
+                    paddingVertical: 10,
+                    elevation: 0,
                 }}
             >
                 <Text
                     numberOfLines={1}
                     style={{
-                        fontSize: 15,
-                        fontWeight: "800",
-                        color: isSelected ? "#2563EB" : "#111827",
+                        fontSize: 14,
+                        fontWeight: "600",
+                        color: isSelected ? "#FFFFFF" : "#1E293B",
                     }}
                 >
                     {formatPlainTime(slot.start_time)}
@@ -44,14 +45,43 @@ export function SlotCard({ slot, isSelected, onPress }: Props): JSX.Element {
                 <Text
                     numberOfLines={1}
                     style={{
-                        fontSize: 13,
-                        fontWeight: "600",
-                        color: isSelected ? "#3B82F6" : "#9CA3AF",
-                        marginTop: 3,
+                        fontSize: 12,
+                        fontWeight: "400",
+                        color: isSelected ? "#BFDBFE" : "#94A3B8",
+                        marginTop: 1,
                     }}
                 >
                     {formatPlainTime(slot.end_time)}
                 </Text>
+
+                {courtCount > 0 && (
+                    <View
+                        style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                            marginTop: 6,
+                        }}
+                    >
+                        <View
+                            style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: isSelected ? "#93C5FD" : "#22C55E",
+                            }}
+                        />
+                        <Text
+                            style={{
+                                fontSize: 11,
+                                fontWeight: "500",
+                                color: isSelected ? "#BFDBFE" : "#64748B",
+                            }}
+                        >
+                            {courtCount} Court{courtCount !== 1 ? "s" : ""}
+                        </Text>
+                    </View>
+                )}
             </View>
         </Pressable>
     );
