@@ -27,10 +27,9 @@ describe("getClubAvailabilityEndpoint", () => {
             surface: "clay",
             from_time: "08:00",
             to_time: "20:00",
-            skill_level: 3.5,
         });
         expect(mockFetcher).toHaveBeenCalledWith(
-            "/api/v1/clubs/club-1/availability?start_date=2026-06-01&end_date=2026-06-07&surface=clay&from_time=08%3A00&to_time=20%3A00&skill_level=3.5"
+            "/api/v1/clubs/club-1/availability?start_date=2026-06-01&end_date=2026-06-07&surface=clay&from_time=08%3A00&to_time=20%3A00"
         );
     });
 });
