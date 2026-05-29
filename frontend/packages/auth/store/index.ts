@@ -41,6 +41,9 @@ const initialState: AuthStoreState = {
     activeRole: null,
 };
 
+const AUTH_STORAGE_KEY = "smashbook-auth";
+const LEGACY_AUTH_STORAGE_KEYS = ["access_token", "refresh_token", "token_type"] as const;
+
 const memoryStorage = new Map<string, string>();
 
 let authStorage: StateStorage =
@@ -61,6 +64,16 @@ export function setAuthStorage(storage: StateStorage): void {
     // rehydrate() is safe to call after store creation; re-reads persisted state with the new storage.
     if (useAuthStore.persist.getOptions().storage) {
         void useAuthStore.persist.rehydrate();
+    }
+}
+
+function clearPersistedAuthStorage(): void {
+    authStorage.removeItem(AUTH_STORAGE_KEY);
+
+    if (typeof localStorage === "undefined") return;
+
+    for (const key of LEGACY_AUTH_STORAGE_KEYS) {
+        localStorage.removeItem(key);
     }
 }
 
@@ -91,10 +104,11 @@ export const useAuthStore = create<AuthStore>()(
 
             clearAuth() {
                 set(initialState);
+                clearPersistedAuthStorage();
             },
         }),
         {
-            name: "smashbook-auth",
+            name: AUTH_STORAGE_KEY,
             storage: createJSONStorage(() => authStorage),
             // user is NOT persisted — always fetched fresh from /me on session restore.
             partialize: (state) => ({

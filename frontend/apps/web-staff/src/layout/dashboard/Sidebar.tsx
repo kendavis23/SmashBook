@@ -1,4 +1,4 @@
-import { useAuth, useAuthStore } from "@repo/auth";
+import { useAuth, useLogout } from "@repo/auth";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, LogOut } from "lucide-react";
 import type { JSX } from "react";
@@ -23,7 +23,7 @@ export default function Sidebar({
     const sidebarRef = useRef<HTMLDivElement>(null);
 
     const { role } = useAuth();
-    const clearAuth = useAuthStore((state) => state.clearAuth);
+    const logout = useLogout();
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent): void => {
@@ -36,8 +36,11 @@ export default function Sidebar({
     }, []);
 
     const handleLogout = (): void => {
-        clearAuth();
-        void navigate({ to: "/login" });
+        logout.mutate(undefined, {
+            onSettled: () => {
+                void navigate({ to: "/login" });
+            },
+        });
     };
 
     const visibleRoutes = ROUTES.filter((item) => canAccess(item.roles, role ?? undefined));

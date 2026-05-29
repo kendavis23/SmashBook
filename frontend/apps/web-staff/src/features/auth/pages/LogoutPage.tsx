@@ -1,9 +1,7 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useLogout } from "@repo/auth";
 import { useNavigate } from "@tanstack/react-router";
 import type { JSX } from "react";
 import { useEffect } from "react";
-
-import { useAuthStore } from "../store";
 
 /**
  * Logout Page
@@ -11,28 +9,17 @@ import { useAuthStore } from "../store";
  */
 export default function LogoutPage(): JSX.Element {
     const navigate = useNavigate();
-    const queryClient = useQueryClient();
+    const logout = useLogout();
 
     useEffect(() => {
-        // Clear auth state
-        useAuthStore.getState().clearAuth();
-
-        // Clear all queries
-        queryClient.cancelQueries();
-        queryClient.clear();
-
-        // Clear any API request interceptors state
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("token_type");
-
-        // Redirect to login after a short delay
-        const timeout = setTimeout(() => {
-            navigate({ to: "/login", replace: true });
-        }, 1000);
-
-        return () => clearTimeout(timeout);
-    }, [navigate, queryClient]);
+        logout.mutate(undefined, {
+            onSettled: () => {
+                navigate({ to: "/login", replace: true });
+            },
+        });
+        // Run once when the logout route mounts.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center px-4">

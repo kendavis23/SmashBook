@@ -1,4 +1,5 @@
 import { useAuth, useAuthStore } from "@repo/auth";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, LogOut } from "lucide-react";
 import type { JSX } from "react";
@@ -21,6 +22,7 @@ export default function Sidebar({
 
     const location = useLocation();
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const sidebarRef = useRef<HTMLDivElement>(null);
 
     const { role } = useAuth();
@@ -40,6 +42,8 @@ export default function Sidebar({
     const handleLogout = (): void => {
         clearAuth();
         adminLogout();
+        void queryClient.cancelQueries();
+        queryClient.clear();
         void navigate({ to: "/login" as never });
     };
 

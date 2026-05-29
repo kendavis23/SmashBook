@@ -1,4 +1,4 @@
-import { useAuth, useAuthStore } from "@repo/auth";
+import { useAuth, useAuthStore, useLogout } from "@repo/auth";
 import { useNavigate } from "@tanstack/react-router";
 import { Building2, LogOut, Menu, Search, Settings } from "lucide-react";
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -59,7 +59,7 @@ export default function Navbar({
 
     const { role, activeClubName } = useAuth();
     const user = useAuthStore((state) => state.user);
-    const clearAuth = useAuthStore((state) => state.clearAuth);
+    const logout = useLogout();
     const searchResults = getSearchableRoutes(role ?? undefined).filter((route) =>
         route.label.toLowerCase().includes(searchQuery.trim().toLowerCase())
     );
@@ -111,8 +111,11 @@ export default function Navbar({
     }, []);
 
     const handleLogout = (): void => {
-        clearAuth();
-        void navigate({ to: "/login" });
+        logout.mutate(undefined, {
+            onSettled: () => {
+                void navigate({ to: "/login" });
+            },
+        });
     };
 
     const handleSearchChange = (value: string): void => {

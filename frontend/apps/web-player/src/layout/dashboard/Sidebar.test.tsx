@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
 const mockClearAuth = vi.hoisted(() => vi.fn());
+const mockLogoutMutate = vi.hoisted(() => vi.fn());
 let currentPath = "/dashboard";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -68,6 +69,9 @@ vi.mock("@repo/auth", () => {
 
     return {
         useAuthStore,
+        useLogout: () => ({
+            mutate: mockLogoutMutate,
+        }),
         useAuth: () => ({
             user: makeStore().user,
             role: currentRole,
@@ -220,13 +224,16 @@ describe("Sidebar — logout", () => {
     beforeEach(() => {
         currentRole = "player";
         currentPath = "/dashboard";
+        mockLogoutMutate.mockImplementation((_vars, options?: { onSettled?: () => void }) => {
+            options?.onSettled?.();
+        });
     });
 
-    it("calls clearAuth and navigates to /login when Logout button is clicked", () => {
+    it("logs out and navigates to /login when Logout button is clicked", () => {
         render(<Sidebar />);
         const logoutBtn = screen.getByText("Logout");
         fireEvent.click(logoutBtn);
-        expect(mockClearAuth).toHaveBeenCalled();
+        expect(mockLogoutMutate).toHaveBeenCalled();
         expect(mockNavigate).toHaveBeenCalledWith({ to: "/login" });
     });
 });

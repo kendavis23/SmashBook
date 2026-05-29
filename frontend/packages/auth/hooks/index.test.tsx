@@ -30,12 +30,13 @@ vi.mock("../utils", () => ({
 }));
 
 import { useAuthStore } from "../store";
-import { useAuth, useLogin } from "./index";
-import { loginService, getMeService } from "../services";
+import { useAuth, useLogin, useLogout } from "./index";
+import { loginService, getMeService, logoutService } from "../services";
 import type { UserResponse } from "../types";
 
 const mockLoginService = vi.mocked(loginService);
 const mockGetMeService = vi.mocked(getMeService);
+const mockLogoutService = vi.mocked(logoutService);
 
 const mockUser: UserResponse = {
     id: "u1",
@@ -73,6 +74,7 @@ describe("useAuth — clubId resolution", () => {
                 access_token: "tok",
                 refresh_token: "ref",
                 token_type: "bearer",
+                subdomain: "test",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
             });
         });
@@ -86,6 +88,7 @@ describe("useAuth — clubId resolution", () => {
                 access_token: "tok",
                 refresh_token: "ref",
                 token_type: "bearer",
+                subdomain: "test",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
             });
             useAuthStore.getState().setActiveClubId("c2", "Club Two", "admin");
@@ -111,6 +114,7 @@ describe("useAuth — activeClubName resolution", () => {
                 access_token: "tok",
                 refresh_token: "ref",
                 token_type: "bearer",
+                subdomain: "test",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
             });
         });
@@ -159,6 +163,7 @@ describe("useAuth — role resolution", () => {
                 access_token: "tok",
                 refresh_token: "ref",
                 token_type: "bearer",
+                subdomain: "test",
                 clubs: [{ club_id: "c1", club_name: "Club One", role: "admin" }],
             });
         });
@@ -177,6 +182,7 @@ describe("useLogin — player portal", () => {
             access_token: "tok",
             refresh_token: "ref",
             token_type: "bearer",
+            subdomain: "test",
             clubs: [{ club_id: "c1", club_name: "Club One", role: "player" }],
         });
         mockGetMeService.mockResolvedValue(mockUser);
@@ -198,6 +204,7 @@ describe("useLogin — player portal", () => {
             access_token: "tok",
             refresh_token: "ref",
             token_type: "bearer",
+            subdomain: "test",
             clubs: [{ club_id: "c1", club_name: "Club One", role: "staff" }],
         });
 
@@ -221,6 +228,7 @@ describe("useLogin — staff portal", () => {
             access_token: "tok",
             refresh_token: "ref",
             token_type: "bearer",
+            subdomain: "test",
             clubs: [{ club_id: "c2", club_name: "Club Two", role: "admin" }],
         });
         mockGetMeService.mockResolvedValue(mockUser);
@@ -242,6 +250,7 @@ describe("useLogin — staff portal", () => {
             access_token: "tok",
             refresh_token: "ref",
             token_type: "bearer",
+            subdomain: "test",
             clubs: [{ club_id: "c1", club_name: "Club One", role: "player" }],
         });
 
@@ -263,6 +272,7 @@ describe("useLogin — staff portal", () => {
             access_token: "tok",
             refresh_token: "ref",
             token_type: "bearer",
+            subdomain: "test",
             clubs: [
                 { club_id: "c1", club_name: "Player Club", role: "player" },
                 { club_id: "c2", club_name: "Staff Club", role: "trainer" },
@@ -283,5 +293,43 @@ describe("useLogin — staff portal", () => {
         expect(useAuthStore.getState().clubs).toHaveLength(1);
         expect(useAuthStore.getState().clubs[0]!.club_id).toBe("c2");
         expect(useAuthStore.getState().activeRole).toBe("trainer");
+    });
+});
+
+// ---------------------------------------------------------------------------
+// useLogout — server invalidation and local cleanup
+// ---------------------------------------------------------------------------
+
+describe("useLogout", () => {
+    it("revokes the refresh token, clears auth storage, and clears query data", async () => {
+        mockLogoutService.mockResolvedValue(undefined);
+        const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+        queryClient.setQueryData(["player", "payment-methods"], [{ id: "pm_123" }]);
+
+        act(() => {
+            useAuthStore.getState().setTokens({
+                access_token: "tok",
+                refresh_token: "ref",
+                token_type: "bearer",
+                subdomain: "tenant",
+                clubs: [{ club_id: "c1", club_name: "Club One", role: "player" }],
+            });
+            useAuthStore.getState().setTenantSubdomain("tenant");
+        });
+
+        const wrapper = ({ children }: { children: ReactNode }) => (
+            <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+        );
+
+        const { result } = renderHook(() => useLogout(), { wrapper });
+
+        await act(async () => {
+            await result.current.mutateAsync();
+        });
+
+        expect(mockLogoutService).toHaveBeenCalledWith({ refresh_token: "ref" }, "tok", "tenant");
+        expect(useAuthStore.getState().accessToken).toBeNull();
+        expect(localStorage.getItem("smashbook-auth")).toBeNull();
+        expect(queryClient.getQueryData(["player", "payment-methods"])).toBeUndefined();
     });
 });

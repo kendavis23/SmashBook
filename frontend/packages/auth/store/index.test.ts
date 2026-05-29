@@ -45,6 +45,28 @@ describe("useAuthStore — clearAuth", () => {
         expect(state.activeClubName).toBeNull();
         expect(state.activeRole).toBeNull();
     });
+
+    it("removes persisted auth storage and legacy token keys", () => {
+        useAuthStore.getState().setTokens({
+            access_token: "access",
+            refresh_token: "refresh",
+            token_type: "bearer",
+            subdomain: "test",
+            clubs: [],
+        });
+        localStorage.setItem("access_token", "legacy-access");
+        localStorage.setItem("refresh_token", "legacy-refresh");
+        localStorage.setItem("token_type", "bearer");
+
+        expect(localStorage.getItem("smashbook-auth")).not.toBeNull();
+
+        useAuthStore.getState().clearAuth();
+
+        expect(localStorage.getItem("smashbook-auth")).toBeNull();
+        expect(localStorage.getItem("access_token")).toBeNull();
+        expect(localStorage.getItem("refresh_token")).toBeNull();
+        expect(localStorage.getItem("token_type")).toBeNull();
+    });
 });
 
 // ---------------------------------------------------------------------------

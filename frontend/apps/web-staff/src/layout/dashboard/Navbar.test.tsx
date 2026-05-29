@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
 const mockClearAuth = vi.hoisted(() => vi.fn());
+const mockLogoutMutate = vi.hoisted(() => vi.fn());
 let currentPath = "/dashboard";
 let currentUser: {
     full_name: string;
@@ -60,6 +61,9 @@ vi.mock("@repo/auth", () => {
     );
     return {
         useAuthStore,
+        useLogout: () => ({
+            mutate: mockLogoutMutate,
+        }),
         useAuth: () => ({
             user: currentUser,
             role: currentUser?.role ?? null,
@@ -153,6 +157,9 @@ describe("Navbar — dropdown actions", () => {
         currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
         mockNavigate.mockClear();
         mockClearAuth.mockClear();
+        mockLogoutMutate.mockImplementation((_vars, options?: { onSettled?: () => void }) => {
+            options?.onSettled?.();
+        });
     });
 
     it("opens dropdown with user details when avatar button clicked", () => {
@@ -184,11 +191,11 @@ describe("Navbar — dropdown actions", () => {
         expect(screen.getAllByAltText("Alice Admin")).toHaveLength(2);
     });
 
-    it("calls clearAuth and navigates to /login when Sign Out clicked", () => {
+    it("logs out and navigates to /login when Sign Out clicked", () => {
         render(<Navbar />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
         fireEvent.click(screen.getByText("Sign Out"));
-        expect(mockClearAuth).toHaveBeenCalled();
+        expect(mockLogoutMutate).toHaveBeenCalled();
         expect(mockNavigate).toHaveBeenCalledWith({ to: "/login" });
     });
 
