@@ -44,12 +44,19 @@ module "secrets" {
 }
 
 module "database" {
-  source          = "../modules/database"
-  region          = var.region
-  zone            = var.zone
-  environment     = var.environment
-  backup_enabled  = true
+  source         = "../modules/database"
+  region         = var.region
+  zone           = var.zone
+  environment    = var.environment
+  backup_enabled = true
   # Staging: db-g1-small, ZONAL, 20 GB, backups enabled (15 retained, 7-day PITR)
+}
+
+module "vpc_connector" {
+  source        = "../modules/vpc_connector"
+  region        = var.region
+  environment   = var.environment
+  ip_cidr_range = "10.8.0.0/28"
 }
 
 module "cloud_run" {
@@ -65,6 +72,7 @@ module "cloud_run" {
   cloud_sql_replica_connection = module.database.replica_connection_name
   sendgrid_from_email          = var.sendgrid_from_email
   app_base_url                 = var.app_base_url
+  vpc_connector_id             = module.vpc_connector.connector_id
 }
 
 module "pubsub" {

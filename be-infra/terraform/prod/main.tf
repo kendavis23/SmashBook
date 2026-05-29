@@ -48,10 +48,17 @@ module "database" {
   region            = var.region
   zone              = var.zone
   environment       = var.environment
-  tier              = "db-custom-2-7680"  # 2 vCPU / 7.5 GB — resize as needed
-  availability_type = "REGIONAL"          # High Availability
+  tier              = "db-custom-2-7680" # 2 vCPU / 7.5 GB — resize as needed
+  availability_type = "REGIONAL"         # High Availability
   disk_size         = 50
   backup_enabled    = true
+}
+
+module "vpc_connector" {
+  source        = "../modules/vpc_connector"
+  region        = var.region
+  environment   = var.environment
+  ip_cidr_range = "10.9.0.0/28"
 }
 
 module "cloud_run" {
@@ -68,6 +75,7 @@ module "cloud_run" {
   max_instance_count           = 50
   sendgrid_from_email          = var.sendgrid_from_email
   app_base_url                 = var.app_base_url
+  vpc_connector_id             = module.vpc_connector.connector_id
 }
 
 module "pubsub" {

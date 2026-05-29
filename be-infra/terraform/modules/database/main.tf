@@ -39,9 +39,9 @@ resource "google_sql_database_instance" "main" {
       }
     }
 
-    disk_type             = "PD_SSD"
-    disk_size             = var.disk_size
-    disk_autoresize       = false
+    disk_type       = "PD_SSD"
+    disk_size       = var.disk_size
+    disk_autoresize = false
   }
 
   deletion_protection = true

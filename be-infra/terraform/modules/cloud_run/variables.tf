@@ -50,3 +50,8 @@ variable "app_base_url" {
   description = "Public base URL of the player web app, used in email links."
   type        = string
 }
+
+variable "vpc_connector_id" {
+  description = "Fully-qualified Serverless VPC Access connector ID. All services attach to this connector with PRIVATE_RANGES_ONLY egress so internal-only resources (future Cloud SQL private IP) are reachable while public traffic still leaves directly."
+  type        = string
+}

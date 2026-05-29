@@ -27,6 +27,11 @@ resource "google_cloud_run_v2_service" "api" {
   template {
     service_account = var.compute_sa_email
 
+    vpc_access {
+      connector = var.vpc_connector_id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
     scaling {
       max_instance_count = var.max_instance_count
     }
@@ -215,6 +220,11 @@ resource "google_cloud_run_v2_service" "booking_worker" {
   template {
     service_account = var.compute_sa_email
 
+    vpc_access {
+      connector = var.vpc_connector_id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
     scaling {
       max_instance_count = var.max_instance_count
     }
@@ -316,6 +326,11 @@ resource "google_cloud_run_v2_service" "payment_worker" {
 
   template {
     service_account = var.compute_sa_email
+
+    vpc_access {
+      connector = var.vpc_connector_id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
 
     scaling {
       max_instance_count = var.max_instance_count
@@ -419,6 +434,11 @@ resource "google_cloud_run_v2_service" "notification_worker" {
 
   template {
     service_account = var.compute_sa_email
+
+    vpc_access {
+      connector = var.vpc_connector_id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
 
     scaling {
       max_instance_count = var.max_instance_count
