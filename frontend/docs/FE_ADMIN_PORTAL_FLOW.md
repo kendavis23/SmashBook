@@ -153,11 +153,13 @@ Logout is triggered from `Navbar.tsx`:
 const handleLogout = () => {
     clearAuth(); // clears JWT auth store (no-op for admin portal, kept for safety)
     adminLogout(); // clears sessionStorage + resets Zustand
+    queryClient.cancelQueries();
+    queryClient.clear();
     navigate("/login");
 };
 ```
 
-After logout, `sessionStorage` is cleared. Any navigation to a dashboard route immediately fires `beforeLoad`, finds no key, and redirects to `/login`.
+After logout, `sessionStorage` is cleared and React Query cache is emptied so tenant/admin data cannot carry into another local session. Any navigation to a dashboard route immediately fires `beforeLoad`, finds no key, and redirects to `/login`.
 
 ---
 

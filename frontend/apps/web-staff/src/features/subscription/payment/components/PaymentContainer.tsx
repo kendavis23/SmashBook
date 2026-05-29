@@ -6,7 +6,9 @@ import type { Subscription } from "../../types";
 import PaymentView from "./PaymentView";
 
 // Initialise Stripe once — module-level so the promise is shared.
-const stripePromise = loadStripe(config.stripePublishableKey);
+const stripePromise = loadStripe(config.stripePublishableKey, {
+    developerTools: { assistant: { enabled: false } },
+});
 
 export default function PaymentContainer(): JSX.Element {
     const { data, isLoading, error, refetch } = useGetSubscription();

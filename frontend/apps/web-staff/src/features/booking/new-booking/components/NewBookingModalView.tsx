@@ -165,33 +165,33 @@ export function NewBookingModalView({
                         icon={<MapPin size={13} />}
                         label="Court"
                         value={courtName}
-                        color="text-violet-600"
-                        bg="bg-violet-500/10"
-                        ring="ring-violet-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<CalendarDays size={13} />}
                         label="Date"
                         value={formattedDate}
-                        color="text-blue-600"
-                        bg="bg-blue-500/10"
-                        ring="ring-blue-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<Clock size={13} />}
                         label="Time"
                         value={formattedTime}
-                        color="text-amber-600"
-                        bg="bg-amber-500/10"
-                        ring="ring-amber-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<span className="text-xs font-bold leading-none">£</span>}
                         label="Total"
                         value={formattedPrice}
-                        color="text-emerald-600"
-                        bg="bg-emerald-500/10"
-                        ring="ring-emerald-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                 </div>
 

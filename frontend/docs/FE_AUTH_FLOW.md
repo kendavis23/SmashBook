@@ -11,6 +11,8 @@ User fills form
   → LoginForm.tsx  (features/auth/components/LoginForm.tsx)
   → useLogin()     (apps/<app>/features/auth/hooks/index.ts)
        wraps useLogin(portalType) from packages/auth/hooks/index.ts
+      → QueryClient.cancelQueries() + removeQueries()
+           clears any previous user's cached data before accepting the new session
       → loginService()   POST /api/v1/auth/login   → returns { access_token, refresh_token, subdomain, clubs }
       → if clubs[] is empty → clearAuth() + throw
            "Your account has no clubs assigned. Contact your administrator."
@@ -125,14 +127,30 @@ fetcher(url, options)             (packages/api-client/core/fetcher.ts)
 ## 4. Logout Flow
 
 ```
-Navbar → handleLogout()           (apps/web-staff/src/layout/dashboard/Navbar.tsx)
-  → clearAuth()                   clears store + localStorage
+Navbar/Sidebar → handleLogout()   (apps/<app>/src/layout/dashboard/*.tsx)
+  → useLogout().mutate()
 
 /logout route
   → LogoutPage.tsx                (features/auth/pages/LogoutPage.tsx)
-  → clearAuth() + QueryClient.clear()
-  → redirect to /login after 1s
+  → useLogout().mutate()
+
+useLogout()                       (packages/auth/hooks/index.ts)
+  → POST /api/v1/auth/logout      attempts server-side refresh-token invalidation
+                                  non-2xx/401 is tolerated so local logout still completes
+  → QueryClient.cancelQueries()   stops in-flight user-scoped reads
+  → clearAuth()                   resets in-memory Zustand auth state
+                                  removes localStorage["smashbook-auth"]
+                                  removes legacy localStorage token keys:
+                                  access_token, refresh_token, token_type
+  → QueryClient.clear()           removes cached user-scoped data
+  → redirect to /login
 ```
+
+**Logout rule:** All visible logout buttons and `/logout` routes must call the shared `useLogout()` hook. Do not call `clearAuth()` directly from app UI; direct calls skip server-side invalidation and can leave user-scoped query data in memory.
+
+**Client storage:** The only supported persisted auth key is `localStorage["smashbook-auth"]`. Raw token keys are treated as legacy artifacts and are removed during logout for defense-in-depth.
+
+**Production target:** Browser-accessible token storage is the current implementation, but the production security target is refresh-token storage in `HttpOnly`, `Secure`, `SameSite` cookies or a Backend-for-Frontend session model. Logout should invalidate the server session/refresh token and return restrictive cache headers; if cookie sessions are adopted, the backend should also expire the cookie and may use `Clear-Site-Data` carefully for full-origin cleanup.
 
 ---
 

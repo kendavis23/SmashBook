@@ -86,8 +86,8 @@ export function NewBookingModalView({
             {/* Header */}
             <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3">
                 <div className="flex items-center gap-2.5">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cta/10">
-                        <CalendarDays size={15} className="text-cta" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground">
+                        <CalendarDays size={15} />
                     </div>
                     <h2 className="text-base font-semibold tracking-tight text-foreground">
                         New Booking
@@ -117,38 +117,28 @@ export function NewBookingModalView({
                                 icon: <MapPin size={13} />,
                                 label: "Court",
                                 value: courtName,
-                                color: "text-violet-500",
-                                bg: "bg-violet-500/10",
                             },
                             {
                                 icon: <CalendarDays size={13} />,
                                 label: "Date",
                                 value: formattedDate,
-                                color: "text-blue-500",
-                                bg: "bg-blue-500/10",
                             },
                             {
                                 icon: <Clock size={13} />,
                                 label: "Time",
                                 value: formattedTime,
-                                color: "text-amber-500",
-                                bg: "bg-amber-500/10",
                             },
                             {
                                 icon: <span className="text-xs font-bold leading-none">£</span>,
                                 label: "Price",
                                 value: formattedPrice,
-                                color: "text-emerald-500",
-                                bg: "bg-emerald-500/10",
                             },
-                        ].map(({ icon, label, value, color, bg }) => (
+                        ].map(({ icon, label, value }) => (
                             <div
                                 key={label}
                                 className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5"
                             >
-                                <div
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${bg} ${color}`}
-                                >
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
                                     {icon}
                                 </div>
                                 <div className="min-w-0 flex flex-col gap-0.5">

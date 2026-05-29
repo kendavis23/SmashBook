@@ -10,6 +10,7 @@ import {
     MapPin,
     RotateCcw,
     Search,
+    Swords,
     UserPlus,
     UserRound,
     Users,
@@ -325,7 +326,7 @@ export function ManageBookingModalView({
             <header className="relative flex shrink-0 items-center justify-between gap-3 overflow-hidden border-b border-border/70 bg-muted/20 px-5 py-3">
                 <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cta/10 text-cta ring-1 ring-cta/15">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground">
                             <MapPin size={15} />
                         </span>
                         <h2 className="min-w-0 truncate text-base font-bold tracking-tight text-foreground">
@@ -380,59 +381,50 @@ export function ManageBookingModalView({
                                     icon: <MapPin size={13} />,
                                     label: "Court",
                                     value: booking.court_name,
-                                    color: "text-violet-600",
-                                    bg: "bg-violet-500/10",
-                                    ring: "ring-violet-500/15",
                                 },
                                 {
                                     icon: <CalendarDays size={13} />,
                                     label: "Date",
                                     value: date,
-                                    color: "text-blue-600",
-                                    bg: "bg-blue-500/10",
-                                    ring: "ring-blue-500/15",
                                 },
                                 {
                                     icon: <Clock size={13} />,
                                     label: "Time",
                                     value: time,
-                                    color: "text-amber-600",
-                                    bg: "bg-amber-500/10",
-                                    ring: "ring-amber-500/15",
                                 },
                                 {
                                     icon: <span className="text-xs font-bold leading-none">£</span>,
                                     label: "Total",
                                     value: formatCurrency(booking.total_price) ?? "—",
-                                    color: "text-emerald-600",
-                                    bg: "bg-emerald-500/10",
-                                    ring: "ring-emerald-500/15",
                                 },
                                 {
                                     icon: <Users size={13} />,
                                     label: "Players",
                                     value: playersValue,
-                                    color: "text-pink-600",
-                                    bg: "bg-pink-500/10",
-                                    ring: "ring-pink-500/15",
                                 },
                                 {
                                     icon: <CalendarDays size={13} />,
                                     label: "Type",
                                     value: bookingTypeLabel,
-                                    color: "text-cta",
-                                    bg: "bg-cta/10",
-                                    ring: "ring-cta/15",
                                 },
+                                ...(booking.is_open_game &&
+                                booking.min_skill_level != null &&
+                                booking.max_skill_level != null
+                                    ? [
+                                          {
+                                              icon: <Swords size={13} />,
+                                              label: "Skill Level",
+                                              value: `${booking.min_skill_level} – ${booking.max_skill_level}`,
+                                          },
+                                      ]
+                                    : []),
                             ];
-                            return items.map(({ icon, label, value, color, bg, ring }) => (
+                            return items.map(({ icon, label, value }) => (
                                 <div
                                     key={label}
                                     className="flex items-center gap-3 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5"
                                 >
-                                    <div
-                                        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${bg} ${color} ${ring}`}
-                                    >
+                                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
                                         {icon}
                                     </div>
                                     <div className="min-w-0 flex flex-col gap-0.5">

@@ -49,6 +49,7 @@ vi.mock("@repo/auth", () => {
     (useAuthStore as unknown as { getState: () => typeof store }).getState = vi.fn(() => store);
     return {
         useAuthStore,
+        useLogout: () => ({ mutate: vi.fn() }),
         useInitAuth: () => ({ isLoading: false, isError: false }),
         useAuth: () => ({
             user: store.user,

@@ -7,6 +7,7 @@ import {
     RefreshCw,
     RotateCcw,
     Search,
+    Swords,
     UserRound,
     Users,
     X,
@@ -365,9 +366,9 @@ export function ManageBookingModalView({
                         icon={<CalendarDays size={13} />}
                         label="Type"
                         value={BOOKING_TYPE_LABELS[booking.booking_type] ?? booking.booking_type}
-                        color="text-cta"
-                        bg="bg-cta/10"
-                        ring="ring-cta/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<Users size={13} />}
@@ -377,18 +378,30 @@ export function ManageBookingModalView({
                                 ? `${booking.max_players - booking.slots_available} / ${booking.max_players}`
                                 : String(booking.players.length)
                         }
-                        color="text-pink-600"
-                        bg="bg-pink-500/10"
-                        ring="ring-pink-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
                     <DetailItem
                         icon={<span className="text-xs font-bold leading-none">£</span>}
                         label="Total"
                         value={formatCurrency(booking.total_price)}
-                        color="text-emerald-600"
-                        bg="bg-emerald-500/10"
-                        ring="ring-emerald-500/15"
+                        color="text-muted-foreground"
+                        bg="bg-background"
+                        ring="ring-border"
                     />
+                    {booking.is_open_game &&
+                    booking.min_skill_level != null &&
+                    booking.max_skill_level != null ? (
+                        <DetailItem
+                            icon={<Swords size={13} />}
+                            label="Skill Level"
+                            value={`${booking.min_skill_level} – ${booking.max_skill_level}`}
+                            color="text-muted-foreground"
+                            bg="bg-background"
+                            ring="ring-border"
+                        />
+                    ) : null}
                 </div>
 
                 {/* Invite Player — only for pending open games */}

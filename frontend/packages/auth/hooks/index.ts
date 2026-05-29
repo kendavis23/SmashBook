@@ -152,10 +152,15 @@ function getPortalLoginError(portalType: PortalType): string {
 }
 
 export function useLogin(portalType: PortalType = "staff") {
+    const queryClient = useQueryClient();
+
     return useMutation({
         mutationFn: async (credentials: UserLogin): Promise<UserResponse> => {
             const { setTokens, setUser, setTenantSubdomain, setActiveClubId, clearAuth } =
                 useAuthStore.getState();
+
+            await queryClient.cancelQueries();
+            queryClient.removeQueries();
 
             const tokens = await loginService(credentials);
 
@@ -216,7 +221,8 @@ export function useLogout() {
                 await logoutService({ refresh_token: refreshToken }, accessToken, tenantSubdomain);
             }
         },
-        onSettled: () => {
+        onSettled: async () => {
+            await queryClient.cancelQueries();
             useAuthStore.getState().clearAuth();
             queryClient.clear();
         },
