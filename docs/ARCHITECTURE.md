@@ -1,4 +1,4 @@
-_Last updated: 2026-05-19 12:00 UTC_
+_Last updated: 2026-05-29 13:30 UTC_
 
 # SmashBook — Architecture
 
@@ -391,6 +391,20 @@ In the Stripe Dashboard the two webhooks are registered as **"Events on Connecte
 | `customer.subscription.deleted` | `is_active=false`, `subscription_status → canceled` (preserves `suspended`); clear `stripe_subscription_id` |
 
 Both handlers verify the `Stripe-Signature` header against their respective signing secret before any processing occurs; any unverified event returns 400 and is discarded.
+
+### Court holds & auto-release
+
+An unpaid booking must not hold a court indefinitely. Rather than a separate hold entity, the expiry lives on the existing `pending` state at two granularities:
+
+- **Court-level hold** — `bookings.hold_expires_at` (now + 5 min), set when a player creates an unpaid booking, **cleared the moment the first player pays**. `NULL` means a paid booking or a staff placement — those always block the court.
+- **Slot-level hold** — `booking_players.payment_deadline` (now + 5 min), set when a player commits an unpaid slot (organiser at create, joiner at join, invitee at accept), cleared on payment. Frees one slot without killing a booking that still has a paying player.
+
+Staff-placed bookings (cash/comp/deliberate placements) never receive a deadline and never auto-expire. The conflict check treats an *expired* pending hold as non-blocking immediately — a new booking can take the slot even before the sweep runs, closing the race between expiry and release.
+
+Three release paths converge on this:
+1. **Payment failure** (`payment_intent.payment_failed`) frees the paying player's slot at once.
+2. **First payment** clears the court hold (so long-lived open games never expire once anyone has paid).
+3. **Scheduled sweep** — `POST /api/v1/admin/bookings/release-expired-holds` is the only path that catches *abandonment* (the player closed the screen, so no webhook fires). Cloud Scheduler invokes it every minute behind the `X-Platform-Key` guard; it cancels any in-flight PaymentIntent, frees expired slots (`FOR UPDATE SKIP LOCKED`, served by a partial index on `payment_deadline`), reconciles a slot to *paid* if its PI had actually succeeded, and cancels the booking when no paying player remains.
 
 ---
 

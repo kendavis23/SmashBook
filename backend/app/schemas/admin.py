@@ -161,3 +161,13 @@ class TenantActivateRequest(BaseModel):
 
 class TenantChangePlanRequest(BaseModel):
     plan_id: uuid.UUID
+
+
+# -- Booking maintenance -----------------------------------------------------
+
+
+class ReleaseExpiredHoldsResponse(BaseModel):
+    """Counts returned by the court-hold expiry sweep."""
+    released: int       # slots freed because their payment deadline elapsed
+    reconciled: int     # slots found already paid on Stripe and reconciled to paid
+    cancelled_bookings: int  # bookings cancelled because no paid player remained

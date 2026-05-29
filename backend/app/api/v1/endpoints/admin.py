@@ -33,6 +33,7 @@ from app.schemas.admin import (
     PlanCreate,
     PlanResponse,
     PlanUpdate,
+    ReleaseExpiredHoldsResponse,
     TenantActivateRequest,
     TenantChangePlanRequest,
     TenantDetail,
@@ -41,6 +42,7 @@ from app.schemas.admin import (
 )
 from app.schemas.onboarding import TenantOnboardRequest, TenantOnboardResponse
 from app.services import stripe_billing_service as stripe_billing
+from app.services.payment_service import PaymentService
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -190,6 +192,30 @@ async def onboard_tenant(
         club_ids=[c.id for c in clubs],
         owner_id=owner.id,
     )
+
+
+# ----------------------------------------------------------------------------
+# Booking maintenance
+# ----------------------------------------------------------------------------
+
+
+@router.post(
+    "/bookings/release-expired-holds",
+    response_model=ReleaseExpiredHoldsResponse,
+    dependencies=[Depends(_require_platform_key)],
+    summary="Release court/slot holds whose payment deadline has elapsed",
+)
+async def release_expired_holds(
+    db: AsyncSession = Depends(get_db),
+) -> ReleaseExpiredHoldsResponse:
+    """
+    Backstop sweep for abandoned bookings, invoked on a fixed schedule by Cloud
+    Scheduler (every minute). Frees slots whose unpaid hold has expired, cancels
+    in-flight PaymentIntents, and cancels bookings that no longer have a paying
+    player. Idempotent — safe to call repeatedly.
+    """
+    counts = await PaymentService(db).release_expired_holds()
+    return ReleaseExpiredHoldsResponse(**counts)
 
 
 # ----------------------------------------------------------------------------

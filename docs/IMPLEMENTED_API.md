@@ -1,4 +1,4 @@
-_Last updated: 2026-05-27 14:30 UTC_
+_Last updated: 2026-05-29 13:30 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -28,6 +28,7 @@ All endpoints require the shared `X-Platform-Key` header. Used by SmashBook inte
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/v1/admin/onboard` | Provision a new tenant, one or more clubs, and an owner user atomically (courts are added later from the staff portal) |
+| `POST` | `/api/v1/admin/bookings/release-expired-holds` | Court-hold expiry sweep (Cloud Scheduler, every minute): free slots whose unpaid hold elapsed, cancel in-flight PaymentIntents, cancel bookings with no paying player. Returns `{released, reconciled, cancelled_bookings}`. Idempotent |
 | `GET` | `/api/v1/admin/plans` | List all subscription plans |
 | `POST` | `/api/v1/admin/plans` | Create a subscription plan (limits, fees, feature flags, `stripe_price_id`) |
 | `GET` | `/api/v1/admin/plans/{plan_id}` | Get a single plan |
