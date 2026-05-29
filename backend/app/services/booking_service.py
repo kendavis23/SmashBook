@@ -43,6 +43,7 @@ from app.db.models.club import Club, OperatingHours
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.staff import StaffProfile, StaffRole
 from app.db.models.user import TenantUserRole, User
+from app.services.booking_confirmation import should_confirm
 from app.services.pricing_service import PricingService
 
 _STAFF_ROLES = {
@@ -62,16 +63,6 @@ def _is_staff(user: User) -> bool:
 
 def _accepted_count(players: list[BookingPlayer]) -> int:
     return sum(1 for p in players if p.invite_status == InviteStatus.accepted)
-
-
-def _should_confirm(booking: Booking, players: list[BookingPlayer]) -> bool:
-    """Return True only when all slots are filled and every accepted player has paid."""
-    max_p = booking.max_players or 4
-    accepted = [p for p in players if p.invite_status == InviteStatus.accepted]
-    return (
-        len(accepted) >= max_p
-        and all(p.payment_status == PaymentStatus.paid for p in accepted)
-    )
 
 
 class BookingService:
@@ -500,7 +491,7 @@ class BookingService:
         await self.db.flush()
 
         # 18. Auto-confirm only when all slots are filled and every player has paid
-        if _should_confirm(booking, created_players):
+        if should_confirm(booking, created_players):
             booking.status = BookingStatus.confirmed
 
         await self.db.flush()
@@ -823,7 +814,7 @@ class BookingService:
             select(BookingPlayer).where(BookingPlayer.booking_id == booking.id)
         )
         all_players = all_bp_result.scalars().all()
-        if booking.status == BookingStatus.pending and _should_confirm(booking, all_players):
+        if booking.status == BookingStatus.pending and should_confirm(booking, all_players):
             booking.status = BookingStatus.confirmed
 
         await self.db.flush()
@@ -970,7 +961,7 @@ class BookingService:
                     if other.user_id != requesting_user.id and other.invite_status == InviteStatus.pending:
                         other.invite_status = InviteStatus.declined
             # bp.invite_status is already updated in memory so booking.players reflects the new state
-            if booking.status == BookingStatus.pending and _should_confirm(booking, booking.players):
+            if booking.status == BookingStatus.pending and should_confirm(booking, booking.players):
                 booking.status = BookingStatus.confirmed
 
         await self.db.flush()
