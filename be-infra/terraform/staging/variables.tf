@@ -35,3 +35,9 @@ variable "sendgrid_from_email" {
 variable "app_base_url" {
   type = string
 }
+
+variable "release_holds_scheduler_paused" {
+  description = "Pause the court-hold expiry Cloud Scheduler job in staging (it need not run continuously here). Set to false to enable the sweep."
+  type        = bool
+  default     = true
+}

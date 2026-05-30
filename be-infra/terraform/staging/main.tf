@@ -93,6 +93,18 @@ module "storage" {
   compute_sa_email = module.iam.compute_sa_email
 }
 
+module "scheduler" {
+  source                     = "../modules/scheduler"
+  project_id                 = var.project_id
+  region                     = var.region
+  api_url                    = module.cloud_run.api_url
+  platform_api_key_secret_id = module.secrets.secret_ids["padel-platform-api-key"]
+  # Staging does not need the sweep running continuously — defaults to paused.
+  # Flip `release_holds_scheduler_paused = false` (or `terraform apply` after a
+  # `gcloud scheduler jobs resume`) to enable it for a testing session.
+  paused = var.release_holds_scheduler_paused
+}
+
 # ---------------------------------------------------------------------------
 # Outputs
 # ---------------------------------------------------------------------------

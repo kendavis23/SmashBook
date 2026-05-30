@@ -1,4 +1,4 @@
-_Last updated: 2026-05-16 00:00 UTC_
+_Last updated: 2026-05-29 18:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -185,9 +185,12 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 
 `payment-retry-job` and `waitlist-offer-expiry-job` were originally scoped to Stage 1 but have been moved to Stage 2 (§2.7) — they depend on the Cloud Scheduler SA and VPC connector from Stage 2, and deferring keeps Stage 1 focused on structural hardening.
 
+`release-expired-holds` is the exception that does ship in Stage 1: because its target endpoint is header-gated (not IAM-gated) it needs neither the Cloud Scheduler SA nor the VPC connector, so it has no Stage 2 dependency. It is paused in staging (no need to run continuously there) and fires every minute in prod.
+
 | Job | Schedule | Purpose | Status |
 |---|---|---|---|
 | `db-migration` | CI/CD (not Cloud Scheduler) | `alembic upgrade head` before each Cloud Run revision receives traffic — wired into the GitHub Actions deploy pipeline | ✅ Implemented |
+| `release-expired-holds` | `* * * * *` (prod); paused in staging | Cloud Scheduler → `POST /api/v1/admin/bookings/release-expired-holds` — frees abandoned court/slot holds past their payment deadline. No OIDC/Cloud Scheduler SA needed: `padel-api` is public and the endpoint is gated by the `X-Platform-Key` header, which the job sends from the `padel-platform-api-key` secret. Module: `be-infra/terraform/modules/scheduler`. | 🚧 Terraform written, pending apply |
 
 ### 1.9 Additional Pub/Sub topic — `booking-cancelled`
 
@@ -248,13 +251,15 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 
 > **Goal:** everything that must exist *before* the first AI worker ships and *before* production go-live. After this stage the platform is operationally safe to run real customer traffic.
 
-### 2.1 Serverless VPC connector
+### 2.1 Serverless VPC connector — ✅ Delivered (staging, 2026-05-29)
 
 **Why:** Required for Cloud SQL private IP migration (an upcoming hardening step) and any future use of internal-only services. Cheap to add now; expensive to retrofit once production traffic is live and Cloud Run services need to be revision-rolled to attach to it.
 
 **Resources:**
 - `google_vpc_access_connector.main` — `/28` subnet in `europe-west2`
 - Update every Cloud Run service to set `vpc_access { connector = ..., egress = "PRIVATE_RANGES_ONLY" }`
+
+**Delivered notes (2026-05-29):** New `modules/vpc_connector` declares `padel-connector-<env>` (`default` network, `e2-micro`, min/max 2/3). Staging applied on `10.8.0.0/28`; all four Cloud Run services attached with `egress = "PRIVATE_RANGES_ONLY"`. Prod wired in `prod/main.tf` on `10.9.0.0/28`, not yet applied (no prod project). The Cloud SQL private IP migration this unblocks is still outstanding — tracked as a follow-on in `INFRASTRUCTURE.md` Known Gaps.
 
 ### 2.2 Cloud Armor + global HTTPS load balancer
 
@@ -353,7 +358,7 @@ Production-readiness cron jobs beyond wallet settlement. All follow the same Clo
 
 ### Stage 2 deliverables checklist
 
-- [ ] VPC connector live and attached to all Cloud Run services
+- [x] VPC connector live and attached to all Cloud Run services _(delivered 2026-05-29: `padel-connector-staging`, `10.8.0.0/28`; all four services on `PRIVATE_RANGES_ONLY`)_
 - [ ] Custom domain + LB + Cloud Armor live for `padel-api`
 - [ ] At minimum 6 monitoring alert policies firing to a real notification channel
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`

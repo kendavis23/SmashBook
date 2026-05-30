@@ -101,6 +101,28 @@ staging-api-secrets:
 		--region=europe-west2 \
 		--format=json | jq '.spec.template.spec.containers[0].env[] | select(.valueFrom.secretKeyRef) | {name: .name, secret: .valueFrom.secretKeyRef.name, key: .valueFrom.secretKeyRef.key}'
 
+# ── Staging: court-hold expiry scheduler ──────────────────────────────────────
+# Toggle the release-expired-holds Cloud Scheduler job (ad-hoc — note a later
+# `terraform apply` resets it to the release_holds_scheduler_paused variable).
+scheduler-activate:
+	gcloud scheduler jobs resume release-expired-holds \
+		--location=europe-west2 --project=smashbook-488121
+
+scheduler-pause:
+	gcloud scheduler jobs pause release-expired-holds \
+		--location=europe-west2 --project=smashbook-488121
+
+# Show ENABLED / PAUSED
+scheduler-status:
+	gcloud scheduler jobs describe release-expired-holds \
+		--location=europe-west2 --project=smashbook-488121 \
+		--format="value(state)"
+
+# Trigger one run now without un-pausing
+scheduler-run:
+	gcloud scheduler jobs run release-expired-holds \
+		--location=europe-west2 --project=smashbook-488121
+
 # Run seed against the local dev DB (api container must be up)
 seed-local:
 	docker-compose exec api python scripts/seed_staging.py
@@ -141,4 +163,4 @@ get-token:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets scheduler-activate scheduler-pause scheduler-status scheduler-run seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token

@@ -1,4 +1,4 @@
-_Last updated: 2026-05-19 12:00 UTC_
+_Last updated: 2026-05-29 18:00 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -16,6 +16,7 @@ _Last updated: 2026-05-19 12:00 UTC_
 - [Terraform State](#terraform-state)
 - [Cloud Run Services](#cloud-run-services)
 - [Cloud Run Jobs](#cloud-run-jobs)
+- [Networking — Serverless VPC Access](#networking--serverless-vpc-access)
 - [Cloud SQL](#cloud-sql)
 - [Pub/Sub](#pubsub)
 - [Secret Manager](#secret-manager)
@@ -114,7 +115,28 @@ Images are tagged with git SHA by CI/CD. Terraform ignores image tag drift (`lif
 |---|---|---|
 | `run-migrations` | CI/CD pipeline (every deploy) | Self-bootstrapping — created on first pipeline run. Runs `alembic upgrade head` against Cloud SQL before the new service revision receives traffic. |
 
-No Cloud Scheduler jobs exist yet.
+### Cloud Scheduler
+
+No Cloud Scheduler jobs are live yet. The `release-expired-holds` job (court-hold expiry sweep → `POST /api/v1/admin/bookings/release-expired-holds`) is **defined in Terraform** (`be-infra/terraform/modules/scheduler`, wired into both `staging/` and `prod/`) but has **not been applied**. On apply it runs every minute in prod and is created **paused** in staging (toggle via the `release_holds_scheduler_paused` variable). It authenticates with the `X-Platform-Key` header sourced from the `padel-platform-api-key` secret — no OIDC SA required, since `padel-api` is public and the endpoint is header-gated. Requires `cloudscheduler.googleapis.com` enabled on the project.
+
+---
+
+## Networking — Serverless VPC Access
+
+A Serverless VPC Access connector lets Cloud Run services reach internal-only resources over RFC1918 addresses. It is the prerequisite for the upcoming Cloud SQL private IP migration; today Cloud SQL is still reached via public IP and the Cloud SQL proxy.
+
+| Property | Value |
+|---|---|
+| Connector name | `padel-connector-staging` |
+| Region | `europe-west2` |
+| Attached network | `default` |
+| IP CIDR range | `10.8.0.0/28` |
+| Machine type | `e2-micro` |
+| Min / max instances | 2 / 3 |
+
+All four Cloud Run services (`padel-api`, `padel-booking-worker`, `padel-payment-worker`, `padel-notification-worker`) attach to this connector with `egress = "PRIVATE_RANGES_ONLY"` — only RFC1918 destinations route through the connector; public egress (Stripe, SendGrid, Anthropic, Firebase) continues to leave via the standard Cloud Run network path.
+
+> **Prod note:** `be-infra/terraform/prod/` declares an equivalent `padel-connector-prod` connector on `10.9.0.0/28`. Not yet applied — no prod GCP project exists.
 
 ---
 
@@ -301,7 +323,8 @@ These are gaps between the current state and the next stage of infrastructure wo
 |---|---|---|
 | No production GCP project | — | `be-infra/terraform/prod/` scaffold exists with prod-tuned settings (HA, backups, larger tier); replace `smashbook-prod-REPLACE_ME` in `prod/terraform.tfvars` and `prod/main.tf` once the GCP project is created |
 | No monitoring or alerting | Stage 2.3 | No paging on 5xx spikes, DB storage, or subscription backlogs |
-| No VPC connector | Stage 2.1 | Workers connect to Cloud SQL via public IP; required for private IP migration |
+| Cloud SQL on public IP | Stage 2.1 follow-on | VPC connector now live (`padel-connector-staging`); the private IP migration itself is still pending |
+| `release-expired-holds` scheduler not applied | Stage 1.8 | Terraform written for staging + prod but not yet `apply`-ed; until then abandoned court holds are only released on payment success/failure, not by the periodic sweep. Requires `cloudscheduler.googleapis.com` enabled and the `padel-platform-api-key` secret version to exist |
 
 ---
 
