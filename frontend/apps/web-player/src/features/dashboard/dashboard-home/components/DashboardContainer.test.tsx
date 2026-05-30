@@ -269,7 +269,11 @@ describe("DashboardContainer", () => {
         expect(screen.getByText("modal:open")).toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "Booking success" }));
-        expect(screen.getByText("success:Booking created successfully.")).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "success:Booking created. Go to My Bookings to complete payment — your slot will be released if payment isn't made in time."
+            )
+        ).toBeInTheDocument();
         expect(mockRefetchCourts).toHaveBeenCalled();
         expect(mockRefetchAvailability).toHaveBeenCalled();
         expect(mockRefetchOpenGames).toHaveBeenCalled();

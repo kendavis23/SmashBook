@@ -109,6 +109,7 @@ export default function NewBookingContainer(): JSX.Element {
     const [startError, setStartError] = useState("");
     const [staffError, setStaffError] = useState("");
     const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
+    const [paymentDeadlineIso, setPaymentDeadlineIso] = useState<string | undefined>(undefined);
     const [createdBookingAwaitingProfile, setCreatedBookingAwaitingProfile] =
         useState<Booking | null>(null);
 
@@ -171,6 +172,7 @@ export default function NewBookingContainer(): JSX.Element {
         const payableBooking = getPayableBookingForUser(createdBookingAwaitingProfile, profile.id);
         setCreatedBookingAwaitingProfile(null);
         if (payableBooking) {
+            setPaymentDeadlineIso(new Date(Date.now() + 5 * 60 * 1000).toISOString());
             setPayingBooking(payableBooking);
             return;
         }
@@ -253,6 +255,7 @@ export default function NewBookingContainer(): JSX.Element {
                     const createdBooking = booking as Booking;
                     const payableBooking = getPayableBookingForUser(createdBooking, profile?.id);
                     if (payableBooking) {
+                        setPaymentDeadlineIso(new Date(Date.now() + 5 * 60 * 1000).toISOString());
                         setPayingBooking(payableBooking);
                         return;
                     }
@@ -270,6 +273,7 @@ export default function NewBookingContainer(): JSX.Element {
 
     const goToBookingsAfterPayment = useCallback((): void => {
         setPayingBooking(null);
+        setPaymentDeadlineIso(undefined);
         void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
         void queryClient.invalidateQueries({ queryKey: ["bookings"] });
         void navigate({ to: "/bookings", search: bookingsCreatedSearch });
@@ -312,6 +316,7 @@ export default function NewBookingContainer(): JSX.Element {
             {payingBooking ? (
                 <PaymentModal
                     context={{ type: "booking", booking: payingBooking }}
+                    paymentDeadline={paymentDeadlineIso ? new Date(paymentDeadlineIso) : undefined}
                     onClose={goToBookingsAfterPayment}
                     onSuccess={() => {
                         void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });

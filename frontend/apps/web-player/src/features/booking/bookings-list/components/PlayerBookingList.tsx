@@ -386,7 +386,7 @@ export default function PlayerBookingList({
                                             <div className="inline-flex items-center gap-1.5">
                                                 {isDeclinedInvite ? (
                                                     <span className="text-xs text-muted-foreground italic">
-                                                        You declined this invitation
+                                                        Invitation no longer available
                                                     </span>
                                                 ) : isPendingInvite ? (
                                                     <>

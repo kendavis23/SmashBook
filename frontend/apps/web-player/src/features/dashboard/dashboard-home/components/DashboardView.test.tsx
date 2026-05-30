@@ -194,6 +194,7 @@ const defaultProps = {
     bookingModal: null,
     onCloseBooking: vi.fn(),
     onBookingSuccess: vi.fn(),
+    onBookingPaid: vi.fn(),
     feedback: {
         joinError: "",
         successMessage: "",

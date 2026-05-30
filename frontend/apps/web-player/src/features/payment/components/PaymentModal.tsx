@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, type JSX } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import { Check, CreditCard, LockKeyhole, X } from "lucide-react";
+import { AlertCircle, Check, CreditCard, LockKeyhole, X } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import { config } from "@repo/config";
 import {
@@ -231,6 +231,50 @@ function ProcessingStep(): JSX.Element {
     );
 }
 
+// ─── Mobile countdown strip ───────────────────────────────────────────────────
+
+function MobileCountdownStrip({ deadline }: { deadline: Date }): JSX.Element | null {
+    const [secsLeft, setSecsLeft] = useState(() =>
+        Math.max(0, Math.round((deadline.getTime() - Date.now()) / 1000))
+    );
+
+    useEffect(() => {
+        if (secsLeft <= 0) return;
+        const id = setInterval(() => {
+            setSecsLeft(Math.max(0, Math.round((deadline.getTime() - Date.now()) / 1000)));
+        }, 1000);
+        return () => clearInterval(id);
+    }, [deadline, secsLeft]);
+
+    if (secsLeft <= 0) return null;
+
+    const mins = Math.floor(secsLeft / 60);
+    const secs = secsLeft % 60;
+    const timeStr = `${mins}:${secs.toString().padStart(2, "0")}`;
+    const isUrgent = secsLeft <= 60;
+
+    return (
+        <div
+            className={`flex md:hidden shrink-0 items-center gap-2 border-b px-5 py-2 text-xs transition-colors ${
+                isUrgent
+                    ? "border-destructive/20 bg-destructive/8 text-destructive"
+                    : "border-warning/20 bg-warning/8 text-warning-foreground"
+            }`}
+        >
+            <AlertCircle size={12} className={isUrgent ? "text-destructive" : "text-warning"} />
+            <span>
+                Complete payment to hold your court —{" "}
+                <span
+                    className={`font-bold tabular-nums ${isUrgent ? "text-destructive" : "text-foreground"}`}
+                >
+                    {timeStr}
+                </span>{" "}
+                remaining
+            </span>
+        </div>
+    );
+}
+
 // ─── Step title ───────────────────────────────────────────────────────────────
 
 function getStepTitle(step: PaymentStep): string {
@@ -263,7 +307,12 @@ function parseDiscountAmount(value?: string | null): number {
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
-export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps): JSX.Element {
+export function PaymentModal({
+    context,
+    onClose,
+    onSuccess,
+    paymentDeadline,
+}: PaymentModalProps): JSX.Element {
     const [step, setStep] = useState<PaymentStep>({ id: "loading" });
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [paidAmount, setPaidAmount] = useState(0);
@@ -275,6 +324,24 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
     const payWithWallet = usePayBookingWithWallet();
     const queryClient = useQueryClient();
     const initRan = useRef(false);
+
+    // Auto-close when deadline expires (only if payment not yet complete)
+    useEffect(() => {
+        if (!paymentDeadline) return;
+        const msLeft = paymentDeadline.getTime() - Date.now();
+        if (msLeft <= 0) {
+            onClose();
+            return;
+        }
+        const id = setTimeout(() => {
+            setStep((s) => {
+                if (s.id !== "success" && s.id !== "confirming") onClose();
+                return s;
+            });
+        }, msLeft);
+        return () => clearTimeout(id);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [paymentDeadline]);
 
     const bookingId = context.type === "booking" ? context.booking.booking_id : "";
     const clubId = context.type === "booking" ? context.booking.club_id : "";
@@ -448,7 +515,10 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                 {/* ── LEFT PANEL: Booking info — always visible on md+ ── */}
                 <div className="hidden md:flex md:w-[42%] md:shrink-0 flex-col border-r border-border/60 bg-muted/10 px-6 py-6">
                     {bookingInfo ? (
-                        <BookingInfoPanel {...bookingInfo} />
+                        <BookingInfoPanel
+                            {...bookingInfo}
+                            paymentDeadline={isSuccess ? undefined : paymentDeadline}
+                        />
                     ) : (
                         <div className="flex flex-1 flex-col gap-4">
                             {/* skeleton */}
@@ -520,6 +590,11 @@ export function PaymentModal({ context, onClose, onSuccess }: PaymentModalProps)
                                 </p>
                             </div>
                         </div>
+                    ) : null}
+
+                    {/* Mobile countdown strip — only when deadline provided */}
+                    {!isSuccess && paymentDeadline ? (
+                        <MobileCountdownStrip deadline={paymentDeadline} />
                     ) : null}
 
                     {/* Step content */}

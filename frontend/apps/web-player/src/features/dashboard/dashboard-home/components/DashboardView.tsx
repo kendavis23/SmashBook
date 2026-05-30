@@ -94,6 +94,7 @@ export type DashboardViewProps = {
     bookingModal: BookingModalState;
     onCloseBooking: () => void;
     onBookingSuccess: () => void;
+    onBookingPaid: () => void;
     feedback: FeedbackProps;
 };
 
@@ -131,6 +132,7 @@ export default function DashboardView({
     bookingModal,
     onCloseBooking,
     onBookingSuccess,
+    onBookingPaid,
     feedback,
 }: DashboardViewProps): JSX.Element {
     const checkedCourt = bookSection.courts.find((court) => court.id === availability.courtId);
@@ -647,8 +649,10 @@ export default function DashboardView({
                     courtName={bookingModal.courtName}
                     date={bookingModal.date}
                     startTime={bookingModal.startTime}
+                    paymentDeadlineIso={bookingModal.paymentDeadlineIso}
                     onClose={onCloseBooking}
                     onSuccess={onBookingSuccess}
+                    onPaymentSuccess={onBookingPaid}
                 />
             ) : null}
         </div>

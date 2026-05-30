@@ -37,7 +37,11 @@ export default function BookCourtContainer(): JSX.Element {
     const [bookingModal, setBookingModal] = useState<BookingModal>(null);
     const [joinBookingId, setJoinBookingId] = useState("");
     const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
+    const [paymentDeadlineIso, setPaymentDeadlineIso] = useState<string | undefined>(undefined);
+    const [joinError, setJoinError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
     const startedJoinRef = useRef("");
+    const joinPaymentSucceededRef = useRef(false);
 
     const { data: myProfile } = useMyProfile();
     const joinMutation = useJoinBooking(clubId ?? "", joinBookingId);
@@ -50,6 +54,7 @@ export default function BookCourtContainer(): JSX.Element {
             onSuccess: (booking: Booking) => {
                 setJoinBookingId("");
                 startedJoinRef.current = "";
+                setJoinError("");
                 const me = booking.players.find((p) => p.user_id === myProfile?.id);
                 if (me && me.amount_due > 0) {
                     const item: PlayerBookingItem = {
@@ -66,10 +71,14 @@ export default function BookCourtContainer(): JSX.Element {
                         payment_status: me.payment_status,
                         amount_due: me.amount_due,
                     };
+                    setPaymentDeadlineIso(new Date(Date.now() + 5 * 60 * 1000).toISOString());
                     setPayingBooking(item);
+                } else {
+                    setSuccessMessage("Joined game successfully.");
                 }
             },
-            onError: () => {
+            onError: (error) => {
+                setJoinError(error.message);
                 setJoinBookingId("");
                 startedJoinRef.current = "";
             },
@@ -179,6 +188,7 @@ export default function BookCourtContainer(): JSX.Element {
     const handleBook = useCallback(
         (courtId: string, slot: ClubAvailabilitySlot) => {
             const court = availability?.courts.find((c) => c.id === courtId);
+            setPaymentDeadlineIso(new Date(Date.now() + 5 * 60 * 1000).toISOString());
             setBookingModal({
                 courtId,
                 courtName: court?.name ?? courtId,
@@ -206,6 +216,8 @@ export default function BookCourtContainer(): JSX.Element {
                 selectedSlot={selectedSlot}
                 isJoining={joinMutation.isPending || Boolean(joinBookingId)}
                 joiningBookingId={joinBookingId}
+                joinError={joinError}
+                successMessage={successMessage}
                 onDateChange={handleDateChange}
                 onSurfaceChange={handleSurfaceChange}
                 onFromTimeChange={handleFromTimeChange}
@@ -215,6 +227,8 @@ export default function BookCourtContainer(): JSX.Element {
                 onJoin={handleJoin}
                 onRefresh={handleRefresh}
                 onClear={handleClear}
+                onDismissJoinError={() => setJoinError("")}
+                onDismissSuccess={() => setSuccessMessage("")}
             />
             {bookingModal ? (
                 <NewBookingModal
@@ -222,9 +236,23 @@ export default function BookCourtContainer(): JSX.Element {
                     courtName={bookingModal.courtName}
                     date={bookingModal.date}
                     startTime={bookingModal.startTime}
-                    onClose={() => setBookingModal(null)}
+                    paymentDeadlineIso={paymentDeadlineIso}
+                    onClose={() => {
+                        setBookingModal(null);
+                        setPaymentDeadlineIso(undefined);
+                    }}
                     onSuccess={() => {
                         setBookingModal(null);
+                        setPaymentDeadlineIso(undefined);
+                        setSuccessMessage(
+                            "Booking created. Go to My Bookings to complete payment — your slot will be released if payment isn't made in time."
+                        );
+                        void refetch();
+                    }}
+                    onPaymentSuccess={() => {
+                        setBookingModal(null);
+                        setPaymentDeadlineIso(undefined);
+                        setSuccessMessage("Court booked and payment confirmed!");
                         void refetch();
                     }}
                 />
@@ -232,13 +260,21 @@ export default function BookCourtContainer(): JSX.Element {
             {payingBooking ? (
                 <PaymentModal
                     context={{ type: "booking", booking: payingBooking }}
+                    paymentDeadline={paymentDeadlineIso ? new Date(paymentDeadlineIso) : undefined}
                     onClose={() => {
+                        const paid = joinPaymentSucceededRef.current;
+                        joinPaymentSucceededRef.current = false;
                         setPayingBooking(null);
+                        setPaymentDeadlineIso(undefined);
+                        setSuccessMessage(
+                            paid
+                                ? "Joined and paid successfully."
+                                : "You've joined! Go to My Bookings to complete payment — your spot will be released if payment isn't made in time."
+                        );
                         void refetch();
                     }}
                     onSuccess={() => {
-                        setPayingBooking(null);
-                        void refetch();
+                        joinPaymentSucceededRef.current = true;
                     }}
                 />
             ) : null}

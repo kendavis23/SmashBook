@@ -22,4 +22,5 @@ export type BookingModalState = {
     courtName: string;
     date: string;
     startTime: string;
+    paymentDeadlineIso?: string;
 } | null;

@@ -79,6 +79,7 @@ export default function DashboardContainer(): JSX.Element {
     const [joinError, setJoinError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
+    const [paymentDeadlineIso, setPaymentDeadlineIso] = useState<string | undefined>(undefined);
     const startedJoinRef = useRef("");
     const {
         data: myProfile,
@@ -180,6 +181,7 @@ export default function DashboardContainer(): JSX.Element {
                         payment_status: me.payment_status,
                         amount_due: me.amount_due,
                     };
+                    setPaymentDeadlineIso(new Date(Date.now() + 5 * 60 * 1000).toISOString());
                     setPayingBooking(item);
                 } else {
                     setSuccessMessage("Joined game successfully.");
@@ -213,7 +215,15 @@ export default function DashboardContainer(): JSX.Element {
 
     const handleOpenBooking = useCallback(
         (courtId: string, courtName: string, startTime: string): void => {
-            setBookingModal({ courtId, courtName, date: bookFilters.date, startTime });
+            const deadlineIso = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+            setPaymentDeadlineIso(deadlineIso);
+            setBookingModal({
+                courtId,
+                courtName,
+                date: bookFilters.date,
+                startTime,
+                paymentDeadlineIso: deadlineIso,
+            });
         },
         [bookFilters.date]
     );
@@ -280,10 +290,24 @@ export default function DashboardContainer(): JSX.Element {
             onOpenBooking: handleOpenBooking,
         },
         bookingModal,
-        onCloseBooking: () => setBookingModal(null),
+        onCloseBooking: () => {
+            setBookingModal(null);
+            setPaymentDeadlineIso(undefined);
+        },
         onBookingSuccess: () => {
             setBookingModal(null);
-            setSuccessMessage("Booking created successfully.");
+            setPaymentDeadlineIso(undefined);
+            setSuccessMessage(
+                "Booking created. Go to My Bookings to complete payment — your slot will be released if payment isn't made in time."
+            );
+            void refetchCourts();
+            if (availabilityCourtId) void refetchAvailability();
+            void refetchOpenGames();
+        },
+        onBookingPaid: () => {
+            setBookingModal(null);
+            setPaymentDeadlineIso(undefined);
+            setSuccessMessage("Court booked and payment confirmed!");
             void refetchCourts();
             if (availabilityCourtId) void refetchAvailability();
             void refetchOpenGames();
@@ -296,18 +320,25 @@ export default function DashboardContainer(): JSX.Element {
         },
     };
 
+    const joinPaymentSucceededRef = useRef(false);
     const paymentModal = payingBooking ? (
         <PaymentModal
             context={{ type: "booking", booking: payingBooking }}
+            paymentDeadline={paymentDeadlineIso ? new Date(paymentDeadlineIso) : undefined}
             onClose={() => {
+                const paid = joinPaymentSucceededRef.current;
+                joinPaymentSucceededRef.current = false;
                 setPayingBooking(null);
-                setSuccessMessage("Joined game successfully.");
+                setPaymentDeadlineIso(undefined);
+                setSuccessMessage(
+                    paid
+                        ? "Joined and paid successfully."
+                        : "You've joined! Go to My Bookings to complete payment — your spot will be released if payment isn't made in time."
+                );
                 void refetchOpenGames();
             }}
             onSuccess={() => {
-                setPayingBooking(null);
-                setSuccessMessage("Joined and paid successfully.");
-                void refetchOpenGames();
+                joinPaymentSucceededRef.current = true;
             }}
         />
     ) : null;
