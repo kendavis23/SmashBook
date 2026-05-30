@@ -9,6 +9,9 @@ type Props = {
     startTime: string;
     onClose: () => void;
     onSuccess?: (courtName: string) => void;
+    onPaymentSuccess?: (courtName: string) => void;
+    /** ISO datetime string — passed to PaymentModal as countdown deadline */
+    paymentDeadlineIso?: string;
 };
 
 export function NewBookingModal({
@@ -18,6 +21,8 @@ export function NewBookingModal({
     startTime,
     onClose,
     onSuccess,
+    onPaymentSuccess,
+    paymentDeadlineIso,
 }: Props): JSX.Element {
     return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/50 p-4 backdrop-blur-sm">
@@ -32,6 +37,10 @@ export function NewBookingModal({
                     startTime={startTime}
                     onClose={onClose}
                     onSuccess={onSuccess ? () => onSuccess(courtName) : undefined}
+                    onPaymentSuccess={
+                        onPaymentSuccess ? () => onPaymentSuccess(courtName) : undefined
+                    }
+                    paymentDeadlineIso={paymentDeadlineIso}
                 />
             </div>
         </div>,

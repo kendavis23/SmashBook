@@ -1,4 +1,5 @@
 import {
+    AlertToast,
     Breadcrumb,
     DatePicker,
     SelectInput,
@@ -35,6 +36,8 @@ type Props = {
     selectedSlot: ClubAvailabilitySlot | null;
     isJoining: boolean;
     joiningBookingId: string;
+    joinError: string;
+    successMessage: string;
     onDateChange: (v: string) => void;
     onSurfaceChange: (v: string) => void;
     onFromTimeChange: (v: string) => void;
@@ -44,6 +47,8 @@ type Props = {
     onJoin: (bookingId: string) => void;
     onRefresh: () => void;
     onClear: () => void;
+    onDismissJoinError: () => void;
+    onDismissSuccess: () => void;
 };
 
 function CourtCard({
@@ -221,6 +226,8 @@ export default function BookCourtView({
     selectedSlot,
     isJoining,
     joiningBookingId,
+    joinError,
+    successMessage,
     onDateChange,
     onSurfaceChange,
     onFromTimeChange,
@@ -230,6 +237,8 @@ export default function BookCourtView({
     onJoin,
     onRefresh,
     onClear,
+    onDismissJoinError,
+    onDismissSuccess,
 }: Props): JSX.Element {
     const [showOpenGame, setShowOpenGame] = React.useState(true);
     const [showAvailableSlot, setShowAvailableSlot] = React.useState(true);
@@ -272,6 +281,17 @@ export default function BookCourtView({
     return (
         <div className="w-full space-y-5">
             <Breadcrumb items={[{ label: "Book Court" }]} />
+            {joinError ? (
+                <AlertToast
+                    variant="error"
+                    title="Unable to join game"
+                    description={joinError}
+                    onClose={onDismissJoinError}
+                />
+            ) : null}
+            {successMessage ? (
+                <AlertToast variant="success" title={successMessage} onClose={onDismissSuccess} />
+            ) : null}
             <section className="card-surface overflow-hidden">
                 {/* Header */}
                 <header className="flex flex-row items-center justify-between gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6">

@@ -23,4 +23,6 @@ export interface PaymentModalProps {
     context: PaymentModalContext;
     onClose: () => void;
     onSuccess?: () => void;
+    /** When set, a countdown banner is shown and the modal auto-closes on expiry */
+    paymentDeadline?: Date;
 }

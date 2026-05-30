@@ -63,6 +63,7 @@ export default function DashboardViewMobile({
     bookingModal,
     onCloseBooking,
     onBookingSuccess,
+    onBookingPaid,
     feedback,
 }: DashboardViewProps): JSX.Element {
     const [activeTab, setActiveTab] = useState<ActiveTab>("join");
@@ -482,8 +483,10 @@ export default function DashboardViewMobile({
                     courtName={bookingModal.courtName}
                     date={bookingModal.date}
                     startTime={bookingModal.startTime}
+                    paymentDeadlineIso={bookingModal.paymentDeadlineIso}
                     onClose={onCloseBooking}
                     onSuccess={onBookingSuccess}
+                    onPaymentSuccess={onBookingPaid}
                 />
             ) : null}
         </div>

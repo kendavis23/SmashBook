@@ -23,6 +23,9 @@ type Props = {
     startTime: string;
     onClose: () => void;
     onSuccess?: () => void;
+    onPaymentSuccess?: () => void;
+    /** ISO datetime string — when set, PaymentModal shows a countdown and auto-closes on expiry */
+    paymentDeadlineIso?: string;
 };
 
 function parseOptionalNumber(val: string): number | null {
@@ -61,7 +64,10 @@ export default function NewBookingModalContainer({
     startTime,
     onClose,
     onSuccess,
+    onPaymentSuccess,
+    paymentDeadlineIso,
 }: Props): JSX.Element {
+    const paymentDeadline = paymentDeadlineIso ? new Date(paymentDeadlineIso) : undefined;
     const queryClient = useQueryClient();
     const { clubId } = useClubAccess();
     const { data: profile, isError: profileError } = useMyProfile();
@@ -251,16 +257,25 @@ export default function NewBookingModalContainer({
         [form, clubId, createMutation, onClose, onSuccess, profile?.id, profileError]
     );
 
+    const paymentSucceededRef = useRef(false);
+
     const finishPaymentFlow = useCallback((): void => {
         setPayingBooking(null);
         void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
         void queryClient.invalidateQueries({ queryKey: ["bookings"] });
-        if (onSuccess) {
+        if (paymentSucceededRef.current) {
+            paymentSucceededRef.current = false;
+            if (onPaymentSuccess) {
+                onPaymentSuccess();
+            } else {
+                onClose();
+            }
+        } else if (onSuccess) {
             onSuccess();
         } else {
             onClose();
         }
-    }, [onClose, onSuccess, queryClient]);
+    }, [onClose, onSuccess, onPaymentSuccess, queryClient]);
 
     return (
         <>
@@ -291,8 +306,10 @@ export default function NewBookingModalContainer({
             {payingBooking ? (
                 <PaymentModal
                     context={{ type: "booking", booking: payingBooking }}
+                    paymentDeadline={paymentDeadline}
                     onClose={finishPaymentFlow}
                     onSuccess={() => {
+                        paymentSucceededRef.current = true;
                         void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
                         void queryClient.invalidateQueries({ queryKey: ["bookings"] });
                     }}
