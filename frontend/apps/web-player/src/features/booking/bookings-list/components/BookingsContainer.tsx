@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { JSX } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { invitePlayerEndpoint } from "@repo/api-client/modules/share";
@@ -161,10 +161,13 @@ function BookingModal({
 
 export default function BookingsContainer(): JSX.Element {
     const queryClient = useQueryClient();
+    const { data: myProfile } = useMyProfile();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
     const [pastTabVisited, setPastTabVisited] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
     const [payingBooking, setPayingBooking] = useState<PayingBooking | null>(null);
+    const [paymentDeadlineIso, setPaymentDeadlineIso] = useState<string | undefined>(undefined);
+    const invitePaymentSucceededRef = useRef(false);
 
     const defaultFrom = new Date();
     defaultFrom.setMonth(defaultFrom.getMonth() - 3);
@@ -254,8 +257,28 @@ export default function BookingsContainer(): JSX.Element {
         ): Promise<void> =>
             respondMutation
                 .mutateAsync({ bookingId: item.booking_id, clubId: item.club_id, action })
-                .then(() => undefined),
-        [respondMutation]
+                .then((booking) => {
+                    if (action !== "accepted") return;
+                    const me = booking.players.find((p) => p.user_id === myProfile?.id);
+                    if (!me || me.amount_due <= 0) return;
+                    const payItem: PlayerBookingItem = {
+                        booking_id: booking.id,
+                        club_id: booking.club_id,
+                        court_id: booking.court_id,
+                        court_name: booking.court_name,
+                        booking_type: booking.booking_type,
+                        status: booking.status,
+                        start_datetime: booking.start_datetime,
+                        end_datetime: booking.end_datetime,
+                        role: me.role,
+                        invite_status: me.invite_status,
+                        payment_status: me.payment_status,
+                        amount_due: me.amount_due,
+                    };
+                    setPaymentDeadlineIso(new Date(Date.now() + 5 * 60 * 1000).toISOString());
+                    setPayingBooking({ item: payItem });
+                }),
+        [respondMutation, myProfile]
     );
 
     const handleManageClick = useCallback((item: PlayerBookingItem): void => {
@@ -277,14 +300,18 @@ export default function BookingsContainer(): JSX.Element {
     }, [activeTab, refetchUpcoming, refetchPast]);
 
     const handlePaymentSuccess = useCallback((): void => {
+        invitePaymentSucceededRef.current = true;
         refreshCurrentBookings();
         payingBooking?.onSuccess?.();
     }, [payingBooking, refreshCurrentBookings]);
 
     const handleClosePayModal = useCallback((): void => {
+        const paid = invitePaymentSucceededRef.current;
+        invitePaymentSucceededRef.current = false;
         setPayingBooking(null);
+        setPaymentDeadlineIso(undefined);
         refreshCurrentBookings();
-        payingBooking?.onSuccess?.();
+        if (!paid) payingBooking?.onSuccess?.();
     }, [payingBooking, refreshCurrentBookings]);
 
     const handlePastFilterChange = useCallback(
@@ -347,6 +374,7 @@ export default function BookingsContainer(): JSX.Element {
             {payingBooking ? (
                 <PaymentModal
                     context={{ type: "booking", booking: payingBooking.item }}
+                    paymentDeadline={paymentDeadlineIso ? new Date(paymentDeadlineIso) : undefined}
                     onClose={handleClosePayModal}
                     onSuccess={handlePaymentSuccess}
                 />

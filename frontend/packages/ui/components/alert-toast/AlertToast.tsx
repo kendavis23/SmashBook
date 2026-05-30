@@ -1,8 +1,8 @@
-import { AlertCircle, CheckCircle2, Info, X } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, X } from "lucide-react";
 import { useEffect, useRef, useState, type JSX } from "react";
 import { createPortal } from "react-dom";
 
-export type AlertToastVariant = "success" | "error" | "info";
+export type AlertToastVariant = "success" | "error" | "info" | "warning";
 
 export interface AlertToastProps {
     title: string;
@@ -16,12 +16,14 @@ const variantStyles: Record<AlertToastVariant, string> = {
     success: "bg-success text-success-foreground border border-success",
     error: "bg-destructive text-destructive-foreground border border-destructive",
     info: "bg-primary text-primary-foreground border border-primary",
+    warning: "bg-warning text-warning-foreground border border-warning",
 };
 
 const variantIcons: Record<AlertToastVariant, JSX.Element> = {
     success: <CheckCircle2 className="w-5 h-5" />,
     error: <AlertCircle className="w-5 h-5" />,
     info: <Info className="w-5 h-5" />,
+    warning: <AlertTriangle className="w-5 h-5" />,
 };
 
 function useToastContainer(): HTMLElement | null {

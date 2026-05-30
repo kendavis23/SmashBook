@@ -249,7 +249,7 @@ export default function PlayerBookingList({
                 title: action === "accepted" ? "Invite accepted!" : "Invite declined",
                 description:
                     action === "accepted"
-                        ? `You've accepted the invite for ${booking.court_name}.`
+                        ? `You've accepted the invite for ${booking.court_name}. Complete payment to confirm your spot before the hold expires.`
                         : `You've declined the invite for ${booking.court_name}.`,
             });
         } catch (ex) {

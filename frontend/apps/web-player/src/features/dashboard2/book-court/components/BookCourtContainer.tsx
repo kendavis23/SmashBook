@@ -40,6 +40,7 @@ export default function BookCourtContainer(): JSX.Element {
     const [paymentDeadlineIso, setPaymentDeadlineIso] = useState<string | undefined>(undefined);
     const [joinError, setJoinError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
+    const [warningMessage, setWarningMessage] = useState("");
     const startedJoinRef = useRef("");
     const joinPaymentSucceededRef = useRef(false);
 
@@ -218,6 +219,7 @@ export default function BookCourtContainer(): JSX.Element {
                 joiningBookingId={joinBookingId}
                 joinError={joinError}
                 successMessage={successMessage}
+                warningMessage={warningMessage}
                 onDateChange={handleDateChange}
                 onSurfaceChange={handleSurfaceChange}
                 onFromTimeChange={handleFromTimeChange}
@@ -229,6 +231,7 @@ export default function BookCourtContainer(): JSX.Element {
                 onClear={handleClear}
                 onDismissJoinError={() => setJoinError("")}
                 onDismissSuccess={() => setSuccessMessage("")}
+                onDismissWarning={() => setWarningMessage("")}
             />
             {bookingModal ? (
                 <NewBookingModal
@@ -244,8 +247,8 @@ export default function BookCourtContainer(): JSX.Element {
                     onSuccess={() => {
                         setBookingModal(null);
                         setPaymentDeadlineIso(undefined);
-                        setSuccessMessage(
-                            "Booking created. Go to My Bookings to complete payment — your slot will be released if payment isn't made in time."
+                        setWarningMessage(
+                            "Go to Bookings and complete payment before the hold expires to secure your slot."
                         );
                         void refetch();
                     }}
@@ -266,11 +269,13 @@ export default function BookCourtContainer(): JSX.Element {
                         joinPaymentSucceededRef.current = false;
                         setPayingBooking(null);
                         setPaymentDeadlineIso(undefined);
-                        setSuccessMessage(
-                            paid
-                                ? "Joined and paid successfully."
-                                : "You've joined! Go to My Bookings to complete payment — your spot will be released if payment isn't made in time."
-                        );
+                        if (paid) {
+                            setSuccessMessage("Joined and paid successfully.");
+                        } else {
+                            setWarningMessage(
+                                "Go to Bookings and complete payment before the hold expires to secure your place in the game."
+                            );
+                        }
                         void refetch();
                     }}
                     onSuccess={() => {
