@@ -18,6 +18,14 @@ vi.mock("../../hooks", () => ({
     })),
 }));
 
+vi.mock("@repo/player-domain/hooks", () => ({
+    useMyProfile: vi.fn(() => ({
+        data: { id: "user-1" },
+        isLoading: false,
+        error: null,
+    })),
+}));
+
 vi.mock("@tanstack/react-query", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@tanstack/react-query")>();
     return {
@@ -29,6 +37,14 @@ vi.mock("@tanstack/react-query", async (importOriginal) => {
         })),
     };
 });
+
+vi.mock("../../../payment", () => ({
+    PaymentModal: () => null,
+}));
+
+vi.mock("../../manage-booking/components/ManageBookingModalView", () => ({
+    ManageBookingModalView: () => null,
+}));
 
 vi.mock("./BookingsView", () => ({
     default: (props: {

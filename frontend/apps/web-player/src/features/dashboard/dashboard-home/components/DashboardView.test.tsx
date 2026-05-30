@@ -198,8 +198,10 @@ const defaultProps = {
     feedback: {
         joinError: "",
         successMessage: "",
+        warningMessage: "",
         onDismissJoinError: vi.fn(),
         onDismissSuccess: vi.fn(),
+        onDismissWarning: vi.fn(),
     },
 };
 
@@ -311,8 +313,10 @@ describe("DashboardView", () => {
                 feedback={{
                     joinError: "Join failed",
                     successMessage: "Done",
+                    warningMessage: "",
                     onDismissJoinError,
                     onDismissSuccess,
+                    onDismissWarning: vi.fn(),
                 }}
             />
         );

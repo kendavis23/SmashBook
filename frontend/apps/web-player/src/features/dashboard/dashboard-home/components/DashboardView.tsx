@@ -81,8 +81,10 @@ export type AvailabilitySectionProps = {
 export type FeedbackProps = {
     joinError: string;
     successMessage: string;
+    warningMessage: string;
     onDismissJoinError: () => void;
     onDismissSuccess: () => void;
+    onDismissWarning: () => void;
 };
 
 export type DashboardViewProps = {
@@ -205,6 +207,14 @@ export default function DashboardView({
                     variant="success"
                     title={feedback.successMessage}
                     onClose={feedback.onDismissSuccess}
+                />
+            ) : null}
+
+            {feedback.warningMessage ? (
+                <AlertToast
+                    variant="warning"
+                    title={feedback.warningMessage}
+                    onClose={feedback.onDismissWarning}
                 />
             ) : null}
 

@@ -178,8 +178,10 @@ const defaultProps = {
     feedback: {
         joinError: "",
         successMessage: "",
+        warningMessage: "",
         onDismissJoinError: vi.fn(),
         onDismissSuccess: vi.fn(),
+        onDismissWarning: vi.fn(),
     },
 };
 
@@ -288,8 +290,10 @@ describe("DashboardViewMobile", () => {
                 feedback={{
                     joinError: "Join failed",
                     successMessage: "Done",
+                    warningMessage: "",
                     onDismissJoinError,
                     onDismissSuccess,
+                    onDismissWarning: vi.fn(),
                 }}
                 bookingModal={{
                     courtId: "court-1",

@@ -123,6 +123,16 @@ export default function DashboardViewMobile({
                 </div>
             ) : null}
 
+            {feedback.warningMessage ? (
+                <div className="px-3">
+                    <AlertToast
+                        variant="warning"
+                        title={feedback.warningMessage}
+                        onClose={feedback.onDismissWarning}
+                    />
+                </div>
+            ) : null}
+
             {/* Segmented tabs */}
             <div className="sticky top-0 z-10 mx-3 flex rounded-lg border border-border bg-muted/40 p-1 shadow-xs backdrop-blur">
                 <button

@@ -85,8 +85,10 @@ vi.mock("./DashboardView", () => ({
         feedback: {
             joinError: string;
             successMessage: string;
+            warningMessage: string;
             onDismissJoinError: () => void;
             onDismissSuccess: () => void;
+            onDismissWarning: () => void;
         };
     }) => (
         <div>
@@ -95,6 +97,7 @@ vi.mock("./DashboardView", () => ({
             <span>club:{props.club.selectedName}</span>
             <span>joinError:{props.feedback.joinError}</span>
             <span>success:{props.feedback.successMessage}</span>
+            <span>warning:{props.feedback.warningMessage}</span>
             <span>modal:{props.bookingModal ? "open" : "closed"}</span>
             <button onClick={() => props.club.onChange("club-2")}>Change club</button>
             <button onClick={() => props.joinSection.onFilterDateChange("2026-05-21")}>
@@ -271,7 +274,7 @@ describe("DashboardContainer", () => {
         fireEvent.click(screen.getByRole("button", { name: "Booking success" }));
         expect(
             screen.getByText(
-                "success:Booking created. Go to My Bookings to complete payment — your slot will be released if payment isn't made in time."
+                "warning:Go to Bookings and complete payment before the hold expires to secure your slot."
             )
         ).toBeInTheDocument();
         expect(mockRefetchCourts).toHaveBeenCalled();

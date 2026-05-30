@@ -38,6 +38,7 @@ type Props = {
     joiningBookingId: string;
     joinError: string;
     successMessage: string;
+    warningMessage: string;
     onDateChange: (v: string) => void;
     onSurfaceChange: (v: string) => void;
     onFromTimeChange: (v: string) => void;
@@ -49,6 +50,7 @@ type Props = {
     onClear: () => void;
     onDismissJoinError: () => void;
     onDismissSuccess: () => void;
+    onDismissWarning: () => void;
 };
 
 function CourtCard({
@@ -228,6 +230,7 @@ export default function BookCourtView({
     joiningBookingId,
     joinError,
     successMessage,
+    warningMessage,
     onDateChange,
     onSurfaceChange,
     onFromTimeChange,
@@ -239,6 +242,7 @@ export default function BookCourtView({
     onClear,
     onDismissJoinError,
     onDismissSuccess,
+    onDismissWarning,
 }: Props): JSX.Element {
     const [showOpenGame, setShowOpenGame] = React.useState(true);
     const [showAvailableSlot, setShowAvailableSlot] = React.useState(true);
@@ -291,6 +295,9 @@ export default function BookCourtView({
             ) : null}
             {successMessage ? (
                 <AlertToast variant="success" title={successMessage} onClose={onDismissSuccess} />
+            ) : null}
+            {warningMessage ? (
+                <AlertToast variant="warning" title={warningMessage} onClose={onDismissWarning} />
             ) : null}
             <section className="card-surface overflow-hidden">
                 {/* Header */}
