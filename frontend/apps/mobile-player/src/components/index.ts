@@ -1,1 +1,1 @@
-export { FloatingTabBar } from "./FloatingTabBar";
+export { BottomTabBar } from "./BottomTabBar";

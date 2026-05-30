@@ -9,10 +9,12 @@ import type { BookingTab, InviteStatus, PlayerBookingItem } from "../types";
 import { BookingsListView } from "../bookings-list/pages/BookingsListView";
 import { BookingDetailSheet } from "../manage-booking/components/BookingDetailSheet";
 import { NewBookingSheet } from "../new-booking/components/NewBookingSheet";
+import { useThemeColors } from "../../../theme";
 
 type SelectedBooking = { bookingId: string; clubId: string };
 
 export function BookScreen(): JSX.Element {
+    const colors = useThemeColors();
     const { clubId } = useAuth();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
     const [pastTabVisited, setPastTabVisited] = useState(false);
@@ -92,13 +94,13 @@ export function BookScreen(): JSX.Element {
     const upcomingCount = upcomingData?.upcoming?.length ?? 0;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.hero }} edges={["top"]}>
             <StatusBar style="light" />
 
             {/* Blue hero header — mirrors HomeView */}
             <View
                 style={{
-                    backgroundColor: "#2563EB",
+                    backgroundColor: colors.hero,
                     paddingHorizontal: 20,
                     paddingTop: 8,
                     paddingBottom: 28,
@@ -115,7 +117,7 @@ export function BookScreen(): JSX.Element {
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 fontWeight: "500",
                                 letterSpacing: 0.3,
                             }}
@@ -126,7 +128,7 @@ export function BookScreen(): JSX.Element {
                             style={{
                                 fontSize: 26,
                                 fontWeight: "700",
-                                color: "#FFFFFF",
+                                color: colors.heroForeground,
                                 marginTop: 2,
                                 letterSpacing: -0.3,
                             }}
@@ -136,7 +138,7 @@ export function BookScreen(): JSX.Element {
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 marginTop: 4,
                                 fontWeight: "400",
                             }}
@@ -159,14 +161,18 @@ export function BookScreen(): JSX.Element {
                                 width: 40,
                                 height: 40,
                                 borderRadius: 20,
-                                backgroundColor: "rgba(255,255,255,0.18)",
+                                backgroundColor: colors.heroGlass,
                                 borderWidth: 1,
-                                borderColor: "rgba(255,255,255,0.25)",
+                                borderColor: colors.heroGlassBorder,
                                 alignItems: "center",
                                 justifyContent: "center",
                             }}
                         >
-                            <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+                            <Ionicons
+                                name="refresh-outline"
+                                size={18}
+                                color={colors.heroForeground}
+                            />
                         </Pressable>
 
                         {/* New booking */}
@@ -178,12 +184,12 @@ export function BookScreen(): JSX.Element {
                                 width: 40,
                                 height: 40,
                                 borderRadius: 20,
-                                backgroundColor: "#FFFFFF",
+                                backgroundColor: colors.heroForeground,
                                 alignItems: "center",
                                 justifyContent: "center",
                             }}
                         >
-                            <Ionicons name="add" size={22} color="#2563EB" />
+                            <Ionicons name="add" size={22} color={colors.hero} />
                         </Pressable>
                     </View>
                 </View>
@@ -193,12 +199,12 @@ export function BookScreen(): JSX.Element {
             <View
                 style={{
                     flex: 1,
-                    backgroundColor: "#F1F5F9",
+                    backgroundColor: colors.contentSurface,
                     borderTopLeftRadius: 24,
                     borderTopRightRadius: 24,
                     marginTop: -16,
                     overflow: "hidden",
-                    shadowColor: "#1E3A8A",
+                    shadowColor: colors.shadow,
                     shadowOffset: { width: 0, height: -4 },
                     shadowOpacity: 0.06,
                     shadowRadius: 12,
@@ -216,8 +222,8 @@ export function BookScreen(): JSX.Element {
                             gap: 10,
                             borderRadius: 14,
                             borderWidth: 1,
-                            borderColor: "#DBEAFE",
-                            backgroundColor: "#EFF6FF",
+                            borderColor: colors.ctaBorder,
+                            backgroundColor: colors.ctaSurface,
                             paddingHorizontal: 14,
                             paddingVertical: 11,
                         }}
@@ -227,21 +233,27 @@ export function BookScreen(): JSX.Element {
                                 width: 32,
                                 height: 32,
                                 borderRadius: 10,
-                                backgroundColor: "#DBEAFE",
+                                backgroundColor: colors.ctaBorder,
                                 alignItems: "center",
                                 justifyContent: "center",
                             }}
                         >
-                            <Ionicons name="card-outline" size={16} color="#2563EB" />
+                            <Ionicons name="card-outline" size={16} color={colors.cta} />
                         </View>
                         <View style={{ flex: 1 }}>
                             <Text
-                                style={{ fontSize: 13, fontWeight: "600", color: "#1E40AF" }}
+                                style={{ fontSize: 13, fontWeight: "600", color: colors.cta }}
                                 numberOfLines={1}
                             >
                                 Payment pending · {pendingPayment.court_name}
                             </Text>
-                            <Text style={{ fontSize: 11, color: "#93C5FD", marginTop: 1 }}>
+                            <Text
+                                style={{
+                                    fontSize: 11,
+                                    color: colors.mutedForeground,
+                                    marginTop: 1,
+                                }}
+                            >
                                 Payment flow coming soon
                             </Text>
                         </View>
@@ -251,7 +263,7 @@ export function BookScreen(): JSX.Element {
                             accessibilityLabel="Dismiss payment banner"
                             hitSlop={8}
                         >
-                            <Ionicons name="close" size={16} color="#93C5FD" />
+                            <Ionicons name="close" size={16} color={colors.mutedForeground} />
                         </Pressable>
                     </View>
                 ) : null}

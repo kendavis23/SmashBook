@@ -13,11 +13,13 @@ import {
 import type { MembershipPlan } from "@repo/player-domain";
 import { MobilePlanCard } from "../components/MobilePlanCard";
 import { MobileSelectCardSheet } from "../components/MobileSelectCardSheet";
+import { useThemeColors } from "../../../../theme";
 
 type SuccessState = { plan: MembershipPlan; wasPlanChange: boolean } | null;
 
 export function MembershipPlansScreen(): JSX.Element {
     const router = useRouter();
+    const colors = useThemeColors();
     const { clubId } = useAuth();
 
     const { data: membership } = useMyMembership(clubId ?? "");
@@ -76,22 +78,22 @@ export function MembershipPlansScreen(): JSX.Element {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-[#F2F3F7]">
+        <SafeAreaView className="flex-1 bg-background">
             <StatusBar style="dark" />
 
             {/* Header */}
-            <View className="flex-row items-center justify-between bg-[#F2F3F7] px-5 pb-2.5 pt-1 android:pt-3.5">
+            <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
                 <Pressable
                     onPress={() => router.back()}
                     accessibilityRole="button"
                     accessibilityLabel="Go back"
                     hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm active:opacity-50"
+                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
                 >
-                    <Ionicons name="chevron-back" size={28} color="#111827" />
+                    <Ionicons name="chevron-back" size={28} color={colors.foreground} />
                 </Pressable>
 
-                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-[#111827]">
+                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
                     Plans
                 </Text>
 
@@ -101,13 +103,13 @@ export function MembershipPlansScreen(): JSX.Element {
             {/* Success state */}
             {success ? (
                 <View className="flex-1 items-center justify-center px-8 gap-4">
-                    <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-green-50">
-                        <Ionicons name="checkmark-circle" size={34} color="#22C55E" />
+                    <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-success/10">
+                        <Ionicons name="checkmark-circle" size={34} color={colors.success} />
                     </View>
-                    <Text className="text-[20px] font-bold text-[#111827] text-center">
+                    <Text className="text-[20px] font-bold text-foreground text-center">
                         {success.wasPlanChange ? "Plan updated!" : "You're now a member!"}
                     </Text>
-                    <Text className="text-[14px] leading-6 text-[#6B7280] text-center">
+                    <Text className="text-[14px] leading-6 text-muted-foreground text-center">
                         {success.wasPlanChange
                             ? `Your plan has been changed to ${success.plan.name}. Changes take effect at the next billing cycle.`
                             : `Successfully subscribed to ${success.plan.name}.`}
@@ -116,9 +118,9 @@ export function MembershipPlansScreen(): JSX.Element {
                         onPress={() => router.replace("/(player)/profile" as Href)}
                         accessibilityRole="button"
                         accessibilityLabel="View my membership"
-                        className="mt-2 items-center justify-center rounded-xl bg-[#3B82F6] px-8 py-3.5 active:opacity-80"
+                        className="mt-2 items-center justify-center rounded-xl bg-cta px-8 py-3.5 active:opacity-80"
                     >
-                        <Text className="text-[15px] font-semibold text-white">
+                        <Text className="text-[15px] font-semibold text-cta-foreground">
                             View my membership
                         </Text>
                     </Pressable>
@@ -130,16 +132,16 @@ export function MembershipPlansScreen(): JSX.Element {
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Sub-header banner */}
-                    <View className="mb-5 overflow-hidden rounded-[20px] bg-[#1D2B4F] px-5 py-4">
+                    <View className="mb-5 overflow-hidden rounded-[20px] bg-hero px-5 py-4">
                         <View className="flex-row items-center gap-3">
-                            <View className="h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-                                <Ionicons name="list" size={20} color="#93C5FD" />
+                            <View className="h-10 w-10 items-center justify-center rounded-xl bg-card/10">
+                                <Ionicons name="list" size={20} color={colors.heroMuted} />
                             </View>
                             <View className="flex-1">
-                                <Text className="text-[15px] font-bold text-white">
+                                <Text className="text-[15px] font-bold text-cta-foreground">
                                     Membership Plans
                                 </Text>
-                                <Text className="mt-0.5 text-[12px] text-white/55">
+                                <Text className="mt-0.5 text-[12px] text-cta-foreground/55">
                                     {hasActiveMembership
                                         ? `Current: ${membership?.plan.name} · Upgrade or switch`
                                         : "Compare credits, discounts, and booking access"}
@@ -151,8 +153,8 @@ export function MembershipPlansScreen(): JSX.Element {
                     {/* Loading */}
                     {plansLoading && (
                         <View className="items-center justify-center py-16 gap-3">
-                            <ActivityIndicator size="large" color="#3B82F6" />
-                            <Text className="text-[14px] font-medium text-[#9CA3AF]">
+                            <ActivityIndicator size="large" color={colors.cta} />
+                            <Text className="text-[14px] font-medium text-muted-foreground">
                                 Loading plans…
                             </Text>
                         </View>
@@ -160,9 +162,13 @@ export function MembershipPlansScreen(): JSX.Element {
 
                     {/* Error */}
                     {!plansLoading && plansError && (
-                        <View className="flex-row items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-4">
-                            <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-                            <Text className="text-[14px] font-medium text-red-600">
+                        <View className="flex-row items-center gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-4">
+                            <Ionicons
+                                name="alert-circle-outline"
+                                size={18}
+                                color={colors.destructive}
+                            />
+                            <Text className="text-[14px] font-medium text-destructive">
                                 Failed to load membership plans.
                             </Text>
                         </View>
@@ -171,8 +177,8 @@ export function MembershipPlansScreen(): JSX.Element {
                     {/* Empty */}
                     {!plansLoading && !plansError && activePlans.length === 0 && (
                         <View className="items-center justify-center py-16 gap-3">
-                            <Ionicons name="list-outline" size={36} color="#D1D5DB" />
-                            <Text className="text-[15px] font-medium text-[#9CA3AF]">
+                            <Ionicons name="list-outline" size={36} color={colors.placeholder} />
+                            <Text className="text-[15px] font-medium text-muted-foreground">
                                 No plans available yet.
                             </Text>
                         </View>

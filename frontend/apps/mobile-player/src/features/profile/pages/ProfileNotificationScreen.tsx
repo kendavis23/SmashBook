@@ -8,6 +8,7 @@ import {
     DEFAULT_NOTIFICATION_CHANNEL,
     NOTIFICATION_OPTIONS,
 } from "../constants/notificationOptions";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
     user: UserResponse;
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function ProfileNotificationScreen({ user, onCancel }: Props) {
+    const colors = useThemeColors();
     const [selected, setSelected] = useState<NotificationChannel>(
         user.preferred_notification_channel ?? DEFAULT_NOTIFICATION_CHANNEL
     );
@@ -61,7 +63,7 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                         hitSlop={12}
                         className="h-11 w-11 items-center justify-center rounded-full bg-background shadow-sm active:opacity-50"
                     >
-                        <Ionicons name="chevron-back" size={28} color="#0F172A" />
+                        <Ionicons name="chevron-back" size={28} color={colors.foreground} />
                     </Pressable>
 
                     <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
@@ -79,9 +81,9 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                         }`}
                     >
                         {updateMutation.isPending ? (
-                            <ActivityIndicator size="small" color="#0F172A" />
+                            <ActivityIndicator size="small" color={colors.foreground} />
                         ) : (
-                            <Text className="text-right text-[15px] font-semibold text-[#3B82F6]">
+                            <Text className="text-right text-[15px] font-semibold text-cta">
                                 Save
                             </Text>
                         )}
@@ -120,13 +122,17 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                                     accessibilityState={{ checked: active }}
                                     accessibilityLabel={option.label}
                                     className={`flex-row items-center rounded-2xl border bg-background px-4 py-4 shadow-sm active:bg-muted/40 ${
-                                        active ? "border-[#3B82F6] bg-[#EFF6FF]" : "border-border"
+                                        active ? "border-cta bg-secondary" : "border-border"
                                     }`}
                                 >
                                     <View
                                         className={`mr-3 h-12 w-12 items-center justify-center rounded-2xl ${option.iconBgClassName}`}
                                     >
-                                        <Ionicons name={option.icon} size={22} color="#FFFFFF" />
+                                        <Ionicons
+                                            name={option.icon}
+                                            size={22}
+                                            color={colors.ctaForeground}
+                                        />
                                     </View>
 
                                     <View className="flex-1">
@@ -141,12 +147,16 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                                     <View
                                         className={`h-8 w-8 items-center justify-center rounded-full border ${
                                             active
-                                                ? "border-[#3B82F6] bg-[#3B82F6]"
+                                                ? "border-cta bg-cta"
                                                 : "border-border bg-background"
                                         }`}
                                     >
                                         {active && (
-                                            <Ionicons name="checkmark" size={18} color="#FFFFFF" />
+                                            <Ionicons
+                                                name="checkmark"
+                                                size={18}
+                                                color={colors.ctaForeground}
+                                            />
                                         )}
                                     </View>
                                 </Pressable>

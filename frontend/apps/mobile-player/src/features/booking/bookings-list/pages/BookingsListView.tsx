@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
 import { BookingCard } from "../components/BookingCard";
 import { BookingsTabBar } from "../components/BookingsTabBar";
+import { useThemeColors } from "../../../../theme";
 
 type Props = {
     upcoming: PlayerBookingItem[];
@@ -30,6 +31,7 @@ function EmptyState({
     tab: BookingTab;
     onNewBooking: () => void;
 }): JSX.Element {
+    const colors = useThemeColors();
     const isUpcoming = tab === "upcoming";
     return (
         <View style={{ marginTop: 48, alignItems: "center", gap: 12, paddingHorizontal: 32 }}>
@@ -38,7 +40,7 @@ function EmptyState({
                     width: 64,
                     height: 64,
                     borderRadius: 20,
-                    backgroundColor: isUpcoming ? "#EFF6FF" : "#F1F5F9",
+                    backgroundColor: isUpcoming ? colors.ctaSurface : colors.muted,
                     alignItems: "center",
                     justifyContent: "center",
                 }}
@@ -46,21 +48,28 @@ function EmptyState({
                 <Ionicons
                     name={isUpcoming ? "calendar-outline" : "time-outline"}
                     size={28}
-                    color={isUpcoming ? "#2563EB" : "#94A3B8"}
+                    color={isUpcoming ? colors.cta : colors.mutedForeground}
                 />
             </View>
             <Text
                 style={{
                     fontSize: 16,
                     fontWeight: "700",
-                    color: "#0F172A",
+                    color: colors.foreground,
                     textAlign: "center",
                     letterSpacing: -0.2,
                 }}
             >
                 {isUpcoming ? "No upcoming bookings" : "No past bookings"}
             </Text>
-            <Text style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", lineHeight: 20 }}>
+            <Text
+                style={{
+                    fontSize: 13,
+                    color: colors.mutedForeground,
+                    textAlign: "center",
+                    lineHeight: 20,
+                }}
+            >
                 {isUpcoming
                     ? "Book a court to get started!"
                     : "Your past bookings will appear here."}
@@ -76,13 +85,13 @@ function EmptyState({
                         alignItems: "center",
                         gap: 6,
                         borderRadius: 22,
-                        backgroundColor: "#2563EB",
+                        backgroundColor: colors.cta,
                         paddingHorizontal: 22,
                         paddingVertical: 12,
                     }}
                 >
-                    <Ionicons name="add" size={16} color="#FFFFFF" />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>
+                    <Ionicons name="add" size={16} color={colors.ctaForeground} />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ctaForeground }}>
                         Book a Court
                     </Text>
                 </Pressable>
@@ -103,6 +112,7 @@ export function BookingsListView({
     onPayClick,
     onNewBooking,
 }: Props): JSX.Element {
+    const colors = useThemeColors();
     const items = activeTab === "upcoming" ? upcoming : past;
     const showActions = activeTab === "upcoming";
 
@@ -114,7 +124,7 @@ export function BookingsListView({
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 12,
-                    backgroundColor: "#F1F5F9",
+                    backgroundColor: colors.contentSurface,
                 }}
             >
                 <View
@@ -122,14 +132,14 @@ export function BookingsListView({
                         width: 52,
                         height: 52,
                         borderRadius: 16,
-                        backgroundColor: "#EFF6FF",
+                        backgroundColor: colors.ctaSurface,
                         alignItems: "center",
                         justifyContent: "center",
                     }}
                 >
-                    <ActivityIndicator size="small" color="#2563EB" />
+                    <ActivityIndicator size="small" color={colors.cta} />
                 </View>
-                <Text style={{ fontSize: 13, fontWeight: "500", color: "#94A3B8" }}>
+                <Text style={{ fontSize: 13, fontWeight: "500", color: colors.mutedForeground }}>
                     Loading bookings…
                 </Text>
             </View>
@@ -144,7 +154,7 @@ export function BookingsListView({
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 12,
-                    backgroundColor: "#F1F5F9",
+                    backgroundColor: colors.contentSurface,
                     paddingHorizontal: 32,
                 }}
             >
@@ -153,25 +163,30 @@ export function BookingsListView({
                         width: 52,
                         height: 52,
                         borderRadius: 16,
-                        backgroundColor: "#FEF2F2",
+                        backgroundColor: colors.destructiveSurface,
                         alignItems: "center",
                         justifyContent: "center",
                     }}
                 >
-                    <Ionicons name="alert-circle-outline" size={26} color="#EF4444" />
+                    <Ionicons name="alert-circle-outline" size={26} color={colors.destructive} />
                 </View>
                 <Text
                     style={{
                         fontSize: 16,
                         fontWeight: "700",
-                        color: "#0F172A",
+                        color: colors.foreground,
                         textAlign: "center",
                     }}
                 >
                     Failed to load bookings
                 </Text>
                 <Text
-                    style={{ fontSize: 13, color: "#94A3B8", textAlign: "center", lineHeight: 20 }}
+                    style={{
+                        fontSize: 13,
+                        color: colors.mutedForeground,
+                        textAlign: "center",
+                        lineHeight: 20,
+                    }}
                 >
                     {error.message ?? "Something went wrong. Please try again."}
                 </Text>
@@ -184,13 +199,15 @@ export function BookingsListView({
                         alignItems: "center",
                         gap: 6,
                         borderRadius: 22,
-                        backgroundColor: "#2563EB",
+                        backgroundColor: colors.cta,
                         paddingHorizontal: 22,
                         paddingVertical: 12,
                     }}
                 >
-                    <Ionicons name="refresh-outline" size={15} color="#FFFFFF" />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: "#FFFFFF" }}>Retry</Text>
+                    <Ionicons name="refresh-outline" size={15} color={colors.ctaForeground} />
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ctaForeground }}>
+                        Retry
+                    </Text>
                 </Pressable>
             </View>
         );
@@ -202,7 +219,7 @@ export function BookingsListView({
             keyExtractor={(item) => item.booking_id}
             contentContainerStyle={{ paddingBottom: 120, paddingTop: 16 }}
             showsVerticalScrollIndicator={false}
-            style={{ backgroundColor: "#F1F5F9" }}
+            style={{ backgroundColor: colors.contentSurface }}
             ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             ListHeaderComponent={
                 <View style={{ gap: 12, paddingBottom: 8, paddingHorizontal: 16 }}>

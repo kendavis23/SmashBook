@@ -6,6 +6,7 @@ import { FilterBar, FilterButton } from "../components/FilterBar";
 import { SlotCard } from "../components/SlotCard";
 import { CourtCard } from "../components/CourtCard";
 import { formatPlainTime } from "../utils";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
     userName: string | undefined;
@@ -35,15 +36,16 @@ type Props = {
 };
 
 function EmptySlots(): JSX.Element {
+    const colors = useThemeColors();
     return (
         <View className="items-center py-8 px-6">
-            <View className="w-14 h-14 rounded-full bg-slate-100 items-center justify-center mb-3">
-                <Ionicons name="calendar-outline" size={26} color="#94A3B8" />
+            <View className="w-14 h-14 rounded-full bg-muted items-center justify-center mb-3">
+                <Ionicons name="calendar-outline" size={26} color={colors.mutedForeground} />
             </View>
-            <Text className="text-sm font-semibold text-slate-700 text-center">
+            <Text className="text-sm font-semibold text-foreground text-center">
                 No slots available
             </Text>
-            <Text className="text-xs text-slate-400 text-center mt-1">
+            <Text className="text-xs text-muted-foreground text-center mt-1">
                 Try a different date or clear the filters
             </Text>
         </View>
@@ -51,15 +53,16 @@ function EmptySlots(): JSX.Element {
 }
 
 function SelectSlotPrompt(): JSX.Element {
+    const colors = useThemeColors();
     return (
         <View className="items-center py-10 px-6">
-            <View className="w-14 h-14 rounded-full bg-blue-50 items-center justify-center mb-3">
-                <Ionicons name="time-outline" size={26} color="#3B82F6" />
+            <View className="w-14 h-14 rounded-full bg-cta/10 items-center justify-center mb-3">
+                <Ionicons name="time-outline" size={26} color={colors.cta} />
             </View>
-            <Text className="text-sm font-semibold text-slate-700 text-center">
+            <Text className="text-sm font-semibold text-foreground text-center">
                 Pick a time slot above
             </Text>
-            <Text className="text-xs text-slate-400 text-center mt-1">
+            <Text className="text-xs text-muted-foreground text-center mt-1">
                 Available courts will appear here
             </Text>
         </View>
@@ -92,6 +95,7 @@ export function HomeView({
     onRefresh,
     onClear,
 }: Props): JSX.Element {
+    const colors = useThemeColors();
     const allSlots = availability?.days[0]?.slots ?? [];
     const courts = availability?.courts ?? [];
 
@@ -131,11 +135,11 @@ export function HomeView({
     const visibleCourts = filteredCourts();
 
     return (
-        <View style={{ flex: 1, backgroundColor: "#2563EB" }}>
+        <View style={{ flex: 1, backgroundColor: colors.hero }}>
             {/* Hero Header — fixed, does not scroll */}
             <View
                 style={{
-                    backgroundColor: "#2563EB",
+                    backgroundColor: colors.hero,
                     paddingHorizontal: 20,
                     paddingTop: 8,
                     paddingBottom: 28,
@@ -152,7 +156,7 @@ export function HomeView({
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 fontWeight: "500",
                                 letterSpacing: 0.3,
                             }}
@@ -163,7 +167,7 @@ export function HomeView({
                             style={{
                                 fontSize: 26,
                                 fontWeight: "700",
-                                color: "#FFFFFF",
+                                color: colors.heroForeground,
                                 marginTop: 2,
                                 letterSpacing: -0.3,
                             }}
@@ -173,7 +177,7 @@ export function HomeView({
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 marginTop: 4,
                                 fontWeight: "400",
                             }}
@@ -193,17 +197,21 @@ export function HomeView({
                             width: 40,
                             height: 40,
                             borderRadius: 20,
-                            backgroundColor: "rgba(255,255,255,0.18)",
+                            backgroundColor: colors.heroGlass,
                             borderWidth: 1,
-                            borderColor: "rgba(255,255,255,0.25)",
+                            borderColor: colors.heroGlassBorder,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
                         {isLoading ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
+                            <ActivityIndicator size="small" color={colors.heroForeground} />
                         ) : (
-                            <Ionicons name="notifications-outline" size={18} color="#FFFFFF" />
+                            <Ionicons
+                                name="notifications-outline"
+                                size={18}
+                                color={colors.heroForeground}
+                            />
                         )}
                     </Pressable>
                 </View>
@@ -213,7 +221,7 @@ export function HomeView({
             <ScrollView
                 style={{
                     flex: 1,
-                    backgroundColor: "#F1F5F9",
+                    backgroundColor: colors.contentSurface,
                     borderTopLeftRadius: 24,
                     borderTopRightRadius: 24,
                     marginTop: -16,
@@ -224,11 +232,11 @@ export function HomeView({
                 {/* White card lifted over hero */}
                 <View
                     style={{
-                        backgroundColor: "#F1F5F9",
+                        backgroundColor: colors.contentSurface,
                         borderTopLeftRadius: 24,
                         borderTopRightRadius: 24,
                         overflow: "hidden",
-                        shadowColor: "#1E3A8A",
+                        shadowColor: colors.shadow,
                         shadowOffset: { width: 0, height: -4 },
                         shadowOpacity: 0.06,
                         shadowRadius: 12,
@@ -259,18 +267,22 @@ export function HomeView({
                         style={{
                             marginHorizontal: 16,
                             marginTop: 12,
-                            backgroundColor: "#FEF2F2",
+                            backgroundColor: colors.destructiveSurface,
                             borderRadius: 16,
                             borderWidth: 1,
-                            borderColor: "#FECACA",
+                            borderColor: colors.destructive,
                             padding: 14,
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 10,
                         }}
                     >
-                        <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-                        <Text style={{ flex: 1, fontSize: 13, color: "#EF4444" }}>
+                        <Ionicons
+                            name="alert-circle-outline"
+                            size={18}
+                            color={colors.destructive}
+                        />
+                        <Text style={{ flex: 1, fontSize: 13, color: colors.destructive }}>
                             Failed to load availability. Pull to refresh.
                         </Text>
                     </View>
@@ -290,14 +302,14 @@ export function HomeView({
                             style={{
                                 fontSize: 16,
                                 fontWeight: "700",
-                                color: "#0F172A",
+                                color: colors.foreground,
                                 letterSpacing: -0.1,
                             }}
                         >
                             Quick time slots
                         </Text>
                         {filteredSlots.length > 0 && (
-                            <Text style={{ fontSize: 13, fontWeight: "600", color: "#3B82F6" }}>
+                            <Text style={{ fontSize: 13, fontWeight: "600", color: colors.cta }}>
                                 {filteredSlots.length} slot{filteredSlots.length !== 1 ? "s" : ""}
                             </Text>
                         )}
@@ -305,8 +317,14 @@ export function HomeView({
 
                     {isLoading && (
                         <View style={{ alignItems: "center", paddingVertical: 32 }}>
-                            <ActivityIndicator size="large" color="#2563EB" />
-                            <Text style={{ marginTop: 10, fontSize: 13, color: "#94A3B8" }}>
+                            <ActivityIndicator size="large" color={colors.cta} />
+                            <Text
+                                style={{
+                                    marginTop: 10,
+                                    fontSize: 13,
+                                    color: colors.mutedForeground,
+                                }}
+                            >
                                 Loading courts…
                             </Text>
                         </View>
@@ -347,7 +365,7 @@ export function HomeView({
                                 style={{
                                     fontSize: 16,
                                     fontWeight: "700",
-                                    color: "#0F172A",
+                                    color: colors.foreground,
                                     letterSpacing: -0.1,
                                 }}
                             >
@@ -362,11 +380,15 @@ export function HomeView({
                                         marginTop: 3,
                                     }}
                                 >
-                                    <Ionicons name="time-outline" size={12} color="#94A3B8" />
+                                    <Ionicons
+                                        name="time-outline"
+                                        size={12}
+                                        color={colors.mutedForeground}
+                                    />
                                     <Text
                                         style={{
                                             fontSize: 12,
-                                            color: "#64748B",
+                                            color: colors.mutedForeground,
                                             fontWeight: "500",
                                         }}
                                     >
@@ -379,7 +401,9 @@ export function HomeView({
 
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                             {selectedSlot && visibleCourts.length > 0 && (
-                                <Text style={{ fontSize: 13, fontWeight: "600", color: "#3B82F6" }}>
+                                <Text
+                                    style={{ fontSize: 13, fontWeight: "600", color: colors.cta }}
+                                >
                                     {visibleCourts.length} court
                                     {visibleCourts.length !== 1 ? "s" : ""}
                                 </Text>
@@ -404,7 +428,13 @@ export function HomeView({
 
                     {!isLoading && selectedSlot && visibleCourts.length === 0 && (
                         <View style={{ alignItems: "center", paddingVertical: 24 }}>
-                            <Text style={{ fontSize: 13, color: "#94A3B8", textAlign: "center" }}>
+                            <Text
+                                style={{
+                                    fontSize: 13,
+                                    color: colors.mutedForeground,
+                                    textAlign: "center",
+                                }}
+                            >
                                 No courts match your filters for this slot
                             </Text>
                         </View>

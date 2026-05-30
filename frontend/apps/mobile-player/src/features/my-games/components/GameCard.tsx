@@ -8,32 +8,31 @@ import {
     formatAmount,
     formatBookingType,
 } from "../utils/myGamesFormatters";
-import { STATUS_CONFIG, PAYMENT_CONFIG } from "../constants/myGamesConstants";
+import { getStatusConfig, getPaymentConfig } from "../constants/myGamesConstants";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
     game: PlayerBookingItem;
 };
 
 export function GameCard({ game }: Props): JSX.Element {
-    const statusCfg = STATUS_CONFIG[game.status] ?? {
+    const colors = useThemeColors();
+    const statusCfg = getStatusConfig(colors)[game.status] ?? {
         label: game.status,
-        bg: "#F3F4F6",
-        text: "#374151",
-        dot: "#9CA3AF",
+        bg: colors.muted,
+        text: colors.mutedForeground,
+        dot: colors.mutedForeground,
     };
-    const paymentCfg = PAYMENT_CONFIG[game.payment_status] ?? {
+    const paymentCfg = getPaymentConfig(colors)[game.payment_status] ?? {
         label: game.payment_status,
-        bg: "#F3F4F6",
-        text: "#374151",
+        bg: colors.muted,
+        text: colors.mutedForeground,
     };
 
     const isUpcoming = game.status === "confirmed" || game.status === "pending";
 
     return (
-        <View
-            className="overflow-hidden rounded-[22px] bg-white shadow-sm"
-            accessibilityRole="none"
-        >
+        <View className="overflow-hidden rounded-[22px] bg-card shadow-sm" accessibilityRole="none">
             {/* Top accent bar — coloured by status */}
             <View style={{ backgroundColor: statusCfg.dot, height: 3 }} />
 
@@ -42,17 +41,19 @@ export function GameCard({ game }: Props): JSX.Element {
                 <View className="flex-row items-start justify-between gap-2">
                     <View className="flex-1 flex-row items-center gap-2.5 min-w-0">
                         <View
-                            style={{ backgroundColor: isUpcoming ? "#EFF6FF" : "#F3F4F6" }}
+                            style={{
+                                backgroundColor: isUpcoming ? colors.ctaSurface : colors.muted,
+                            }}
                             className="h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
                         >
                             <Ionicons
                                 name="tennisball"
                                 size={18}
-                                color={isUpcoming ? "#2563EB" : "#9CA3AF"}
+                                color={isUpcoming ? colors.cta : colors.mutedForeground}
                             />
                         </View>
                         <Text
-                            className="flex-1 text-[16px] font-bold text-[#111827]"
+                            className="flex-1 text-[16px] font-bold text-foreground"
                             numberOfLines={1}
                         >
                             {game.court_name}
@@ -78,19 +79,26 @@ export function GameCard({ game }: Props): JSX.Element {
                 </View>
 
                 {/* Divider */}
-                <View className="h-px bg-[#F3F4F6]" />
+                <View className="h-px bg-border" />
 
                 {/* Row 2: Date + Time */}
                 <View className="flex-row gap-4">
                     <View className="flex-row items-center gap-1.5 flex-1">
-                        <Ionicons name="calendar-outline" size={13} color="#9CA3AF" />
-                        <Text className="text-[12px] text-[#6B7280] font-medium" numberOfLines={1}>
+                        <Ionicons
+                            name="calendar-outline"
+                            size={13}
+                            color={colors.mutedForeground}
+                        />
+                        <Text
+                            className="text-[12px] text-muted-foreground font-medium"
+                            numberOfLines={1}
+                        >
                             {formatGameDate(game.start_datetime)}
                         </Text>
                     </View>
                     <View className="flex-row items-center gap-1.5">
-                        <Ionicons name="time-outline" size={13} color="#9CA3AF" />
-                        <Text className="text-[12px] text-[#6B7280] font-medium">
+                        <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
+                        <Text className="text-[12px] text-muted-foreground font-medium">
                             {formatTimeRange(game.start_datetime, game.end_datetime)}
                         </Text>
                     </View>
@@ -99,21 +107,21 @@ export function GameCard({ game }: Props): JSX.Element {
                 {/* Row 3: Type + Role */}
                 <View className="flex-row gap-3">
                     {/* Booking type chip */}
-                    <View className="flex-row items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1">
-                        <Ionicons name="layers-outline" size={12} color="#6B7280" />
-                        <Text className="text-[11px] font-medium text-[#6B7280]">
+                    <View className="flex-row items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1">
+                        <Ionicons name="layers-outline" size={12} color={colors.mutedForeground} />
+                        <Text className="text-[11px] font-medium text-muted-foreground">
                             {formatBookingType(game.booking_type)}
                         </Text>
                     </View>
 
                     {/* Role chip */}
-                    <View className="flex-row items-center gap-1.5 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1">
+                    <View className="flex-row items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 py-1">
                         <Ionicons
                             name={game.role === "organiser" ? "star-outline" : "person-outline"}
                             size={12}
-                            color="#6B7280"
+                            color={colors.mutedForeground}
                         />
-                        <Text className="text-[11px] font-medium text-[#6B7280] capitalize">
+                        <Text className="text-[11px] font-medium text-muted-foreground capitalize">
                             {game.role}
                         </Text>
                     </View>
@@ -133,7 +141,7 @@ export function GameCard({ game }: Props): JSX.Element {
                         </Text>
                     </View>
 
-                    <Text className="text-[15px] font-bold text-[#111827]">
+                    <Text className="text-[15px] font-bold text-foreground">
                         {formatAmount(game.amount_due)}
                     </Text>
                 </View>

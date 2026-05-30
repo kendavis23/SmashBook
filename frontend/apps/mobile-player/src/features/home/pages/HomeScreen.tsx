@@ -8,6 +8,7 @@ import type { ClubAvailabilitySlot } from "../types";
 import { HomeView } from "./HomeView";
 import { NewBookingSheet } from "../../booking/new-booking/components/NewBookingSheet";
 import type { PlayerBookingItem, Booking } from "../../booking/types";
+import { useThemeColors } from "../../../theme";
 
 type BookingModal = { courtId: string; date: string; startTime: string } | null;
 
@@ -150,9 +151,10 @@ export function HomeScreen(): JSX.Element {
     );
 
     const handleRefresh = useCallback(() => void refetch(), [refetch]);
+    const colors = useThemeColors();
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.hero }} edges={["top"]}>
             <StatusBar style="light" />
             <HomeView
                 userName={profile?.full_name}

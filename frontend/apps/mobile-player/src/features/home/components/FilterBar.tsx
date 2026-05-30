@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SURFACE_OPTIONS } from "../types";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
     date: string;
@@ -80,6 +81,7 @@ function FilterChip({
     onPress: () => void;
     icon?: IconName;
 }): JSX.Element {
+    const colors = useThemeColors();
     return (
         <Pressable
             onPress={onPress}
@@ -92,9 +94,9 @@ function FilterChip({
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
-                backgroundColor: active ? "#2563EB" : "#FFFFFF",
+                backgroundColor: active ? colors.cta : colors.card,
                 borderWidth: 1.5,
-                borderColor: active ? "#2563EB" : "#E5E7EB",
+                borderColor: active ? colors.cta : colors.border,
                 borderRadius: 16,
                 paddingHorizontal: 14,
                 paddingVertical: 12,
@@ -102,13 +104,17 @@ function FilterChip({
             }}
         >
             {icon ? (
-                <Ionicons name={icon} size={18} color={active ? "#FFFFFF" : "#6B7280"} />
+                <Ionicons
+                    name={icon}
+                    size={18}
+                    color={active ? colors.ctaForeground : colors.mutedForeground}
+                />
             ) : null}
             <Text
                 style={{
                     fontSize: 14,
                     fontWeight: "700",
-                    color: active ? "#FFFFFF" : "#374151",
+                    color: active ? colors.ctaForeground : colors.foreground,
                 }}
             >
                 {label}
@@ -135,9 +141,17 @@ function TimeField({
     placeholder: string;
     onChangeText: (v: string) => void;
 }): JSX.Element {
+    const colors = useThemeColors();
     return (
         <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 12, fontWeight: "700", color: "#6B7280", marginBottom: 8 }}>
+            <Text
+                style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: colors.mutedForeground,
+                    marginBottom: 8,
+                }}
+            >
                 {label}
             </Text>
             <View
@@ -148,24 +162,28 @@ function TimeField({
                     minHeight: 52,
                     borderRadius: 16,
                     borderWidth: 1.5,
-                    borderColor: value ? "#2563EB" : "#E5E7EB",
-                    backgroundColor: value ? "#EFF6FF" : "#FFFFFF",
+                    borderColor: value ? colors.cta : colors.border,
+                    backgroundColor: value ? colors.ctaSurface : colors.card,
                     paddingHorizontal: 14,
                 }}
             >
-                <Ionicons name="time-outline" size={19} color={value ? "#2563EB" : "#9CA3AF"} />
+                <Ionicons
+                    name="time-outline"
+                    size={19}
+                    color={value ? colors.cta : colors.mutedForeground}
+                />
                 <TextInput
                     value={value}
                     onChangeText={onChangeText}
                     placeholder={placeholder}
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor={colors.placeholder}
                     keyboardType="numbers-and-punctuation"
                     accessibilityLabel={`${label} time filter`}
                     style={{
                         flex: 1,
                         fontSize: 14,
                         fontWeight: "700",
-                        color: value ? "#2563EB" : "#374151",
+                        color: value ? colors.cta : colors.foreground,
                         padding: 0,
                     }}
                 />
@@ -187,6 +205,7 @@ export function FilterButton({
     onToggleOpenGame,
     onClear,
 }: FilterControlProps): JSX.Element {
+    const colors = useThemeColors();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const slotTypeChanged = !showAvailableSlot || !showOpenGame;
     const activeFilterCount = [surface, fromTime, toTime, slotTypeChanged ? "slotType" : ""].filter(
@@ -212,8 +231,8 @@ export function FilterButton({
                     height: 36,
                     borderRadius: 18,
                     borderWidth: 1,
-                    borderColor: hasActiveFilter ? "#BFDBFE" : "#E5E7EB",
-                    backgroundColor: hasActiveFilter ? "#2563EB" : "#FFFFFF",
+                    borderColor: hasActiveFilter ? colors.ctaBorder : colors.border,
+                    backgroundColor: hasActiveFilter ? colors.cta : colors.card,
                     alignItems: "center",
                     justifyContent: "center",
                 }}
@@ -221,7 +240,7 @@ export function FilterButton({
                 <Ionicons
                     name="options-outline"
                     size={18}
-                    color={hasActiveFilter ? "#FFFFFF" : "#111827"}
+                    color={hasActiveFilter ? colors.ctaForeground : colors.foreground}
                 />
                 {hasActiveFilter ? (
                     <View
@@ -232,13 +251,13 @@ export function FilterButton({
                             minWidth: 17,
                             height: 17,
                             borderRadius: 8.5,
-                            backgroundColor: "#111827",
+                            backgroundColor: colors.foreground,
                             alignItems: "center",
                             justifyContent: "center",
                             paddingHorizontal: 5,
                         }}
                     >
-                        <Text style={{ fontSize: 10, fontWeight: "700", color: "#FFFFFF" }}>
+                        <Text style={{ fontSize: 10, fontWeight: "700", color: colors.background }}>
                             {activeFilterCount}
                         </Text>
                     </View>
@@ -257,17 +276,17 @@ export function FilterButton({
                 >
                     <Pressable
                         onPress={() => setIsSheetOpen(false)}
-                        style={{ flex: 1, backgroundColor: "rgba(17, 24, 39, 0.42)" }}
+                        style={{ flex: 1, backgroundColor: colors.overlay }}
                     />
                     <View
                         style={{
-                            backgroundColor: "#FFFFFF",
+                            backgroundColor: colors.card,
                             borderTopLeftRadius: 28,
                             borderTopRightRadius: 28,
                             paddingHorizontal: 20,
                             paddingTop: 10,
                             paddingBottom: 24,
-                            shadowColor: "#111827",
+                            shadowColor: colors.shadow,
                             shadowOpacity: 0.16,
                             shadowRadius: 20,
                             shadowOffset: { width: 0, height: -8 },
@@ -280,7 +299,7 @@ export function FilterButton({
                                     width: 40,
                                     height: 4,
                                     borderRadius: 2,
-                                    backgroundColor: "#E5E7EB",
+                                    backgroundColor: colors.border,
                                 }}
                             />
                         </View>
@@ -293,7 +312,13 @@ export function FilterButton({
                                 marginBottom: 20,
                             }}
                         >
-                            <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827" }}>
+                            <Text
+                                style={{
+                                    fontSize: 22,
+                                    fontWeight: "700",
+                                    color: colors.foreground,
+                                }}
+                            >
                                 Filters
                             </Text>
                             <Pressable
@@ -303,7 +328,9 @@ export function FilterButton({
                                 hitSlop={10}
                                 className="active:opacity-60"
                             >
-                                <Text style={{ fontSize: 15, fontWeight: "700", color: "#2563EB" }}>
+                                <Text
+                                    style={{ fontSize: 15, fontWeight: "700", color: colors.cta }}
+                                >
                                     Reset
                                 </Text>
                             </Pressable>
@@ -313,7 +340,7 @@ export function FilterButton({
                             style={{
                                 fontSize: 15,
                                 fontWeight: "700",
-                                color: "#111827",
+                                color: colors.foreground,
                                 marginBottom: 12,
                             }}
                         >
@@ -351,7 +378,7 @@ export function FilterButton({
                             style={{
                                 fontSize: 15,
                                 fontWeight: "700",
-                                color: "#111827",
+                                color: colors.foreground,
                                 marginBottom: 12,
                             }}
                         >
@@ -380,7 +407,7 @@ export function FilterButton({
                             style={{
                                 fontSize: 15,
                                 fontWeight: "700",
-                                color: "#111827",
+                                color: colors.foreground,
                                 marginBottom: 12,
                             }}
                         >
@@ -409,17 +436,23 @@ export function FilterButton({
                             style={{
                                 height: 56,
                                 borderRadius: 18,
-                                backgroundColor: "#2563EB",
+                                backgroundColor: colors.cta,
                                 alignItems: "center",
                                 justifyContent: "center",
-                                shadowColor: "#2563EB",
+                                shadowColor: colors.cta,
                                 shadowOpacity: 0.22,
                                 shadowRadius: 12,
                                 shadowOffset: { width: 0, height: 8 },
                                 elevation: 8,
                             }}
                         >
-                            <Text style={{ fontSize: 16, fontWeight: "700", color: "#FFFFFF" }}>
+                            <Text
+                                style={{
+                                    fontSize: 16,
+                                    fontWeight: "700",
+                                    color: colors.ctaForeground,
+                                }}
+                            >
                                 Apply Filters
                             </Text>
                         </Pressable>
@@ -431,6 +464,7 @@ export function FilterButton({
 }
 
 export function FilterBar({ date, onDateChange }: Props): JSX.Element {
+    const colors = useThemeColors();
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const quickDays = Array.from({ length: 7 }, (_, index) => buildDateOption(index));
     const calendarDays = Array.from({ length: 35 }, (_, index) => buildDateOption(index));
@@ -468,9 +502,9 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                             >
                                 <View
                                     style={{
-                                        backgroundColor: isSelected ? "#2563EB" : "#F8FAFC",
+                                        backgroundColor: isSelected ? colors.cta : colors.muted,
                                         borderWidth: 1,
-                                        borderColor: isSelected ? "#2563EB" : "#E2E8F0",
+                                        borderColor: isSelected ? colors.cta : colors.border,
                                         borderRadius: 14,
                                         width: 54,
                                         paddingVertical: 8,
@@ -483,7 +517,9 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                         style={{
                                             fontSize: 9,
                                             fontWeight: "600",
-                                            color: isSelected ? "#BFDBFE" : "#94A3B8",
+                                            color: isSelected
+                                                ? colors.heroMuted
+                                                : colors.mutedForeground,
                                             letterSpacing: 0.5,
                                         }}
                                     >
@@ -493,7 +529,9 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                         style={{
                                             fontSize: 18,
                                             fontWeight: "700",
-                                            color: isSelected ? "#FFFFFF" : "#1E293B",
+                                            color: isSelected
+                                                ? colors.ctaForeground
+                                                : colors.foreground,
                                             marginTop: 1,
                                             letterSpacing: -0.3,
                                         }}
@@ -504,7 +542,9 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                         style={{
                                             fontSize: 9,
                                             fontWeight: "500",
-                                            color: isSelected ? "#93C5FD" : "#94A3B8",
+                                            color: isSelected
+                                                ? colors.heroMuted
+                                                : colors.mutedForeground,
                                             marginTop: 1,
                                         }}
                                     >
@@ -526,14 +566,18 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                         height: 44,
                         borderRadius: 12,
                         borderWidth: 1,
-                        borderColor: "#E2E8F0",
-                        backgroundColor: "#F8FAFC",
+                        borderColor: colors.border,
+                        backgroundColor: colors.muted,
                         alignItems: "center",
                         justifyContent: "center",
                         marginLeft: 8,
                     }}
                 >
-                    <Ionicons name="calendar-clear-outline" size={18} color="#475569" />
+                    <Ionicons
+                        name="calendar-clear-outline"
+                        size={18}
+                        color={colors.mutedForeground}
+                    />
                 </Pressable>
             </View>
 
@@ -546,11 +590,11 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                 <View style={{ flex: 1, justifyContent: "flex-end" }}>
                     <Pressable
                         onPress={() => setIsCalendarOpen(false)}
-                        style={{ flex: 1, backgroundColor: "rgba(17, 24, 39, 0.42)" }}
+                        style={{ flex: 1, backgroundColor: colors.overlay }}
                     />
                     <View
                         style={{
-                            backgroundColor: "#FFFFFF",
+                            backgroundColor: colors.card,
                             borderTopLeftRadius: 28,
                             borderTopRightRadius: 28,
                             paddingHorizontal: 20,
@@ -564,7 +608,7 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                     width: 40,
                                     height: 4,
                                     borderRadius: 2,
-                                    backgroundColor: "#E5E7EB",
+                                    backgroundColor: colors.border,
                                 }}
                             />
                         </View>
@@ -577,14 +621,20 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                             }}
                         >
                             <View>
-                                <Text style={{ fontSize: 22, fontWeight: "700", color: "#111827" }}>
+                                <Text
+                                    style={{
+                                        fontSize: 22,
+                                        fontWeight: "700",
+                                        color: colors.foreground,
+                                    }}
+                                >
                                     Select Date
                                 </Text>
                                 <Text
                                     style={{
                                         fontSize: 13,
                                         fontWeight: "600",
-                                        color: "#9CA3AF",
+                                        color: colors.mutedForeground,
                                         marginTop: 3,
                                     }}
                                 >
@@ -601,12 +651,12 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                     width: 36,
                                     height: 36,
                                     borderRadius: 18,
-                                    backgroundColor: "#F3F4F6",
+                                    backgroundColor: colors.muted,
                                     alignItems: "center",
                                     justifyContent: "center",
                                 }}
                             >
-                                <Ionicons name="close" size={20} color="#111827" />
+                                <Ionicons name="close" size={20} color={colors.foreground} />
                             </Pressable>
                         </View>
                         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
@@ -627,9 +677,9 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                             width: "12%",
                                             minHeight: 54,
                                             borderRadius: 16,
-                                            backgroundColor: isSelected ? "#2563EB" : "#F8FAFC",
+                                            backgroundColor: isSelected ? colors.cta : colors.muted,
                                             borderWidth: 1,
-                                            borderColor: isSelected ? "#2563EB" : "#EEF2F7",
+                                            borderColor: isSelected ? colors.cta : colors.border,
                                             alignItems: "center",
                                             justifyContent: "center",
                                         }}
@@ -638,7 +688,9 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                             style={{
                                                 fontSize: 9,
                                                 fontWeight: "700",
-                                                color: isSelected ? "#BFDBFE" : "#9CA3AF",
+                                                color: isSelected
+                                                    ? colors.heroMuted
+                                                    : colors.mutedForeground,
                                                 textTransform: "uppercase",
                                             }}
                                         >
@@ -648,7 +700,9 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                             style={{
                                                 fontSize: 15,
                                                 fontWeight: "700",
-                                                color: isSelected ? "#FFFFFF" : "#111827",
+                                                color: isSelected
+                                                    ? colors.ctaForeground
+                                                    : colors.foreground,
                                                 marginTop: 2,
                                             }}
                                         >

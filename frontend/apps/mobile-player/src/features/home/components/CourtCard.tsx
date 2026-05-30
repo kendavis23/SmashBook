@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ClubAvailabilityCourt, ClubAvailabilitySlot } from "../types";
 import { formatCurrency } from "../../../lib";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
     court: ClubAvailabilityCourt;
@@ -25,6 +26,7 @@ export function CourtCard({
     onBook,
     onJoin,
 }: Props): JSX.Element {
+    const colors = useThemeColors();
     const slotCourt = slot.available_courts.find((c) => c.court_id === court.id);
     const existingMatch = slot.existing_matches.find((m) => m.court_id === court.id);
     const isAvailable = slotCourt !== undefined;
@@ -32,19 +34,27 @@ export function CourtCard({
     const price = slotCourt?.price ?? existingMatch?.total_price ?? null;
     const isThisJoining = joiningBookingId === existingMatch?.booking_id;
 
-    const borderColor = isAvailable ? "#DBEAFE" : isJoinable ? "#DCFCE7" : "#F3F4F6";
-    const badgeBg = isAvailable ? "#EFF6FF" : isJoinable ? "#F0FDF4" : "#F9FAFB";
+    const borderColor = isAvailable
+        ? colors.ctaBorder
+        : isJoinable
+          ? colors.successSurface
+          : colors.border;
+    const badgeBg = isAvailable
+        ? colors.ctaSurface
+        : isJoinable
+          ? colors.successSurface
+          : colors.muted;
 
     return (
         <View
             style={{
-                backgroundColor: "#FFFFFF",
+                backgroundColor: colors.card,
                 borderRadius: 20,
                 borderWidth: 1.5,
                 borderColor,
                 padding: 16,
                 marginBottom: 10,
-                shadowColor: "#000",
+                shadowColor: colors.shadow,
                 shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.05,
                 shadowRadius: 4,
@@ -61,22 +71,32 @@ export function CourtCard({
                 }}
             >
                 <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: "#111827" }}>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground }}>
                         {court.name}
                     </Text>
                     <View
                         style={{ flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 }}
                     >
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                            <Ionicons name="location-outline" size={11} color="#9CA3AF" />
-                            <Text style={{ fontSize: 11, color: "#9CA3AF" }}>
+                            <Ionicons
+                                name="location-outline"
+                                size={11}
+                                color={colors.mutedForeground}
+                            />
+                            <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
                                 {surfaceLabel(court.surface_type)}
                             </Text>
                         </View>
                         {court.has_lighting && (
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                                <Ionicons name="flash-outline" size={11} color="#9CA3AF" />
-                                <Text style={{ fontSize: 11, color: "#9CA3AF" }}>Lighting</Text>
+                                <Ionicons
+                                    name="flash-outline"
+                                    size={11}
+                                    color={colors.mutedForeground}
+                                />
+                                <Text style={{ fontSize: 11, color: colors.mutedForeground }}>
+                                    Lighting
+                                </Text>
                             </View>
                         )}
                     </View>
@@ -91,7 +111,7 @@ export function CourtCard({
                     }}
                 >
                     {isAvailable && (
-                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#2563EB" }}>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.cta }}>
                             Available
                         </Text>
                     )}
@@ -102,16 +122,24 @@ export function CourtCard({
                                     width: 5,
                                     height: 5,
                                     borderRadius: 2.5,
-                                    backgroundColor: "#22C55E",
+                                    backgroundColor: colors.success,
                                 }}
                             />
-                            <Text style={{ fontSize: 11, fontWeight: "600", color: "#16A34A" }}>
+                            <Text
+                                style={{ fontSize: 11, fontWeight: "600", color: colors.success }}
+                            >
                                 Open Game
                             </Text>
                         </View>
                     )}
                     {!isAvailable && !isJoinable && (
-                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#9CA3AF" }}>
+                        <Text
+                            style={{
+                                fontSize: 11,
+                                fontWeight: "600",
+                                color: colors.mutedForeground,
+                            }}
+                        >
                             Unavailable
                         </Text>
                     )}
@@ -122,7 +150,7 @@ export function CourtCard({
             {isJoinable && existingMatch && (
                 <View
                     style={{
-                        backgroundColor: "#F0FDF4",
+                        backgroundColor: colors.successSurface,
                         borderRadius: 10,
                         paddingHorizontal: 10,
                         paddingVertical: 6,
@@ -132,8 +160,8 @@ export function CourtCard({
                         marginBottom: 10,
                     }}
                 >
-                    <Ionicons name="people-outline" size={13} color="#16A34A" />
-                    <Text style={{ fontSize: 12, color: "#16A34A", fontWeight: "600" }}>
+                    <Ionicons name="people-outline" size={13} color={colors.success} />
+                    <Text style={{ fontSize: 12, color: colors.success, fontWeight: "600" }}>
                         {existingMatch.slots_available} spot
                         {existingMatch.slots_available !== 1 ? "s" : ""} left
                     </Text>
@@ -142,7 +170,7 @@ export function CourtCard({
 
             {/* Lighting surcharge */}
             {court.has_lighting && court.lighting_surcharge !== null && (
-                <Text style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 10 }}>
+                <Text style={{ fontSize: 11, color: colors.mutedForeground, marginBottom: 10 }}>
                     + {formatCurrency(court.lighting_surcharge)} lighting surcharge
                 </Text>
             )}
@@ -157,13 +185,13 @@ export function CourtCard({
             >
                 {price !== null ? (
                     <View>
-                        <Text style={{ fontSize: 20, fontWeight: "700", color: "#111827" }}>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: colors.foreground }}>
                             {formatCurrency(price)}
                         </Text>
                         <Text
                             style={{
                                 fontSize: 10,
-                                color: "#9CA3AF",
+                                color: colors.mutedForeground,
                                 textTransform: "uppercase",
                                 letterSpacing: 0.5,
                             }}
@@ -182,7 +210,7 @@ export function CourtCard({
                         accessibilityLabel={`Book ${court.name}`}
                         className="active:opacity-75"
                         style={{
-                            backgroundColor: "#2563EB",
+                            backgroundColor: colors.cta,
                             borderRadius: 14,
                             paddingHorizontal: 20,
                             paddingVertical: 10,
@@ -191,8 +219,10 @@ export function CourtCard({
                             gap: 6,
                         }}
                     >
-                        <Ionicons name="calendar-outline" size={15} color="#FFFFFF" />
-                        <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 13 }}>
+                        <Ionicons name="calendar-outline" size={15} color={colors.ctaForeground} />
+                        <Text
+                            style={{ color: colors.ctaForeground, fontWeight: "700", fontSize: 13 }}
+                        >
                             Book Now
                         </Text>
                     </Pressable>
@@ -206,7 +236,7 @@ export function CourtCard({
                         accessibilityLabel={`Join game at ${court.name}`}
                         className="active:opacity-75"
                         style={{
-                            backgroundColor: "#16A34A",
+                            backgroundColor: colors.success,
                             borderRadius: 14,
                             paddingHorizontal: 20,
                             paddingVertical: 10,
@@ -217,11 +247,21 @@ export function CourtCard({
                         }}
                     >
                         {isThisJoining ? (
-                            <ActivityIndicator size="small" color="#FFFFFF" />
+                            <ActivityIndicator size="small" color={colors.successForeground} />
                         ) : (
-                            <Ionicons name="people-outline" size={15} color="#FFFFFF" />
+                            <Ionicons
+                                name="people-outline"
+                                size={15}
+                                color={colors.successForeground}
+                            />
                         )}
-                        <Text style={{ color: "#FFFFFF", fontWeight: "700", fontSize: 13 }}>
+                        <Text
+                            style={{
+                                color: colors.successForeground,
+                                fontWeight: "700",
+                                fontSize: 13,
+                            }}
+                        >
                             Join Game
                         </Text>
                     </Pressable>
@@ -230,13 +270,19 @@ export function CourtCard({
                 {!isAvailable && !isJoinable && (
                     <View
                         style={{
-                            backgroundColor: "#F3F4F6",
+                            backgroundColor: colors.muted,
                             borderRadius: 14,
                             paddingHorizontal: 16,
                             paddingVertical: 10,
                         }}
                     >
-                        <Text style={{ color: "#9CA3AF", fontWeight: "600", fontSize: 13 }}>
+                        <Text
+                            style={{
+                                color: colors.mutedForeground,
+                                fontWeight: "600",
+                                fontSize: 13,
+                            }}
+                        >
                             Unavailable
                         </Text>
                     </View>
