@@ -8,18 +8,25 @@ vi.mock("../../components/PlayerAutocomplete", () => ({
         label,
         value,
         onChange,
+        onSelect,
         disabled,
     }: {
         label: string;
         value: string;
         onChange: (value: string) => void;
+        onSelect: (player: { id: string; full_name: string }) => void;
         disabled?: boolean;
     }) => (
         <input
             aria-label={label}
             value={value}
             disabled={disabled}
-            onChange={(event) => onChange(event.target.value)}
+            onChange={(event) => {
+                onChange(event.target.value);
+                if (event.target.value) {
+                    onSelect({ id: event.target.value, full_name: event.target.value });
+                }
+            }}
         />
     ),
 }));
@@ -123,14 +130,14 @@ describe("PlayerBookingList", () => {
             />
         );
 
-        fireEvent.click(firstElement(screen.getAllByTitle("Invite a player")));
+        fireEvent.click(firstElement(screen.getAllByTitle("Invite player")));
         fireEvent.change(screen.getByLabelText("Search player"), {
             target: { value: "player-2" },
         });
         fireEvent.click(screen.getByRole("button", { name: /send invitation/i }));
 
         await waitFor(() => expect(onInvitePlayer).toHaveBeenCalledWith(booking, "player-2"));
-        expect(await screen.findByRole("alert")).toHaveTextContent("Invitation has been sent!");
+        expect(await screen.findByRole("alert")).toHaveTextContent("Invitation sent!");
     });
 
     it("submits invite responses for pending invited players", async () => {
@@ -147,8 +154,7 @@ describe("PlayerBookingList", () => {
             />
         );
 
-        fireEvent.click(firstElement(screen.getAllByTitle("Accept or decline this invite")));
-        fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+        fireEvent.click(firstElement(screen.getAllByTitle("Accept invite")));
 
         await waitFor(() => expect(onRespondInvite).toHaveBeenCalledWith(booking, "accepted"));
         expect(await screen.findByRole("alert")).toHaveTextContent("Invite accepted!");

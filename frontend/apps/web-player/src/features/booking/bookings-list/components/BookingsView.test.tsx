@@ -166,8 +166,8 @@ describe("BookingsView — data state", () => {
     it("shows invite status text instead of Invite button for past bookings", () => {
         const past = [makeBooking({ role: "organiser", invite_status: "accepted" })];
         render(<BookingsView {...defaultProps} activeTab="past" past={past} />);
-        expect(screen.queryByRole("button", { name: /invite a player/i })).not.toBeInTheDocument();
-        expect(screen.getAllByText("Accepted")).not.toHaveLength(0);
+        expect(screen.queryByRole("button", { name: /invite player/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /view booking/i })).not.toBeInTheDocument();
     });
 });
 

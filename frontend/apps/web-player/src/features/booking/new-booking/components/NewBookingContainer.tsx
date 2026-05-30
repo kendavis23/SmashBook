@@ -227,7 +227,7 @@ export default function NewBookingContainer(): JSX.Element {
             const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
 
             const invitedPlayerIds =
-                form.isOpenGame || form.bookingType === "lesson_individual"
+                form.bookingType === "lesson_individual"
                     ? []
                     : form.playerUserIds.map((id) => id.trim()).filter(Boolean);
             const payload: BookingInput = {
