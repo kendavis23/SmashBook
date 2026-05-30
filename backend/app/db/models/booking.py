@@ -86,6 +86,7 @@ class Booking(Base, UUIDMixin, TimestampMixin):
     discount_amount = Column(Numeric(10, 2), nullable=True)
     discount_source = Column(Enum(DiscountSource), nullable=True)
     membership_subscription_id = Column(UUID(as_uuid=True), ForeignKey("membership_subscriptions.id"), nullable=True)
+    promo_code_id = Column(UUID(as_uuid=True), ForeignKey("promo_codes.id"), nullable=True)
     hold_expires_at = Column(DateTime(timezone=True), nullable=True)  # court-level hold; null once first player pays or for staff bookings
 
     club = relationship("Club", back_populates="bookings")

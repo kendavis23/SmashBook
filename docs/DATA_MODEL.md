@@ -1,4 +1,4 @@
-_Last updated: 2026-05-29 13:10 UTC_
+_Last updated: 2026-05-30 09:55 UTC_
 
 # SmashBook Data Model
 
@@ -286,6 +286,7 @@ Staff-created blocks that restrict booking on the calendar. The `maintenance` ty
 | `discount_amount` | NUMERIC(10,2) | Nullable |
 | `discount_source` | ENUM | Nullable — `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
 | `membership_subscription_id` | UUID | FK → `membership_subscriptions`, nullable |
+| `promo_code_id` | UUID | FK → `promo_codes`, nullable — promo code applied to this booking (G6) |
 | `hold_expires_at` | TIMESTAMPTZ | Nullable — court-level hold deadline; cleared when the first player pays. Null = live/staff booking that always blocks the court |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
@@ -397,7 +398,7 @@ Tracks players waiting for a slot on a specific date/time.
 | `rental_price` | NUMERIC(10,2) | |
 | `condition` | ENUM | `good`, `fair`, `damaged`, `retired` |
 | `notes` | TEXT | Nullable |
-| `reorder_threshold` | INTEGER | Nullable — quantity below which AI triggers a purchase order |
+| `reorder_threshold` | INTEGER | Nullable — originally for AI purchase-order prediction (**descoped 2026-05-29**); column intentionally retained in the DB but currently unused |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -540,9 +541,12 @@ Immutable audit log of player skill changes.
 |---|---|---|
 | `id` | UUID | PK |
 | `user_id` | UUID | FK → `users` |
+| `club_id` | UUID | FK → `clubs`, NOT NULL — restored in G6 for club-scoped skill queries |
 | `previous_level` | NUMERIC(3,1) | Nullable — null on first assignment |
 | `new_level` | NUMERIC(3,1) | |
-| `assigned_by` | UUID | FK → `users` (staff/admin who made the change) |
+| `change_source` | ENUM | `staff_manual`, `ai_auto`, `match_result` — default `staff_manual` (G6) |
+| `assigned_by` | UUID | FK → `users`, nullable — null when `change_source = ai_auto` (made nullable in G6) |
+| `ai_inference_id` | UUID | Nullable — FK → `ai_inference_log` deferred to G8; plain UUID for now (G6) |
 | `reason` | TEXT | Nullable |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
@@ -621,6 +625,108 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 
 ---
 
+### 12. Discounts & Promo Codes
+
+#### `promo_codes`
+Club-scoped promotional discount codes. Backs the `discount_source = 'promo_code'` path on bookings.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `code` | VARCHAR(50) | Unique per club |
+| `description` | TEXT | Nullable |
+| `discount_type` | ENUM | `percentage`, `fixed_amount` |
+| `discount_value` | NUMERIC(10,2) | |
+| `max_uses` | INTEGER | Nullable — NULL = unlimited |
+| `uses_count` | INTEGER | Default `0` |
+| `max_uses_per_player` | INTEGER | Nullable |
+| `valid_from` | TIMESTAMPTZ | Nullable |
+| `valid_until` | TIMESTAMPTZ | Nullable |
+| `applies_to` | ENUM | `all`, `off_peak`, `open_game`, `lesson`, `tournament` — default `all` |
+| `min_booking_value` | NUMERIC(10,2) | Nullable |
+| `is_active` | BOOLEAN | Default `true` |
+| `created_by` | UUID | FK → `users` |
+| `campaign_id` | UUID | Nullable — FK → `campaigns` deferred to G10; plain UUID for now |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Constraints:** `UNIQUE(club_id, code)` (`uq_promo_codes_club_code`)
+
+**Indexes:** `ix_promo_codes_club_id (club_id)`
+
+**Relationships:** `club`
+
+---
+
+### 13. Messaging, Chat & Support
+
+#### `announcements`
+Club-wide posts visible to all players.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `author_user_id` | UUID | FK → `users` |
+| `title` | VARCHAR(255) | |
+| `body` | TEXT | |
+| `is_published` | BOOLEAN | Default `false` |
+| `published_at` | TIMESTAMPTZ | Nullable |
+| `expires_at` | TIMESTAMPTZ | Nullable |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Indexes:** `ix_announcements_club_id (club_id)`
+
+**Relationships:** `club`
+
+---
+
+#### `support_tickets`
+Unified thread table for support, casual chat, and booking inquiries. (`category`, `last_message_at` and chat-specific fields are added in G12.)
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `user_id` | UUID | FK → `users` |
+| `booking_id` | UUID | FK → `bookings`, nullable |
+| `subject` | VARCHAR(255) | Nullable |
+| `status` | ENUM | `open`, `in_progress`, `resolved`, `closed` — default `open` |
+| `priority` | ENUM | `low`, `medium`, `high` — default `medium` |
+| `assigned_to` | UUID | FK → `users`, nullable |
+| `handled_by` | ENUM | `staff`, `ai`, `hybrid` — default `staff` |
+| `resolution_summary` | TEXT | Nullable |
+| `resolved_at` | TIMESTAMPTZ | Nullable |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Indexes:** `ix_ticket_club_status (club_id, status, priority)`
+
+**Relationships:** `club`, `messages`
+
+---
+
+#### `support_messages`
+A single message within a support/chat thread. (`intent` and `booking_id` are added in G12 for chat use cases.)
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `ticket_id` | UUID | FK → `support_tickets` |
+| `sender_user_id` | UUID | FK → `users`, nullable — null = AI agent |
+| `sender_type` | ENUM | `player`, `staff`, `ai` |
+| `body` | TEXT | |
+| `ai_inference_id` | UUID | Nullable — FK → `ai_inference_log` deferred to G8; plain UUID for now |
+| `created_at` | TIMESTAMPTZ | |
+
+**Indexes:** `ix_support_messages_ticket_id (ticket_id)`
+
+**Relationships:** `ticket`
+
+---
+
 ## Enumerations
 
 | Enum | Values |
@@ -646,6 +752,13 @@ Immutable audit log for booking-credit and guest-pass usage. Mirrors the `wallet
 | `PlatformFeeType` | `booking_fee`, `revenue_share`, `third_party_share` |
 | `DiscountSource` | `membership`, `campaign`, `promo_code`, `staff_manual`, `ai_gap_offer` |
 | `CalendarReservationType` | `training_block`, `private_hire`, `maintenance`, `tournament_hold` |
+| `SkillChangeSource` | `staff_manual`, `ai_auto`, `match_result` |
+| `PromoDiscountType` | `percentage`, `fixed_amount` |
+| `PromoAppliesTo` | `all`, `off_peak`, `open_game`, `lesson`, `tournament` |
+| `SupportTicketStatus` | `open`, `in_progress`, `resolved`, `closed` |
+| `SupportTicketPriority` | `low`, `medium`, `high` |
+| `SupportHandledBy` | `staff`, `ai`, `hybrid` |
+| `MessageSenderType` | `player`, `staff`, `ai` |
 
 ---
 
@@ -679,7 +792,10 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `7d4d380...` | Table simplification — merge `club_settings` into `clubs`; merge `invoices` into `payments`; merge `tenant_users` role into `users`; drop `club_id` from `skill_level_history` and `trainer_availability` |
 | `7f7915bed71a` | G1 — Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` to `users`; add `notificationchannel` enum |
 | `17206ff810ef` | G2 — Add `valid_from`, `valid_until` to `operating_hours` for seasonal hour variations |
+| `62a903cfb227` | G3 — `bookings`: add `min_skill_level`, `max_skill_level`; `booking_players`: add `invite_status` (`invitestatus` enum, default `accepted`); new table `waitlist_entries` (`waitliststatus` enum) |
 | `8582075732fe` | G4 — `payments`: add `club_id`, `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `anomaly_reason`, `dispute_status`; new table `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id` |
+| `24a1464d08d9` | G5 — new table `calendar_reservations` (`calendarreservationtype` enum); `bookings`: add `recurrence_end_date`, `parent_booking_id` (self-ref for recurring series); `clubs`: add `default_skill_range_above` (default `0.5`), `default_skill_range_below` (default `1.0`); `equipment_inventory`: add `reorder_threshold` (descoped but retained — see note); `equipment_rentals`: add `payment_status`, `payment_id`, `damage_charge` |
+| `f80daf1c4ecb` | Drop `calendar_reservations.anchor_skill_level`, `skill_range_above`, `skill_range_below`; remove the `skill_filter` value from the `calendarreservationtype` enum |
 | `80803a6bae79` | Add `source_type` (`wallettransactionsource` enum) and `source_id` (UUID) to `wallet_transactions` |
 | `3a758d32ab8d` | New table `wallet_club_debts` — deferred settlement of wallet debits to club Stripe Connect accounts |
 | `0fcac3948b73` | Add `stripe_price_id` to `subscription_plans`; add `stripe_customer_id`, `stripe_subscription_id`, `subscription_status` (`subscriptionstatus` enum) to `tenants` for SmashBook → org subscription billing |
@@ -688,6 +804,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `ac339fc8a081` | `tenants`: add `trading_name` (back-filled from `name`); rename `subdomain` → `player_subdomain`; add `staff_subdomain` (back-filled as `<player_subdomain>-staff`); add CHECK constraint `player_subdomain <> staff_subdomain` |
 | `fa46b223afc9` | `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — records the target plan for a scheduled downgrade that applies at `current_period_end` |
 | `92c0f1557d7e` | G4.1 — Court hold expiry & auto-release: `bookings`: add `hold_expires_at` (court-level hold); `booking_players`: add `payment_deadline` (slot-level hold) + partial index `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` |
+| `ae37b6ee82be` | G6 — New tables `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id` (FK → `promo_codes`); `skill_level_history`: add `club_id` (FK → `clubs`, NOT NULL), `change_source` (`skillchangesource` enum, default `staff_manual`), `ai_inference_id` (UUID, FK deferred to G8), and make `assigned_by` nullable. New enums: `promodiscounttype`, `promoappliesto`, `supportticketstatus`, `supportticketpriority`, `supporthandledby`, `messagesendertype`, `skillchangesource` |
 
 To run migrations:
 ```bash

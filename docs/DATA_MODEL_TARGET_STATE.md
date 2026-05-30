@@ -1,4 +1,4 @@
-_Last updated: 2026-05-29_
+_Last updated: 2026-05-30_
 
 # SmashBook — Data Model Target State
 
@@ -104,11 +104,11 @@ Update the **Status** column when a migration has been applied and verified. The
 |---|---|---|---|
 | G1 | Sprint 1 | ✅ Applied (`7f7915bed71a`) | `users`: add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` |
 | G2 | Sprint 2 | ✅ Applied (`17206ff810ef`) | `operating_hours`: add `valid_from`, `valid_until` for seasonal variations |
-| G3 | Sprint 3 | 🚧 Columns in models; `waitlist_entries` table **outstanding** — built in Foundation step (see note) | `bookings`: add `min_skill_level`, `max_skill_level`, `invite_confirmed`; `booking_players`: add `invite_status`; new table: `waitlist_entries` |
+| G3 | Sprint 3 | ✅ Applied (`62a903cfb227`) | `bookings`: add `min_skill_level`, `max_skill_level`, `invite_confirmed`; `booking_players`: add `invite_status`; new table: `waitlist_entries` |
 | G4 | Sprint 4 | ✅ Applied (`8582075732fe`) | `payments`: add `failure_reason`, `retry_count`, `next_retry_at`, `anomaly_flagged`, `dispute_status`, `club_id`; new table: `platform_fees`; `wallets`: add `auto_topup_enabled`, `auto_topup_threshold`, `auto_topup_amount`; `bookings`: add `discount_amount`, `discount_source`, `membership_subscription_id`; `booking_players`: add `discount_amount`, `discount_source` |
 | G4.1 | Sprint 4 (court holds) | ✅ Applied (`92c0f1557d7e`) | Court hold expiry & auto-release: `bookings`: add `hold_expires_at`; `booking_players`: add `payment_deadline` + partial index `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` |
-| G5 | Sprint 5 | 🚧 Columns in models; `calendar_reservations` table **outstanding** — built in Foundation step (see note) | `bookings`: add `parent_booking_id` (self-ref for recurring series), `recurrence_end_date`; new table: `calendar_reservations`; `clubs`: add `default_skill_range_above`, `default_skill_range_below`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`. ~~`equipment_inventory`: `reorder_threshold`~~ **DESCOPED** (equipment AI dropped — remove column during recon) |
-| G6 | Sprint 6 (**Foundation**) | ⬜ Not started | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`; `skill_level_history`: add `change_source`, `club_id`. **Prerequisite for the re-prioritised roadmap** — `promo_codes` backs the live `discount_source='promo_code'` enum and CRM campaigns; `skill_level_history` cols back skill-ELO (G11). Run alongside the G3/G5 table reconciliation. |
+| G5 | Sprint 5 | ✅ Applied (`24a1464d08d9`; skill-filter cleanup `f80daf1c4ecb`) | `bookings`: add `parent_booking_id` (self-ref for recurring series), `recurrence_end_date`; new table: `calendar_reservations`; `clubs`: add `default_skill_range_above`, `default_skill_range_below`; `equipment_rentals`: add `damage_charge`, `payment_status`, `payment_id`. ~~`equipment_inventory`: `reorder_threshold`~~ **DESCOPED** (equipment AI dropped) — column was migrated and is **intentionally retained** in the DB (left in place rather than dropped); currently unused |
+| G6 | Sprint 6 (**Foundation**) | ✅ Applied (`ae37b6ee82be`) | New tables: `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id`; `skill_level_history`: add `change_source`, `club_id`, `ai_inference_id` + make `assigned_by` nullable. **Prerequisite for the re-prioritised roadmap** — `promo_codes` backs the live `discount_source='promo_code'` enum and CRM campaigns; `skill_level_history` cols back skill-ELO (G11). Run alongside the G3/G5 table reconciliation. |
 | G6.1 | Post-MVP | ✅ Applied (`32204403280f`) | Player registration email verification + free basic membership: `users`: add `email_verified_at`; `membership_plans`: add `is_default` with partial unique index per club |
 | G6.2 | Post-MVP | ✅ Applied (`fa46b223afc9`) | Membership downgrade scheduling: `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — scheduled downgrade target applied at `current_period_end` |
 | G7 | Sprint 7 — **Analytics** | ⬜ Not started | New table: `court_utilisation_snapshots`; `clubs`: add `timezone`; `users`: add `date_of_birth`, `gender`, `postcode`, `latitude`, `longitude` (all nullable, aspirational — fill Epic-2 demographics/catchment reports); REPORT_CATALOG materialized views (revenue-by-site, active-players-30d, signups/month, player-LTV, coach popularity, RFV pre-aggregate) refreshed by the analytics worker |
@@ -121,7 +121,7 @@ Update the **Status** column when a migration has been applied and verified. The
 
 > **🔁 Re-prioritisation (2026-05-29):** The post-MVP roadmap was re-sequenced to **Analytics → AI infrastructure → CRM → Tournaments**, with a Foundation step first. Groups G7–G12 were **redefined in place** (labels kept, contents and target sprints remapped) — G1–G6 are untouched. The driver is the analytics-first ROI story (see `Jamie Info` user stories: Site Performance + Player Analytics are HIGH priority). Two feature areas were **descoped entirely**: (1) all **weather** features/columns/flags, (2) all **equipment & maintenance AI**. See the "Descoped 2026-05-29" note below.
 
-> **Note on G3/G5 reconciliation (verified 2026-05-29):** The G3/G5 **column** changes are present in the ORM models (`bookings.min_skill_level`/`max_skill_level`/`parent_booking_id`/`recurrence_end_date`, `booking_players.invite_status`, `clubs.default_skill_range_*`, `equipment_rentals` payment/damage fields) but `DATA_MODEL.md` has **no migration rows** for G3 or G5, and the new tables **`waitlist_entries` (G3)** and **`calendar_reservations` (G5)** have **no model files and were never built**. So models are ahead of the docs and two tables are missing. **Foundation action (before G7):** run `alembic current` / `alembic check` against the DB to confirm which columns are actually migrated, build the two missing tables, drop the descoped `equipment_inventory.reorder_threshold`, then bring `DATA_MODEL.md` in sync and flip G3/G5 to ✅.
+> **Note on G3/G5 reconciliation (completed 2026-05-30):** Resolved. Both tables are now built, migrated, and applied — `waitlist_entries` (G3, `62a903cfb227`) and `calendar_reservations` (G5, `24a1464d08d9`, with skill-filter cleanup `f80daf1c4ecb`) — and the corresponding column changes (`bookings.min_skill_level`/`max_skill_level`/`parent_booking_id`/`recurrence_end_date`, `booking_players.invite_status`, `clubs.default_skill_range_*`, `equipment_rentals` payment/damage fields) are live. `DATA_MODEL.md` now carries migration rows for all three revisions, and G3/G5 are flipped to ✅. **One deliberate deviation:** the descoped `equipment_inventory.reorder_threshold` column was **not** dropped — it was migrated in and is intentionally left in the DB (unused) rather than removed.
 
 > **Descoped 2026-05-29 (do not reintroduce without revisiting this note):**
 > - **Weather, all of it:** `clubs.weather_alerts_enabled`, `clubs.latitude`, `clubs.longitude`, `bookings.weather_alert_sent`, the `weather_aware_alerts` AI feature + flag, and any weather key in `cancellation_predictions.risk_factors`. *(`clubs.timezone` is **kept** — it serves analytics hour-bucketing, not weather.)*
@@ -496,7 +496,7 @@ No changes from current state.
 ## 7. Equipment
 
 ### `equipment_inventory`
-**Changes from current:** None in scope. *(The `reorder_threshold` column — added for AI purchase-order prediction — was **descoped 2026-05-29**; it exists in the model and should be dropped during the G5 reconciliation.)*
+**Changes from current:** None in scope. *(The `reorder_threshold` column — added for AI purchase-order prediction — was **descoped 2026-05-29**. Per the G5 reconciliation decision (2026-05-30), it is **intentionally retained** in the model and DB rather than dropped; it is currently unused.)*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -512,7 +512,7 @@ No changes from current state.
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
-> **Descoped 2026-05-29:** `reorder_threshold` (~~`INTEGER` Nullable~~) was added for AI purchase-order prediction, which is no longer on the roadmap. Drop the column during the G5 reconciliation.
+> **Descoped 2026-05-29:** `reorder_threshold` (`INTEGER` Nullable) was added for AI purchase-order prediction, which is no longer on the roadmap. Per the G5 reconciliation decision (2026-05-30), the column is **intentionally retained** in the DB (unused) rather than dropped.
 
 ---
 
