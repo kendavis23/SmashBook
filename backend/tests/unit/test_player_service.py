@@ -14,8 +14,10 @@ from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
+import pytest
+
 from app.db.models.booking import BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
-from app.db.models.skill import SkillLevelHistory
+from app.db.models.skill import SkillLevelHistory, SkillChangeSource
 from app.schemas.user import PlayerBookingItem, PlayerSearchResult, SkillLevelHistoryItem, SkillLevelUpdateResponse
 from app.services.player_service import PlayerService
 
@@ -274,12 +276,21 @@ def _make_player(skill_level=None):
     )
 
 
-def _make_skill_db(player=None):
-    """Mock AsyncSession for update_skill_level."""
+def _make_skill_db(player=None, club_id=CLUB_ID):
+    """Mock AsyncSession for update_skill_level.
+
+    update_skill_level issues two queries: (1) load the player, (2) resolve the
+    assigning staff member's club_id. Return distinct results per execute call.
+    """
     db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = player
-    db.execute = AsyncMock(return_value=result)
+
+    player_result = MagicMock()
+    player_result.scalar_one_or_none.return_value = player
+
+    club_result = MagicMock()
+    club_result.scalar_one_or_none.return_value = club_id
+
+    db.execute = AsyncMock(side_effect=[player_result, club_result])
 
     added = []
     db.add = MagicMock(side_effect=lambda obj: added.append(obj))
@@ -384,6 +395,32 @@ class TestUpdateSkillLevel:
         assert entry.previous_level == Decimal("3.0")
         assert entry.new_level == Decimal("4.0")
         assert entry.assigned_by == STAFF_ID
+
+    async def test_history_entry_scoped_to_assigning_staff_club(self):
+        """G6: the entry's club_id is the assigning staff member's club."""
+        player = _make_player(skill_level=Decimal("3.0"))
+        db = _make_skill_db(player=player, club_id=CLUB_ID)
+        svc = PlayerService(db)
+        await svc.update_skill_level(
+            user_id=player.id,
+            new_level=Decimal("4.0"),
+            assigned_by_staff_id=STAFF_ID,
+        )
+        entry = db._added[0]
+        assert entry.club_id == CLUB_ID
+        assert entry.change_source == SkillChangeSource.staff_manual
+
+    async def test_raises_when_staff_has_no_club_profile(self):
+        """G6: a staff member with no active club profile cannot scope the change."""
+        player = _make_player(skill_level=Decimal("3.0"))
+        db = _make_skill_db(player=player, club_id=None)
+        svc = PlayerService(db)
+        with pytest.raises(ValueError):
+            await svc.update_skill_level(
+                user_id=player.id,
+                new_level=Decimal("4.0"),
+                assigned_by_staff_id=STAFF_ID,
+            )
 
     async def test_first_assignment_previous_level_is_none(self):
         player = _make_player(skill_level=None)

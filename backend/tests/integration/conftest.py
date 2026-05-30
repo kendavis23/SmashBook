@@ -58,7 +58,7 @@ from app.db.models.membership import BillingPeriod, MembershipCreditLog, Members
 from app.db.models.court import CalendarReservation, Court
 from app.db.models.payment import Payment, PlatformFee
 from app.db.models.skill import SkillLevelHistory
-from app.db.models.staff import StaffProfile, TrainerAvailability
+from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import TenantUserRole, User
 from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction
@@ -512,6 +512,28 @@ async def staff(tenant, test_session_factory):
 
 
 @pytest_asyncio.fixture
+async def staff_club_profile(staff, club, test_session_factory):
+    """Links the `staff` user to `club` via a StaffProfile.
+
+    Required by flows that resolve a staff member's club — e.g. club-scoped
+    skill_level_history writes (G6).
+    """
+    async with test_session_factory() as session:
+        sp = StaffProfile(
+            user_id=staff.id, club_id=club.id, role=StaffRole.ops_lead, is_active=True
+        )
+        session.add(sp)
+        await session.commit()
+        await session.refresh(sp)
+
+    yield sp
+
+    async with test_session_factory() as session:
+        await session.execute(sql_delete(StaffProfile).where(StaffProfile.id == sp.id))
+        await session.commit()
+
+
+@pytest_asyncio.fixture
 async def admin(tenant, test_session_factory):
     user = await _create_user(
         tenant.id, "admin", "Test Admin", TenantUserRole.admin, test_session_factory
@@ -638,6 +660,10 @@ async def club(tenant, test_session_factory):
             )
         await session.execute(
             sql_delete(MembershipPlan).where(MembershipPlan.club_id == c.id)
+        )
+        # skill_level_history is club-scoped (G6); clear rows before deleting the club
+        await session.execute(
+            sql_delete(SkillLevelHistory).where(SkillLevelHistory.club_id == c.id)
         )
         obj = await session.get(Club, c.id)
         if obj:

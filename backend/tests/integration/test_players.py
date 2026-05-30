@@ -775,7 +775,7 @@ class TestGetMatchHistory:
 
 
 class TestUpdateSkillLevel:
-    async def test_success(self, client, player, staff, staff_headers):
+    async def test_success(self, client, player, staff, staff_headers, staff_club_profile):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
@@ -789,7 +789,7 @@ class TestUpdateSkillLevel:
         assert "skill_assigned_at" in body
         assert "history_entry" in body
 
-    async def test_history_entry_shape(self, client, player, staff, staff_headers):
+    async def test_history_entry_shape(self, client, player, staff, staff_headers, staff_club_profile):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
@@ -805,7 +805,7 @@ class TestUpdateSkillLevel:
         assert "created_at" in h
 
     async def test_subsequent_assignment_captures_previous_level(
-        self, client, player, staff, staff_headers
+        self, client, player, staff, staff_headers, staff_club_profile
     ):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
@@ -909,7 +909,7 @@ class TestGetSkillHistory:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    async def test_returns_history_after_assignment(self, client, player, staff, staff_headers):
+    async def test_returns_history_after_assignment(self, client, player, staff, staff_headers, staff_club_profile):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
@@ -928,7 +928,7 @@ class TestGetSkillHistory:
         assert item["assigned_by"] == str(staff.id)
         assert item["reason"] == "First assessment"
 
-    async def test_multiple_assignments_all_in_history(self, client, player, staff, staff_headers):
+    async def test_multiple_assignments_all_in_history(self, client, player, staff, staff_headers, staff_club_profile):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
@@ -946,7 +946,7 @@ class TestGetSkillHistory:
         assert resp.status_code == 200
         assert len(resp.json()) == 2
 
-    async def test_history_contains_required_fields(self, client, player, staff_headers):
+    async def test_history_contains_required_fields(self, client, player, staff, staff_headers, staff_club_profile):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,

@@ -106,15 +106,47 @@ def upgrade() -> None:
     op.create_index('ix_support_messages_ticket_id', 'support_messages', ['ticket_id'], unique=False)
     op.add_column('bookings', sa.Column('promo_code_id', sa.UUID(), nullable=True))
     op.create_foreign_key('fk_bookings_promo_code_id', 'bookings', 'promo_codes', ['promo_code_id'], ['id'])
-    # club_id is a NOT NULL FK with no backfill source (it was removed in the prior
-    # simplification, so existing rows carry no club reference). The table is empty at
-    # G6 time; no server_default is possible for a FK, so it is added NOT NULL directly.
-    op.add_column('skill_level_history', sa.Column('club_id', sa.UUID(), nullable=False))
+    # club_id is a NOT NULL FK with no direct backfill source (it was removed in the
+    # prior simplification, so existing rows carry no club reference). Populated-table
+    # safe pattern: add nullable -> backfill -> set NOT NULL. The club is derived from
+    # the assigning staff member's club (skill is club-scoped; the assessing club owns
+    # the record). All historical rows predate G6, where assigned_by was NOT NULL, so
+    # every row has an assigner; staff are club-scoped via staff_profiles.
+    op.add_column('skill_level_history', sa.Column('club_id', sa.UUID(), nullable=True))
     op.add_column('skill_level_history', sa.Column('change_source', postgresql.ENUM('staff_manual', 'ai_auto', 'match_result', name='skillchangesource', create_type=False), nullable=False, server_default='staff_manual'))
     op.add_column('skill_level_history', sa.Column('ai_inference_id', sa.UUID(), nullable=True))
     op.alter_column('skill_level_history', 'assigned_by',
                existing_type=sa.UUID(),
                nullable=True)
+    # Backfill club_id from the assigning staff member's (earliest active) club profile.
+    op.execute("""
+        UPDATE skill_level_history slh
+        SET club_id = sp.club_id
+        FROM (
+            SELECT DISTINCT ON (user_id) user_id, club_id
+            FROM staff_profiles
+            ORDER BY user_id, is_active DESC, created_at
+        ) sp
+        WHERE sp.user_id = slh.assigned_by
+          AND slh.club_id IS NULL
+    """)
+    # Legacy fallback: rows whose assigner has no staff_profile (e.g. owner/admin who
+    # are permitted to assign skill but aren't club-scoped staff). Use the earliest club
+    # in the assigner's tenant — best-effort, same-tenant, guarantees a valid FK so the
+    # NOT NULL constraint below can be applied without leaving orphaned rows.
+    op.execute("""
+        UPDATE skill_level_history slh
+        SET club_id = tc.club_id
+        FROM users u
+        JOIN (
+            SELECT DISTINCT ON (tenant_id) tenant_id, id AS club_id
+            FROM clubs
+            ORDER BY tenant_id, created_at
+        ) tc ON tc.tenant_id = u.tenant_id
+        WHERE u.id = slh.assigned_by
+          AND slh.club_id IS NULL
+    """)
+    op.alter_column('skill_level_history', 'club_id', existing_type=sa.UUID(), nullable=False)
     op.create_foreign_key('fk_skill_level_history_club_id', 'skill_level_history', 'clubs', ['club_id'], ['id'])
     # ### end Alembic commands ###
 
