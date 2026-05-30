@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Enum, DateTime, Text, UniqueConstraint
+from sqlalchemy import Column, String, Boolean, ForeignKey, Numeric, Enum, DateTime, Date, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin, TenantScopedMixin
@@ -20,6 +20,13 @@ class NotificationChannel(str, enum.Enum):
     email = "email"
     sms = "sms"
     in_app = "in_app"
+
+
+class Gender(str, enum.Enum):
+    male = "male"
+    female = "female"
+    other = "other"
+    prefer_not_to_say = "prefer_not_to_say"
 
 
 class User(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
@@ -47,6 +54,14 @@ class User(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     preferred_notification_channel = Column(
         Enum(NotificationChannel), nullable=False, default=NotificationChannel.push
     )
+
+    # Aspirational demographics — nullable; powers Epic-2 demographics + catchment
+    # reporting once a registration intake flow captures them (G7).
+    date_of_birth = Column(Date, nullable=True)
+    gender = Column(Enum(Gender), nullable=True)
+    postcode = Column(String(20), nullable=True)
+    latitude = Column(Numeric(10, 7), nullable=True)
+    longitude = Column(Numeric(10, 7), nullable=True)
 
     tenant = relationship("Tenant", back_populates="users")
     wallet = relationship("Wallet", back_populates="user", uselist=False)

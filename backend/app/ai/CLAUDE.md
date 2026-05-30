@@ -1,6 +1,8 @@
 # AI Domain — CLAUDE.md
 
-_Last updated: 2026-05-23_
+_Last updated: 2026-05-30_
+
+**Commits:** The user handles all commits manually. Never run `git commit` or `git push` — make the changes and leave them for the user to review and commit.
 
 This subtree owns every AI-driven feature in SmashBook: dynamic pricing, gap detection, smart notifications, matchmaking, Fill the Court, cancellation prediction, churn scoring, segmentation/campaigns, conversational booking, AI support chatbot, video analysis, training recommendations, market intelligence.
 

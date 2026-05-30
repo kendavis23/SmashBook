@@ -12,6 +12,8 @@ class Club(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
     address = Column(Text, nullable=True)
     stripe_connect_account_id = Column(String(255), nullable=True)
     currency = Column(String(3), nullable=False, default="GBP")
+    # Analytics hour/day bucketing (G7)
+    timezone = Column(String(50), nullable=False, server_default="Europe/London", default="Europe/London")
 
     # Settings (merged from club_settings)
     booking_duration_minutes = Column(Integer, nullable=False, default=90)

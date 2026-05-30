@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-05-29_
+_Last updated: 2026-05-30_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -16,6 +16,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `/fe-intra`
 
 All other directories, including the root and `/backend`, are in scope.
+
+## Commits
+
+**The user handles all commits manually.** Never run `git commit`, `git push`, or otherwise create commits — make the file changes and leave them staged/unstaged for the user to review and commit themselves.
 
 ## What This Project Is
 
@@ -242,14 +246,15 @@ Always follow this order exactly — no shortcuts:
 8. Update docs/DATA_MODEL_TARGET_STATE.md — flip the migration group's
    Status to ✅ Applied (with the migration revision ID)
 9. Bump the "_Last updated:_" line on both docs to today's date
-10. Commit model file + migration file + both updated docs together
+10. Leave the model file + migration file + both updated docs staged together
+    for the user — the user handles all commits manually (see "Commits" above)
 ```
 
 **Never:**
 - Modify the database directly (no manual `ALTER TABLE`)
 - Apply a migration without reviewing the generated file first
 - Update `DATA_MODEL.md` before the migration is applied and verified
-- Commit a model change without its migration, or a migration without its model change
+- Create commits yourself — the user handles all commits manually; just keep a model change and its migration staged together for them
 - **Write migration files by hand** — always use `alembic revision --autogenerate`. Hand-writing revision IDs or `down_revision` values causes duplicate-head errors and broken chains. Before creating any migration, run `alembic heads` to confirm a single head exists.
 
 **Useful state commands (run from `backend/`):**

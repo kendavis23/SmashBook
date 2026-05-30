@@ -1,7 +1,8 @@
 from .base import Base
 from .tenant import Tenant, SubscriptionPlan
-from .user import User, TenantUserRole
+from .user import User, TenantUserRole, NotificationChannel, Gender
 from .club import Club, OperatingHours, PricingRule
+from .analytics import CourtUtilisationSnapshot
 from .court import Court, CalendarReservation, CalendarReservationType
 from .staff import StaffProfile, TrainerAvailability
 from .booking import Booking, BookingPlayer, WaitlistEntry
@@ -24,8 +25,9 @@ from .support import (
 __all__ = [
     "Base",
     "Tenant", "SubscriptionPlan",
-    "User", "TenantUserRole",
+    "User", "TenantUserRole", "NotificationChannel", "Gender",
     "Club", "OperatingHours", "PricingRule",
+    "CourtUtilisationSnapshot",
     "Court", "CalendarReservation", "CalendarReservationType",
     "StaffProfile", "TrainerAvailability",
     "Booking", "BookingPlayer", "WaitlistEntry",

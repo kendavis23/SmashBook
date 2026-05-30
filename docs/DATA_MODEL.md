@@ -1,4 +1,4 @@
-_Last updated: 2026-05-30 14:35 UTC_
+_Last updated: 2026-05-30 15:05 UTC_
 
 # SmashBook Data Model
 
@@ -128,10 +128,17 @@ Role is stored directly on the user row (no separate `tenant_users` join table).
 | `suspension_reason` | TEXT | Nullable |
 | `default_payment_method_id` | VARCHAR(255) | Nullable — Stripe PaymentMethod ID |
 | `preferred_notification_channel` | ENUM | `push`, `email`, `sms`, `in_app` — default `push` |
+| `date_of_birth` | DATE | Nullable — aspirational; age-band demographics (Epic 2). Captured at registration if/when intake forms collect it |
+| `gender` | ENUM | Nullable — `male`, `female`, `other`, `prefer_not_to_say`; self-reported demographics |
+| `postcode` | VARCHAR(20) | Nullable — catchment-area reporting |
+| `latitude` | NUMERIC(10,7) | Nullable — player location for the catchment map (distinct from club coordinates) |
+| `longitude` | NUMERIC(10,7) | Nullable |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
 **Constraints:** `UNIQUE(tenant_id, email)`
+
+> The five demographic columns (`date_of_birth`, `gender`, `postcode`, `latitude`, `longitude`) are aspirational — added nullable ahead of the registration intake flow that populates them. The Epic-2 demographics + catchment-map reports stay dark until that capture exists (G7).
 
 **Relationships:** `tenant`, `wallet`, `booking_players`, `skill_history`, `membership_subscriptions`
 
@@ -150,6 +157,7 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 | `address` | TEXT | Nullable |
 | `stripe_connect_account_id` | VARCHAR(255) | Nullable — Stripe Connect |
 | `currency` | VARCHAR(3) | Default `"GBP"` |
+| `timezone` | VARCHAR(50) | Default `"Europe/London"` — analytics hour/day bucketing |
 | `booking_duration_minutes` | INTEGER | Default `90` |
 | `max_advance_booking_days` | INTEGER | Default `14` |
 | `min_booking_notice_hours` | INTEGER | Default `2` |
@@ -727,12 +735,42 @@ A single message within a support/chat thread. (`intent` and `booking_id` are ad
 
 ---
 
+### 14. Analytics
+
+#### `court_utilisation_snapshots`
+Hourly (and daily-rollup) court utilisation snapshots written by the analytics worker — never by the API request path. A **physical snapshot** (not a materialized view) because `total_slots` and `revenue_potential` depend on operating-hours and pricing config *as they were at snapshot time*; those historical figures can't be reconstructed if a club later changes hours or prices.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `court_id` | UUID | FK → `courts` |
+| `snapshot_date` | DATE | |
+| `hour_of_day` | SMALLINT | Nullable — 0–23; null = daily rollup |
+| `day_of_week` | SMALLINT | 0=Mon … 6=Sun |
+| `total_slots` | INTEGER | Available bookable slots in this window |
+| `booked_slots` | INTEGER | |
+| `utilisation_pct` | NUMERIC(5,2) | Computed: `booked / total * 100` |
+| `revenue_actual` | NUMERIC(10,2) | |
+| `revenue_potential` | NUMERIC(10,2) | Revenue at 100% base rate |
+| `avg_booking_lead_time_h` | NUMERIC(6,1) | Nullable — avg hours in advance bookings were made |
+| `created_at` | TIMESTAMPTZ | |
+
+**Constraints:** `UNIQUE(court_id, snapshot_date, hour_of_day)` (`uq_court_utilisation_court_date_hour`)
+
+**Relationships:** `club`, `court`
+
+> The remaining G7 analytics reports (revenue-by-site, rolling-30-day active players, sign-ups/month, player LTV, most-active players, churner list, coach popularity, RFV pre-aggregate) are served by **materialized views refreshed by the analytics worker**, not ORM tables — they are not yet built and do not appear here.
+
+---
+
 ## Enumerations
 
 | Enum | Values |
 |---|---|
 | `TenantUserRole` | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` — used for `users.role` |
 | `NotificationChannel` | `push`, `email`, `sms`, `in_app` |
+| `Gender` | `male`, `female`, `other`, `prefer_not_to_say` — `users.gender` |
 | `StaffRole` | `trainer`, `ops_lead`, `admin`, `front_desk` |
 | `SurfaceType` | `indoor`, `outdoor`, `crystal`, `artificial_grass` |
 | `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `corporate_event`, `tournament` |
@@ -806,6 +844,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `92c0f1557d7e` | G4.1 — Court hold expiry & auto-release: `bookings`: add `hold_expires_at` (court-level hold); `booking_players`: add `payment_deadline` (slot-level hold) + partial index `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` |
 | `ae37b6ee82be` | G6 — New tables `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id` (FK → `promo_codes`); `skill_level_history`: add `club_id` (FK → `clubs`, NOT NULL), `change_source` (`skillchangesource` enum, default `staff_manual`), `ai_inference_id` (UUID, FK deferred to G8), and make `assigned_by` nullable. New enums: `promodiscounttype`, `promoappliesto`, `supportticketstatus`, `supportticketpriority`, `supporthandledby`, `messagesendertype`, `skillchangesource` |
 | `8800a16daf16` | G3 reconcile — add index `ix_waitlist_club_date (club_id, desired_date, status)` on `waitlist_entries`. Closes a doc-vs-DB gap: the index was listed in `DATA_MODEL_TARGET_STATE.md` (tagged G3) but was never carried into the model or the original G3 migration `62a903cfb227`. Serves the waitlist-sweep query (waiting entries for a club on a date) |
+| `b210c7b03579` | G7 (Analytics) — new table `court_utilisation_snapshots` (`UNIQUE(court_id, snapshot_date, hour_of_day)`); `clubs`: add `timezone` (default `"Europe/London"`); `users`: add aspirational demographics `date_of_birth`, `gender` (`gender` enum), `postcode`, `latitude`, `longitude` (all nullable). REPORT_CATALOG materialized views are worker-managed and not part of this migration |
 
 To run migrations:
 ```bash

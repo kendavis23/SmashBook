@@ -1,6 +1,8 @@
 # Analytics Domain — CLAUDE.md
 
-_Last updated: 2026-05-23_
+_Last updated: 2026-05-30_
+
+**Commits:** The user handles all commits manually. Never run `git commit` or `git push` — make the changes and leave them for the user to review and commit.
 
 This subtree owns reporting, dashboards, exports, scheduled aggregations, and materialized views. If your work is "give me a number derived from operational data," it belongs here. If your work is "decide what the system should do next based on a model prediction," it belongs in [/backend/app/ai/](../ai/).
 
