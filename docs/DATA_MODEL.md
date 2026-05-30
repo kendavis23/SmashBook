@@ -1,4 +1,4 @@
-_Last updated: 2026-05-30 09:55 UTC_
+_Last updated: 2026-05-30 14:35 UTC_
 
 # SmashBook Data Model
 
@@ -805,6 +805,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `fa46b223afc9` | `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — records the target plan for a scheduled downgrade that applies at `current_period_end` |
 | `92c0f1557d7e` | G4.1 — Court hold expiry & auto-release: `bookings`: add `hold_expires_at` (court-level hold); `booking_players`: add `payment_deadline` (slot-level hold) + partial index `ix_booking_players_deadline (payment_deadline) WHERE payment_status = 'pending'` |
 | `ae37b6ee82be` | G6 — New tables `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id` (FK → `promo_codes`); `skill_level_history`: add `club_id` (FK → `clubs`, NOT NULL), `change_source` (`skillchangesource` enum, default `staff_manual`), `ai_inference_id` (UUID, FK deferred to G8), and make `assigned_by` nullable. New enums: `promodiscounttype`, `promoappliesto`, `supportticketstatus`, `supportticketpriority`, `supporthandledby`, `messagesendertype`, `skillchangesource` |
+| `8800a16daf16` | G3 reconcile — add index `ix_waitlist_club_date (club_id, desired_date, status)` on `waitlist_entries`. Closes a doc-vs-DB gap: the index was listed in `DATA_MODEL_TARGET_STATE.md` (tagged G3) but was never carried into the model or the original G3 migration `62a903cfb227`. Serves the waitlist-sweep query (waiting entries for a club on a date) |
 
 To run migrations:
 ```bash

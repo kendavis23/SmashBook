@@ -124,6 +124,9 @@ class BookingPlayer(Base, UUIDMixin, TimestampMixin):
 
 class WaitlistEntry(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "waitlist_entries"
+    __table_args__ = (
+        Index("ix_waitlist_club_date", "club_id", "desired_date", "status"),
+    )
 
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
     court_id = Column(UUID(as_uuid=True), ForeignKey("courts.id"), nullable=True)
