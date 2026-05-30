@@ -104,7 +104,6 @@ export function PlayerAutocomplete({
             setSelectedPlayer(null);
             setInputValue("");
             onSelect(player);
-            onChange(player.id);
         } else {
             setSelectedPlayer(player);
             setInputValue(player.full_name);

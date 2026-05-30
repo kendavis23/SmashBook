@@ -233,7 +233,7 @@ describe("NewBookingModalContainer", () => {
                 max_players: 6,
                 event_name: "Club match",
                 is_open_game: true,
-                player_user_ids: undefined,
+                player_user_ids: ["player-2"],
                 staff_profile_id: null,
             }),
             expect.any(Object)
