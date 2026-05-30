@@ -1,4 +1,4 @@
-_Last updated: 2026-05-30 12:00 UTC_
+_Last updated: 2026-05-30 14:30 UTC_
 
 # Mobile Player Development Guide
 
@@ -183,21 +183,77 @@ import { config } from "@repo/config";
 
 ---
 
-## Styling — NativeWind Only
+## Styling — Theme Tokens (NativeWind + `useTheme()`)
 
-Light theme is used throughout. Use NativeWind `className` on every component. **Never use `StyleSheet.create`, `StyleSheet`, or inline `style={{}}`. NativeWind is always required for styling.**
+**All colors come from the theme. Never hardcode a hex/rgb value** (`#2563EB`, `rgba(...)`) or a raw Tailwind palette class (`bg-slate-100`, `text-[#0f172a]`) in a feature file. Light/dark are driven by the OS color scheme; new screens get dark mode for free as long as every color is a token.
+
+There are two places color is applied in React Native, and each has its own token source:
+
+| Where color is applied                                                                     | How to theme it                                          |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------- |
+| NativeWind `className`                                                                     | Semantic token classes (`bg-card`, `text-foreground`, …) |
+| Inline `style={{}}`, `<Ionicons color>`, `placeholderTextColor`, `android_ripple`, shadows | `useThemeColors()` from `@/src/theme`                    |
+
+NativeWind `className` cannot resolve into inline `style` props or `color={}` props, so anything that is not a `className` must read from the `useThemeColors()` hook.
+
+### The theme module (`src/theme/`)
 
 ```tsx
-// Correct
-<View className="flex-1 bg-background px-4 py-6">
-  <Text className="text-2xl font-bold text-foreground">Hello</Text>
-</View>
+import { useThemeColors } from "../../../theme"; // adjust depth, or "@/src/theme"
 
-// Wrong
-<View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+function MyCard() {
+    const colors = useThemeColors();
+    return (
+        <View style={{ backgroundColor: colors.card, borderColor: colors.border }}>
+            <Ionicons name="add" size={20} color={colors.cta} />
+            <Text className="text-foreground">Hello</Text>
+        </View>
+    );
+}
 ```
 
-Use semantic token class names (`bg-background`, `text-foreground`, `border-border`, `bg-primary`, `text-primary-foreground`, `bg-muted`, `text-muted-foreground`, `bg-destructive`, `text-destructive`) — never hardcoded color values.
+- `src/theme/palette.ts` — raw fixed hue/shade constants (`blue600`, `slate100`, …). Mode-agnostic.
+- `src/theme/themes.ts` — `lightColors` / `darkColors` semantic token objects (the RN-side mirror of `tokens.css`).
+- `src/theme/ThemeProvider.tsx` — `<ThemeProvider>` (wired into `AppProviders`) + `useTheme()` / `useThemeColors()`. The active theme follows `useColorScheme()`; light is the default look today. A manual toggle can be added later without touching consumers.
+
+### Semantic token reference
+
+| Token (`colors.*` / `className`)                                           | Use for                                                     |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `background` / `foreground`                                                | Page background, primary text                               |
+| `card` / `cardForeground`                                                  | Card/sheet surfaces                                         |
+| `muted` / `mutedForeground`                                                | Subtle surfaces, secondary text, inactive icons             |
+| `border` / `input`                                                         | Borders, input outlines                                     |
+| `cta` / `ctaForeground` / `ctaSurface` / `ctaBorder`                       | Primary blue buttons, links, active states, soft blue chips |
+| `destructive` / `destructiveSurface`                                       | Errors, destructive actions                                 |
+| `success` / `successSurface`                                               | Confirmed/paid/positive states                              |
+| `warning` / `warningSurface`                                               | Pending/caution states                                      |
+| `hero` / `heroForeground` / `heroMuted` / `heroGlass` / `heroGlassBorder`  | Blue hero header (see Hero pattern below)                   |
+| `contentSurface`                                                           | The slate area that lifts over the hero                     |
+| `tabBar` / `tabBarBorder` / `tabActive` / `tabActiveLabel` / `tabInactive` | Bottom tab bar                                              |
+| `overlay` / `placeholder` / `shadow` / `ripple`                            | Modal scrim, input placeholder, shadowColor, android_ripple |
+
+Status/payment/invite badge colors live in `getStatusConfig(colors)` / `getPaymentConfig(colors)` / `getInviteConfig(colors)` builder functions in the feature `constants/` files — call them with `useThemeColors()`, never read the old `STATUS_CONFIG` constant.
+
+```tsx
+// Wrong — hardcoded
+<View style={{ backgroundColor: "#2563EB" }}>
+<Text className="text-[#0f172a]">
+<Ionicons color="#94A3B8" />
+
+// Correct — themed
+<View style={{ backgroundColor: colors.cta }}>
+<Text className="text-foreground">
+<Ionicons color={colors.mutedForeground} />
+```
+
+### Decorative-accent exception
+
+A small set of **decorative** colors are intentionally fixed brand accents, not semantic tokens: the per-row icon-chip colors in `profile/constants/profileModules.ts` and `profile/constants/notificationOptions.ts` (one distinct hue per menu item). These read fine on both light and dark and are the **only** sanctioned hardcoded colors. Don't add new ones without a comment explaining why a semantic token won't do.
+
+### Migration status
+
+Themed: `auth`, `home`, `my-games`, all of `booking`, all of `profile`, the bottom tab bar, and shared components. The only sanctioned fixed colors are the documented decorative icon-chip accents in `profile/constants/profileModules.ts` and `profile/constants/notificationOptions.ts`.
 
 **Platform-specific classes:**
 
@@ -205,10 +261,11 @@ Use semantic token class names (`bg-background`, `text-foreground`, `border-bord
 <View className="pt-4 ios:pt-8 android:pt-6">
 ```
 
-**NativeWind caveats:**
+**Styling caveats:**
 
 - `KeyboardAvoidingView` behavior still needs `Platform.OS` check — this is native behavior, not styling
-- Animated values from Reanimated use inline styles on `Animated.View` — that is the only exception
+- Animated values from Reanimated use inline styles on `Animated.View`
+- Inline `style={{}}` is expected for layout and for color values read from `useThemeColors()` (RN props can't take `className`). Never put a hardcoded color in an inline style. Do not use `StyleSheet.create`.
 
 ---
 
@@ -336,10 +393,12 @@ const { control, handleSubmit } = useForm<FormValues>({
 
 Every main tab screen uses the same two-part layout: a fixed blue hero header that bleeds into the status bar, and a scrollable slate content area that lifts over it with rounded top corners. Use this pattern on every new tab screen — never a plain white header.
 
+**Colors are theme tokens.** Read them from `useThemeColors()` (`colors.hero`, `colors.heroForeground`, `colors.heroMuted`, `colors.heroGlass`, `colors.heroGlassBorder`, `colors.contentSurface`, `colors.shadow`). The literal hex values shown below are the _light-theme_ resolved values for reference only — write the token, not the hex.
+
 ### Layout tree
 
 ```
-SafeAreaView          backgroundColor: "#2563EB"  edges={["top"]}
+SafeAreaView          backgroundColor: colors.hero   edges={["top"]}
   StatusBar           style="light"
   View                hero header — FIXED, never scrolls
   ScrollView          scrollable content — lifts over hero with rounded top corners
@@ -355,17 +414,17 @@ SafeAreaView          backgroundColor: "#2563EB"  edges={["top"]}
 #### Outer wrapper (rendered by the Screen container)
 
 ```tsx
-<SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+<SafeAreaView style={{ flex: 1, backgroundColor: colors.hero }} edges={["top"]}>
 ```
 
-`backgroundColor: "#2563EB"` fills the status bar notch area on iOS/Android notched devices with the same blue. `edges={["top"]}` means safe-area padding is applied only at the top — the bottom is handled by the tab bar.
+`backgroundColor: colors.hero` fills the status bar notch area on iOS/Android notched devices with the same blue. `edges={["top"]}` means safe-area padding is applied only at the top — the bottom is handled by the tab bar.
 
 #### Hero header (fixed, does not scroll)
 
 ```tsx
 <View
     style={{
-        backgroundColor: "#2563EB",
+        backgroundColor: colors.hero,
         paddingHorizontal: 20,   // left/right gutters
         paddingTop: 8,           // space below the safe-area notch
         paddingBottom: 28,       // extra bottom padding — creates overlap room for the card below
@@ -379,7 +438,9 @@ Inner row layout (title left, action buttons right):
 <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}>
     <View style={{ flex: 1 }}>
         {/* Eyebrow — small label above the title */}
-        <Text style={{ fontSize: 13, color: "#BFDBFE", fontWeight: "500", letterSpacing: 0.3 }}>
+        <Text
+            style={{ fontSize: 13, color: colors.heroMuted, fontWeight: "500", letterSpacing: 0.3 }}
+        >
             Eyebrow label
         </Text>
         {/* Page title */}
@@ -387,7 +448,7 @@ Inner row layout (title left, action buttons right):
             style={{
                 fontSize: 26,
                 fontWeight: "700",
-                color: "#FFFFFF",
+                color: colors.heroForeground,
                 marginTop: 2,
                 letterSpacing: -0.3,
             }}
@@ -395,7 +456,7 @@ Inner row layout (title left, action buttons right):
             Page Title
         </Text>
         {/* Subtitle */}
-        <Text style={{ fontSize: 13, color: "#BFDBFE", marginTop: 4, fontWeight: "400" }}>
+        <Text style={{ fontSize: 13, color: colors.heroMuted, marginTop: 4, fontWeight: "400" }}>
             Supporting detail
         </Text>
     </View>
@@ -404,13 +465,13 @@ Inner row layout (title left, action buttons right):
 </View>
 ```
 
-Text colour reference:
+Token reference (light-theme hex shown for context only — always write the token):
 
-| Role               | Color     | Token equivalent |
-| ------------------ | --------- | ---------------- |
-| Title              | `#FFFFFF` | white            |
-| Eyebrow / subtitle | `#BFDBFE` | blue-200         |
-| Background         | `#2563EB` | blue-600         |
+| Role               | Token                   | Light hex |
+| ------------------ | ----------------------- | --------- |
+| Title              | `colors.heroForeground` | `#FFFFFF` |
+| Eyebrow / subtitle | `colors.heroMuted`      | `#BFDBFE` |
+| Background         | `colors.hero`           | `#2563EB` |
 
 #### Scrollable content card (lifts over hero)
 
@@ -418,7 +479,7 @@ Text colour reference:
 <ScrollView
     style={{
         flex: 1,
-        backgroundColor: "#F1F5F9",      // slate-100 — not pure white
+        backgroundColor: colors.contentSurface, // slate-100 in light — not pure white
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         marginTop: -16,                  // pulls card up 16 px into the hero overlap zone
@@ -436,12 +497,12 @@ If the screen content is not scrollable (e.g. it contains its own `FlatList` or 
 <View
     style={{
         flex: 1,
-        backgroundColor: "#F1F5F9",
+        backgroundColor: colors.contentSurface,
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
         marginTop: -16,
         overflow: "hidden",
-        shadowColor: "#1E3A8A",
+        shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.06,
         shadowRadius: 12,
@@ -459,16 +520,18 @@ import { type JSX } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useThemeColors } from "@/src/theme"; // or relative ../../../theme
 
 export function MyScreen(): JSX.Element {
+    const colors = useThemeColors();
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.hero }} edges={["top"]}>
             <StatusBar style="light" />
 
             {/* ── Hero header — fixed, does not scroll ── */}
             <View
                 style={{
-                    backgroundColor: "#2563EB",
+                    backgroundColor: colors.hero,
                     paddingHorizontal: 20,
                     paddingTop: 8,
                     paddingBottom: 28,
@@ -485,7 +548,7 @@ export function MyScreen(): JSX.Element {
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 fontWeight: "500",
                                 letterSpacing: 0.3,
                             }}
@@ -496,7 +559,7 @@ export function MyScreen(): JSX.Element {
                             style={{
                                 fontSize: 26,
                                 fontWeight: "700",
-                                color: "#FFFFFF",
+                                color: colors.heroForeground,
                                 marginTop: 2,
                                 letterSpacing: -0.3,
                             }}
@@ -506,7 +569,7 @@ export function MyScreen(): JSX.Element {
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 marginTop: 4,
                                 fontWeight: "400",
                             }}
@@ -522,7 +585,7 @@ export function MyScreen(): JSX.Element {
             <ScrollView
                 style={{
                     flex: 1,
-                    backgroundColor: "#F1F5F9",
+                    backgroundColor: colors.contentSurface,
                     borderTopLeftRadius: 24,
                     borderTopRightRadius: 24,
                     marginTop: -16,
@@ -543,10 +606,10 @@ export function MyScreen(): JSX.Element {
 
 Right-side icon buttons sit inside the hero row. Two styles:
 
-| Style         | When to use                                       | `style` values                                                                                     |
-| ------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Frosted glass | Secondary action (refresh, filter, notifications) | `backgroundColor: "rgba(255,255,255,0.18)", borderWidth: 1, borderColor: "rgba(255,255,255,0.25)"` |
-| White fill    | Primary action (new booking, add)                 | `backgroundColor: "#FFFFFF"` — icon color `#2563EB`                                                |
+| Style         | When to use                                       | `style` values                                                                           |
+| ------------- | ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Frosted glass | Secondary action (refresh, filter, notifications) | `backgroundColor: colors.heroGlass, borderWidth: 1, borderColor: colors.heroGlassBorder` |
+| White fill    | Primary action (new booking, add)                 | `backgroundColor: colors.heroForeground` — icon color `colors.hero`                      |
 
 Both buttons share: `width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center"`.
 
@@ -563,14 +626,14 @@ Both buttons share: `width: 40, height: 40, borderRadius: 20, alignItems: "cente
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: "rgba(255,255,255,0.18)",
+        backgroundColor: colors.heroGlass,
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.25)",
+        borderColor: colors.heroGlassBorder,
         alignItems: "center",
         justifyContent: "center",
     }}
 >
-    <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+    <Ionicons name="refresh-outline" size={18} color={colors.heroForeground} />
 </Pressable>;
 
 {
@@ -584,12 +647,12 @@ Both buttons share: `width: 40, height: 40, borderRadius: 20, alignItems: "cente
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: "#FFFFFF",
+        backgroundColor: colors.heroForeground,
         alignItems: "center",
         justifyContent: "center",
     }}
 >
-    <Ionicons name="add" size={22} color="#2563EB" />
+    <Ionicons name="add" size={22} color={colors.hero} />
 </Pressable>;
 ```
 
@@ -598,12 +661,13 @@ Both buttons share: `width: 40, height: 40, borderRadius: 20, alignItems: "cente
 ### Rules
 
 - **Header outside `ScrollView`** — the hero `View` must be a sibling of `ScrollView`, never a child.
-- **`SafeAreaView` background must be `#2563EB`** so the status bar notch area fills blue on all devices.
+- **`SafeAreaView` background must be `colors.hero`** so the status bar notch area fills blue on all devices.
 - **`StatusBar style="light"`** — keeps clock/battery icons white on the blue background.
 - **`paddingBottom: 28` on the hero + `marginTop: -16` on the scroll area** creates the overlap lift.
-- **Content card background is `#F1F5F9`** (slate-100) — white (`#FFFFFF`) is only for individual cards inside it.
+- **Content card background is `colors.contentSurface`** (slate-100 in light) — `colors.card` is only for individual cards inside it.
 - **`contentContainerStyle={{ paddingBottom: 120 }}`** on `ScrollView` — prevents the last card from hiding behind the tab bar.
-- Reference implementations: `HomeView.tsx` (scrollable content), `BookScreen.tsx` (list content).
+- **No hardcoded hex** — every color above is a `colors.*` token from `useThemeColors()`.
+- Reference implementations: `HomeView.tsx` / `HomeScreen.tsx` (scrollable content), `BookScreen.tsx` (list content).
 
 ---
 
@@ -634,7 +698,7 @@ Both buttons share: `width: 40, height: 40, borderRadius: 20, alignItems: "cente
 4. Add `components/`, `constants/`, `types/`, `utils/`, or `hooks/` only when the screen needs them.
 5. Register the route in the relevant `_layout.tsx` if it is a stack/tab screen.
 6. Use `@repo/player-domain` hooks for server data.
-7. Style with NativeWind `className`; no `StyleSheet.create` and no inline styles except native/animated exceptions.
+7. Style with NativeWind `className` for layout and token classes; for inline `style`/`color`/`placeholderTextColor`/ripple/shadows read colors from `useThemeColors()`. Never hardcode a hex/rgb value or a raw palette class; no `StyleSheet.create`.
 8. Format all dates with `formatUTCDate` / `formatUTCTime` / `formatUTCDateTime` from `@repo/ui`.
 9. Format all monetary amounts with `formatCurrency` from `@repo/ui`.
 

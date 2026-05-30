@@ -3,13 +3,14 @@ import { useState, type JSX } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import type { MembershipSubscription } from "@repo/player-domain";
 import { formatUTCDate, formatCurrency } from "../../../../lib";
+import { useThemeColors } from "../../../../theme";
 import { STATUS_STYLES, FALLBACK_STYLE } from "../constants/membershipConstants";
 
 // ─── sub-components ─────────────────────────────────────────────────────────
 
 function SectionLabel({ label }: { label: string }): JSX.Element {
     return (
-        <Text className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.6px] text-[#9CA3AF]">
+        <Text className="mb-2 px-1 text-[11px] font-bold uppercase tracking-[0.6px] text-muted-foreground">
             {label}
         </Text>
     );
@@ -27,10 +28,10 @@ function InfoRow({
     return (
         <>
             <View className="flex-row items-center justify-between px-4 py-3.5">
-                <Text className="text-[14px] text-[#6B7280]">{label}</Text>
-                <Text className="text-[14px] font-semibold text-[#111827]">{value ?? "—"}</Text>
+                <Text className="text-[14px] text-muted-foreground">{label}</Text>
+                <Text className="text-[14px] font-semibold text-foreground">{value ?? "—"}</Text>
             </View>
-            {!last && <View className="mx-4 h-px bg-[#F3F4F6]" />}
+            {!last && <View className="mx-4 h-px bg-muted" />}
         </>
     );
 }
@@ -56,6 +57,7 @@ export function MyMembershipView({
     isCancellingDowngrade,
     cancelDowngradeError,
 }: Props): JSX.Element {
+    const colors = useThemeColors();
     const [showConfirm, setShowConfirm] = useState(false);
     const { plan, status } = membership;
     const style = STATUS_STYLES[status] ?? FALLBACK_STYLE;
@@ -65,12 +67,12 @@ export function MyMembershipView({
 
     return (
         <ScrollView
-            className="flex-1 bg-[#F2F3F7]"
+            className="flex-1 bg-background"
             contentContainerClassName="px-4 pb-12 pt-5"
             showsVerticalScrollIndicator={false}
         >
             {/* ── Hero membership card ───────────────────────────────── */}
-            <View className="mb-5 overflow-hidden rounded-[24px] bg-[#1D2B4F] shadow-lg">
+            <View className="mb-5 overflow-hidden rounded-[24px] bg-hero shadow-lg">
                 {/* Top: plan name + status + price */}
                 <View className="flex-row items-start justify-between px-5 pt-5 pb-4">
                     <View className="flex-1 pr-4">
@@ -78,26 +80,26 @@ export function MyMembershipView({
                         <View
                             className={`mb-2 self-start rounded-full px-3 py-0.5 ${
                                 status === "active" || status === "trialing"
-                                    ? "bg-[#22C55E]/20"
-                                    : "bg-white/15"
+                                    ? "bg-success/20"
+                                    : "bg-card/15"
                             }`}
                         >
                             <Text
                                 className={`text-[11px] font-bold uppercase tracking-[0.5px] ${
                                     status === "active" || status === "trialing"
-                                        ? "text-[#4ADE80]"
-                                        : "text-white/60"
+                                        ? "text-success"
+                                        : "text-cta-foreground/60"
                                 }`}
                             >
                                 {style.label}
                             </Text>
                         </View>
 
-                        <Text className="text-[26px] font-bold leading-tight text-white">
+                        <Text className="text-[26px] font-bold leading-tight text-cta-foreground">
                             {plan.name}
                         </Text>
                         {!!plan.description && (
-                            <Text className="mt-1 text-[13px] leading-5 text-white/55">
+                            <Text className="mt-1 text-[13px] leading-5 text-cta-foreground/55">
                                 {plan.description}
                             </Text>
                         )}
@@ -105,31 +107,35 @@ export function MyMembershipView({
 
                     {/* Price block */}
                     <View className="items-end">
-                        <Text className="text-[22px] font-extrabold text-white">
+                        <Text className="text-[22px] font-extrabold text-cta-foreground">
                             {formatCurrency(plan.price)}
                         </Text>
-                        <Text className="text-[12px] text-white/55">/ {billingPeriod}</Text>
+                        <Text className="text-[12px] text-cta-foreground/55">
+                            / {billingPeriod}
+                        </Text>
                     </View>
                 </View>
 
                 {/* Divider */}
-                <View className="mx-5 h-px bg-white/10" />
+                <View className="mx-5 h-px bg-card/10" />
 
                 {/* Bottom: membership icon + renews */}
                 <View className="flex-row items-center justify-between px-5 py-4">
                     <View className="flex-row items-center gap-2.5">
-                        <View className="h-9 w-9 items-center justify-center rounded-xl bg-white/10">
-                            <Ionicons name="ribbon" size={18} color="#93C5FD" />
+                        <View className="h-9 w-9 items-center justify-center rounded-xl bg-card/10">
+                            <Ionicons name="ribbon" size={18} color={colors.heroMuted} />
                         </View>
-                        <Text className="text-[13px] font-medium text-white/70">Member plan</Text>
+                        <Text className="text-[13px] font-medium text-cta-foreground/70">
+                            Member plan
+                        </Text>
                     </View>
                     <View className="flex-row items-center gap-1.5">
                         <Ionicons
                             name="refresh-circle-outline"
                             size={14}
-                            color="rgba(255,255,255,0.45)"
+                            color={colors.heroGlassBorder}
                         />
-                        <Text className="text-[12px] text-white/45">
+                        <Text className="text-[12px] text-cta-foreground/45">
                             Renews {formatUTCDate(membership.current_period_end)}
                         </Text>
                     </View>
@@ -138,13 +144,13 @@ export function MyMembershipView({
 
             {/* ── Billing ───────────────────────────────────────────── */}
             <SectionLabel label="Billing" />
-            <View className="mb-5 overflow-hidden rounded-[20px] bg-white shadow-sm">
+            <View className="mb-5 overflow-hidden rounded-[20px] bg-card shadow-sm">
                 {/* Section header row */}
-                <View className="flex-row items-center gap-3 border-b border-[#F3F4F6] px-4 py-3.5">
-                    <View className="h-8 w-8 items-center justify-center rounded-xl bg-[#EFF6FF]">
-                        <Ionicons name="card-outline" size={16} color="#3B82F6" />
+                <View className="flex-row items-center gap-3 border-b border-border px-4 py-3.5">
+                    <View className="h-8 w-8 items-center justify-center rounded-xl bg-secondary">
+                        <Ionicons name="card-outline" size={16} color={colors.cta} />
                     </View>
-                    <Text className="text-[15px] font-semibold text-[#111827]">
+                    <Text className="text-[15px] font-semibold text-foreground">
                         Billing details
                     </Text>
                 </View>
@@ -165,24 +171,24 @@ export function MyMembershipView({
             {(membership.cancel_at_period_end || membership.pending_plan_id !== null) && (
                 <>
                     <SectionLabel label="Scheduled changes" />
-                    <View className="mb-5 overflow-hidden rounded-[20px] bg-white shadow-sm">
-                        <View className="flex-row items-center gap-3 border-b border-[#F3F4F6] px-4 py-3.5">
-                            <View className="h-8 w-8 items-center justify-center rounded-xl bg-[#FFF7ED]">
-                                <Ionicons name="time-outline" size={16} color="#F59E0B" />
+                    <View className="mb-5 overflow-hidden rounded-[20px] bg-card shadow-sm">
+                        <View className="flex-row items-center gap-3 border-b border-border px-4 py-3.5">
+                            <View className="h-8 w-8 items-center justify-center rounded-xl bg-warning/10">
+                                <Ionicons name="time-outline" size={16} color={colors.warning} />
                             </View>
-                            <Text className="text-[15px] font-semibold text-[#111827]">
+                            <Text className="text-[15px] font-semibold text-foreground">
                                 Takes effect at period end
                             </Text>
                         </View>
 
-                        <View className="mx-4 mb-1 mt-3 flex-row items-start gap-2 rounded-xl bg-[#FEF3C7] px-3.5 py-3">
+                        <View className="mx-4 mb-1 mt-3 flex-row items-start gap-2 rounded-xl bg-warning/10 px-3.5 py-3">
                             <Ionicons
                                 name="warning-outline"
                                 size={14}
-                                color="#D97706"
+                                color={colors.warning}
                                 style={{ marginTop: 1 }}
                             />
-                            <Text className="flex-1 text-[12px] font-medium leading-5 text-[#92400E]">
+                            <Text className="flex-1 text-[12px] font-medium leading-5 text-warning">
                                 {membership.cancel_at_period_end
                                     ? `Your membership cancels on ${formatUTCDate(membership.current_period_end)}. You keep full access until then.`
                                     : `Your plan change takes effect on ${formatUTCDate(membership.current_period_end)}.`}
@@ -190,23 +196,31 @@ export function MyMembershipView({
                         </View>
 
                         {!!cancelDowngradeError && (
-                            <View className="mx-4 mb-1 flex-row items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-3.5 py-3">
-                                <Ionicons name="alert-circle-outline" size={14} color="#EF4444" />
-                                <Text className="flex-1 text-[12px] font-medium text-red-600">
+                            <View className="mx-4 mb-1 flex-row items-center gap-2 rounded-xl border border-destructive bg-destructive/10 px-3.5 py-3">
+                                <Ionicons
+                                    name="alert-circle-outline"
+                                    size={14}
+                                    color={colors.destructive}
+                                />
+                                <Text className="flex-1 text-[12px] font-medium text-destructive">
                                     {cancelDowngradeError}
                                 </Text>
                             </View>
                         )}
 
                         <Pressable
-                            className="mx-4 mb-4 mt-2 flex-row items-center justify-center gap-2 rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] py-3 active:opacity-70 disabled:opacity-50"
+                            className="mx-4 mb-4 mt-2 flex-row items-center justify-center gap-2 rounded-xl border border-border bg-muted py-3 active:opacity-70 disabled:opacity-50"
                             accessibilityRole="button"
                             accessibilityLabel="Stay with current plan"
                             disabled={isCancellingDowngrade}
                             onPress={onCancelPendingDowngrade}
                         >
-                            <Ionicons name="shield-checkmark-outline" size={15} color="#374151" />
-                            <Text className="text-[14px] font-semibold text-[#374151]">
+                            <Ionicons
+                                name="shield-checkmark-outline"
+                                size={15}
+                                color={colors.foreground}
+                            />
+                            <Text className="text-[14px] font-semibold text-foreground">
                                 {isCancellingDowngrade
                                     ? "Restoring plan…"
                                     : "Stay with current plan"}
@@ -218,12 +232,12 @@ export function MyMembershipView({
 
             {/* ── Usage ─────────────────────────────────────────────── */}
             <SectionLabel label="Usage" />
-            <View className="mb-5 overflow-hidden rounded-[20px] bg-white shadow-sm">
-                <View className="flex-row items-center gap-3 border-b border-[#F3F4F6] px-4 py-3.5">
-                    <View className="h-8 w-8 items-center justify-center rounded-xl bg-[#F0FDF4]">
-                        <Ionicons name="ticket-outline" size={16} color="#22C55E" />
+            <View className="mb-5 overflow-hidden rounded-[20px] bg-card shadow-sm">
+                <View className="flex-row items-center gap-3 border-b border-border px-4 py-3.5">
+                    <View className="h-8 w-8 items-center justify-center rounded-xl bg-success/10">
+                        <Ionicons name="ticket-outline" size={16} color={colors.success} />
                     </View>
-                    <Text className="text-[15px] font-semibold text-[#111827]">
+                    <Text className="text-[15px] font-semibold text-foreground">
                         Credits & perks
                     </Text>
                 </View>
@@ -266,12 +280,12 @@ export function MyMembershipView({
                 (plan.guest_passes_per_period ?? 0) > 0) && (
                 <>
                     <SectionLabel label="Plan allowances" />
-                    <View className="mb-5 overflow-hidden rounded-[20px] bg-white shadow-sm">
-                        <View className="flex-row items-center gap-3 border-b border-[#F3F4F6] px-4 py-3.5">
-                            <View className="h-8 w-8 items-center justify-center rounded-xl bg-[#FAF5FF]">
-                                <Ionicons name="star-outline" size={16} color="#A855F7" />
+                    <View className="mb-5 overflow-hidden rounded-[20px] bg-card shadow-sm">
+                        <View className="flex-row items-center gap-3 border-b border-border px-4 py-3.5">
+                            <View className="h-8 w-8 items-center justify-center rounded-xl bg-secondary">
+                                <Ionicons name="star-outline" size={16} color={colors.cta} />
                             </View>
-                            <Text className="text-[15px] font-semibold text-[#111827]">
+                            <Text className="text-[15px] font-semibold text-foreground">
                                 Per period
                             </Text>
                         </View>
@@ -297,58 +311,62 @@ export function MyMembershipView({
             {canCancel && (
                 <View className="mt-1 items-center gap-4">
                     {!!cancelError && (
-                        <View className="w-full flex-row items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
-                            <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
-                            <Text className="flex-1 text-[13px] font-medium text-red-600">
+                        <View className="w-full flex-row items-center gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3">
+                            <Ionicons
+                                name="alert-circle-outline"
+                                size={16}
+                                color={colors.destructive}
+                            />
+                            <Text className="flex-1 text-[13px] font-medium text-destructive">
                                 {cancelError}
                             </Text>
                         </View>
                     )}
 
                     {showConfirm ? (
-                        <View className="w-full overflow-hidden rounded-[20px] border border-red-100 bg-white shadow-sm">
+                        <View className="w-full overflow-hidden rounded-[20px] border border-destructive bg-card shadow-sm">
                             <View className="px-5 pt-5 pb-4">
-                                <Text className="text-[16px] font-bold text-[#111827]">
+                                <Text className="text-[16px] font-bold text-foreground">
                                     Cancel membership?
                                 </Text>
-                                <Text className="mt-1.5 text-[13px] leading-5 text-[#6B7280]">
+                                <Text className="mt-1.5 text-[13px] leading-5 text-muted-foreground">
                                     You&apos;ll keep full access until{" "}
-                                    <Text className="font-semibold text-[#111827]">
+                                    <Text className="font-semibold text-foreground">
                                         {formatUTCDate(membership.current_period_end)}
                                     </Text>
                                     . After that, your membership will not renew.
                                 </Text>
                             </View>
-                            <View className="flex-row gap-3 border-t border-[#F3F4F6] px-4 py-4">
+                            <View className="flex-row gap-3 border-t border-border px-4 py-4">
                                 <Pressable
-                                    className="flex-1 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] py-3 active:opacity-70"
+                                    className="flex-1 items-center justify-center rounded-xl border border-border bg-muted py-3 active:opacity-70"
                                     accessibilityRole="button"
                                     accessibilityLabel="Keep membership"
                                     disabled={isCancelling}
                                     onPress={() => setShowConfirm(false)}
                                 >
-                                    <Text className="text-[14px] font-semibold text-[#374151]">
+                                    <Text className="text-[14px] font-semibold text-foreground">
                                         Keep it
                                     </Text>
                                 </Pressable>
                                 <Pressable
-                                    className="flex-1 items-center justify-center rounded-xl bg-red-500 py-3 active:opacity-70 disabled:opacity-50"
+                                    className="flex-1 items-center justify-center rounded-xl bg-destructive/100 py-3 active:opacity-70 disabled:opacity-50"
                                     accessibilityRole="button"
                                     accessibilityLabel="Confirm cancel membership"
                                     disabled={isCancelling}
                                     onPress={onCancel}
                                 >
-                                    <Text className="text-[14px] font-semibold text-white">
+                                    <Text className="text-[14px] font-semibold text-cta-foreground">
                                         {isCancelling ? "Cancelling…" : "Yes, cancel"}
                                     </Text>
                                 </Pressable>
                             </View>
                         </View>
                     ) : (
-                        <Text className="text-[13px] text-[#9CA3AF]">
+                        <Text className="text-[13px] text-muted-foreground">
                             Want to leave?{" "}
                             <Text
-                                className="font-semibold text-red-400"
+                                className="font-semibold text-destructive"
                                 accessibilityRole="button"
                                 accessibilityLabel="Cancel membership"
                                 onPress={() => setShowConfirm(true)}

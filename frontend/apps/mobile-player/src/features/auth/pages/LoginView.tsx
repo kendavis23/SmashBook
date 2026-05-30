@@ -10,7 +10,9 @@ import {
 import { Controller, type Control } from "react-hook-form";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Ionicons } from "@expo/vector-icons";
 import type { ReactNode } from "react";
+import { useThemeColors } from "../../../theme";
 import type { LoginFormValues } from "./types";
 
 type Props = {
@@ -25,19 +27,30 @@ type Props = {
 
 function InputField({
     label,
+    icon,
     error,
     children,
 }: {
     label: string;
+    icon: keyof typeof Ionicons.glyphMap;
     error?: string;
     children: ReactNode;
 }) {
+    const colors = useThemeColors();
     return (
         <View>
-            <Text className="mb-1.5 text-sm font-semibold text-[#1e293b]">{label}</Text>
+            <View className="mb-2 flex-row items-center gap-1.5">
+                <Ionicons name={icon} size={14} color={colors.mutedForeground} />
+                <Text className="text-[13px] font-semibold tracking-wide text-muted-foreground">
+                    {label}
+                </Text>
+            </View>
             {children}
             {error ? (
-                <Text className="mt-1 text-xs font-medium text-destructive">{error}</Text>
+                <View className="mt-1.5 flex-row items-center gap-1">
+                    <Ionicons name="alert-circle" size={13} color={colors.destructive} />
+                    <Text className="text-xs font-medium text-destructive">{error}</Text>
+                </View>
             ) : null}
         </View>
     );
@@ -52,8 +65,12 @@ export function LoginView({
     passwordVisible,
     onTogglePassword,
 }: Props) {
+    const colors = useThemeColors();
+    const inputBase = "h-[54px] rounded-2xl border px-4 py-0 text-[15px] text-foreground";
+    const inputResting = "border-input bg-muted";
+
     return (
-        <SafeAreaView className="flex-1 bg-white">
+        <SafeAreaView className="flex-1 bg-background" edges={["top", "bottom"]}>
             <StatusBar style="dark" />
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -65,58 +82,70 @@ export function LoginView({
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* Header */}
-                    <View className="px-7 pb-6 pt-10">
+                    {/* ── Hero header ── */}
+                    <View className="px-7 pb-9 pt-8">
                         {/* Wordmark */}
-                        <View className="mb-10 flex-row items-center gap-2">
-                            <Text className="text-lg font-black tracking-tight text-[#0f172a]">
+                        <View className="mb-12 flex-row items-center">
+                            <View className="mr-2.5 h-9 w-9 items-center justify-center rounded-xl bg-cta shadow-lg shadow-cta/30">
+                                <Ionicons
+                                    name="tennisball"
+                                    size={20}
+                                    color={colors.ctaForeground}
+                                />
+                            </View>
+                            <Text className="text-xl font-black tracking-tight text-foreground">
                                 Smash<Text className="text-cta">Book</Text>
                             </Text>
                         </View>
 
                         {/* Headline */}
-                        <Text className="text-[30px] font-bold leading-snug text-[#0f172a]">
+                        <Text className="text-[34px] font-extrabold leading-[40px] tracking-tight text-foreground">
                             Welcome back
                         </Text>
-                        <Text className="mt-1.5 text-[15px] text-[#64748b]">
-                            Sign in to your player account
+                        <Text className="mt-2 text-[15px] leading-6 text-muted-foreground">
+                            Sign in to your player account to book courts and track your games.
                         </Text>
                     </View>
 
-                    {/* Form */}
-                    <View className="flex-1 px-7 pb-10">
+                    {/* ── Form ── */}
+                    <View className="flex-1 px-7 pb-8">
                         {isError ? (
                             <View
                                 accessibilityRole="alert"
-                                className="mb-5 rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3"
+                                className="mb-5 flex-row items-center gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/5 px-4 py-3.5"
                             >
-                                <Text className="text-sm font-medium text-destructive">
+                                <Ionicons name="warning" size={18} color={colors.destructive} />
+                                <Text className="flex-1 text-[13px] font-medium leading-5 text-destructive">
                                     {errorMessage}
                                 </Text>
                             </View>
                         ) : null}
 
-                        <View className="gap-4">
+                        <View className="gap-5">
                             {/* Club */}
                             <Controller
                                 control={control}
                                 name="tenant_subdomain"
                                 render={({ field, fieldState }) => (
-                                    <InputField label="Club" error={fieldState.error?.message}>
+                                    <InputField
+                                        label="Club"
+                                        icon="business-outline"
+                                        error={fieldState.error?.message}
+                                    >
                                         <TextInput
                                             accessibilityLabel="Club"
                                             autoCapitalize="none"
                                             autoCorrect={false}
-                                            className={`h-12 rounded-xl border px-4 py-0 text-base text-[#0f172a] ${
+                                            className={`${inputBase} ${
                                                 fieldState.error
                                                     ? "border-destructive bg-destructive/5"
-                                                    : "border-[#e2e8f0] bg-[#f8fafc]"
+                                                    : inputResting
                                             }`}
                                             editable={!isPending}
                                             onBlur={field.onBlur}
                                             onChangeText={field.onChange}
                                             placeholder="your-club"
-                                            placeholderTextColor="#94a3b8"
+                                            placeholderTextColor={colors.placeholder}
                                             returnKeyType="next"
                                             value={field.value}
                                         />
@@ -129,16 +158,20 @@ export function LoginView({
                                 control={control}
                                 name="email"
                                 render={({ field, fieldState }) => (
-                                    <InputField label="Email" error={fieldState.error?.message}>
+                                    <InputField
+                                        label="Email"
+                                        icon="mail-outline"
+                                        error={fieldState.error?.message}
+                                    >
                                         <TextInput
                                             accessibilityLabel="Email"
                                             autoCapitalize="none"
                                             autoComplete="email"
                                             autoCorrect={false}
-                                            className={`h-12 rounded-xl border px-4 py-0 text-base text-[#0f172a] ${
+                                            className={`${inputBase} ${
                                                 fieldState.error
                                                     ? "border-destructive bg-destructive/5"
-                                                    : "border-[#e2e8f0] bg-[#f8fafc]"
+                                                    : inputResting
                                             }`}
                                             editable={!isPending}
                                             inputMode="email"
@@ -146,7 +179,7 @@ export function LoginView({
                                             onBlur={field.onBlur}
                                             onChangeText={field.onChange}
                                             placeholder="you@example.com"
-                                            placeholderTextColor="#94a3b8"
+                                            placeholderTextColor={colors.placeholder}
                                             returnKeyType="next"
                                             textContentType="emailAddress"
                                             value={field.value}
@@ -160,12 +193,16 @@ export function LoginView({
                                 control={control}
                                 name="password"
                                 render={({ field, fieldState }) => (
-                                    <InputField label="Password" error={fieldState.error?.message}>
+                                    <InputField
+                                        label="Password"
+                                        icon="lock-closed-outline"
+                                        error={fieldState.error?.message}
+                                    >
                                         <View
-                                            className={`h-12 flex-row items-center rounded-xl border px-4 ${
+                                            className={`h-[54px] flex-row items-center rounded-2xl border px-4 ${
                                                 fieldState.error
                                                     ? "border-destructive bg-destructive/5"
-                                                    : "border-[#e2e8f0] bg-[#f8fafc]"
+                                                    : inputResting
                                             }`}
                                         >
                                             <TextInput
@@ -173,14 +210,14 @@ export function LoginView({
                                                 autoCapitalize="none"
                                                 autoComplete="password"
                                                 autoCorrect={false}
-                                                className="h-12 flex-1 py-0 text-base text-[#0f172a]"
+                                                className="h-[54px] flex-1 py-0 text-[15px] text-foreground"
                                                 editable={!isPending}
                                                 inputMode="text"
                                                 keyboardType="default"
                                                 onBlur={field.onBlur}
                                                 onChangeText={field.onChange}
                                                 placeholder="Enter your password"
-                                                placeholderTextColor="#94a3b8"
+                                                placeholderTextColor={colors.placeholder}
                                                 returnKeyType="done"
                                                 secureTextEntry={!passwordVisible}
                                                 textContentType="password"
@@ -197,9 +234,15 @@ export function LoginView({
                                                 hitSlop={8}
                                                 onPress={onTogglePassword}
                                             >
-                                                <Text className="text-xs font-bold tracking-wide text-cta">
-                                                    {passwordVisible ? "HIDE" : "SHOW"}
-                                                </Text>
+                                                <Ionicons
+                                                    name={
+                                                        passwordVisible
+                                                            ? "eye-off-outline"
+                                                            : "eye-outline"
+                                                    }
+                                                    size={20}
+                                                    color={colors.mutedForeground}
+                                                />
                                             </Pressable>
                                         </View>
                                     </InputField>
@@ -207,24 +250,56 @@ export function LoginView({
                             />
                         </View>
 
+                        {/* Forgot password */}
+                        <View className="mt-3 items-end">
+                            <Pressable
+                                accessibilityLabel="Forgot password"
+                                accessibilityRole="button"
+                                hitSlop={8}
+                            >
+                                <Text className="text-[13px] font-semibold text-cta">
+                                    Forgot password?
+                                </Text>
+                            </Pressable>
+                        </View>
+
                         {/* Sign in button */}
                         <Pressable
                             accessibilityLabel="Sign in"
                             accessibilityRole="button"
-                            className={`mt-8 h-[52px] items-center justify-center rounded-xl bg-cta ${
-                                isPending ? "opacity-60" : "active:opacity-80"
+                            className={`mt-7 h-[56px] flex-row items-center justify-center gap-2 rounded-2xl bg-cta shadow-lg shadow-cta/30 ${
+                                isPending ? "opacity-60" : "active:opacity-90"
                             }`}
                             disabled={isPending}
                             onPress={onSubmit}
                         >
-                            <Text className="text-base font-bold text-white">
+                            <Text className="text-base font-bold tracking-wide text-cta-foreground">
                                 {isPending ? "Signing in…" : "Sign in"}
                             </Text>
+                            {!isPending ? (
+                                <Ionicons
+                                    name="arrow-forward"
+                                    size={18}
+                                    color={colors.ctaForeground}
+                                />
+                            ) : null}
                         </Pressable>
 
                         {/* Footer */}
-                        <View className="mt-auto pt-12 items-center">
-                            <Text className="text-xs text-[#cbd5e1]">
+                        <View className="mt-auto items-center pt-12">
+                            <View className="mb-4 flex-row items-center gap-1">
+                                <Text className="text-[13px] text-muted-foreground">
+                                    Don't have an account?
+                                </Text>
+                                <Pressable
+                                    accessibilityLabel="Sign up"
+                                    accessibilityRole="button"
+                                    hitSlop={6}
+                                >
+                                    <Text className="text-[13px] font-bold text-cta">Sign up</Text>
+                                </Pressable>
+                            </View>
+                            <Text className="text-[11px] tracking-wide text-muted-foreground/70">
                                 SmashBook · Player Portal
                             </Text>
                         </View>

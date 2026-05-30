@@ -8,7 +8,12 @@ import {
     formatAmount,
     formatBookingType,
 } from "../../utils/bookingFormatters";
-import { STATUS_CONFIG, PAYMENT_CONFIG, INVITE_CONFIG } from "../../constants/bookingConstants";
+import {
+    getStatusConfig,
+    getPaymentConfig,
+    getInviteConfig,
+} from "../../constants/bookingConstants";
+import { useThemeColors } from "../../../../theme";
 
 type Props = {
     booking: PlayerBookingItem;
@@ -23,18 +28,19 @@ export function BookingCard({
     onManageClick,
     onPayClick,
 }: Props): JSX.Element {
-    const statusCfg = STATUS_CONFIG[booking.status] ?? {
+    const colors = useThemeColors();
+    const statusCfg = getStatusConfig(colors)[booking.status] ?? {
         label: booking.status,
-        bg: "#F1F5F9",
-        text: "#475569",
-        dot: "#94A3B8",
+        bg: colors.muted,
+        text: colors.mutedForeground,
+        dot: colors.mutedForeground,
     };
-    const paymentCfg = PAYMENT_CONFIG[booking.payment_status] ?? {
+    const paymentCfg = getPaymentConfig(colors)[booking.payment_status] ?? {
         label: booking.payment_status,
-        bg: "#F1F5F9",
-        text: "#475569",
+        bg: colors.muted,
+        text: colors.mutedForeground,
     };
-    const inviteCfg = INVITE_CONFIG[booking.invite_status] ?? null;
+    const inviteCfg = getInviteConfig(colors)[booking.invite_status] ?? null;
 
     const isOrganiser = booking.role === "organiser";
     const showPay =
@@ -43,12 +49,12 @@ export function BookingCard({
     return (
         <View
             style={{
-                backgroundColor: "#FFFFFF",
+                backgroundColor: colors.card,
                 borderRadius: 18,
                 borderWidth: 1,
-                borderColor: "#E2E8F0",
+                borderColor: colors.border,
                 overflow: "hidden",
-                shadowColor: "#1E3A8A",
+                shadowColor: colors.shadow,
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.05,
                 shadowRadius: 8,
@@ -83,7 +89,7 @@ export function BookingCard({
                                 width: 36,
                                 height: 36,
                                 borderRadius: 11,
-                                backgroundColor: isOrganiser ? "#EFF6FF" : "#F1F5F9",
+                                backgroundColor: isOrganiser ? colors.ctaSurface : colors.muted,
                                 alignItems: "center",
                                 justifyContent: "center",
                                 flexShrink: 0,
@@ -92,7 +98,7 @@ export function BookingCard({
                             <Ionicons
                                 name="tennisball"
                                 size={17}
-                                color={isOrganiser ? "#2563EB" : "#94A3B8"}
+                                color={isOrganiser ? colors.cta : colors.mutedForeground}
                             />
                         </View>
                         <Text
@@ -100,7 +106,7 @@ export function BookingCard({
                                 flex: 1,
                                 fontSize: 16,
                                 fontWeight: "700",
-                                color: "#0F172A",
+                                color: colors.foreground,
                                 letterSpacing: -0.3,
                             }}
                             numberOfLines={1}
@@ -136,22 +142,36 @@ export function BookingCard({
                 </View>
 
                 {/* Divider */}
-                <View style={{ height: 1, backgroundColor: "#F1F5F9" }} />
+                <View style={{ height: 1, backgroundColor: colors.border }} />
 
                 {/* Row 2: Date + Time */}
                 <View style={{ flexDirection: "row", gap: 16 }}>
                     <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 5 }}>
-                        <Ionicons name="calendar-outline" size={13} color="#94A3B8" />
+                        <Ionicons
+                            name="calendar-outline"
+                            size={13}
+                            color={colors.mutedForeground}
+                        />
                         <Text
-                            style={{ fontSize: 12, fontWeight: "500", color: "#64748B" }}
+                            style={{
+                                fontSize: 12,
+                                fontWeight: "500",
+                                color: colors.mutedForeground,
+                            }}
                             numberOfLines={1}
                         >
                             {formatBookingDate(booking.start_datetime)}
                         </Text>
                     </View>
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                        <Ionicons name="time-outline" size={13} color="#94A3B8" />
-                        <Text style={{ fontSize: 12, fontWeight: "500", color: "#64748B" }}>
+                        <Ionicons name="time-outline" size={13} color={colors.mutedForeground} />
+                        <Text
+                            style={{
+                                fontSize: 12,
+                                fontWeight: "500",
+                                color: colors.mutedForeground,
+                            }}
+                        >
                             {formatBookingTimeRange(booking.start_datetime, booking.end_datetime)}
                         </Text>
                     </View>
@@ -166,14 +186,20 @@ export function BookingCard({
                             gap: 4,
                             borderRadius: 20,
                             borderWidth: 1,
-                            borderColor: "#E2E8F0",
-                            backgroundColor: "#F8FAFC",
+                            borderColor: colors.border,
+                            backgroundColor: colors.muted,
                             paddingHorizontal: 9,
                             paddingVertical: 4,
                         }}
                     >
-                        <Ionicons name="layers-outline" size={11} color="#94A3B8" />
-                        <Text style={{ fontSize: 11, fontWeight: "500", color: "#64748B" }}>
+                        <Ionicons name="layers-outline" size={11} color={colors.mutedForeground} />
+                        <Text
+                            style={{
+                                fontSize: 11,
+                                fontWeight: "500",
+                                color: colors.mutedForeground,
+                            }}
+                        >
                             {formatBookingType(booking.booking_type)}
                         </Text>
                     </View>
@@ -185,8 +211,8 @@ export function BookingCard({
                             gap: 4,
                             borderRadius: 20,
                             borderWidth: 1,
-                            borderColor: isOrganiser ? "#BFDBFE" : "#E2E8F0",
-                            backgroundColor: isOrganiser ? "#EFF6FF" : "#F8FAFC",
+                            borderColor: isOrganiser ? colors.ctaBorder : colors.border,
+                            backgroundColor: isOrganiser ? colors.ctaSurface : colors.muted,
                             paddingHorizontal: 9,
                             paddingVertical: 4,
                         }}
@@ -194,13 +220,13 @@ export function BookingCard({
                         <Ionicons
                             name={isOrganiser ? "star-outline" : "person-outline"}
                             size={11}
-                            color={isOrganiser ? "#2563EB" : "#94A3B8"}
+                            color={isOrganiser ? colors.cta : colors.mutedForeground}
                         />
                         <Text
                             style={{
                                 fontSize: 11,
                                 fontWeight: "600",
-                                color: isOrganiser ? "#2563EB" : "#64748B",
+                                color: isOrganiser ? colors.cta : colors.mutedForeground,
                             }}
                         >
                             {isOrganiser ? "Organiser" : "Player"}
@@ -215,8 +241,8 @@ export function BookingCard({
                                 gap: 4,
                                 borderRadius: 20,
                                 borderWidth: 1,
-                                borderColor: "#E2E8F0",
-                                backgroundColor: "#F8FAFC",
+                                borderColor: colors.border,
+                                backgroundColor: colors.muted,
                                 paddingHorizontal: 9,
                                 paddingVertical: 4,
                             }}
@@ -267,7 +293,7 @@ export function BookingCard({
                             style={{
                                 fontSize: 17,
                                 fontWeight: "700",
-                                color: "#0F172A",
+                                color: colors.foreground,
                                 letterSpacing: -0.4,
                             }}
                         >
@@ -287,17 +313,21 @@ export function BookingCard({
                                         alignItems: "center",
                                         gap: 5,
                                         borderRadius: 22,
-                                        backgroundColor: "#2563EB",
+                                        backgroundColor: colors.cta,
                                         paddingHorizontal: 16,
                                         paddingVertical: 8,
                                     }}
                                 >
-                                    <Ionicons name="card-outline" size={13} color="#FFFFFF" />
+                                    <Ionicons
+                                        name="card-outline"
+                                        size={13}
+                                        color={colors.ctaForeground}
+                                    />
                                     <Text
                                         style={{
                                             fontSize: 13,
                                             fontWeight: "600",
-                                            color: "#FFFFFF",
+                                            color: colors.ctaForeground,
                                         }}
                                     >
                                         Pay
@@ -314,18 +344,18 @@ export function BookingCard({
                                     gap: 5,
                                     borderRadius: 22,
                                     borderWidth: 1,
-                                    borderColor: "#E2E8F0",
-                                    backgroundColor: "#FFFFFF",
+                                    borderColor: colors.border,
+                                    backgroundColor: colors.card,
                                     paddingHorizontal: 16,
                                     paddingVertical: 8,
                                 }}
                             >
-                                <Ionicons name="eye-outline" size={13} color="#475569" />
+                                <Ionicons name="eye-outline" size={13} color={colors.foreground} />
                                 <Text
                                     style={{
                                         fontSize: 13,
                                         fontWeight: "600",
-                                        color: "#475569",
+                                        color: colors.foreground,
                                     }}
                                 >
                                     View

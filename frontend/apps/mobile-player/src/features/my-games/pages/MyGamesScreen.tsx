@@ -5,8 +5,10 @@ import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
 import { useMyMatchHistory } from "@repo/player-domain";
 import { MyGamesView } from "./MyGamesView";
+import { useThemeColors } from "../../../theme";
 
 export function MyGamesScreen(): JSX.Element {
+    const colors = useThemeColors();
     const { data, isLoading, error, refetch } = useMyMatchHistory();
 
     const handleRefresh = useCallback(() => {
@@ -16,13 +18,13 @@ export function MyGamesScreen(): JSX.Element {
     const totalGames = data?.length ?? 0;
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#2563EB" }} edges={["top"]}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: colors.hero }} edges={["top"]}>
             <StatusBar style="light" />
 
             {/* Hero header — fixed, does not scroll */}
             <View
                 style={{
-                    backgroundColor: "#2563EB",
+                    backgroundColor: colors.hero,
                     paddingHorizontal: 20,
                     paddingTop: 8,
                     paddingBottom: 28,
@@ -39,7 +41,7 @@ export function MyGamesScreen(): JSX.Element {
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 fontWeight: "500",
                                 letterSpacing: 0.3,
                             }}
@@ -50,7 +52,7 @@ export function MyGamesScreen(): JSX.Element {
                             style={{
                                 fontSize: 26,
                                 fontWeight: "700",
-                                color: "#FFFFFF",
+                                color: colors.heroForeground,
                                 marginTop: 2,
                                 letterSpacing: -0.3,
                             }}
@@ -60,7 +62,7 @@ export function MyGamesScreen(): JSX.Element {
                         <Text
                             style={{
                                 fontSize: 13,
-                                color: "#BFDBFE",
+                                color: colors.heroMuted,
                                 marginTop: 4,
                                 fontWeight: "400",
                             }}
@@ -82,14 +84,14 @@ export function MyGamesScreen(): JSX.Element {
                             width: 40,
                             height: 40,
                             borderRadius: 20,
-                            backgroundColor: "rgba(255,255,255,0.18)",
+                            backgroundColor: colors.heroGlass,
                             borderWidth: 1,
-                            borderColor: "rgba(255,255,255,0.25)",
+                            borderColor: colors.heroGlassBorder,
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
-                        <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
+                        <Ionicons name="refresh-outline" size={18} color={colors.heroForeground} />
                     </Pressable>
                 </View>
             </View>
@@ -98,12 +100,12 @@ export function MyGamesScreen(): JSX.Element {
             <View
                 style={{
                     flex: 1,
-                    backgroundColor: "#F1F5F9",
+                    backgroundColor: colors.contentSurface,
                     borderTopLeftRadius: 24,
                     borderTopRightRadius: 24,
                     marginTop: -16,
                     overflow: "hidden",
-                    shadowColor: "#1E3A8A",
+                    shadowColor: colors.shadow,
                     shadowOffset: { width: 0, height: -4 },
                     shadowOpacity: 0.06,
                     shadowRadius: 12,

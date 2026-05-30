@@ -1,6 +1,6 @@
 import { useAuth } from "@repo/auth";
 import { Redirect, Tabs, type Href } from "expo-router";
-import { FloatingTabBar } from "../../src/components/FloatingTabBar";
+import { BottomTabBar } from "../../src/components/BottomTabBar";
 
 export default function PlayerLayout() {
     const { isAuthenticated } = useAuth();
@@ -11,7 +11,7 @@ export default function PlayerLayout() {
 
     return (
         <Tabs
-            tabBar={(props) => <FloatingTabBar {...props} />}
+            tabBar={(props) => <BottomTabBar {...props} />}
             screenOptions={{
                 headerShown: false,
                 tabBarStyle: { display: "none" },

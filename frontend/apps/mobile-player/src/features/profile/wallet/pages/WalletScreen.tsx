@@ -6,6 +6,7 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useGetWallet } from "@repo/player-domain";
 import { formatCurrency } from "../../../../lib";
+import { useThemeColors } from "../../../../theme";
 import { TransactionTile } from "../components/TransactionTile";
 import { TopUpSheet } from "../components/TopUpSheet";
 
@@ -18,9 +19,9 @@ function formatBalance(amount: number | string | null | undefined): string {
     const result = formatCurrency(n);
     return result === "—" ? "£0.00" : result;
 }
-
 export function WalletScreen(): JSX.Element {
     const router = useRouter();
+    const colors = useThemeColors();
     const { data: wallet, isLoading, error, refetch } = useGetWallet();
 
     const [showTopUp, setShowTopUp] = useState(false);
@@ -43,22 +44,22 @@ export function WalletScreen(): JSX.Element {
     const pageTxs = transactions.slice(txPage * PAGE_SIZE, (txPage + 1) * PAGE_SIZE);
 
     return (
-        <SafeAreaView className="flex-1 bg-[#F2F3F7]">
+        <SafeAreaView className="flex-1 bg-background">
             <StatusBar style="dark" />
 
             {/* Header */}
-            <View className="flex-row items-center justify-between bg-[#F2F3F7] px-5 pb-2.5 pt-1 android:pt-3.5">
+            <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
                 <Pressable
                     onPress={() => router.back()}
                     accessibilityRole="button"
                     accessibilityLabel="Go back"
                     hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm active:opacity-50"
+                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
                 >
-                    <Ionicons name="chevron-back" size={28} color="#111827" />
+                    <Ionicons name="chevron-back" size={28} color={colors.foreground} />
                 </Pressable>
 
-                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-[#111827]">
+                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
                     Wallet
                 </Text>
 
@@ -69,9 +70,9 @@ export function WalletScreen(): JSX.Element {
                     accessibilityRole="button"
                     accessibilityLabel="Refresh wallet"
                     hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm active:opacity-50 disabled:opacity-40"
+                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50 disabled:opacity-40"
                 >
-                    <Ionicons name="refresh-outline" size={20} color="#111827" />
+                    <Ionicons name="refresh-outline" size={20} color={colors.foreground} />
                 </Pressable>
             </View>
 
@@ -86,27 +87,27 @@ export function WalletScreen(): JSX.Element {
                         onPress={() => setSuccessMessage(null)}
                         accessibilityRole="button"
                         accessibilityLabel="Dismiss success message"
-                        className="flex-row items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3"
+                        className="flex-row items-center gap-2 rounded-2xl border border-success bg-success/10 px-4 py-3"
                     >
-                        <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                        <Text className="flex-1 text-[13px] font-medium text-green-700">
+                        <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                        <Text className="flex-1 text-[13px] font-medium text-success">
                             {successMessage}
                         </Text>
-                        <Ionicons name="close" size={14} color="#86EFAC" />
+                        <Ionicons name="close" size={14} color={colors.success} />
                     </Pressable>
                 )}
 
                 {/* Balance card */}
-                <View className="overflow-hidden rounded-[24px] bg-[#1D2B4F]">
+                <View className="overflow-hidden rounded-[24px] bg-hero">
                     {/* Top section */}
                     <View className="px-5 pt-5 pb-4">
                         <View className="flex-row items-center justify-between">
                             <View className="flex-row items-center gap-2.5">
-                                <View className="h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-                                    <Ionicons name="wallet" size={20} color="#6EE7B7" />
+                                <View className="h-10 w-10 items-center justify-center rounded-xl bg-card/10">
+                                    <Ionicons name="wallet" size={20} color={colors.success} />
                                 </View>
                                 <View>
-                                    <Text className="text-[11px] font-bold uppercase tracking-[0.6px] text-white/50">
+                                    <Text className="text-[11px] font-bold uppercase tracking-[0.6px] text-cta-foreground/50">
                                         Wallet balance
                                     </Text>
                                 </View>
@@ -116,31 +117,31 @@ export function WalletScreen(): JSX.Element {
                         {/* Balance */}
                         {isLoading ? (
                             <View className="mt-5 flex-row items-center gap-2">
-                                <ActivityIndicator size="small" color="#6EE7B7" />
-                                <Text className="text-[14px] text-white/60">Loading…</Text>
+                                <ActivityIndicator size="small" color={colors.success} />
+                                <Text className="text-[14px] text-cta-foreground/60">Loading…</Text>
                             </View>
                         ) : error ? (
-                            <Text className="mt-5 text-[15px] font-semibold text-red-400">
+                            <Text className="mt-5 text-[15px] font-semibold text-destructive">
                                 Failed to load wallet.
                             </Text>
                         ) : (
-                            <Text className="mt-5 text-[42px] font-bold leading-none tracking-tight text-white">
+                            <Text className="mt-5 text-[42px] font-bold leading-none tracking-tight text-cta-foreground">
                                 {formatBalance(wallet?.balance ?? 0)}
                             </Text>
                         )}
 
-                        <Text className="mt-2 text-[13px] text-white/45">
+                        <Text className="mt-2 text-[13px] text-cta-foreground/45">
                             Available for bookings and instant checkout
                         </Text>
                     </View>
 
                     {/* Divider */}
-                    <View className="mx-5 h-px bg-white/10" />
+                    <View className="mx-5 h-px bg-card/10" />
 
                     {/* Top-up button row */}
                     <View className="flex-row items-center justify-between px-5 py-4">
                         {wallet && (
-                            <Text className="text-[12px] text-white/40">
+                            <Text className="text-[12px] text-cta-foreground/40">
                                 Currency: {wallet.currency.toUpperCase()}
                             </Text>
                         )}
@@ -152,19 +153,25 @@ export function WalletScreen(): JSX.Element {
                             accessibilityRole="button"
                             accessibilityLabel="Top up wallet"
                             disabled={isLoading}
-                            className="flex-row items-center gap-2 rounded-xl bg-[#10B981] px-4 py-2.5 active:opacity-75 disabled:opacity-40"
+                            className="flex-row items-center gap-2 rounded-xl bg-success px-4 py-2.5 active:opacity-75 disabled:opacity-40"
                         >
-                            <Ionicons name="add-circle-outline" size={16} color="#FFFFFF" />
-                            <Text className="text-[14px] font-semibold text-white">Top up</Text>
+                            <Ionicons
+                                name="add-circle-outline"
+                                size={16}
+                                color={colors.ctaForeground}
+                            />
+                            <Text className="text-[14px] font-semibold text-cta-foreground">
+                                Top up
+                            </Text>
                         </Pressable>
                     </View>
                 </View>
 
                 {/* Auto top-up info badge (if enabled) */}
                 {!isLoading && !error && wallet?.auto_topup_enabled && (
-                    <View className="flex-row items-center gap-2.5 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                        <Ionicons name="repeat-outline" size={16} color="#10B981" />
-                        <Text className="flex-1 text-[12px] font-medium text-emerald-700">
+                    <View className="flex-row items-center gap-2.5 rounded-2xl border border-success bg-success/10 px-4 py-3">
+                        <Ionicons name="repeat-outline" size={16} color={colors.success} />
+                        <Text className="flex-1 text-[12px] font-medium text-success">
                             Auto top-up is active — wallet tops up to{" "}
                             {formatBalance(wallet.auto_topup_amount ?? 0)} when balance falls below{" "}
                             {formatBalance(wallet.auto_topup_threshold ?? 0)}.
@@ -174,20 +181,20 @@ export function WalletScreen(): JSX.Element {
 
                 {/* Transaction history */}
                 {!isLoading && !error && wallet && transactions.length > 0 && (
-                    <View className="overflow-hidden rounded-[20px] bg-white shadow-sm">
+                    <View className="overflow-hidden rounded-[20px] bg-card shadow-sm">
                         {/* Section header */}
-                        <View className="flex-row items-center justify-between border-b border-[#F3F4F6] px-4 py-3.5">
+                        <View className="flex-row items-center justify-between border-b border-border px-4 py-3.5">
                             <View>
-                                <Text className="text-[14px] font-bold text-[#111827]">
+                                <Text className="text-[14px] font-bold text-foreground">
                                     Recent transactions
                                 </Text>
-                                <Text className="mt-0.5 text-[12px] text-[#9CA3AF]">
+                                <Text className="mt-0.5 text-[12px] text-muted-foreground">
                                     Latest wallet activity
                                 </Text>
                             </View>
                             {totalPages > 1 && (
-                                <View className="rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-2.5 py-1">
-                                    <Text className="text-[11px] font-semibold text-[#6B7280]">
+                                <View className="rounded-full border border-border bg-muted px-2.5 py-1">
+                                    <Text className="text-[11px] font-semibold text-muted-foreground">
                                         {txPage + 1} / {totalPages}
                                     </Text>
                                 </View>
@@ -195,12 +202,12 @@ export function WalletScreen(): JSX.Element {
                         </View>
 
                         {/* Transaction rows */}
-                        <View className="divide-y divide-[#F3F4F6]">
+                        <View className="divide-y divide-border">
                             {pageTxs.map((tx, i) => (
                                 <View
                                     key={tx.id}
                                     className={
-                                        i < pageTxs.length - 1 ? "border-b border-[#F3F4F6]" : ""
+                                        i < pageTxs.length - 1 ? "border-b border-border" : ""
                                     }
                                 >
                                     <TransactionTile transaction={tx} />
@@ -210,24 +217,32 @@ export function WalletScreen(): JSX.Element {
 
                         {/* Pagination controls */}
                         {totalPages > 1 && (
-                            <View className="flex-row items-center justify-end gap-2 border-t border-[#F3F4F6] px-4 py-3">
+                            <View className="flex-row items-center justify-end gap-2 border-t border-border px-4 py-3">
                                 <Pressable
                                     onPress={() => setTxPage((p) => p - 1)}
                                     disabled={txPage === 0}
                                     accessibilityRole="button"
                                     accessibilityLabel="Previous page"
-                                    className="h-9 w-9 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] active:opacity-70 disabled:opacity-40"
+                                    className="h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted active:opacity-70 disabled:opacity-40"
                                 >
-                                    <Ionicons name="chevron-back" size={16} color="#374151" />
+                                    <Ionicons
+                                        name="chevron-back"
+                                        size={16}
+                                        color={colors.foreground}
+                                    />
                                 </Pressable>
                                 <Pressable
                                     onPress={() => setTxPage((p) => p + 1)}
                                     disabled={txPage === totalPages - 1}
                                     accessibilityRole="button"
                                     accessibilityLabel="Next page"
-                                    className="h-9 w-9 items-center justify-center rounded-xl border border-[#E5E7EB] bg-[#F9FAFB] active:opacity-70 disabled:opacity-40"
+                                    className="h-9 w-9 items-center justify-center rounded-xl border border-border bg-muted active:opacity-70 disabled:opacity-40"
                                 >
-                                    <Ionicons name="chevron-forward" size={16} color="#374151" />
+                                    <Ionicons
+                                        name="chevron-forward"
+                                        size={16}
+                                        color={colors.foreground}
+                                    />
                                 </Pressable>
                             </View>
                         )}
@@ -236,24 +251,24 @@ export function WalletScreen(): JSX.Element {
 
                 {/* Empty transactions state */}
                 {!isLoading && !error && wallet && transactions.length === 0 && (
-                    <View className="items-center justify-center rounded-[20px] bg-white px-6 py-12 shadow-sm gap-3">
-                        <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-[#F0FDF4]">
-                            <Ionicons name="receipt-outline" size={28} color="#10B981" />
+                    <View className="items-center justify-center rounded-[20px] bg-card px-6 py-12 shadow-sm gap-3">
+                        <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-success/10">
+                            <Ionicons name="receipt-outline" size={28} color={colors.success} />
                         </View>
-                        <Text className="text-[17px] font-bold text-[#111827]">
+                        <Text className="text-[17px] font-bold text-foreground">
                             No transactions yet
                         </Text>
-                        <Text className="text-center text-[13px] leading-5 text-[#9CA3AF]">
+                        <Text className="text-center text-[13px] leading-5 text-muted-foreground">
                             Top up your wallet to start seeing activity here.
                         </Text>
                         <Pressable
                             onPress={() => setShowTopUp(true)}
                             accessibilityRole="button"
                             accessibilityLabel="Top up wallet"
-                            className="mt-1 flex-row items-center gap-2 rounded-xl bg-[#10B981] px-6 py-3.5 active:opacity-80"
+                            className="mt-1 flex-row items-center gap-2 rounded-xl bg-success px-6 py-3.5 active:opacity-80"
                         >
-                            <Ionicons name="add" size={16} color="#FFFFFF" />
-                            <Text className="text-[14px] font-semibold text-white">
+                            <Ionicons name="add" size={16} color={colors.ctaForeground} />
+                            <Text className="text-[14px] font-semibold text-cta-foreground">
                                 Top up wallet
                             </Text>
                         </Pressable>

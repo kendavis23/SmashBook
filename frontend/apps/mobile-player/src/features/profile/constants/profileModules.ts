@@ -1,5 +1,10 @@
 import type { ProfileModuleRow } from "../types";
 
+// `iconBgClassName` values are intentional *decorative* per-row accent colors (one
+// distinct hue per menu item), not semantic state tokens. They are theme-stable —
+// these vivid chips read correctly on both light and dark surfaces — so they are kept
+// as fixed brand accents rather than mapped to semantic theme tokens. This is the one
+// sanctioned exception to "no hardcoded colors"; see the theme guide.
 export const PROFILE_MODULE_GROUPS: ProfileModuleRow[][] = [
     [
         {
@@ -15,6 +20,12 @@ export const PROFILE_MODULE_GROUPS: ProfileModuleRow[][] = [
             iconBgClassName: "bg-[#3B82F6]",
             label: "Notification",
             href: "/profile-notifications",
+        },
+        {
+            id: "appearance",
+            icon: "color-palette",
+            iconBgClassName: "bg-[#64748B]",
+            label: "Appearance",
         },
     ],
     [

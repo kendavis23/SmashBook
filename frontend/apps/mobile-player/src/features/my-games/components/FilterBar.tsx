@@ -28,12 +28,12 @@ export function FilterBar({ active, counts, onChange }: Props): JSX.Element {
                         accessibilityLabel={`Filter by ${tab.label}`}
                         accessibilityState={{ selected: isActive }}
                         className={`flex-row items-center gap-1.5 rounded-full border px-4 py-2 active:opacity-70 ${
-                            isActive ? "border-[#2563EB] bg-[#2563EB]" : "border-[#E5E7EB] bg-white"
+                            isActive ? "border-cta bg-cta" : "border-border bg-card"
                         }`}
                     >
                         <Text
                             className={`text-[13px] font-semibold ${
-                                isActive ? "text-white" : "text-[#374151]"
+                                isActive ? "text-cta-foreground" : "text-foreground"
                             }`}
                         >
                             {tab.label}
@@ -41,7 +41,7 @@ export function FilterBar({ active, counts, onChange }: Props): JSX.Element {
                         {count > 0 && (
                             <Text
                                 className={`text-[11px] font-bold ${
-                                    isActive ? "text-white/80" : "text-[#9CA3AF]"
+                                    isActive ? "text-cta-foreground/80" : "text-muted-foreground"
                                 }`}
                             >
                                 {count}

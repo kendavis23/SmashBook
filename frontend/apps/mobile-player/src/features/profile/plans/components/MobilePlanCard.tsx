@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import type { MembershipPlan } from "@repo/player-domain";
 import { formatCurrency } from "../../../../lib";
+import { useThemeColors } from "../../../../theme";
 
 type Props = {
     plan: MembershipPlan;
@@ -19,6 +20,7 @@ export function MobilePlanCard({
     currentPlanPrice,
     onSelect,
 }: Props): JSX.Element {
+    const colors = useThemeColors();
     const billingPeriod = plan.billing_period === "annual" ? "year" : "month";
 
     const isUpgrade =
@@ -56,14 +58,14 @@ export function MobilePlanCard({
 
     return (
         <View
-            className={`mb-3 overflow-hidden rounded-[20px] bg-white shadow-sm ${
-                isCurrent ? "border-2 border-[#3B82F6]" : "border border-[#F3F4F6]"
+            className={`mb-3 overflow-hidden rounded-[20px] bg-card shadow-sm ${
+                isCurrent ? "border-2 border-cta" : "border border-border"
             }`}
         >
             {/* Recommended badge */}
             {isUpgrade && (
-                <View className="bg-[#3B82F6] px-4 py-1.5">
-                    <Text className="text-center text-[11px] font-bold uppercase tracking-[0.5px] text-white">
+                <View className="bg-cta px-4 py-1.5">
+                    <Text className="text-center text-[11px] font-bold uppercase tracking-[0.5px] text-cta-foreground">
                         Recommended
                     </Text>
                 </View>
@@ -73,39 +75,41 @@ export function MobilePlanCard({
                 {/* Plan name + current badge */}
                 <View className="mb-3 flex-row items-start justify-between gap-3">
                     <View className="flex-1">
-                        <Text className="text-[17px] font-bold text-[#111827]">{plan.name}</Text>
+                        <Text className="text-[17px] font-bold text-foreground">{plan.name}</Text>
                         {!!plan.description && (
-                            <Text className="mt-0.5 text-[13px] leading-5 text-[#6B7280]">
+                            <Text className="mt-0.5 text-[13px] leading-5 text-muted-foreground">
                                 {plan.description}
                             </Text>
                         )}
                     </View>
                     {isCurrent && (
-                        <View className="flex-row items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2.5 py-1">
-                            <Ionicons name="checkmark-circle" size={11} color="#22C55E" />
-                            <Text className="text-[10px] font-bold text-green-600">Current</Text>
+                        <View className="flex-row items-center gap-1 rounded-full border border-success bg-success/10 px-2.5 py-1">
+                            <Ionicons name="checkmark-circle" size={11} color={colors.success} />
+                            <Text className="text-[10px] font-bold text-success">Current</Text>
                         </View>
                     )}
                 </View>
 
                 {/* Price */}
                 <View className="mb-4 flex-row items-end gap-1.5">
-                    <Text className="text-[24px] font-extrabold text-[#111827]">
+                    <Text className="text-[24px] font-extrabold text-foreground">
                         {formatCurrency(plan.price)}
                     </Text>
-                    <Text className="mb-0.5 text-[13px] text-[#9CA3AF]">/ {billingPeriod}</Text>
+                    <Text className="mb-0.5 text-[13px] text-muted-foreground">
+                        / {billingPeriod}
+                    </Text>
                     {isUpgrade && currentPlanPrice !== null && (
-                        <View className="mb-1 ml-1 flex-row items-center gap-0.5 rounded-full bg-blue-50 px-2 py-0.5">
-                            <Ionicons name="arrow-up" size={10} color="#3B82F6" />
-                            <Text className="text-[11px] font-semibold text-[#3B82F6]">
+                        <View className="mb-1 ml-1 flex-row items-center gap-0.5 rounded-full bg-secondary px-2 py-0.5">
+                            <Ionicons name="arrow-up" size={10} color={colors.cta} />
+                            <Text className="text-[11px] font-semibold text-cta">
                                 {formatCurrency(Math.abs(plan.price - currentPlanPrice))} more
                             </Text>
                         </View>
                     )}
                     {isDowngrade && currentPlanPrice !== null && (
-                        <View className="mb-1 ml-1 flex-row items-center gap-0.5 rounded-full bg-[#F9FAFB] px-2 py-0.5">
-                            <Ionicons name="arrow-down" size={10} color="#6B7280" />
-                            <Text className="text-[11px] font-medium text-[#6B7280]">
+                        <View className="mb-1 ml-1 flex-row items-center gap-0.5 rounded-full bg-muted px-2 py-0.5">
+                            <Ionicons name="arrow-down" size={10} color={colors.mutedForeground} />
+                            <Text className="text-[11px] font-medium text-muted-foreground">
                                 {formatCurrency(Math.abs(currentPlanPrice - plan.price))} less
                             </Text>
                         </View>
@@ -117,10 +121,10 @@ export function MobilePlanCard({
                     <View className="mb-5 gap-2">
                         {perks.map((perk) => (
                             <View key={perk} className="flex-row items-center gap-2.5">
-                                <View className="h-5 w-5 items-center justify-center rounded-full bg-[#EFF6FF]">
-                                    <Ionicons name="checkmark" size={12} color="#3B82F6" />
+                                <View className="h-5 w-5 items-center justify-center rounded-full bg-secondary">
+                                    <Ionicons name="checkmark" size={12} color={colors.cta} />
                                 </View>
-                                <Text className="text-[13px] text-[#6B7280]">{perk}</Text>
+                                <Text className="text-[13px] text-muted-foreground">{perk}</Text>
                             </View>
                         ))}
                     </View>
@@ -128,10 +132,10 @@ export function MobilePlanCard({
 
                 {/* CTA button */}
                 {isCurrent ? (
-                    <View className="items-center justify-center rounded-xl border border-green-200 bg-green-50 py-3">
+                    <View className="items-center justify-center rounded-xl border border-success bg-success/10 py-3">
                         <View className="flex-row items-center gap-1.5">
-                            <Ionicons name="checkmark-circle" size={15} color="#22C55E" />
-                            <Text className="text-[14px] font-semibold text-green-600">
+                            <Ionicons name="checkmark-circle" size={15} color={colors.success} />
+                            <Text className="text-[14px] font-semibold text-success">
                                 Current plan
                             </Text>
                         </View>
@@ -142,17 +146,19 @@ export function MobilePlanCard({
                         accessibilityRole="button"
                         accessibilityLabel={getButtonLabel()}
                         className={`items-center justify-center rounded-xl py-3.5 active:opacity-75 ${
-                            isUpgrade ? "bg-[#3B82F6]" : "border border-[#E5E7EB] bg-[#F9FAFB]"
+                            isUpgrade ? "bg-cta" : "border border-border bg-muted"
                         }`}
                     >
                         <View className="flex-row items-center gap-2">
-                            {isUpgrade && <Ionicons name="arrow-up" size={14} color="#FFFFFF" />}
+                            {isUpgrade && (
+                                <Ionicons name="arrow-up" size={14} color={colors.ctaForeground} />
+                            )}
                             {isDowngrade && (
-                                <Ionicons name="arrow-down" size={14} color="#374151" />
+                                <Ionicons name="arrow-down" size={14} color={colors.foreground} />
                             )}
                             <Text
                                 className={`text-[14px] font-semibold ${
-                                    isUpgrade ? "text-white" : "text-[#374151]"
+                                    isUpgrade ? "text-cta-foreground" : "text-foreground"
                                 }`}
                             >
                                 {getButtonLabel()}

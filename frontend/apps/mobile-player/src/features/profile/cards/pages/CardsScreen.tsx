@@ -10,9 +10,11 @@ import {
     useSetDefaultPaymentMethod,
 } from "@repo/player-domain";
 import { CardTile } from "../components/CardTile";
+import { useThemeColors } from "../../../../theme";
 import { AddCardSheet } from "../components/AddCardSheet";
 
 export function CardsScreen(): JSX.Element {
+    const colors = useThemeColors();
     const router = useRouter();
 
     const { data: methods, isLoading, error, refetch } = useListPaymentMethods();
@@ -51,22 +53,22 @@ export function CardsScreen(): JSX.Element {
     }, [refetch]);
 
     return (
-        <SafeAreaView className="flex-1 bg-[#F2F3F7]">
+        <SafeAreaView className="flex-1 bg-background">
             <StatusBar style="dark" />
 
             {/* Header */}
-            <View className="flex-row items-center justify-between bg-[#F2F3F7] px-5 pb-2.5 pt-1 android:pt-3.5">
+            <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
                 <Pressable
                     onPress={() => router.back()}
                     accessibilityRole="button"
                     accessibilityLabel="Go back"
                     hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm active:opacity-50"
+                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
                 >
-                    <Ionicons name="chevron-back" size={28} color="#111827" />
+                    <Ionicons name="chevron-back" size={28} color={colors.foreground} />
                 </Pressable>
 
-                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-[#111827]">
+                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
                     Cards
                 </Text>
 
@@ -78,10 +80,10 @@ export function CardsScreen(): JSX.Element {
                     }}
                     accessibilityRole="button"
                     accessibilityLabel="Add new card"
-                    className="h-9 flex-row items-center gap-1.5 rounded-full bg-[#3B82F6] px-3.5 active:opacity-75"
+                    className="h-9 flex-row items-center gap-1.5 rounded-full bg-cta px-3.5 active:opacity-75"
                 >
-                    <Ionicons name="add" size={16} color="#FFFFFF" />
-                    <Text className="text-[13px] font-semibold text-white">Add</Text>
+                    <Ionicons name="add" size={16} color={colors.ctaForeground} />
+                    <Text className="text-[13px] font-semibold text-cta-foreground">Add</Text>
                 </Pressable>
             </View>
 
@@ -96,27 +98,27 @@ export function CardsScreen(): JSX.Element {
                         onPress={() => setSuccessMessage(null)}
                         accessibilityRole="button"
                         accessibilityLabel="Dismiss success message"
-                        className="flex-row items-center gap-2 rounded-2xl border border-green-200 bg-green-50 px-4 py-3"
+                        className="flex-row items-center gap-2 rounded-2xl border border-success bg-success/10 px-4 py-3"
                     >
-                        <Ionicons name="checkmark-circle" size={16} color="#22C55E" />
-                        <Text className="flex-1 text-[13px] font-medium text-green-700">
+                        <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                        <Text className="flex-1 text-[13px] font-medium text-success">
                             {successMessage}
                         </Text>
-                        <Ionicons name="close" size={14} color="#86EFAC" />
+                        <Ionicons name="close" size={14} color={colors.success} />
                     </Pressable>
                 )}
 
                 {/* Hero banner */}
-                <View className="overflow-hidden rounded-[20px] bg-[#1D2B4F] px-5 py-4">
+                <View className="overflow-hidden rounded-[20px] bg-hero px-5 py-4">
                     <View className="flex-row items-center gap-3">
-                        <View className="h-10 w-10 items-center justify-center rounded-xl bg-white/10">
-                            <Ionicons name="card" size={20} color="#93C5FD" />
+                        <View className="h-10 w-10 items-center justify-center rounded-xl bg-card/10">
+                            <Ionicons name="card" size={20} color={colors.heroMuted} />
                         </View>
                         <View className="flex-1">
-                            <Text className="text-[15px] font-bold text-white">
+                            <Text className="text-[15px] font-bold text-cta-foreground">
                                 Payment Methods
                             </Text>
-                            <Text className="mt-0.5 text-[12px] text-white/55">
+                            <Text className="mt-0.5 text-[12px] text-cta-foreground/55">
                                 Saved cards for bookings and membership payments
                             </Text>
                         </View>
@@ -126,8 +128,8 @@ export function CardsScreen(): JSX.Element {
                 {/* Loading */}
                 {isLoading && (
                     <View className="items-center justify-center py-12 gap-3">
-                        <ActivityIndicator size="large" color="#3B82F6" />
-                        <Text className="text-[14px] font-medium text-[#9CA3AF]">
+                        <ActivityIndicator size="large" color={colors.cta} />
+                        <Text className="text-[14px] font-medium text-muted-foreground">
                             Loading cards…
                         </Text>
                     </View>
@@ -135,9 +137,13 @@ export function CardsScreen(): JSX.Element {
 
                 {/* Error */}
                 {!isLoading && !!error && (
-                    <View className="flex-row items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-4">
-                        <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-                        <Text className="flex-1 text-[14px] font-medium text-red-600">
+                    <View className="flex-row items-center gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-4">
+                        <Ionicons
+                            name="alert-circle-outline"
+                            size={18}
+                            color={colors.destructive}
+                        />
+                        <Text className="flex-1 text-[14px] font-medium text-destructive">
                             Failed to load payment methods.
                         </Text>
                     </View>
@@ -146,21 +152,23 @@ export function CardsScreen(): JSX.Element {
                 {/* Empty */}
                 {!isLoading && !error && sortedMethods.length === 0 && (
                     <View className="items-center justify-center py-12 gap-3">
-                        <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-[#EFF6FF]">
-                            <Ionicons name="card-outline" size={30} color="#3B82F6" />
+                        <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-secondary">
+                            <Ionicons name="card-outline" size={30} color={colors.cta} />
                         </View>
-                        <Text className="text-[17px] font-bold text-[#111827]">No cards saved</Text>
-                        <Text className="text-center text-[13px] leading-5 text-[#9CA3AF]">
+                        <Text className="text-[17px] font-bold text-foreground">
+                            No cards saved
+                        </Text>
+                        <Text className="text-center text-[13px] leading-5 text-muted-foreground">
                             Add a card to pay for bookings and membership plans.
                         </Text>
                         <Pressable
                             onPress={() => setShowAddSheet(true)}
                             accessibilityRole="button"
                             accessibilityLabel="Add your first card"
-                            className="mt-1 flex-row items-center gap-2 rounded-xl bg-[#3B82F6] px-6 py-3.5 active:opacity-80"
+                            className="mt-1 flex-row items-center gap-2 rounded-xl bg-cta px-6 py-3.5 active:opacity-80"
                         >
-                            <Ionicons name="add" size={16} color="#FFFFFF" />
-                            <Text className="text-[14px] font-semibold text-white">
+                            <Ionicons name="add" size={16} color={colors.ctaForeground} />
+                            <Text className="text-[14px] font-semibold text-cta-foreground">
                                 Add your first card
                             </Text>
                         </Pressable>
@@ -186,8 +194,8 @@ export function CardsScreen(): JSX.Element {
                 {/* PCI notice at the bottom */}
                 {sortedMethods.length > 0 && (
                     <View className="flex-row items-center justify-center gap-1.5 pt-2">
-                        <Ionicons name="lock-closed" size={11} color="#D1D5DB" />
-                        <Text className="text-[11px] text-[#D1D5DB]">
+                        <Ionicons name="lock-closed" size={11} color={colors.placeholder} />
+                        <Text className="text-[11px] text-muted-foreground">
                             PCI DSS compliant · Secured by Stripe
                         </Text>
                     </View>

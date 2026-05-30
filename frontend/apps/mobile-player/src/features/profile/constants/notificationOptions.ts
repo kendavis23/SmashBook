@@ -2,6 +2,9 @@ import type { NotificationOption } from "../types";
 
 export const DEFAULT_NOTIFICATION_CHANNEL = "email";
 
+// `iconBgClassName` values are intentional decorative per-channel accent colors, not
+// semantic tokens — kept as fixed brand accents (theme-stable on light + dark). See the
+// note in profileModules.ts and the theme guide's "decorative accents" exception.
 export const NOTIFICATION_OPTIONS: NotificationOption[] = [
     {
         value: DEFAULT_NOTIFICATION_CHANNEL,

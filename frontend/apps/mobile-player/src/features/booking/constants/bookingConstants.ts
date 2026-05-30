@@ -1,45 +1,57 @@
-export const STATUS_CONFIG: Record<
-    string,
-    { label: string; bg: string; text: string; dot: string }
-> = {
-    confirmed: {
-        label: "Confirmed",
-        bg: "#DCFCE7",
-        text: "#15803D",
-        dot: "#22C55E",
-    },
-    pending: {
-        label: "Pending",
-        bg: "#FEF9C3",
-        text: "#A16207",
-        dot: "#EAB308",
-    },
-    cancelled: {
-        label: "Cancelled",
-        bg: "#FEE2E2",
-        text: "#B91C1C",
-        dot: "#EF4444",
-    },
-    completed: {
-        label: "Completed",
-        bg: "#F3F4F6",
-        text: "#6B7280",
-        dot: "#9CA3AF",
-    },
-};
+import type { ThemeColors } from "../../../theme";
+import { palette } from "../../../theme";
 
-export const PAYMENT_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-    paid: { label: "Paid", bg: "#DCFCE7", text: "#15803D" },
-    pending: { label: "Unpaid", bg: "#FEF9C3", text: "#A16207" },
-    failed: { label: "Failed", bg: "#FEE2E2", text: "#B91C1C" },
-    refunded: { label: "Refunded", bg: "#F3F4F6", text: "#6B7280" },
-};
+type StatusConfig = { label: string; bg: string; text: string; dot: string };
+type PaymentConfig = { label: string; bg: string; text: string };
+type InviteConfig = { label: string; color: string };
 
-export const INVITE_CONFIG: Record<string, { label: string; color: string }> = {
-    accepted: { label: "Accepted", color: "#15803D" },
-    declined: { label: "Declined", color: "#B91C1C" },
-    pending: { label: "Pending", color: "#A16207" },
-};
+// Theme-aware badge config builders. Components pass `useThemeColors()`; each status
+// maps to a semantic state token (surface + foreground) plus a vivid palette "dot".
+export function getStatusConfig(c: ThemeColors): Record<string, StatusConfig> {
+    return {
+        confirmed: {
+            label: "Confirmed",
+            bg: c.successSurface,
+            text: c.success,
+            dot: palette.green500,
+        },
+        pending: {
+            label: "Pending",
+            bg: c.warningSurface,
+            text: c.warning,
+            dot: palette.amber500,
+        },
+        cancelled: {
+            label: "Cancelled",
+            bg: c.destructiveSurface,
+            text: c.destructive,
+            dot: palette.red500,
+        },
+        completed: {
+            label: "Completed",
+            bg: c.muted,
+            text: c.mutedForeground,
+            dot: c.mutedForeground,
+        },
+    };
+}
+
+export function getPaymentConfig(c: ThemeColors): Record<string, PaymentConfig> {
+    return {
+        paid: { label: "Paid", bg: c.successSurface, text: c.success },
+        pending: { label: "Unpaid", bg: c.warningSurface, text: c.warning },
+        failed: { label: "Failed", bg: c.destructiveSurface, text: c.destructive },
+        refunded: { label: "Refunded", bg: c.muted, text: c.mutedForeground },
+    };
+}
+
+export function getInviteConfig(c: ThemeColors): Record<string, InviteConfig> {
+    return {
+        accepted: { label: "Accepted", color: c.success },
+        declined: { label: "Declined", color: c.destructive },
+        pending: { label: "Pending", color: c.warning },
+    };
+}
 
 export const BOOKING_TYPE_LABELS: Record<string, string> = {
     regular: "Regular",

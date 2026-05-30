@@ -25,6 +25,7 @@ import { useStripe } from "@stripe/stripe-react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTopUpWallet, useListPaymentMethods } from "@repo/player-domain";
 import type { PaymentMethod } from "@repo/player-domain";
+import { useThemeColors } from "../../../../theme";
 
 type Props = {
     visible: boolean;
@@ -41,50 +42,52 @@ function CardOption({
     selected: boolean;
     onPress: () => void;
 }): JSX.Element {
+    const colors = useThemeColors();
     return (
         <Pressable
             onPress={onPress}
             accessibilityRole="button"
             accessibilityLabel={`Select card ending ${method.last4}`}
             className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3.5 active:opacity-70 ${
-                selected ? "border-[#3B82F6] bg-[#EFF6FF]" : "border-[#E5E7EB] bg-white"
+                selected ? "border-cta bg-secondary" : "border-border bg-card"
             }`}
         >
             {/* Brand chip */}
-            <View className="h-8 w-12 items-center justify-center rounded-lg border border-[#E5E7EB] bg-[#F9FAFB]">
-                <Text className="text-[9px] font-bold uppercase tracking-wide text-[#374151]">
+            <View className="h-8 w-12 items-center justify-center rounded-lg border border-border bg-muted">
+                <Text className="text-[9px] font-bold uppercase tracking-wide text-foreground">
                     {method.brand.slice(0, 4)}
                 </Text>
             </View>
 
             <View className="flex-1">
-                <Text className="text-[14px] font-semibold text-[#111827]">
+                <Text className="text-[14px] font-semibold text-foreground">
                     •••• {method.last4}
                 </Text>
-                <Text className="mt-0.5 text-[12px] text-[#9CA3AF]">
+                <Text className="mt-0.5 text-[12px] text-muted-foreground">
                     Exp {String(method.exp_month).padStart(2, "0")}/{method.exp_year}
                 </Text>
             </View>
 
             {method.is_default && (
-                <View className="flex-row items-center gap-1 rounded-full bg-[#EFF6FF] px-2 py-0.5">
-                    <Ionicons name="star" size={9} color="#3B82F6" />
-                    <Text className="text-[10px] font-bold text-[#3B82F6]">Default</Text>
+                <View className="flex-row items-center gap-1 rounded-full bg-secondary px-2 py-0.5">
+                    <Ionicons name="star" size={9} color={colors.cta} />
+                    <Text className="text-[10px] font-bold text-cta">Default</Text>
                 </View>
             )}
 
             <View
                 className={`h-5 w-5 rounded-full border-2 items-center justify-center ${
-                    selected ? "border-[#3B82F6] bg-[#3B82F6]" : "border-[#D1D5DB] bg-white"
+                    selected ? "border-cta bg-cta" : "border-border bg-card"
                 }`}
             >
-                {selected && <Ionicons name="checkmark" size={11} color="#FFFFFF" />}
+                {selected && <Ionicons name="checkmark" size={11} color={colors.ctaForeground} />}
             </View>
         </Pressable>
     );
 }
 
 export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element {
+    const colors = useThemeColors();
     const { confirmPayment } = useStripe();
     const topUp = useTopUpWallet();
     const { data: methods = [] } = useListPaymentMethods();
@@ -149,7 +152,8 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
         <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
             {/* Backdrop */}
             <Pressable
-                className="flex-1 bg-black/40"
+                className="flex-1"
+                style={{ backgroundColor: colors.overlay }}
                 accessibilityRole="button"
                 accessibilityLabel="Close top-up sheet"
                 onPress={handleClose}
@@ -157,19 +161,19 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
 
             {/* Sheet */}
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-                <View className="rounded-t-[28px] bg-white overflow-hidden">
+                <View className="rounded-t-[28px] bg-card overflow-hidden">
                     {/* Handle */}
                     <View className="items-center pt-3 pb-1">
-                        <View className="h-1 w-10 rounded-full bg-[#E5E7EB]" />
+                        <View className="h-1 w-10 rounded-full bg-border" />
                     </View>
 
                     {/* Header */}
-                    <View className="flex-row items-center justify-between border-b border-[#F3F4F6] px-5 py-4">
+                    <View className="flex-row items-center justify-between border-b border-border px-5 py-4">
                         <View>
-                            <Text className="text-[16px] font-bold text-[#111827]">
+                            <Text className="text-[16px] font-bold text-foreground">
                                 Top up wallet
                             </Text>
-                            <Text className="mt-0.5 text-[12px] text-[#6B7280]">
+                            <Text className="mt-0.5 text-[12px] text-muted-foreground">
                                 Add funds using a saved card
                             </Text>
                         </View>
@@ -179,9 +183,9 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
                             accessibilityRole="button"
                             accessibilityLabel="Close"
                             hitSlop={10}
-                            className="h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] active:opacity-60 disabled:opacity-40"
+                            className="h-8 w-8 items-center justify-center rounded-full bg-muted active:opacity-60 disabled:opacity-40"
                         >
-                            <Ionicons name="close" size={16} color="#374151" />
+                            <Ionicons name="close" size={16} color={colors.foreground} />
                         </Pressable>
                     </View>
 
@@ -192,18 +196,18 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
                     >
                         {/* Amount input */}
                         <View>
-                            <Text className="mb-2 text-[11px] font-bold uppercase tracking-[0.6px] text-[#9CA3AF]">
+                            <Text className="mb-2 text-[11px] font-bold uppercase tracking-[0.6px] text-muted-foreground">
                                 Amount
                             </Text>
-                            <View className="flex-row items-center rounded-2xl border border-[#E5E7EB] bg-white px-4 h-14">
-                                <Text className="text-[17px] font-semibold text-[#9CA3AF] mr-1">
+                            <View className="flex-row items-center rounded-2xl border border-border bg-card px-4 h-14">
+                                <Text className="text-[17px] font-semibold text-muted-foreground mr-1">
                                     £
                                 </Text>
                                 <TextInput
-                                    className="flex-1 text-[17px] font-semibold text-[#111827]"
+                                    className="flex-1 text-[17px] font-semibold text-foreground"
                                     keyboardType="decimal-pad"
                                     placeholder="0.00"
-                                    placeholderTextColor="#D1D5DB"
+                                    placeholderTextColor={colors.placeholder}
                                     value={amountInput}
                                     onChangeText={(v) => {
                                         setAmountInput(v);
@@ -218,12 +222,16 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
                                         accessibilityLabel="Clear amount"
                                         hitSlop={8}
                                     >
-                                        <Ionicons name="close-circle" size={18} color="#D1D5DB" />
+                                        <Ionicons
+                                            name="close-circle"
+                                            size={18}
+                                            color={colors.placeholder}
+                                        />
                                     </Pressable>
                                 )}
                             </View>
                             {!!amountInput && !amountValid && (
-                                <Text className="mt-1.5 text-[12px] text-red-500">
+                                <Text className="mt-1.5 text-[12px] text-destructive">
                                     Minimum top-up is £1.00
                                 </Text>
                             )}
@@ -239,15 +247,15 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
                                     accessibilityLabel={`Set amount to £${v}`}
                                     className={`flex-row items-center rounded-full border px-4 py-2 active:opacity-70 ${
                                         amountInput === String(v)
-                                            ? "border-[#3B82F6] bg-[#EFF6FF]"
-                                            : "border-[#E5E7EB] bg-[#F9FAFB]"
+                                            ? "border-cta bg-secondary"
+                                            : "border-border bg-muted"
                                     }`}
                                 >
                                     <Text
                                         className={`text-[13px] font-semibold ${
                                             amountInput === String(v)
-                                                ? "text-[#3B82F6]"
-                                                : "text-[#374151]"
+                                                ? "text-cta"
+                                                : "text-foreground"
                                         }`}
                                     >
                                         £{v}
@@ -258,13 +266,17 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
 
                         {/* Card selection */}
                         <View>
-                            <Text className="mb-2 text-[11px] font-bold uppercase tracking-[0.6px] text-[#9CA3AF]">
+                            <Text className="mb-2 text-[11px] font-bold uppercase tracking-[0.6px] text-muted-foreground">
                                 Pay with
                             </Text>
                             {methods.length === 0 ? (
-                                <View className="flex-row items-center gap-2 rounded-2xl border border-dashed border-[#E5E7EB] bg-[#F9FAFB] px-4 py-4">
-                                    <Ionicons name="card-outline" size={16} color="#9CA3AF" />
-                                    <Text className="flex-1 text-[13px] text-[#9CA3AF]">
+                                <View className="flex-row items-center gap-2 rounded-2xl border border-dashed border-border bg-muted px-4 py-4">
+                                    <Ionicons
+                                        name="card-outline"
+                                        size={16}
+                                        color={colors.placeholder}
+                                    />
+                                    <Text className="flex-1 text-[13px] text-muted-foreground">
                                         No saved cards. Add a card from the Cards screen first.
                                     </Text>
                                 </View>
@@ -284,9 +296,13 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
 
                         {/* Error banner */}
                         {!!error && (
-                            <View className="flex-row items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3">
-                                <Ionicons name="alert-circle-outline" size={16} color="#EF4444" />
-                                <Text className="flex-1 text-[13px] font-medium text-red-600">
+                            <View className="flex-row items-center gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-3">
+                                <Ionicons
+                                    name="alert-circle-outline"
+                                    size={16}
+                                    color={colors.destructive}
+                                />
+                                <Text className="flex-1 text-[13px] font-medium text-destructive">
                                     {error}
                                 </Text>
                             </View>
@@ -300,19 +316,23 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
                             }
                             accessibilityRole="button"
                             accessibilityLabel="Confirm top-up"
-                            className="items-center justify-center rounded-2xl bg-[#10B981] py-4 active:opacity-80 disabled:opacity-40"
+                            className="items-center justify-center rounded-2xl bg-success py-4 active:opacity-80 disabled:opacity-40"
                         >
                             {isProcessing ? (
                                 <View className="flex-row items-center gap-2">
-                                    <ActivityIndicator size="small" color="#FFFFFF" />
-                                    <Text className="text-[15px] font-semibold text-white">
+                                    <ActivityIndicator size="small" color={colors.ctaForeground} />
+                                    <Text className="text-[15px] font-semibold text-cta-foreground">
                                         Processing…
                                     </Text>
                                 </View>
                             ) : (
                                 <View className="flex-row items-center gap-2">
-                                    <Ionicons name="wallet-outline" size={16} color="#FFFFFF" />
-                                    <Text className="text-[15px] font-semibold text-white">
+                                    <Ionicons
+                                        name="wallet-outline"
+                                        size={16}
+                                        color={colors.ctaForeground}
+                                    />
+                                    <Text className="text-[15px] font-semibold text-cta-foreground">
                                         Top up
                                         {amountValid
                                             ? ` £${Number.isFinite(parseFloat(amountInput)) ? parseFloat(amountInput).toFixed(2) : "0.00"}`
@@ -323,7 +343,7 @@ export function TopUpSheet({ visible, onClose, onSuccess }: Props): JSX.Element 
                         </Pressable>
 
                         {/* Security footer */}
-                        <Text className="text-center text-[11px] text-[#9CA3AF]">
+                        <Text className="text-center text-[11px] text-muted-foreground">
                             PCI DSS compliant · Secured by Stripe
                         </Text>
                     </ScrollView>

@@ -2,6 +2,7 @@ import type { Config } from "tailwindcss";
 import sharedConfig from "@repo/tailwind-config";
 
 const config: Config = {
+    darkMode: "class",
     content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
     presets: [require("nativewind/preset"), sharedConfig as Config],
 };

@@ -2,6 +2,7 @@ import { Platform, Pressable, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useThemeColors } from "../theme";
 
 type TabConfig = {
     name: string;
@@ -17,32 +18,29 @@ const TABS: TabConfig[] = [
     { name: "profile", label: "Profile", icon: "person-outline", iconFocused: "person" },
 ];
 
-const BLUE = "#2563EB";
-const INACTIVE_COLOR = "#9CA3AF";
-const ACTIVE_LABEL = "#111827";
-
-export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function BottomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     const insets = useSafeAreaInsets();
+    const colors = useThemeColors();
 
     return (
         <View
             style={{
-                backgroundColor: "#FFFFFF",
-                // Top border separator
-                borderTopWidth: 0.5,
-                borderTopColor: "rgba(0,0,0,0.08)",
-                // iOS shadow upward
-                shadowColor: "#000000",
+                backgroundColor: colors.tabBar,
+                // Hairline top separator
+                borderTopWidth: Platform.OS === "ios" ? 0.5 : 0.6,
+                borderTopColor: colors.tabBarBorder,
+                // Soft upward shadow (iOS)
+                shadowColor: colors.shadow,
                 shadowOffset: { width: 0, height: -2 },
-                shadowOpacity: 0.06,
+                shadowOpacity: 0.04,
                 shadowRadius: 8,
                 // Android elevation
                 elevation: 12,
                 flexDirection: "row",
-                alignItems: "flex-start",
-                paddingTop: 10,
-                paddingBottom: Platform.OS === "ios" ? insets.bottom : 12,
-                paddingHorizontal: 4,
+                alignItems: "stretch",
+                paddingTop: 6,
+                paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
+                paddingHorizontal: 6,
             }}
         >
             {state.routes.map((route, index) => {
@@ -75,24 +73,19 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                         accessibilityRole="tab"
                         accessibilityLabel={options?.tabBarAccessibilityLabel ?? tab.label}
                         accessibilityState={{ selected: isFocused }}
-                        style={{ flex: 1, alignItems: "center" }}
+                        android_ripple={{ color: colors.ripple, borderless: true }}
+                        style={{
+                            flex: 1,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            paddingVertical: 4,
+                        }}
                     >
-                        {/* Active dot indicator at the top */}
-                        <View
-                            style={{
-                                width: 20,
-                                height: 3,
-                                borderRadius: 2,
-                                backgroundColor: isFocused ? BLUE : "transparent",
-                                marginBottom: 6,
-                            }}
-                        />
-
                         {/* Icon */}
                         <Ionicons
                             name={isFocused ? tab.iconFocused : tab.icon}
                             size={24}
-                            color={isFocused ? BLUE : INACTIVE_COLOR}
+                            color={isFocused ? colors.tabActive : colors.tabInactive}
                             accessibilityElementsHidden
                         />
 
@@ -100,9 +93,9 @@ export function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarP
                         <Text
                             style={{
                                 marginTop: 3,
-                                fontSize: 10,
-                                fontWeight: isFocused ? "700" : "400",
-                                color: isFocused ? ACTIVE_LABEL : INACTIVE_COLOR,
+                                fontSize: 11,
+                                fontWeight: isFocused ? "700" : "500",
+                                color: isFocused ? colors.tabActiveLabel : colors.tabInactive,
                                 letterSpacing: 0.1,
                             }}
                             numberOfLines={1}

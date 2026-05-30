@@ -1,6 +1,7 @@
 import { type JSX } from "react";
 import { Text, View } from "react-native";
 import type { PlayerBookingItem } from "../../types";
+import { useThemeColors } from "../../../../theme";
 
 type Props = {
     upcoming: PlayerBookingItem[];
@@ -8,6 +9,7 @@ type Props = {
 };
 
 export function BookingStatsBar({ upcoming, past }: Props): JSX.Element {
+    const colors = useThemeColors();
     const confirmed = upcoming.filter((b) => b.status === "confirmed").length;
     const unpaid = upcoming.filter(
         (b) => b.payment_status === "pending" && b.invite_status === "accepted"
@@ -28,13 +30,13 @@ export function BookingStatsBar({ upcoming, past }: Props): JSX.Element {
                     key={s.label}
                     style={{
                         flex: 1,
-                        backgroundColor: "#FFFFFF",
+                        backgroundColor: colors.card,
                         borderRadius: 16,
                         borderWidth: 1,
-                        borderColor: "#E2E8F0",
+                        borderColor: colors.border,
                         alignItems: "center",
                         paddingVertical: 12,
-                        shadowColor: "#1E3A8A",
+                        shadowColor: colors.shadow,
                         shadowOffset: { width: 0, height: 1 },
                         shadowOpacity: 0.04,
                         shadowRadius: 4,
@@ -45,7 +47,7 @@ export function BookingStatsBar({ upcoming, past }: Props): JSX.Element {
                         style={{
                             fontSize: 20,
                             fontWeight: "700",
-                            color: s.highlight ? "#2563EB" : "#0F172A",
+                            color: s.highlight ? colors.cta : colors.foreground,
                             letterSpacing: -0.5,
                         }}
                     >
@@ -55,7 +57,7 @@ export function BookingStatsBar({ upcoming, past }: Props): JSX.Element {
                         style={{
                             fontSize: 10,
                             fontWeight: "500",
-                            color: "#94A3B8",
+                            color: colors.mutedForeground,
                             marginTop: 2,
                         }}
                     >

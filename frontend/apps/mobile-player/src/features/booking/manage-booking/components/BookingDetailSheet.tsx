@@ -18,7 +18,8 @@ import {
     formatBookingType,
     getInitials,
 } from "../../utils/bookingFormatters";
-import { STATUS_CONFIG } from "../../constants/bookingConstants";
+import { getStatusConfig } from "../../constants/bookingConstants";
+import { useThemeColors, palette } from "../../../../theme";
 
 type SelectedBooking = { bookingId: string; clubId: string };
 
@@ -43,7 +44,7 @@ function InfoTile({
     iconColor: string;
 }): JSX.Element {
     return (
-        <View className="flex-1 flex-row items-center gap-3 rounded-[16px] border border-[#F3F4F6] bg-[#F9FAFB] px-3 py-3">
+        <View className="flex-1 flex-row items-center gap-3 rounded-[16px] border border-border bg-muted px-3 py-3">
             <View
                 style={{ backgroundColor: iconBg }}
                 className="h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
@@ -51,10 +52,13 @@ function InfoTile({
                 <Ionicons name={icon as never} size={16} color={iconColor} />
             </View>
             <View className="min-w-0 flex-1">
-                <Text className="text-[9px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                <Text className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {label}
                 </Text>
-                <Text className="mt-0.5 text-[13px] font-semibold text-[#111827]" numberOfLines={1}>
+                <Text
+                    className="mt-0.5 text-[13px] font-semibold text-foreground"
+                    numberOfLines={1}
+                >
                     {value}
                 </Text>
             </View>
@@ -75,32 +79,49 @@ function PlayerRow({
     paymentStatus: string;
     isMe: boolean;
 }): JSX.Element {
+    const colors = useThemeColors();
     const initials = getInitials(name);
     const isAccepted = inviteStatus === "accepted";
     const isPaid = paymentStatus === "paid";
 
-    const avatarBg = isMe ? "#EFF6FF" : isAccepted ? "#DCFCE7" : "#F3F4F6";
-    const avatarText = isMe ? "#2563EB" : isAccepted ? "#15803D" : "#9CA3AF";
+    const avatarBg = isMe ? colors.ctaSurface : isAccepted ? colors.successSurface : colors.muted;
+    const avatarText = isMe ? colors.cta : isAccepted ? colors.success : colors.mutedForeground;
 
-    const inviteBg = isAccepted ? "#DCFCE7" : inviteStatus === "pending" ? "#FEF9C3" : "#F3F4F6";
-    const inviteColor = isAccepted ? "#15803D" : inviteStatus === "pending" ? "#A16207" : "#9CA3AF";
+    const inviteBg = isAccepted
+        ? colors.successSurface
+        : inviteStatus === "pending"
+          ? colors.warningSurface
+          : colors.muted;
+    const inviteColor = isAccepted
+        ? colors.success
+        : inviteStatus === "pending"
+          ? colors.warning
+          : colors.mutedForeground;
     const inviteLabel = isAccepted
         ? "Accepted"
         : inviteStatus === "pending"
           ? "Pending"
           : inviteStatus;
 
-    const payBg = isPaid ? "#DCFCE7" : paymentStatus === "pending" ? "#FEF9C3" : "#F3F4F6";
-    const payColor = isPaid ? "#15803D" : paymentStatus === "pending" ? "#A16207" : "#9CA3AF";
+    const payBg = isPaid
+        ? colors.successSurface
+        : paymentStatus === "pending"
+          ? colors.warningSurface
+          : colors.muted;
+    const payColor = isPaid
+        ? colors.success
+        : paymentStatus === "pending"
+          ? colors.warning
+          : colors.mutedForeground;
 
     return (
         <View
-            style={{ backgroundColor: isMe ? "#EFF6FF" : "#FFFFFF" }}
-            className="flex-row items-center gap-3 rounded-[16px] border border-[#F3F4F6] px-3 py-3"
+            style={{ backgroundColor: isMe ? colors.ctaSurface : colors.card }}
+            className="flex-row items-center gap-3 rounded-[16px] border border-border px-3 py-3"
         >
             {/* Left accent */}
             {isMe ? (
-                <View className="absolute bottom-0 left-0 top-0 w-0.5 rounded-r bg-[#2563EB]" />
+                <View className="absolute bottom-0 left-0 top-0 w-0.5 rounded-r bg-cta" />
             ) : null}
 
             {/* Avatar */}
@@ -115,11 +136,11 @@ function PlayerRow({
 
             {/* Name + role */}
             <View className="min-w-0 flex-1">
-                <Text className="text-[13px] font-semibold text-[#111827]" numberOfLines={1}>
+                <Text className="text-[13px] font-semibold text-foreground" numberOfLines={1}>
                     {name}
                     {isMe ? " (You)" : ""}
                 </Text>
-                <Text className="mt-0.5 text-[11px] capitalize text-[#9CA3AF]">{role}</Text>
+                <Text className="mt-0.5 text-[11px] capitalize text-muted-foreground">{role}</Text>
             </View>
 
             {/* Badges */}
@@ -148,6 +169,7 @@ type Props = {
 };
 
 export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JSX.Element {
+    const colors = useThemeColors();
     const [respondBusy, setRespondBusy] = useState<"accepted" | "declined" | null>(null);
 
     const {
@@ -206,10 +228,10 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
 
     const typedBooking = booking as Booking | undefined;
     const statusCfg = typedBooking
-        ? (STATUS_CONFIG[typedBooking.status] ?? {
-              dot: "#9CA3AF",
-              text: "#374151",
-              bg: "#F3F4F6",
+        ? (getStatusConfig(colors)[typedBooking.status] ?? {
+              dot: colors.mutedForeground,
+              text: colors.mutedForeground,
+              bg: colors.muted,
               label: typedBooking.status,
           })
         : null;
@@ -221,11 +243,11 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
             presentationStyle="pageSheet"
             onRequestClose={onClose}
         >
-            <View className="flex-1 bg-[#F2F3F7]">
+            <View className="flex-1 bg-background">
                 {/* Header */}
-                <View className="flex-row items-center justify-between bg-white px-5 pb-4 pt-5 shadow-sm">
+                <View className="flex-row items-center justify-between bg-card px-5 pb-4 pt-5 shadow-sm">
                     <View className="min-w-0 flex-1">
-                        <Text className="text-[18px] font-bold text-[#111827]" numberOfLines={1}>
+                        <Text className="text-[18px] font-bold text-foreground" numberOfLines={1}>
                             {typedBooking?.court_name ?? "Booking Details"}
                         </Text>
                         {statusCfg ? (
@@ -251,17 +273,17 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                             onPress={() => void refetch()}
                             accessibilityRole="button"
                             accessibilityLabel="Refresh booking"
-                            className="h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6] active:opacity-75"
+                            className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
                         >
-                            <Ionicons name="refresh-outline" size={18} color="#374151" />
+                            <Ionicons name="refresh-outline" size={18} color={colors.foreground} />
                         </Pressable>
                         <Pressable
                             onPress={onClose}
                             accessibilityRole="button"
                             accessibilityLabel="Close booking details"
-                            className="h-10 w-10 items-center justify-center rounded-full bg-[#F3F4F6] active:opacity-75"
+                            className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
                         >
-                            <Ionicons name="close" size={20} color="#374151" />
+                            <Ionicons name="close" size={20} color={colors.foreground} />
                         </Pressable>
                     </View>
                 </View>
@@ -269,32 +291,42 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                 {/* Body */}
                 {isLoading ? (
                     <View className="flex-1 items-center justify-center gap-3">
-                        <View className="h-14 w-14 items-center justify-center rounded-[20px] bg-white shadow-sm">
-                            <ActivityIndicator size="small" color="#2563EB" />
+                        <View className="h-14 w-14 items-center justify-center rounded-[20px] bg-card shadow-sm">
+                            <ActivityIndicator size="small" color={colors.cta} />
                         </View>
-                        <Text className="text-[14px] font-medium text-[#9CA3AF]">
+                        <Text className="text-[14px] font-medium text-muted-foreground">
                             Loading booking…
                         </Text>
                     </View>
                 ) : error || !typedBooking ? (
                     <View className="flex-1 items-center justify-center gap-4 px-8">
-                        <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-red-50">
-                            <Ionicons name="alert-circle-outline" size={30} color="#EF4444" />
+                        <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-destructive/10">
+                            <Ionicons
+                                name="alert-circle-outline"
+                                size={30}
+                                color={colors.destructive}
+                            />
                         </View>
-                        <Text className="text-center text-[16px] font-bold text-[#111827]">
+                        <Text className="text-center text-[16px] font-bold text-foreground">
                             Failed to load booking
                         </Text>
-                        <Text className="text-center text-[13px] text-[#9CA3AF]">
+                        <Text className="text-center text-[13px] text-muted-foreground">
                             {error instanceof Error ? error.message : "Booking not found."}
                         </Text>
                         <Pressable
                             onPress={() => void refetch()}
                             accessibilityRole="button"
                             accessibilityLabel="Retry"
-                            className="mt-2 flex-row items-center gap-2 rounded-[14px] bg-[#2563EB] px-6 py-3.5 active:opacity-75"
+                            className="mt-2 flex-row items-center gap-2 rounded-[14px] bg-cta px-6 py-3.5 active:opacity-75"
                         >
-                            <Ionicons name="refresh-outline" size={16} color="#FFFFFF" />
-                            <Text className="text-[14px] font-semibold text-white">Retry</Text>
+                            <Ionicons
+                                name="refresh-outline"
+                                size={16}
+                                color={colors.ctaForeground}
+                            />
+                            <Text className="text-[14px] font-semibold text-cta-foreground">
+                                Retry
+                            </Text>
                         </Pressable>
                     </View>
                 ) : (
@@ -304,7 +336,7 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                     >
                         {/* Match info tiles */}
                         <View className="gap-2">
-                            <Text className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                            <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                 Match Information
                             </Text>
                             <View className="flex-row gap-2">
@@ -312,15 +344,15 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                                     icon="location-outline"
                                     label="Court"
                                     value={typedBooking.court_name}
-                                    iconBg="#EDE9FE"
-                                    iconColor="#7C3AED"
+                                    iconBg={colors.ctaSurface}
+                                    iconColor={colors.cta}
                                 />
                                 <InfoTile
                                     icon="calendar-outline"
                                     label="Date"
                                     value={formatBookingDate(typedBooking.start_datetime)}
-                                    iconBg="#DBEAFE"
-                                    iconColor="#2563EB"
+                                    iconBg={colors.ctaSurface}
+                                    iconColor={colors.cta}
                                 />
                             </View>
                             <View className="flex-row gap-2">
@@ -331,15 +363,15 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                                         typedBooking.start_datetime,
                                         typedBooking.end_datetime
                                     )}
-                                    iconBg="#FEF3C7"
-                                    iconColor="#D97706"
+                                    iconBg={colors.warningSurface}
+                                    iconColor={colors.warning}
                                 />
                                 <InfoTile
                                     icon="layers-outline"
                                     label="Type"
                                     value={formatBookingType(typedBooking.booking_type)}
-                                    iconBg="#EFF6FF"
-                                    iconColor="#2563EB"
+                                    iconBg={colors.ctaSurface}
+                                    iconColor={colors.cta}
                                 />
                             </View>
                             <View className="flex-row gap-2">
@@ -351,15 +383,15 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                                             ? `${typedBooking.max_players - typedBooking.slots_available} / ${typedBooking.max_players}`
                                             : String(typedBooking.players.length)
                                     }
-                                    iconBg="#FCE7F3"
-                                    iconColor="#DB2777"
+                                    iconBg={colors.muted}
+                                    iconColor={colors.mutedForeground}
                                 />
                                 <InfoTile
                                     icon="cash-outline"
                                     label="Total"
                                     value={formatAmount(typedBooking.total_price)}
-                                    iconBg="#DCFCE7"
-                                    iconColor="#15803D"
+                                    iconBg={colors.successSurface}
+                                    iconColor={colors.success}
                                 />
                             </View>
                         </View>
@@ -367,10 +399,10 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                         {/* Payment info for accepted player */}
                         {myInfo && myInfo.inviteStatus === "accepted" ? (
                             <View className="gap-2">
-                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                     Your Payment
                                 </Text>
-                                <View className="overflow-hidden rounded-[20px] bg-white shadow-sm">
+                                <View className="overflow-hidden rounded-[20px] bg-card shadow-sm">
                                     {payableBooking ? (
                                         <Pressable
                                             onPress={() => {
@@ -379,57 +411,75 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                                             }}
                                             accessibilityRole="button"
                                             accessibilityLabel="Pay now"
-                                            className="flex-row items-center justify-between bg-[#2563EB] px-5 py-4 active:opacity-90"
+                                            className="flex-row items-center justify-between bg-cta px-5 py-4 active:opacity-90"
                                         >
                                             <View className="flex-row items-center gap-3">
                                                 <View className="h-10 w-10 items-center justify-center rounded-[12px] bg-white/20">
                                                     <Ionicons
                                                         name="card-outline"
                                                         size={20}
-                                                        color="#FFFFFF"
+                                                        color={colors.ctaForeground}
                                                     />
                                                 </View>
                                                 <View>
-                                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-blue-200">
+                                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-cta-foreground/70">
                                                         Amount Due
                                                     </Text>
-                                                    <Text className="mt-0.5 text-[20px] font-bold text-white">
+                                                    <Text className="mt-0.5 text-[20px] font-bold text-cta-foreground">
                                                         {formatAmount(myInfo.amountDue)}
                                                     </Text>
                                                 </View>
                                             </View>
                                             <View className="flex-row items-center gap-2 rounded-[12px] bg-white/20 px-4 py-2.5">
-                                                <Text className="text-[13px] font-bold text-white">
+                                                <Text className="text-[13px] font-bold text-cta-foreground">
                                                     Pay Now
                                                 </Text>
                                                 <Ionicons
                                                     name="arrow-forward"
                                                     size={14}
-                                                    color="#FFFFFF"
+                                                    color={colors.ctaForeground}
                                                 />
                                             </View>
                                         </Pressable>
                                     ) : (
-                                        <View className="flex-row items-center justify-between bg-[#DCFCE7] px-5 py-4">
+                                        <View
+                                            style={{ backgroundColor: colors.successSurface }}
+                                            className="flex-row items-center justify-between px-5 py-4"
+                                        >
                                             <View className="flex-row items-center gap-3">
-                                                <View className="h-10 w-10 items-center justify-center rounded-[12px] bg-[#BBF7D0]">
+                                                <View
+                                                    style={{ backgroundColor: palette.green200 }}
+                                                    className="h-10 w-10 items-center justify-center rounded-[12px]"
+                                                >
                                                     <Ionicons
                                                         name="checkmark-circle"
                                                         size={20}
-                                                        color="#15803D"
+                                                        color={colors.success}
                                                     />
                                                 </View>
                                                 <View>
-                                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-[#15803D]/70">
+                                                    <Text
+                                                        style={{ color: colors.success }}
+                                                        className="text-[11px] font-semibold uppercase tracking-wider opacity-70"
+                                                    >
                                                         Amount Paid
                                                     </Text>
-                                                    <Text className="mt-0.5 text-[20px] font-bold text-[#15803D]">
+                                                    <Text
+                                                        style={{ color: colors.success }}
+                                                        className="mt-0.5 text-[20px] font-bold"
+                                                    >
                                                         {formatAmount(myInfo.amountDue)}
                                                     </Text>
                                                 </View>
                                             </View>
-                                            <View className="rounded-[12px] bg-[#15803D] px-4 py-2.5">
-                                                <Text className="text-[13px] font-bold text-white">
+                                            <View
+                                                style={{ backgroundColor: colors.success }}
+                                                className="rounded-[12px] px-4 py-2.5"
+                                            >
+                                                <Text
+                                                    style={{ color: colors.successForeground }}
+                                                    className="text-[13px] font-bold"
+                                                >
                                                     Paid ✓
                                                 </Text>
                                             </View>
@@ -442,23 +492,32 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                         {/* Pending invite CTA for player */}
                         {myInfo?.role === "player" && myInfo.inviteStatus === "pending" ? (
                             <View className="gap-2">
-                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                     Invitation
                                 </Text>
-                                <View className="overflow-hidden rounded-[20px] border border-[#FDE68A] bg-[#FFFBEB] px-5 py-4">
+                                <View
+                                    style={{
+                                        borderColor: palette.amber200,
+                                        backgroundColor: colors.warningSurface,
+                                    }}
+                                    className="overflow-hidden rounded-[20px] border px-5 py-4"
+                                >
                                     <View className="mb-3 flex-row items-center gap-3">
-                                        <View className="h-10 w-10 items-center justify-center rounded-[12px] bg-[#FEF3C7]">
+                                        <View
+                                            style={{ backgroundColor: palette.amber100 }}
+                                            className="h-10 w-10 items-center justify-center rounded-[12px]"
+                                        >
                                             <Ionicons
                                                 name="mail-outline"
                                                 size={20}
-                                                color="#D97706"
+                                                color={colors.warning}
                                             />
                                         </View>
                                         <View>
-                                            <Text className="text-[14px] font-bold text-[#111827]">
+                                            <Text className="text-[14px] font-bold text-foreground">
                                                 You&apos;ve been invited
                                             </Text>
-                                            <Text className="text-[12px] text-[#9CA3AF]">
+                                            <Text className="text-[12px] text-muted-foreground">
                                                 Accept to confirm your spot
                                             </Text>
                                         </View>
@@ -469,18 +528,21 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                                             disabled={respondBusy !== null}
                                             accessibilityRole="button"
                                             accessibilityLabel="Accept invitation"
-                                            className="flex-1 flex-row items-center justify-center gap-2 rounded-[14px] bg-[#2563EB] py-3.5 active:opacity-75 disabled:opacity-50"
+                                            className="flex-1 flex-row items-center justify-center gap-2 rounded-[14px] bg-cta py-3.5 active:opacity-75 disabled:opacity-50"
                                         >
                                             {respondBusy === "accepted" ? (
-                                                <ActivityIndicator size="small" color="#FFFFFF" />
+                                                <ActivityIndicator
+                                                    size="small"
+                                                    color={colors.ctaForeground}
+                                                />
                                             ) : (
                                                 <Ionicons
                                                     name="checkmark"
                                                     size={16}
-                                                    color="#FFFFFF"
+                                                    color={colors.ctaForeground}
                                                 />
                                             )}
-                                            <Text className="text-[13px] font-bold text-white">
+                                            <Text className="text-[13px] font-bold text-cta-foreground">
                                                 Accept
                                             </Text>
                                         </Pressable>
@@ -489,14 +551,21 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                                             disabled={respondBusy !== null}
                                             accessibilityRole="button"
                                             accessibilityLabel="Decline invitation"
-                                            className="flex-1 flex-row items-center justify-center gap-2 rounded-[14px] border border-[#E5E7EB] bg-white py-3.5 active:opacity-75 disabled:opacity-50"
+                                            className="flex-1 flex-row items-center justify-center gap-2 rounded-[14px] border border-border bg-card py-3.5 active:opacity-75 disabled:opacity-50"
                                         >
                                             {respondBusy === "declined" ? (
-                                                <ActivityIndicator size="small" color="#6B7280" />
+                                                <ActivityIndicator
+                                                    size="small"
+                                                    color={colors.mutedForeground}
+                                                />
                                             ) : (
-                                                <Ionicons name="close" size={16} color="#6B7280" />
+                                                <Ionicons
+                                                    name="close"
+                                                    size={16}
+                                                    color={colors.mutedForeground}
+                                                />
                                             )}
-                                            <Text className="text-[13px] font-semibold text-[#6B7280]">
+                                            <Text className="text-[13px] font-semibold text-muted-foreground">
                                                 Decline
                                             </Text>
                                         </Pressable>
@@ -509,11 +578,11 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                         {typedBooking.players.length > 0 ? (
                             <View className="gap-2">
                                 <View className="flex-row items-center justify-between">
-                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-[#9CA3AF]">
+                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                                         Players
                                     </Text>
-                                    <View className="rounded-full bg-[#F3F4F6] px-2.5 py-1">
-                                        <Text className="text-[11px] font-semibold text-[#6B7280]">
+                                    <View className="rounded-full bg-muted px-2.5 py-1">
+                                        <Text className="text-[11px] font-semibold text-muted-foreground">
                                             {typedBooking.players.length}
                                         </Text>
                                     </View>

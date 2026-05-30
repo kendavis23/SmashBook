@@ -2,6 +2,7 @@ import { type JSX } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { BookingTab } from "../../types";
 import { BOOKING_TABS } from "../../types";
+import { useThemeColors } from "../../../../theme";
 
 type Props = {
     activeTab: BookingTab;
@@ -10,13 +11,14 @@ type Props = {
 };
 
 export function BookingsTabBar({ activeTab, upcomingCount, onTabChange }: Props): JSX.Element {
+    const colors = useThemeColors();
     return (
         <View
             style={{
                 flexDirection: "row",
                 gap: 4,
                 borderRadius: 16,
-                backgroundColor: "#E2E8F0",
+                backgroundColor: colors.accent,
                 padding: 4,
             }}
         >
@@ -37,8 +39,8 @@ export function BookingsTabBar({ activeTab, upcomingCount, onTabChange }: Props)
                             gap: 6,
                             borderRadius: 12,
                             paddingVertical: 10,
-                            backgroundColor: isActive ? "#FFFFFF" : "transparent",
-                            shadowColor: "#1E3A8A",
+                            backgroundColor: isActive ? colors.card : "transparent",
+                            shadowColor: colors.shadow,
                             shadowOffset: { width: 0, height: 1 },
                             shadowOpacity: isActive ? 0.06 : 0,
                             shadowRadius: 4,
@@ -49,7 +51,7 @@ export function BookingsTabBar({ activeTab, upcomingCount, onTabChange }: Props)
                             style={{
                                 fontSize: 13,
                                 fontWeight: isActive ? "600" : "500",
-                                color: isActive ? "#0F172A" : "#64748B",
+                                color: isActive ? colors.foreground : colors.mutedForeground,
                             }}
                         >
                             {tab.label}
@@ -57,7 +59,7 @@ export function BookingsTabBar({ activeTab, upcomingCount, onTabChange }: Props)
                         {tab.id === "upcoming" && upcomingCount > 0 ? (
                             <View
                                 style={{
-                                    backgroundColor: isActive ? "#2563EB" : "#94A3B8",
+                                    backgroundColor: isActive ? colors.cta : colors.mutedForeground,
                                     height: 18,
                                     minWidth: 18,
                                     borderRadius: 9,
@@ -70,7 +72,7 @@ export function BookingsTabBar({ activeTab, upcomingCount, onTabChange }: Props)
                                     style={{
                                         fontSize: 10,
                                         fontWeight: "700",
-                                        color: "#FFFFFF",
+                                        color: colors.ctaForeground,
                                     }}
                                 >
                                     {upcomingCount}

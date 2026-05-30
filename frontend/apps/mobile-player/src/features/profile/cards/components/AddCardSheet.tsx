@@ -26,6 +26,7 @@ import {
 import { CardField, useStripe, type CardFieldInput } from "@stripe/stripe-react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useCreateSetupIntent, useSavePaymentMethod } from "@repo/player-domain";
+import { useThemeColors } from "../../../../theme";
 
 type Props = {
     visible: boolean;
@@ -39,6 +40,7 @@ type SheetState =
     | { status: "error"; message: string };
 
 export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Element {
+    const colors = useThemeColors();
     const { confirmSetupIntent } = useStripe();
     const createSetupIntent = useCreateSetupIntent();
     const savePaymentMethod = useSavePaymentMethod();
@@ -141,7 +143,8 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
         <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
             {/* Backdrop */}
             <Pressable
-                className="flex-1 bg-black/40"
+                className="flex-1"
+                style={{ backgroundColor: colors.overlay }}
                 accessibilityRole="button"
                 accessibilityLabel="Close sheet"
                 onPress={handleClose}
@@ -149,19 +152,19 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
 
             {/* Sheet */}
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"}>
-                <View className="rounded-t-[28px] bg-white overflow-hidden">
+                <View className="rounded-t-[28px] bg-card overflow-hidden">
                     {/* Handle */}
                     <View className="items-center pt-3 pb-1">
-                        <View className="h-1 w-10 rounded-full bg-[#E5E7EB]" />
+                        <View className="h-1 w-10 rounded-full bg-border" />
                     </View>
 
                     {/* Header */}
-                    <View className="flex-row items-center justify-between border-b border-[#F3F4F6] px-5 py-4">
+                    <View className="flex-row items-center justify-between border-b border-border px-5 py-4">
                         <View>
-                            <Text className="text-[16px] font-bold text-[#111827]">
+                            <Text className="text-[16px] font-bold text-foreground">
                                 Add new card
                             </Text>
-                            <Text className="mt-0.5 text-[12px] text-[#6B7280]">
+                            <Text className="mt-0.5 text-[12px] text-muted-foreground">
                                 Your card details are encrypted and secured by Stripe
                             </Text>
                         </View>
@@ -171,9 +174,9 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
                             accessibilityRole="button"
                             accessibilityLabel="Close"
                             hitSlop={10}
-                            className="h-8 w-8 items-center justify-center rounded-full bg-[#F3F4F6] active:opacity-60 disabled:opacity-40"
+                            className="h-8 w-8 items-center justify-center rounded-full bg-muted active:opacity-60 disabled:opacity-40"
                         >
-                            <Ionicons name="close" size={16} color="#374151" />
+                            <Ionicons name="close" size={16} color={colors.foreground} />
                         </Pressable>
                     </View>
 
@@ -185,8 +188,8 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
                         {/* Loading SetupIntent */}
                         {sheetState.status === "loading" && (
                             <View className="items-center justify-center py-8 gap-3">
-                                <ActivityIndicator size="large" color="#3B82F6" />
-                                <Text className="text-[13px] text-[#9CA3AF]">
+                                <ActivityIndicator size="large" color={colors.cta} />
+                                <Text className="text-[13px] text-muted-foreground">
                                     Preparing secure entry…
                                 </Text>
                             </View>
@@ -194,9 +197,13 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
 
                         {/* SetupIntent error */}
                         {sheetState.status === "error" && (
-                            <View className="flex-row items-center gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-4">
-                                <Ionicons name="alert-circle-outline" size={18} color="#EF4444" />
-                                <Text className="flex-1 text-[13px] font-medium text-red-600">
+                            <View className="flex-row items-center gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-4">
+                                <Ionicons
+                                    name="alert-circle-outline"
+                                    size={18}
+                                    color={colors.destructive}
+                                />
+                                <Text className="flex-1 text-[13px] font-medium text-destructive">
                                     {sheetState.message}
                                 </Text>
                             </View>
@@ -206,9 +213,13 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
                         {sheetState.status === "ready" && (
                             <>
                                 {/* Security notice */}
-                                <View className="flex-row items-center gap-2 rounded-xl bg-[#F0FDF4] px-3.5 py-3">
-                                    <Ionicons name="shield-checkmark" size={15} color="#22C55E" />
-                                    <Text className="flex-1 text-[12px] leading-5 text-[#166534]">
+                                <View className="flex-row items-center gap-2 rounded-xl bg-success/10 px-3.5 py-3">
+                                    <Ionicons
+                                        name="shield-checkmark"
+                                        size={15}
+                                        color={colors.success}
+                                    />
+                                    <Text className="flex-1 text-[12px] leading-5 text-success">
                                         Card details are entered directly into Stripe&apos;s secure
                                         field — your card number never touches our servers.
                                     </Text>
@@ -216,17 +227,17 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
 
                                 {/* Stripe native CardField */}
                                 <View>
-                                    <Text className="mb-2 text-[11px] font-bold uppercase tracking-[0.6px] text-[#9CA3AF]">
+                                    <Text className="mb-2 text-[11px] font-bold uppercase tracking-[0.6px] text-muted-foreground">
                                         Card details
                                     </Text>
                                     <CardField
                                         postalCodeEnabled={false}
-                                        placeholder={{ number: "4242 4242 4242 4242" }}
+                                        placeholders={{ number: "4242 4242 4242 4242" }}
                                         cardStyle={{
-                                            backgroundColor: "#FFFFFF",
-                                            textColor: "#111827",
-                                            placeholderColor: "#D1D5DB",
-                                            borderColor: cardComplete ? "#3B82F6" : "#E5E7EB",
+                                            backgroundColor: colors.card,
+                                            textColor: colors.foreground,
+                                            placeholderColor: colors.placeholder,
+                                            borderColor: cardComplete ? colors.cta : colors.border,
                                             borderWidth: cardComplete ? 2 : 1,
                                             borderRadius: 14,
                                             fontSize: 15,
@@ -239,13 +250,13 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
 
                                 {/* Save error */}
                                 {!!saveError && (
-                                    <View className="flex-row items-center gap-2 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+                                    <View className="flex-row items-center gap-2 rounded-xl border border-destructive bg-destructive/10 px-4 py-3">
                                         <Ionicons
                                             name="alert-circle-outline"
                                             size={15}
-                                            color="#EF4444"
+                                            color={colors.destructive}
                                         />
-                                        <Text className="flex-1 text-[13px] font-medium text-red-600">
+                                        <Text className="flex-1 text-[13px] font-medium text-destructive">
                                             {saveError}
                                         </Text>
                                     </View>
@@ -257,12 +268,15 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
                                     disabled={!cardComplete || isSaving}
                                     accessibilityRole="button"
                                     accessibilityLabel="Save card"
-                                    className="items-center justify-center rounded-xl bg-[#3B82F6] py-4 active:opacity-80 disabled:opacity-40"
+                                    className="items-center justify-center rounded-xl bg-cta py-4 active:opacity-80 disabled:opacity-40"
                                 >
                                     {isSaving ? (
                                         <View className="flex-row items-center gap-2">
-                                            <ActivityIndicator size="small" color="#FFFFFF" />
-                                            <Text className="text-[15px] font-semibold text-white">
+                                            <ActivityIndicator
+                                                size="small"
+                                                color={colors.ctaForeground}
+                                            />
+                                            <Text className="text-[15px] font-semibold text-cta-foreground">
                                                 Saving…
                                             </Text>
                                         </View>
@@ -271,9 +285,9 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
                                             <Ionicons
                                                 name="lock-closed"
                                                 size={15}
-                                                color="#FFFFFF"
+                                                color={colors.ctaForeground}
                                             />
-                                            <Text className="text-[15px] font-semibold text-white">
+                                            <Text className="text-[15px] font-semibold text-cta-foreground">
                                                 Save card
                                             </Text>
                                         </View>
@@ -281,7 +295,7 @@ export function AddCardSheet({ visible, onClose, onSuccess }: Props): JSX.Elemen
                                 </Pressable>
 
                                 {/* PCI footer */}
-                                <Text className="text-center text-[11px] text-[#9CA3AF]">
+                                <Text className="text-center text-[11px] text-muted-foreground">
                                     PCI DSS compliant · Secured by Stripe · 3D Secure may apply
                                 </Text>
                             </>

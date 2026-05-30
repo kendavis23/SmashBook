@@ -3,12 +3,14 @@ import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { PlayerBookingItem } from "../types";
 import { formatAmount } from "../utils/myGamesFormatters";
+import { useThemeColors } from "../../../theme";
 
 type Props = {
     games: PlayerBookingItem[];
 };
 
 export function StatsBar({ games }: Props): JSX.Element {
+    const colors = useThemeColors();
     const total = games.length;
     const completed = games.filter((g) => g.status === "completed").length;
     const totalSpend = games
@@ -28,29 +30,29 @@ export function StatsBar({ games }: Props): JSX.Element {
             icon: "tennisball",
             label: "Total games",
             value: String(total),
-            iconBg: "#EFF6FF",
-            iconColor: "#2563EB",
+            iconBg: colors.ctaSurface,
+            iconColor: colors.cta,
         },
         {
             icon: "checkmark-circle",
             label: "Completed",
             value: String(completed),
-            iconBg: "#ECFDF5",
-            iconColor: "#059669",
+            iconBg: colors.successSurface,
+            iconColor: colors.success,
         },
         {
             icon: "trophy",
             label: "Completion",
             value: `${winRate}%`,
-            iconBg: "#FFFBEB",
-            iconColor: "#D97706",
+            iconBg: colors.warningSurface,
+            iconColor: colors.warning,
         },
         {
             icon: "card",
             label: "Total spend",
             value: formatAmount(totalSpend),
-            iconBg: "#F0F9FF",
-            iconColor: "#0369A1",
+            iconBg: colors.ctaSurface,
+            iconColor: colors.cta,
         },
     ];
 
@@ -59,7 +61,7 @@ export function StatsBar({ games }: Props): JSX.Element {
             {stats.map((stat) => (
                 <View
                     key={stat.label}
-                    className="flex-1 items-center gap-1.5 overflow-hidden rounded-[18px] bg-white px-2 py-3 shadow-sm"
+                    className="flex-1 items-center gap-1.5 overflow-hidden rounded-[18px] bg-card px-2 py-3 shadow-sm"
                 >
                     <View
                         style={{ backgroundColor: stat.iconBg }}
@@ -67,11 +69,11 @@ export function StatsBar({ games }: Props): JSX.Element {
                     >
                         <Ionicons name={stat.icon} size={15} color={stat.iconColor} />
                     </View>
-                    <Text className="text-[14px] font-bold text-[#111827]" numberOfLines={1}>
+                    <Text className="text-[14px] font-bold text-foreground" numberOfLines={1}>
                         {stat.value}
                     </Text>
                     <Text
-                        className="text-center text-[10px] leading-3 text-[#9CA3AF]"
+                        className="text-center text-[10px] leading-3 text-muted-foreground"
                         numberOfLines={2}
                     >
                         {stat.label}
