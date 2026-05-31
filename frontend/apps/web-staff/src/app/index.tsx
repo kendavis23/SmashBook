@@ -49,6 +49,11 @@ const ManageOpenMatchPage = lazy(
 const PlayersPage = lazy(() => import("../features/player/pages/PlayersPage"));
 const RegisterPlayerPage = lazy(() => import("../features/player/pages/RegisterPlayerPage"));
 const EquipmentPage = lazy(() => import("../features/equipment/pages/EquipmentPage"));
+const ClubUtilisationPage = lazy(() => import("../features/analytics/pages/ClubUtilisationPage"));
+const CourtUtilisationPage = lazy(() => import("../features/analytics/pages/CourtUtilisationPage"));
+const ClubUtilisationHeatmapPage = lazy(
+    () => import("../features/analytics/pages/ClubUtilisationHeatmapPage")
+);
 const MySubscriptionPage = lazy(() => import("../features/subscription/pages/MySubscriptionPage"));
 const InvoicesPage = lazy(() => import("../features/subscription/pages/InvoicesPage"));
 const PaymentPage = lazy(() => import("../features/subscription/pages/PaymentPage"));
@@ -324,6 +329,27 @@ const editMembershipPlanRoute = createRoute({
     component: EditMembershipPlanPage,
 });
 
+const clubUtilisationRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/club-utilisation",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: ClubUtilisationPage,
+});
+
+const courtUtilisationRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/court-utilisation",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: CourtUtilisationPage,
+});
+
+const clubUtilisationHeatmapRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/club-utilisation-heatmap",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: ClubUtilisationHeatmapPage,
+});
+
 const staffRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/staff",
@@ -448,6 +474,9 @@ const routeTree = rootRoute.addChildren([
     resetPasswordRoute,
     dashboardLayoutRoute.addChildren([
         dashboardRoute,
+        clubUtilisationRoute,
+        courtUtilisationRoute,
+        clubUtilisationHeatmapRoute,
         clubsRoute,
         newClubRoute,
         clubDetailRoute,

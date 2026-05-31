@@ -56,6 +56,11 @@ export {
     useUpdatePaymentMethod,
 } from "./subscription.hooks";
 export {
+    useClubDailyUtilisation,
+    useClubCourtsUtilisation,
+    useClubUtilisationHeatmap,
+} from "./utilisation.hooks";
+export {
     useListBookings,
     useGetBooking,
     useGetCalendarView,

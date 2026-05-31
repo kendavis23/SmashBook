@@ -15,3 +15,5 @@ export * from "./player/player.api";
 export * from "./player/player.types";
 export * from "./subscription/subscription.api";
 export * from "./subscription/subscription.types";
+export * from "./utilisation/utilisation.api";
+export * from "./utilisation/utilisation.types";

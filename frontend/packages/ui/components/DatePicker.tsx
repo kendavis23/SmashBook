@@ -101,6 +101,8 @@ interface CalendarGridProps {
     onSelectDay: (day: number) => void;
     /** "YYYY-MM-DD" — days before this date are disabled */
     minDateStr?: string;
+    /** "YYYY-MM-DD" — days after this date are disabled */
+    maxDateStr?: string;
 }
 
 function CalendarGrid({
@@ -111,6 +113,7 @@ function CalendarGrid({
     onNextMonth,
     onSelectDay,
     minDateStr,
+    maxDateStr,
 }: CalendarGridProps): JSX.Element {
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
@@ -156,15 +159,17 @@ function CalendarGrid({
                     const isSelected = selectedDateStr === dayStr;
                     const isToday = todayStr === dayStr;
                     const isPast = minDateStr !== undefined && dayStr < minDateStr;
+                    const isFuture = maxDateStr !== undefined && dayStr > maxDateStr;
+                    const isDisabled = isPast || isFuture;
                     return (
                         <button
                             key={day}
                             type="button"
-                            onClick={() => !isPast && onSelectDay(day)}
-                            disabled={isPast}
-                            aria-disabled={isPast}
+                            onClick={() => !isDisabled && onSelectDay(day)}
+                            disabled={isDisabled}
+                            aria-disabled={isDisabled}
                             className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-sm transition ${
-                                isPast
+                                isDisabled
                                     ? "cursor-not-allowed text-muted-foreground opacity-40"
                                     : isSelected
                                       ? "bg-cta font-semibold text-cta-foreground"
@@ -193,6 +198,8 @@ export interface DatePickerProps {
     className?: string;
     /** "YYYY-MM-DD" — days before this date are disabled */
     minDate?: string;
+    /** "YYYY-MM-DD" — days after this date are disabled */
+    maxDate?: string;
 }
 
 export function DatePicker({
@@ -202,6 +209,7 @@ export function DatePicker({
     disabled,
     className = "",
     minDate,
+    maxDate,
 }: DatePickerProps): JSX.Element {
     const today = new Date();
     const parsed = parseDate(value);
@@ -257,6 +265,7 @@ export function DatePicker({
                         onNextMonth={nextMonth}
                         onSelectDay={handleSelectDay}
                         minDateStr={minDate}
+                        maxDateStr={maxDate}
                     />
                     {value && (
                         <div className="mt-3 flex justify-end border-t border-border pt-3">
