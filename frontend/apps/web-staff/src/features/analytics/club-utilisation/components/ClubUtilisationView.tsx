@@ -1,13 +1,19 @@
-import type { JSX } from "react";
+import { useMemo, useState, type JSX } from "react";
 import { BarChart3, RefreshCw, TrendingUp } from "lucide-react";
-import { formatCurrency } from "@repo/ui";
+import { formatCurrency, SelectInput } from "@repo/ui";
 import type { DateRange, DailyUtilisationPoint, UtilisationSummary } from "../../types";
 import { panelCls, panelTitleCls } from "../utilisationConstants";
+import {
+    availableGranularities,
+    bucketPoints,
+    defaultGranularity,
+    GRANULARITY_LABELS,
+    type Granularity,
+} from "../utilisationBuckets";
 import { DateRangeControl } from "./DateRangeControl";
 import { UtilisationKpiCards } from "./UtilisationKpiCards";
 import { UtilisationLineChart } from "./UtilisationLineChart";
-import { ComparisonBarChart, type ComparisonBar } from "./ComparisonBarChart";
-import { UtilisationOverviewBar } from "./UtilisationOverviewBar";
+import { GroupedBarChart, type GroupedSeries } from "./GroupedBarChart";
 import { DailySummaryTable } from "./DailySummaryTable";
 
 type Props = {
@@ -34,18 +40,67 @@ export default function ClubUtilisationView({
     const hasData = points.length > 0;
     const hasSlots = summary.totalSlots > 0;
 
-    const revenueBars: ComparisonBar[] = [
+    // `null` granularity = follow the range-length default; a value = user override.
+    const [revenueGranularity, setRevenueGranularity] = useState<Granularity | null>(null);
+    const [slotsGranularity, setSlotsGranularity] = useState<Granularity | null>(null);
+
+    const autoGranularity = defaultGranularity(points.length);
+    const granularityOptions = useMemo(
+        () =>
+            availableGranularities(points.length).map((g) => ({
+                value: g,
+                label: GRANULARITY_LABELS[g],
+            })),
+        [points.length]
+    );
+
+    const revenueG = revenueGranularity ?? autoGranularity;
+    const slotsG = slotsGranularity ?? autoGranularity;
+
+    const revenueBuckets = useMemo(() => bucketPoints(points, revenueG), [points, revenueG]);
+    const slotBuckets = useMemo(() => bucketPoints(points, slotsG), [points, slotsG]);
+
+    const slotUtilisation = useMemo(() => {
+        const totalSlots = slotBuckets.reduce((sum, b) => sum + b.totalSlots, 0);
+        const bookedSlots = slotBuckets.reduce((sum, b) => sum + b.bookedSlots, 0);
+        const availableSlots = Math.max(totalSlots - bookedSlots, 0);
+        const pct = totalSlots > 0 ? (bookedSlots / totalSlots) * 100 : 0;
+        return { totalSlots, bookedSlots, availableSlots, pct };
+    }, [slotBuckets]);
+
+    const revenueGroups = revenueBuckets.map((b) => b.label);
+    const revenueSeries: GroupedSeries[] = [
         {
+            key: "actual",
             label: "Actual Revenue",
-            value: summary.revenueActual,
-            color: "hsl(var(--cta))",
-            display: formatCurrency(summary.revenueActual),
+            color: "hsl(226 70% 55%)",
+            values: revenueBuckets.map((b) => b.revenueActual),
+            display: revenueBuckets.map((b) => formatCurrency(b.revenueActual)),
         },
         {
+            key: "potential",
             label: "Potential Revenue",
-            value: summary.revenuePotential,
-            color: "hsl(var(--muted-foreground) / 0.45)",
-            display: formatCurrency(summary.revenuePotential),
+            color: "hsl(222 84% 86%)",
+            values: revenueBuckets.map((b) => b.revenuePotential),
+            display: revenueBuckets.map((b) => formatCurrency(b.revenuePotential)),
+        },
+    ];
+
+    const slotGroups = slotBuckets.map((b) => b.label);
+    const slotSeries: GroupedSeries[] = [
+        {
+            key: "booked",
+            label: "Booked Slots",
+            color: "hsl(var(--success))",
+            values: slotBuckets.map((b) => b.bookedSlots),
+            display: slotBuckets.map((b) => b.bookedSlots.toLocaleString()),
+        },
+        {
+            key: "total",
+            label: "Total Slots",
+            color: "hsl(var(--success) / 0.24)",
+            values: slotBuckets.map((b) => b.totalSlots),
+            display: slotBuckets.map((b) => b.totalSlots.toLocaleString()),
         },
     ];
 
@@ -108,35 +163,49 @@ export default function ClubUtilisationView({
                         </div>
                     ) : null}
 
-                    {/* Charts row */}
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                            <div className="mb-2 flex items-center justify-between">
-                                <h2 className={panelTitleCls}>Daily Utilisation (%)</h2>
-                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <span className="h-2 w-2 rounded-full bg-cta" />
-                                    Utilisation
-                                </span>
-                            </div>
-                            <UtilisationLineChart points={points} />
-                        </section>
+                    {/* Daily utilisation — full width */}
+                    <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
+                        <div className="mb-2 flex items-center justify-between">
+                            <h2 className={panelTitleCls}>Daily Utilisation (%)</h2>
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-cta/10 px-2.5 py-1 text-[11px] font-semibold text-cta">
+                                <span className="h-2 w-2 rounded-full bg-cta" />
+                                Utilisation
+                            </span>
+                        </div>
+                        <UtilisationLineChart points={points} />
+                    </section>
 
-                        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                            <div className="mb-2 flex items-center justify-between">
+                    {/* Charts row — Revenue + Slots side by side */}
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
+                            <div className="mb-2 flex items-center justify-between gap-2">
                                 <h2 className={panelTitleCls}>Actual vs Potential Revenue</h2>
-                                <span className="text-xs text-muted-foreground">
-                                    {summary.isSingleDay ? "Selected day" : "Range total"}
-                                </span>
+                                {granularityOptions.length > 1 ? (
+                                    <SelectInput
+                                        value={revenueG}
+                                        onValueChange={(v) =>
+                                            setRevenueGranularity(v as Granularity)
+                                        }
+                                        options={granularityOptions}
+                                        aria-label="Revenue chart granularity"
+                                        className="h-8 w-28 py-1 text-xs"
+                                    />
+                                ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                        {summary.isSingleDay ? "Selected day" : "Range total"}
+                                    </span>
+                                )}
                             </div>
-                            <ComparisonBarChart
-                                bars={revenueBars}
+                            <GroupedBarChart
+                                groups={revenueGroups}
+                                series={revenueSeries}
                                 formatTick={(v) => formatCurrency(v)}
                                 showLegend
                             />
                             {summary.revenueOpportunity > 0 ? (
-                                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning/10 px-3 py-2">
+                                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-warning/20 bg-warning/[0.07] px-3 py-2">
                                     <div className="flex items-center gap-2">
-                                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-warning/20 text-warning">
+                                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-warning/20 text-warning">
                                             <TrendingUp size={14} />
                                         </span>
                                         <div>
@@ -155,16 +224,33 @@ export default function ClubUtilisationView({
                                 </div>
                             ) : null}
                         </section>
-                    </div>
 
-                    {/* Utilisation overview — booked vs available slots */}
-                    <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
-                        <div className="mb-3 flex items-center justify-between">
-                            <h2 className={panelTitleCls}>Utilisation Overview</h2>
-                            <span className="text-xs text-muted-foreground">{rangeLabel}</span>
-                        </div>
-                        <UtilisationOverviewBar summary={summary} />
-                    </section>
+                        <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
+                            <div className="mb-2 flex items-center justify-between gap-2">
+                                <h2 className={panelTitleCls}>Booked vs Total Slots</h2>
+                                {granularityOptions.length > 1 ? (
+                                    <SelectInput
+                                        value={slotsG}
+                                        onValueChange={(v) => setSlotsGranularity(v as Granularity)}
+                                        options={granularityOptions}
+                                        aria-label="Slots chart granularity"
+                                        className="h-8 w-28 py-1 text-xs"
+                                    />
+                                ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                        {rangeLabel}
+                                    </span>
+                                )}
+                            </div>
+                            <GroupedBarChart groups={slotGroups} series={slotSeries} showLegend />
+                            <SlotUtilisationBar
+                                bookedSlots={slotUtilisation.bookedSlots}
+                                availableSlots={slotUtilisation.availableSlots}
+                                totalSlots={slotUtilisation.totalSlots}
+                                pct={slotUtilisation.pct}
+                            />
+                        </section>
+                    </div>
 
                     {/* Daily summary */}
                     <section className={panelCls}>
@@ -178,6 +264,63 @@ export default function ClubUtilisationView({
                     </section>
                 </>
             )}
+        </div>
+    );
+}
+
+type SlotUtilisationBarProps = {
+    bookedSlots: number;
+    availableSlots: number;
+    totalSlots: number;
+    pct: number;
+};
+
+/** Booked-vs-available progress strip shown under the Total vs Booked chart. */
+function SlotUtilisationBar({
+    bookedSlots,
+    availableSlots,
+    totalSlots,
+    pct,
+}: SlotUtilisationBarProps): JSX.Element {
+    return (
+        <div className="mt-2 rounded-xl border border-success/20 bg-success/[0.07] px-3 py-2">
+            <div className="flex items-center gap-3">
+                <div className="min-w-[4.5rem] text-left">
+                    <p className="text-[11px] font-medium text-muted-foreground">Booked Slots</p>
+                    <p className="text-xl font-bold leading-tight text-success">
+                        {bookedSlots.toLocaleString()}
+                    </p>
+                </div>
+                <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-2 text-[11px]">
+                        <span className="font-semibold text-success">
+                            {pct.toFixed(0)}% Utilised
+                        </span>
+                        <span className="text-muted-foreground">
+                            Total: {totalSlots.toLocaleString()}
+                        </span>
+                    </div>
+                    <div
+                        className="h-2.5 overflow-hidden rounded-full bg-success/15"
+                        role="meter"
+                        aria-label="Slot utilisation"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={Math.round(Math.min(pct, 100))}
+                    >
+                        <div
+                            className="h-full rounded-full bg-gradient-to-r from-success/80 to-success transition-all"
+                            style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                    </div>
+                </div>
+                <div className="min-w-[4.8rem] text-right">
+                    <p className="text-[11px] font-medium text-muted-foreground">Available Slots</p>
+                    <p className="text-xl font-bold leading-tight text-foreground">
+                        {availableSlots.toLocaleString()}
+                    </p>
+                </div>
+            </div>
         </div>
     );
 }

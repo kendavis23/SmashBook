@@ -7,21 +7,22 @@ type Props = {
     onChange: (next: DateRange) => void;
 };
 
-function todayLocalDate(): string {
+function yesterdayLocalDate(): string {
     const today = new Date();
+    today.setDate(today.getDate() - 1);
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
 }
 
-function clampToToday(value: string, today: string): string {
-    return value > today ? today : value;
+function clampToMaxDate(value: string, maxDate: string): string {
+    return value > maxDate ? maxDate : value;
 }
 
-/** From/To date pickers for the utilisation range. "to" is clamped to be ≥ "from". */
+/** From/To date pickers for the utilisation range. Current and future dates are disabled. */
 export function DateRangeControl({ range, onChange }: Props): JSX.Element {
-    const today = todayLocalDate();
+    const maxSelectableDate = yesterdayLocalDate();
     const pickerCls =
         "h-9 w-[12rem] rounded-lg border-border/80 bg-card px-3 text-sm " +
         "shadow-sm shadow-black/5 hover:border-cta/45 hover:bg-background " +
@@ -36,9 +37,9 @@ export function DateRangeControl({ range, onChange }: Props): JSX.Element {
                 <DatePicker
                     className={pickerCls}
                     value={range.from}
-                    maxDate={today}
+                    maxDate={maxSelectableDate}
                     onChange={(value) => {
-                        const from = clampToToday(value, today);
+                        const from = clampToMaxDate(value, maxSelectableDate);
                         onChange({ from, to: range.to < from ? from : range.to });
                     }}
                 />
@@ -50,9 +51,9 @@ export function DateRangeControl({ range, onChange }: Props): JSX.Element {
                 <DatePicker
                     className={pickerCls}
                     value={range.to}
-                    maxDate={today}
+                    maxDate={maxSelectableDate}
                     onChange={(value) => {
-                        const to = clampToToday(value, today);
+                        const to = clampToMaxDate(value, maxSelectableDate);
                         onChange({ from: to < range.from ? to : range.from, to });
                     }}
                 />
