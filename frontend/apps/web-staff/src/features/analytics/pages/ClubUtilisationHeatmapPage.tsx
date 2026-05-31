@@ -1,5 +1,6 @@
 import type { JSX } from "react";
+import HeatmapContainer from "../club-utilisation-heatmap/components/HeatmapContainer";
 
 export default function ClubUtilisationHeatmapPage(): JSX.Element {
-    return <div className="p-8 text-foreground">Club Utilisation Heatmap — coming soon</div>;
+    return <HeatmapContainer />;
 }

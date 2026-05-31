@@ -1,6 +1,8 @@
 export type {
     DailyUtilisationPoint,
     ClubDailyUtilisation,
+    ClubUtilisationHeatmap,
+    HeatmapCell,
     UtilisationDateRange,
 } from "@repo/staff-domain/models";
 
