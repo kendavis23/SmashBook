@@ -289,7 +289,7 @@ export function LoginView({
                         <View className="mt-auto items-center pt-12">
                             <View className="mb-4 flex-row items-center gap-1">
                                 <Text className="text-[13px] text-muted-foreground">
-                                    Don't have an account?
+                                    Don&apos;t have an account?
                                 </Text>
                                 <Pressable
                                     accessibilityLabel="Sign up"

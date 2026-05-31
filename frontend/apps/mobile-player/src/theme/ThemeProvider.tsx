@@ -14,6 +14,7 @@ import {
     useState,
     type ReactNode,
 } from "react";
+import { View } from "react-native";
 import { useColorScheme } from "nativewind";
 import { darkTheme, lightTheme, type Theme } from "./themes";
 
@@ -65,7 +66,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         [preference, setPreference, theme]
     );
 
-    return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+    // The `dark` className must live on a node in the tree for NativeWind to apply the
+    // `.dark { --token: ... }` CSS-variable overrides to every `className` token below it.
+    // Without it, `setColorScheme` flips JS color objects (useThemeColors) but leaves
+    // className tokens (bg-background, text-foreground, …) stuck on their light values.
+    return (
+        <ThemeContext.Provider value={value}>
+            <View className={colorScheme === "dark" ? "dark flex-1" : "flex-1"}>{children}</View>
+        </ThemeContext.Provider>
+    );
 }
 
 export function useTheme(): ThemeContextValue {
