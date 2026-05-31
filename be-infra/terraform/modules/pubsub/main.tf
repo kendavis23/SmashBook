@@ -7,6 +7,7 @@ locals {
     "booking-events",
     "payment-events",
     "notification-events",
+    "analytics-events",
   ]
 }
 
@@ -31,6 +32,10 @@ resource "google_pubsub_topic" "payment_events_dlq" {
 
 resource "google_pubsub_topic" "notification_events_dlq" {
   name = "notification-events-dlq"
+}
+
+resource "google_pubsub_topic" "analytics_events_dlq" {
+  name = "analytics-events-dlq"
 }
 
 # ---------------------------------------------------------------------------
@@ -118,6 +123,36 @@ resource "google_pubsub_subscription" "notification_events" {
   }
 }
 
+resource "google_pubsub_subscription" "analytics_events" {
+  name  = "analytics-events-sub"
+  topic = google_pubsub_topic.topics["analytics-events"].name
+
+  push_config {
+    push_endpoint = "${var.analytics_worker_uri}/pubsub"
+
+    oidc_token {
+      service_account_email = var.compute_sa_email
+    }
+  }
+
+  # The backfill run sweeps 90 days across every club/court — give it the full
+  # ack window and a single delivery attempt before DLQ (re-runs are idempotent,
+  # so a retry storm is undesirable).
+  ack_deadline_seconds       = 600
+  message_retention_duration = "604800s"
+  retain_acked_messages      = false
+
+  retry_policy {
+    minimum_backoff = "30s"
+    maximum_backoff = "600s"
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.analytics_events_dlq.id
+    max_delivery_attempts = 5
+  }
+}
+
 # ---------------------------------------------------------------------------
 # Grant Pub/Sub service agent publisher rights on each DLQ topic
 # (required for Pub/Sub to forward poison messages to the DLQ)
@@ -141,6 +176,12 @@ resource "google_pubsub_topic_iam_member" "dlq_publisher_payment" {
 
 resource "google_pubsub_topic_iam_member" "dlq_publisher_notification" {
   topic  = google_pubsub_topic.notification_events_dlq.name
+  role   = "roles/pubsub.publisher"
+  member = local.pubsub_sa
+}
+
+resource "google_pubsub_topic_iam_member" "dlq_publisher_analytics" {
+  topic  = google_pubsub_topic.analytics_events_dlq.name
   role   = "roles/pubsub.publisher"
   member = local.pubsub_sa
 }
@@ -171,4 +212,21 @@ resource "google_cloud_run_v2_service_iam_member" "pubsub_invoke_notification" {
   name     = "padel-notification-worker"
   role     = "roles/run.invoker"
   member   = "serviceAccount:${var.compute_sa_email}"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "pubsub_invoke_analytics" {
+  project  = var.project_id
+  location = var.region
+  name     = "padel-analytics-worker"
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.compute_sa_email}"
+}
+
+# ---------------------------------------------------------------------------
+# Topic id exported so the scheduler module can target it (Cloud Scheduler →
+# Pub/Sub publishes the daily analytics.snapshot_daily message here).
+# ---------------------------------------------------------------------------
+
+output "analytics_events_topic_id" {
+  value = google_pubsub_topic.topics["analytics-events"].id
 }

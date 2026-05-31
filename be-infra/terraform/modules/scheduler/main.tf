@@ -48,3 +48,48 @@ resource "google_cloud_scheduler_job" "release_expired_holds" {
     }
   }
 }
+
+# ---------------------------------------------------------------------------
+# Cloud Scheduler — daily court-utilisation snapshot (Sprint 7 / G7)
+#
+# Unlike the expiry sweep, this job uses a Pub/Sub target: it publishes
+# {"event_type": "analytics.snapshot_daily"} to the analytics-events topic,
+# which the push subscription delivers to padel-analytics-worker. The worker
+# snapshots each club's *local* yesterday, so a single fixed UTC fire time is
+# sufficient regardless of club timezone.
+#
+# The one-time 90-day history backfill is NOT scheduled — trigger it on demand
+# (`make analytics-backfill-staging`, or the run_court_snapshots.py script).
+# ---------------------------------------------------------------------------
+
+data "google_project" "project" {}
+
+# Cloud Scheduler publishes as its own service agent; grant it publisher on the
+# analytics-events topic so the daily job can enqueue the snapshot message.
+resource "google_pubsub_topic_iam_member" "scheduler_publish_analytics" {
+  topic  = var.analytics_events_topic_id
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
+
+resource "google_cloud_scheduler_job" "analytics_snapshot_daily" {
+  name      = "analytics-snapshot-daily"
+  project   = var.project_id
+  region    = var.region
+  schedule  = var.analytics_snapshot_schedule
+  time_zone = "Etc/UTC"
+
+  paused = var.analytics_snapshot_paused
+
+  # The push delivery does the real work; the publish itself is instant.
+  attempt_deadline = "320s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  pubsub_target {
+    topic_name = var.analytics_events_topic_id
+    data       = base64encode(jsonencode({ event_type = "analytics.snapshot_daily" }))
+  }
+}

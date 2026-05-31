@@ -1,4 +1,4 @@
-_Last updated: 2026-05-19 12:00 UTC_
+_Last updated: 2026-05-31 00:00 UTC_
 
 # SmashBook — Deployment & CI/CD Runbook
 
@@ -444,13 +444,47 @@ gcloud run deploy padel-api \
 ### Deploy worker services
 
 ```bash
-for WORKER in booking-worker payment-worker notification-worker; do
+for WORKER in booking-worker payment-worker notification-worker analytics-worker; do
   gcloud run deploy "padel-${WORKER}" \
     --image="${REGISTRY}/padel-worker:${IMAGE_TAG}" \
     --region=${REGION} \
     --platform=managed \
     --project=${PROJECT_ID}
 done
+```
+
+> All four workers share the `padel-worker` image; the per-service `command`/`args`
+> (which uvicorn app to run) are owned by Terraform, not the deploy command — CI
+> only updates the image. `padel-analytics-worker` runs
+> `app.analytics.workers.snapshot_court_utilisation:app` and must be created by
+> `terraform apply` (staging) **before** its Pub/Sub subscription and scheduler job
+> can reference it.
+
+### Court-utilisation snapshots (G7)
+
+After the staging `terraform apply` creates `padel-analytics-worker`, the
+`analytics-events` topic/subscription, and the `analytics-snapshot-daily`
+scheduler job:
+
+```bash
+# One-time history seed (publishes a backfill message → worker writes 90 days)
+make analytics-backfill-staging          # or: DAYS=30 make analytics-backfill-staging
+
+# Trigger the daily job once now (without waiting for 02:00 UTC)
+make analytics-snapshot-run
+
+# Check the daily job is ENABLED (not PAUSED)
+make analytics-snapshot-status
+```
+
+For a large backfill, prefer the script over Pub/Sub (avoids the push ack
+window) via the Cloud SQL proxy:
+
+```bash
+make cloud-sql-proxy-staging
+DATABASE_URL=postgresql+asyncpg://padel_user:$STAGING_DB_PASSWORD@127.0.0.1:5433/padel_db \
+DATABASE_READ_REPLICA_URL=postgresql+asyncpg://padel_user:$STAGING_DB_PASSWORD@127.0.0.1:5433/padel_db \
+backend/.venv/bin/python backend/scripts/run_court_snapshots.py backfill --days 90
 ```
 
 ### Verify the deployment

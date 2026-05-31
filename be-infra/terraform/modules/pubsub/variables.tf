@@ -21,3 +21,7 @@ variable "payment_worker_uri" {
 variable "notification_worker_uri" {
   type = string
 }
+
+variable "analytics_worker_uri" {
+  type = string
+}

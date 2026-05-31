@@ -27,3 +27,20 @@ variable "paused" {
   type        = bool
   default     = false
 }
+
+variable "analytics_events_topic_id" {
+  description = "Full topic id (projects/.../topics/analytics-events) the daily snapshot job publishes to"
+  type        = string
+}
+
+variable "analytics_snapshot_schedule" {
+  description = "Cron schedule (UTC) for the daily court-utilisation snapshot job"
+  type        = string
+  default     = "0 2 * * *" # 02:00 UTC daily
+}
+
+variable "analytics_snapshot_paused" {
+  description = "When true, the daily snapshot job exists but does not fire"
+  type        = bool
+  default     = false
+}

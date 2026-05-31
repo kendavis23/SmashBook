@@ -41,3 +41,9 @@ variable "release_holds_scheduler_paused" {
   type        = bool
   default     = true
 }
+
+variable "analytics_snapshot_paused" {
+  description = "Pause the daily court-utilisation snapshot Cloud Scheduler job in staging. Defaults to false so analytics data stays current."
+  type        = bool
+  default     = false
+}

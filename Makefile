@@ -123,6 +123,34 @@ scheduler-run:
 	gcloud scheduler jobs run release-expired-holds \
 		--location=europe-west2 --project=smashbook-488121
 
+# ── Analytics: court-utilisation snapshots (G7) ───────────────────────────────
+# Local: run the snapshot worker's orchestration directly against the dev DB.
+# `daily` = each club's local yesterday; `backfill` = trailing 90 days (one-time seed).
+analytics-snapshot-local:
+	docker-compose exec api python scripts/run_court_snapshots.py daily
+
+analytics-backfill-local:
+	docker-compose exec api python scripts/run_court_snapshots.py backfill --days 90
+
+# Staging: trigger the daily Cloud Scheduler job once now (without un-pausing it).
+analytics-snapshot-run:
+	gcloud scheduler jobs run analytics-snapshot-daily \
+		--location=europe-west2 --project=smashbook-488121
+
+# Show ENABLED / PAUSED for the daily snapshot job.
+analytics-snapshot-status:
+	gcloud scheduler jobs describe analytics-snapshot-daily \
+		--location=europe-west2 --project=smashbook-488121 \
+		--format="value(state)"
+
+# Staging: one-time history seed — publish a backfill message to the worker.
+# Override depth: make analytics-backfill-staging DAYS=30
+DAYS ?= 90
+analytics-backfill-staging:
+	gcloud pubsub topics publish analytics-events \
+		--project=smashbook-488121 \
+		--message '{"event_type":"analytics.snapshot_backfill","payload":{"days":$(DAYS)}}'
+
 # Run seed against the local dev DB (api container must be up)
 seed-local:
 	docker-compose exec api python scripts/seed_staging.py
@@ -163,4 +191,4 @@ get-token:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets scheduler-activate scheduler-pause scheduler-status scheduler-run seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets scheduler-activate scheduler-pause scheduler-status scheduler-run analytics-snapshot-local analytics-backfill-local analytics-snapshot-run analytics-snapshot-status analytics-backfill-staging seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token

@@ -83,6 +83,7 @@ module "pubsub" {
   booking_worker_uri      = module.cloud_run.booking_worker_uri
   payment_worker_uri      = module.cloud_run.payment_worker_uri
   notification_worker_uri = module.cloud_run.notification_worker_uri
+  analytics_worker_uri    = module.cloud_run.analytics_worker_uri
 }
 
 module "storage" {
@@ -103,6 +104,11 @@ module "scheduler" {
   # Flip `release_holds_scheduler_paused = false` (or `terraform apply` after a
   # `gcloud scheduler jobs resume`) to enable it for a testing session.
   paused = var.release_holds_scheduler_paused
+
+  # Daily court-utilisation snapshot job (02:00 UTC). Runs in staging so the
+  # analytics data stays warm; flip `analytics_snapshot_paused = true` to disable.
+  analytics_events_topic_id = module.pubsub.analytics_events_topic_id
+  analytics_snapshot_paused = var.analytics_snapshot_paused
 }
 
 # ---------------------------------------------------------------------------
@@ -111,6 +117,10 @@ module "scheduler" {
 
 output "api_url" {
   value = module.cloud_run.api_url
+}
+
+output "analytics_worker_uri" {
+  value = module.cloud_run.analytics_worker_uri
 }
 
 output "artifact_registry_url" {
