@@ -32,7 +32,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date as DateType, datetime, time as TimeType, timedelta
 from decimal import Decimal
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, Iterator, Optional, Sequence
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -115,6 +115,42 @@ def _price_for(slot_start: datetime, pricing: Sequence[PricingWindow]) -> Decima
     return _ZERO
 
 
+def iter_bookable_slots(
+    *,
+    snapshot_date: DateType,
+    tz: ZoneInfo,
+    booking_duration_minutes: int,
+    windows: Iterable[OperatingWindow],
+    reservations: Sequence[ReservationInput],
+) -> Iterator[tuple[datetime, datetime]]:
+    """Yield ``(slot_start, slot_end)`` (club-local, tz-aware) for every
+    *bookable* slot on ``snapshot_date``.
+
+    A slot is bookable when it fits inside an operating window and is not
+    covered by a calendar reservation. This is the single source of truth for
+    "what slots exist on this day" — both the utilisation computation
+    (``compute_court_day_snapshots``) and the activity seeder
+    (``scripts/seed_activity.py``) consume it so they can never drift apart.
+    """
+    step = timedelta(minutes=booking_duration_minutes)
+    if booking_duration_minutes <= 0:
+        raise ValueError("booking_duration_minutes must be positive")
+
+    for window in windows:
+        slot_start = datetime.combine(snapshot_date, window.open_time, tzinfo=tz)
+        close_dt = datetime.combine(snapshot_date, window.close_time, tzinfo=tz)
+        while slot_start + step <= close_dt:
+            slot_end = slot_start + step
+            # A slot covered by a reservation was never bookable → drop it.
+            blocked = any(
+                r.start_local < slot_end and r.end_local > slot_start
+                for r in reservations
+            )
+            if not blocked:
+                yield slot_start, slot_end
+            slot_start = slot_end
+
+
 def compute_court_day_snapshots(
     *,
     snapshot_date: DateType,
@@ -131,9 +167,6 @@ def compute_court_day_snapshots(
     window) — there is nothing to snapshot.
     """
     day_of_week = snapshot_date.weekday()
-    step = timedelta(minutes=booking_duration_minutes)
-    if booking_duration_minutes <= 0:
-        raise ValueError("booking_duration_minutes must be positive")
 
     # Bucket accumulators keyed by hour-of-day.
     @dataclass
@@ -150,45 +183,34 @@ def compute_court_day_snapshots(
     # Index bookings by the hour their (occupying) start falls in.
     occupying = [b for b in bookings if b.status in OCCUPYING_STATUSES]
 
-    for window in windows:
-        slot_start = datetime.combine(snapshot_date, window.open_time, tzinfo=tz)
-        close_dt = datetime.combine(snapshot_date, window.close_time, tzinfo=tz)
-        while slot_start + step <= close_dt:
-            slot_end = slot_start + step
+    for slot_start, slot_end in iter_bookable_slots(
+        snapshot_date=snapshot_date,
+        tz=tz,
+        booking_duration_minutes=booking_duration_minutes,
+        windows=windows,
+        reservations=reservations,
+    ):
+        bucket = buckets.setdefault(slot_start.hour, _Bucket())
+        bucket.total_slots += 1
+        bucket.revenue_potential += _price_for(slot_start, pricing)
 
-            # A slot covered by a reservation was never bookable → drop it
-            # entirely (don't even open an hour bucket for an all-blocked hour).
-            blocked = any(
-                r.start_local < slot_end and r.end_local > slot_start
-                for r in reservations
-            )
-            if blocked:
-                slot_start = slot_end
-                continue
-
-            bucket = buckets.setdefault(slot_start.hour, _Bucket())
-            bucket.total_slots += 1
-            bucket.revenue_potential += _price_for(slot_start, pricing)
-
-            # Slot-anchored: a booking belongs to the slot its start falls in.
-            slot_bookings = [
-                b for b in occupying if slot_start <= b.start_local < slot_end
-            ]
-            if slot_bookings:
-                bucket.booked_slots += 1
-                for b in slot_bookings:
-                    if b.total_price is not None:
-                        bucket.revenue_actual += Decimal(str(b.total_price))
-                    if b.created_at is not None:
-                        lead_h = (
-                            b.start_local.astimezone(b.created_at.tzinfo)
-                            - b.created_at
-                        ).total_seconds() / 3600.0
-                        if lead_h >= 0:
-                            bucket.lead_time_sum += Decimal(str(lead_h))
-                            bucket.lead_time_n += 1
-
-            slot_start = slot_end
+        # Slot-anchored: a booking belongs to the slot its start falls in.
+        slot_bookings = [
+            b for b in occupying if slot_start <= b.start_local < slot_end
+        ]
+        if slot_bookings:
+            bucket.booked_slots += 1
+            for b in slot_bookings:
+                if b.total_price is not None:
+                    bucket.revenue_actual += Decimal(str(b.total_price))
+                if b.created_at is not None:
+                    lead_h = (
+                        b.start_local.astimezone(b.created_at.tzinfo)
+                        - b.created_at
+                    ).total_seconds() / 3600.0
+                    if lead_h >= 0:
+                        bucket.lead_time_sum += Decimal(str(lead_h))
+                        bucket.lead_time_n += 1
 
     if not buckets:
         return []
