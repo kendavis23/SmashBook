@@ -181,7 +181,7 @@ export default function ClubUtilisationView({
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                         <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
                             <div className="mb-2 flex items-center justify-between gap-2">
-                                <h2 className={`${panelTitleCls} min-w-0`}>
+                                <h2 className={`${panelTitleCls} whitespace-nowrap`}>
                                     Actual vs Potential Revenue
                                 </h2>
                                 {granularityOptions.length > 1 ? (
@@ -231,7 +231,7 @@ export default function ClubUtilisationView({
 
                         <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
                             <div className="mb-2 flex items-center justify-between gap-2">
-                                <h2 className={`${panelTitleCls} min-w-0`}>
+                                <h2 className={`${panelTitleCls} whitespace-nowrap`}>
                                     Booked vs Total Slots
                                 </h2>
                                 {granularityOptions.length > 1 ? (
