@@ -7,21 +7,26 @@ import { computeUtilisationSummary } from "../utilisationSummary";
 import { formatShortDate } from "../utilisationConstants";
 import ClubUtilisationView from "./ClubUtilisationView";
 
-/** Today's date as "YYYY-MM-DD" using local calendar parts. */
-function today(): string {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
+function formatLocalDate(date: Date): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
+}
+
+function defaultRange(): DateRange {
+    const toDate = new Date();
+    const fromDate = new Date(toDate);
+    fromDate.setDate(toDate.getDate() - 6);
+    return {
+        from: formatLocalDate(fromDate),
+        to: formatLocalDate(toDate),
+    };
 }
 
 export default function ClubUtilisationContainer(): JSX.Element {
     const { clubId } = useClubAccess();
-    const [range, setRange] = useState<DateRange>(() => {
-        const t = today();
-        return { from: t, to: t };
-    });
+    const [range, setRange] = useState<DateRange>(() => defaultRange());
 
     const { data, isLoading, error, refetch } = useClubDailyUtilisation(clubId ?? "", {
         dateFrom: range.from,

@@ -21,12 +21,33 @@ vi.mock("@repo/ui", () => ({
         "Dec",
     ],
     WEEKDAYS_SHORT: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
-    DatePicker: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
-        <input aria-label="date" value={value} onChange={(e) => onChange(e.target.value)} />
+    DatePicker: ({
+        value,
+        onChange,
+        maxDate,
+    }: {
+        value: string;
+        onChange: (v: string) => void;
+        maxDate?: string;
+    }) => (
+        <input
+            aria-label="date"
+            max={maxDate}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+        />
     ),
 }));
 
 const range: DateRange = { from: "2026-05-25", to: "2026-05-26" };
+
+function todayLocalDate(): string {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+}
 
 function points(): DailyUtilisationPoint[] {
     return [
@@ -135,5 +156,20 @@ describe("ClubUtilisationView", () => {
         const inputs = screen.getAllByLabelText("date");
         fireEvent.change(inputs[0] as HTMLElement, { target: { value: "2026-05-20" } });
         expect(onRangeChange).toHaveBeenCalled();
+    });
+
+    it("prevents both date pickers from selecting future dates", () => {
+        const { onRangeChange } = renderView();
+        const today = todayLocalDate();
+        const inputs = screen.getAllByLabelText("date");
+
+        expect(inputs[0]).toHaveAttribute("max", today);
+        expect(inputs[1]).toHaveAttribute("max", today);
+
+        fireEvent.change(inputs[0] as HTMLElement, { target: { value: "9999-01-01" } });
+        expect(onRangeChange).toHaveBeenLastCalledWith({ from: today, to: today });
+
+        fireEvent.change(inputs[1] as HTMLElement, { target: { value: "9999-01-01" } });
+        expect(onRangeChange).toHaveBeenLastCalledWith({ from: range.from, to: today });
     });
 });

@@ -53,14 +53,20 @@ beforeEach(() => {
 });
 
 describe("ClubUtilisationContainer", () => {
-    it("defaults the date range to today for both from and to", () => {
+    it("defaults the date range to the last seven calendar days", () => {
         const now = new Date();
         const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
             now.getDate()
         ).padStart(2, "0")}`;
+        const fromDate = new Date(now);
+        fromDate.setDate(now.getDate() - 6);
+        const sevenDaysAgo = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(
+            2,
+            "0"
+        )}-${String(fromDate.getDate()).padStart(2, "0")}`;
         render(<ClubUtilisationContainer />);
         const props = viewProps.mock.calls[0]?.[0] as { range: { from: string; to: string } };
-        expect(props.range.from).toBe(today);
+        expect(props.range.from).toBe(sevenDaysAgo);
         expect(props.range.to).toBe(today);
     });
 

@@ -52,26 +52,26 @@ export default function ClubUtilisationView({
     return (
         <div className="w-full space-y-5">
             {/* Header */}
-            <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <header className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div className="min-w-0">
-                    <div className="flex items-center gap-2.5">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
-                            <BarChart3 size={16} />
+                    <div className="flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-secondary-foreground shadow-xs">
+                            <BarChart3 size={15} />
                         </div>
-                        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+                        <h1 className="text-lg font-semibold tracking-tight text-foreground">
                             Club Utilisation Analytics
                         </h1>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-0.5 text-sm leading-5 text-muted-foreground">
                         Track your club&apos;s court utilisation and revenue performance.
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-end gap-3">
+                <div className="flex flex-wrap items-end gap-2.5">
                     <DateRangeControl range={range} onChange={onRangeChange} />
                     <button
                         onClick={onRefresh}
-                        className="btn-outline min-h-10 px-4"
+                        className="btn-outline min-h-9 px-3.5 text-sm"
                         aria-label="Refresh analytics"
                     >
                         <RefreshCw size={14} /> Refresh
@@ -109,20 +109,20 @@ export default function ClubUtilisationView({
                     ) : null}
 
                     {/* Charts row */}
-                    <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-                        <section className={panelCls}>
-                            <div className="mb-4 flex items-center justify-between">
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                            <div className="mb-2 flex items-center justify-between">
                                 <h2 className={panelTitleCls}>Daily Utilisation (%)</h2>
                                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <span className="h-2.5 w-2.5 rounded-full bg-cta" />
+                                    <span className="h-2 w-2 rounded-full bg-cta" />
                                     Utilisation
                                 </span>
                             </div>
                             <UtilisationLineChart points={points} />
                         </section>
 
-                        <section className={panelCls}>
-                            <div className="mb-4 flex items-center justify-between">
+                        <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                            <div className="mb-2 flex items-center justify-between">
                                 <h2 className={panelTitleCls}>Actual vs Potential Revenue</h2>
                                 <span className="text-xs text-muted-foreground">
                                     {summary.isSingleDay ? "Selected day" : "Range total"}
@@ -134,22 +134,22 @@ export default function ClubUtilisationView({
                                 showLegend
                             />
                             {summary.revenueOpportunity > 0 ? (
-                                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-warning/10 px-4 py-3">
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/20 text-warning">
-                                            <TrendingUp size={16} />
+                                <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning/10 px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-warning/20 text-warning">
+                                            <TrendingUp size={14} />
                                         </span>
                                         <div>
-                                            <p className="text-sm font-semibold text-foreground">
+                                            <p className="text-xs font-semibold text-foreground">
                                                 Revenue Opportunity
                                             </p>
-                                            <p className="text-xs text-muted-foreground">
+                                            <p className="text-[11px] text-muted-foreground">
                                                 You could earn{" "}
                                                 {formatCurrency(summary.revenueOpportunity)} more.
                                             </p>
                                         </div>
                                     </div>
-                                    <span className="rounded-full bg-warning/20 px-2.5 py-1 text-xs font-semibold text-warning">
+                                    <span className="rounded-full bg-warning/20 px-2 py-0.5 text-[11px] font-semibold text-warning">
                                         {summary.revenueOpportunityPct.toFixed(1)}% more
                                     </span>
                                 </div>
@@ -158,8 +158,8 @@ export default function ClubUtilisationView({
                     </div>
 
                     {/* Utilisation overview — booked vs available slots */}
-                    <section className={panelCls}>
-                        <div className="mb-4 flex items-center justify-between">
+                    <section className="rounded-xl border border-border bg-card p-4 shadow-sm">
+                        <div className="mb-3 flex items-center justify-between">
                             <h2 className={panelTitleCls}>Utilisation Overview</h2>
                             <span className="text-xs text-muted-foreground">{rangeLabel}</span>
                         </div>

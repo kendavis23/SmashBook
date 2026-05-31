@@ -18,11 +18,11 @@ type Props = {
 };
 
 const W = 460;
-const H = 300;
-const PAD = { top: 36, right: 16, bottom: 40, left: 56 };
+const H = 240;
+const PAD = { top: 30, right: 14, bottom: 34, left: 54 };
 const PLOT_H = H - PAD.top - PAD.bottom;
 const PLOT_W = W - PAD.left - PAD.right;
-const BAR_W = 96;
+const BAR_W = 78;
 const Y_TICKS = 5;
 
 const defaultFormatTick = (value: number): string => Math.round(value).toLocaleString();
@@ -52,7 +52,7 @@ export function ComparisonBarChart({
 
     if (bars.length === 0 || maxValue <= 0) {
         return (
-            <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+            <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
                 No data to display.
             </div>
         );
@@ -64,16 +64,16 @@ export function ComparisonBarChart({
     const toY = (value: number): number => PAD.top + PLOT_H - (value / axisMax) * PLOT_H;
 
     return (
-        <div className="space-y-3">
+        <div className="space-y-2">
             {showLegend ? (
-                <div className="flex items-center justify-center gap-5">
+                <div className="flex items-center justify-center gap-4">
                     {bars.map((bar) => (
                         <span
                             key={bar.label}
-                            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"
+                            className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground"
                         >
                             <span
-                                className="h-2.5 w-2.5 rounded-sm"
+                                className="h-2 w-2 rounded-sm"
                                 style={{ backgroundColor: bar.color }}
                             />
                             {bar.label}
@@ -84,8 +84,7 @@ export function ComparisonBarChart({
 
             <svg
                 viewBox={`0 0 ${W} ${H}`}
-                width="100%"
-                height="100%"
+                className="h-[240px] w-full"
                 style={{ overflow: "visible" }}
                 role="img"
                 aria-label="Comparison bar chart"
@@ -126,12 +125,12 @@ export function ComparisonBarChart({
                     return (
                         <g key={bar.label}>
                             <title>{`${bar.label}: ${bar.display}`}</title>
-                            <rect x={x} y={y} width={BAR_W} height={barH} rx={8} fill={bar.color} />
+                            <rect x={x} y={y} width={BAR_W} height={barH} rx={7} fill={bar.color} />
                             <text
                                 x={cx}
-                                y={y - 10}
+                                y={y - 8}
                                 textAnchor="middle"
-                                fontSize={13}
+                                fontSize={12}
                                 fontWeight={700}
                                 className="fill-foreground"
                             >
@@ -139,9 +138,9 @@ export function ComparisonBarChart({
                             </text>
                             <text
                                 x={cx}
-                                y={PAD.top + PLOT_H + 24}
+                                y={PAD.top + PLOT_H + 22}
                                 textAnchor="middle"
-                                fontSize={12}
+                                fontSize={11}
                                 fontWeight={600}
                                 className="fill-muted-foreground"
                             >

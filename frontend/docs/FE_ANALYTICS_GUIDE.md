@@ -170,22 +170,25 @@ These functions are trivial to unit-test and **must** be (zero/empty input, sing
 
 ## Step 3 — The Container
 
-The container owns date-range state and nothing else visual. The **default range is today → today** (both `from` and `to` set to the local calendar date). It reads `clubId` from `useClubAccess`, calls the hook, runs the aggregation service, derives a human label, and hands everything to the View.
+The container owns date-range state and nothing else visual. The **default range is the last 7 calendar days** (`to` is today, `from` is 6 days before today, inclusive). It reads `clubId` from `useClubAccess`, calls the hook, runs the aggregation service, derives a human label, and hands everything to the View.
 
 ```tsx
-function today(): string {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-        now.getDate()
+function formatLocalDate(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(
+        date.getDate()
     ).padStart(2, "0")}`;
+}
+
+function defaultRange(): DateRange {
+    const toDate = new Date();
+    const fromDate = new Date(toDate);
+    fromDate.setDate(toDate.getDate() - 6);
+    return { from: formatLocalDate(fromDate), to: formatLocalDate(toDate) };
 }
 
 export default function ClubUtilisationContainer(): JSX.Element {
     const { clubId } = useClubAccess();
-    const [range, setRange] = useState<DateRange>(() => {
-        const t = today();
-        return { from: t, to: t };
-    });
+    const [range, setRange] = useState<DateRange>(() => defaultRange());
 
     const { data, isLoading, error, refetch } = useClubDailyUtilisation(clubId ?? "", {
         dateFrom: range.from,
@@ -219,7 +222,7 @@ export default function ClubUtilisationContainer(): JSX.Element {
 
 **Container conventions for analytics:**
 
-- Default range = today → today.
+- Default range = last 7 calendar days.
 - `clubId ?? ""` — the hook is `enabled: Boolean(clubId)`, so an empty club id simply yields no query rather than crashing.
 - Derive `points` and `summary` with `useMemo` so charts don't recompute on unrelated re-renders.
 - Pass a single `range` object + an `onRangeChange(range)` setter. Range state lives **only** here.
@@ -367,7 +370,7 @@ Same testing rules as every feature ([`FE_FEATURE_LAYER_GUIDE.md`](FE_FEATURE_LA
 
 **View** — mock `@repo/ui` (`formatCurrency`, `DatePicker`); assert title + three chart sections render, loading/error/empty branches, the zero-slots banner, single-day vs multi-day copy, the revenue-opportunity callout, and that Refresh / date-change fire their callbacks. Avoid asserting on text that appears in more than one place (e.g. the word "Utilisation" is both a KPI label and a chart legend — assert on something unique like "Average Utilisation" / "Day Summary" instead).
 
-**Container** — mock the domain hook and `useClubAccess`; assert the default range is today→today, the hook is called with `clubId` + `{ dateFrom, dateTo }`, points are forwarded, Refresh calls `refetch`, the range label updates on range change, and a missing club id passes `""`. Mock the View to capture props rather than rendering the full SVG tree.
+**Container** — mock the domain hook and `useClubAccess`; assert the default range is the last 7 calendar days, the hook is called with `clubId` + `{ dateFrom, dateTo }`, points are forwarded, Refresh calls `refetch`, the range label updates on range change, and a missing club id passes `""`. Mock the View to capture props rather than rendering the full SVG tree.
 
 Run them:
 
@@ -384,7 +387,7 @@ pnpm --filter web-staff lint
 - [ ] Sub-feature folder `analytics/<report>/` with `components/`, `pages/`, a pure summary service, and a constants file
 - [ ] Reuses root `analytics/hooks`, `analytics/store`, `analytics/types` (no new cross-feature imports)
 - [ ] Domain hook already exists in `@repo/staff-domain/hooks` (add via api-client + domain guides first if not)
-- [ ] Container owns date-range state; **default range = today → today**
+- [ ] Container owns date-range state; **default range = last 7 calendar days**
 - [ ] Aggregation is a pure, unit-tested function — **slot-weighted, divide-by-zero guarded**
 - [ ] View renders loading **and** error **and** empty states
 - [ ] Single-day vs multi-day copy switches on `summary.isSingleDay`
