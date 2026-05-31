@@ -185,15 +185,17 @@ export default function ClubUtilisationView({
                                     Actual vs Potential Revenue
                                 </h2>
                                 {granularityOptions.length > 1 ? (
-                                    <SelectInput
-                                        value={revenueG}
-                                        onValueChange={(v) =>
-                                            setRevenueGranularity(v as Granularity)
-                                        }
-                                        options={granularityOptions}
-                                        aria-label="Revenue chart granularity"
-                                        className="h-8 w-28 flex-shrink-0 py-1 text-xs"
-                                    />
+                                    <div className="w-28 flex-shrink-0">
+                                        <SelectInput
+                                            value={revenueG}
+                                            onValueChange={(v) =>
+                                                setRevenueGranularity(v as Granularity)
+                                            }
+                                            options={granularityOptions}
+                                            aria-label="Revenue chart granularity"
+                                            className="h-8 py-1 text-xs"
+                                        />
+                                    </div>
                                 ) : (
                                     <span className="text-xs text-muted-foreground">
                                         {summary.isSingleDay ? "Selected day" : "Range total"}
@@ -235,13 +237,17 @@ export default function ClubUtilisationView({
                                     Booked vs Total Slots
                                 </h2>
                                 {granularityOptions.length > 1 ? (
-                                    <SelectInput
-                                        value={slotsG}
-                                        onValueChange={(v) => setSlotsGranularity(v as Granularity)}
-                                        options={granularityOptions}
-                                        aria-label="Slots chart granularity"
-                                        className="h-8 w-28 flex-shrink-0 py-1 text-xs"
-                                    />
+                                    <div className="w-28 flex-shrink-0">
+                                        <SelectInput
+                                            value={slotsG}
+                                            onValueChange={(v) =>
+                                                setSlotsGranularity(v as Granularity)
+                                            }
+                                            options={granularityOptions}
+                                            aria-label="Slots chart granularity"
+                                            className="h-8 py-1 text-xs"
+                                        />
+                                    </div>
                                 ) : (
                                     <span className="text-xs text-muted-foreground">
                                         {rangeLabel}
