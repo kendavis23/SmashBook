@@ -1,8 +1,10 @@
-_Last updated: 2026-05-23 00:00 UTC_
+_Last updated: 2026-05-31 00:00 UTC_
 
 # Materialized Views & Rollup Tables
 
 The precomputed surfaces that back the report catalog. A live query against `bookings` is fine for a single club; by ten clubs it is not. Move expensive aggregations here early.
+
+> **Snapshot tables are a third category.** `court_utilisation_snapshots` (G7) is neither a materialized view nor an event-driven rollup — it is a **physical snapshot** written nightly by `app/analytics/workers/snapshot_court_utilisation.py` because its `total_slots` / `revenue_potential` figures depend on operating-hours and pricing config *as they were at snapshot time* and cannot be recomputed from current config. Re-runs are idempotent via delete-then-insert per (court, snapshot_date) — a plain upsert would duplicate the `hour_of_day = NULL` daily-rollup row, since the `UNIQUE(court_id, snapshot_date, hour_of_day)` constraint treats NULLs as distinct. See [REPORT_CATALOG.md](REPORT_CATALOG.md) → "Booking utilisation by court".
 
 ## Materialized views vs rollup tables
 

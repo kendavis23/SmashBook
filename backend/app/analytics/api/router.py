@@ -16,4 +16,7 @@ Example, once endpoints exist:
 
 from fastapi import APIRouter
 
+from .utilisation import router as utilisation_router
+
 analytics_router = APIRouter(prefix="/analytics")
+analytics_router.include_router(utilisation_router)

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     PUBSUB_TOPIC_BOOKING_EVENTS: str = "booking-events"
     PUBSUB_TOPIC_PAYMENT_EVENTS: str = "payment-events"
     PUBSUB_TOPIC_NOTIFICATION_EVENTS: str = "notification-events"
+    # Cloud Scheduler publishes here to trigger analytics snapshot/rollup workers.
+    PUBSUB_TOPIC_ANALYTICS_EVENTS: str = "analytics-events"
 
     # Cloud Storage
     GCS_BUCKET_VIDEOS: str = ""

@@ -23,12 +23,21 @@ async def revenue_breakdown(
     pass
 
 
-@router.get("/utilisation")
+@router.get("/utilisation", deprecated=True)
 async def utilisation_report(
     club_id: str = Query(...),
     current_user=Depends(require_staff), db=Depends(get_read_db)
 ):
-    """Court utilisation by time period. Identifies peak/underused slots."""
+    """DEPRECATED — superseded by the analytics domain (G7).
+
+    Court utilisation now lives under ``/api/v1/analytics/utilisation/...``,
+    backed by ``court_utilisation_snapshots`` rather than a live scan of
+    ``bookings``:
+      - ``GET /analytics/utilisation/clubs/{club_id}/daily``
+      - ``GET /analytics/utilisation/clubs/{club_id}/courts``
+      - ``GET /analytics/utilisation/clubs/{club_id}/heatmap``
+    This stub is left in place only so existing links don't 404; do not implement it.
+    """
     pass
 
 

@@ -1,4 +1,4 @@
-_Last updated: 2026-05-23 00:00 UTC_
+_Last updated: 2026-05-31 00:00 UTC_
 
 # Report Catalog
 
@@ -20,11 +20,30 @@ Each report has:
 > Fill in as each report ships. The Sprint 5–6 reports already in `app/services/report_service.py` should be moved here as part of the analytics-domain migration.
 
 ### Booking utilisation by court
-- Owner: _TBD_
-- Scope: _TBD_
-- Refresh: _TBD_
-- Source tables: _TBD_
-- Consumer: _TBD_
+- Owner: `staff`+ (all staff roles)
+- Scope: club-scoped (tenant-isolated; a club is only readable by its own tenant)
+- Refresh: physical snapshot — `court_utilisation_snapshots`, written nightly by
+  `app/analytics/workers/snapshot_court_utilisation.py` (delete-then-insert per
+  court/day; idempotent). **Not** a materialized view: `total_slots` and
+  `revenue_potential` depend on operating-hours/pricing config as it was at
+  snapshot time and can't be reconstructed later.
+- Compute model: **slot-anchored**. The day's bookable slots are generated over
+  the operating-hours window stepping by `clubs.booking_duration_minutes`; each
+  slot (and each booking/reservation) is attributed to the hour its start falls
+  in. The `hour_of_day = NULL` daily-rollup row is the authoritative denominator;
+  hourly rows distribute it. Calendar reservations remove slots from the
+  denominator entirely.
+- Source tables (read replica): `court_utilisation_snapshots` (serving);
+  computed from `bookings`, `operating_hours`, `pricing_rules`,
+  `calendar_reservations`, `clubs`, `courts` (snapshot worker).
+- Endpoints:
+  - `GET /api/v1/analytics/utilisation/clubs/{club_id}/daily` — one point/day, summed across courts
+  - `GET /api/v1/analytics/utilisation/clubs/{club_id}/courts` — per-court rollup over a range
+  - `GET /api/v1/analytics/utilisation/clubs/{club_id}/heatmap` — avg utilisation by (day-of-week, hour-of-day)
+- Aggregation rule: percentages are recomputed as `SUM(booked)/SUM(total)`, never
+  averaged from per-row percentages.
+- Consumer: staff portal (site-performance dashboard); feeds Sprint 8 dynamic
+  pricing + gap detection.
 
 ### Revenue by club, period
 - Owner: _TBD_

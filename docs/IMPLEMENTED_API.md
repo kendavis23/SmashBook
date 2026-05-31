@@ -1,4 +1,4 @@
-_Last updated: 2026-05-29 14:48 UTC_
+_Last updated: 2026-05-31 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -213,6 +213,23 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 
 ---
 
+## Analytics — `GET /api/v1/analytics` (Sprint 7 / G7)
+
+Read-only, `staff`+ only, tenant-isolated, served off the **read replica** from
+`court_utilisation_snapshots` (populated by the snapshot worker — see below).
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/analytics/utilisation/clubs/{club_id}/daily` | Daily court utilisation for a club, summed across its courts (one point per day). Reads daily-rollup snapshot rows (`hour_of_day IS NULL`). Optional `date_from`/`date_to` (default trailing 30 days; 366-day cap → 413). Tenant-isolated (404 for another tenant's club). |
+| `GET` | `/api/v1/analytics/utilisation/clubs/{club_id}/courts` | Per-court utilisation rolled up over the date range, ordered busiest-first. Surfaces under-used courts. |
+| `GET` | `/api/v1/analytics/utilisation/clubs/{club_id}/heatmap` | Average utilisation by (day-of-week, hour-of-day) from hourly snapshot rows — the booking heatmap. |
+
+Percentages are recomputed as `SUM(booked)/SUM(total)`, never averaged from per-row percentages.
+
+**Worker:** `app/analytics/workers/snapshot_court_utilisation.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`). `analytics.snapshot_daily` snapshots each club's local yesterday; `analytics.snapshot_backfill` backfills a trailing window (default 90 days). Delete-then-insert per (court, day) → idempotent.
+
+---
+
 ## Not Yet Implemented (stubs)
 
 | File | Endpoints |
@@ -221,5 +238,5 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | `payments.py` | wallet (adjust), invoices (list/download), refunds, discounts, in-person payment |
 | `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
 | `players.py` | `GET /{id}` |
-| `reports.py` | Dashboard, revenue, utilisation, retention, corporate events, transaction log, Stripe payouts, export |
+| `reports.py` | Dashboard, revenue, retention, corporate events, transaction log, Stripe payouts, export. (`utilisation` is **deprecated** — superseded by `/api/v1/analytics/utilisation/...`.) |
 | `support.py` | Create/list/get ticket, respond to ticket |

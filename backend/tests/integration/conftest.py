@@ -50,6 +50,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 from app.core.security import create_access_token, get_password_hash
+from app.db.models.analytics import CourtUtilisationSnapshot
 from app.db.models.base import Base
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club, OperatingHours, PricingRule
@@ -257,6 +258,11 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
                 await session.execute(
                     sql_delete(CalendarReservation).where(
                         CalendarReservation.court_id.in_(court_ids)
+                    )
+                )
+                await session.execute(
+                    sql_delete(CourtUtilisationSnapshot).where(
+                        CourtUtilisationSnapshot.court_id.in_(court_ids)
                     )
                 )
                 await session.execute(
@@ -632,6 +638,11 @@ async def club(tenant, test_session_factory):
         if court_ids:
             await session.execute(
                 sql_delete(CalendarReservation).where(CalendarReservation.court_id.in_(court_ids))
+            )
+            await session.execute(
+                sql_delete(CourtUtilisationSnapshot).where(
+                    CourtUtilisationSnapshot.court_id.in_(court_ids)
+                )
             )
             await session.execute(sql_delete(Court).where(Court.club_id == c.id))
         await session.execute(
