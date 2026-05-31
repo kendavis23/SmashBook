@@ -155,6 +155,24 @@ analytics-backfill-staging:
 seed-local:
 	docker-compose exec api python scripts/seed_staging.py
 
+# Seed historical + upcoming matches/lessons against the STAGING DB. Read-only on
+# tenants/clubs/courts/users; writes bookings/players/payments only.
+# Runs in GCP by reusing the fully-wired `seed-staging` Cloud Run job (its Cloud SQL
+# connection / VPC / secrets) with the command args overridden — no separate job to
+# create or configure.
+# PREREQUISITE: the deployed :latest image must already contain
+# scripts/seed_activity.py, so commit + let CI build/deploy before the first run.
+# Override mode/flags via SEED_ARGS (comma-separated), e.g.:
+#   make seed-activity-staging SEED_ARGS=scripts/seed_activity.py,history,--days,120
+#   make seed-activity-staging SEED_ARGS=scripts/seed_activity.py,both,--dry-run
+SEED_ARGS ?= scripts/seed_activity.py,both
+seed-activity-staging:
+	gcloud run jobs execute seed-staging \
+		--region=europe-west2 \
+		--project=smashbook-488121 \
+		--args=$(SEED_ARGS) \
+		--wait
+
 # ── Stripe ────────────────────────────────────────────────────────────────────
 # Create Stripe test connected accounts for all clubs (local DB via Docker)
 stripe-connect-local:
@@ -191,4 +209,4 @@ get-token:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets scheduler-activate scheduler-pause scheduler-status scheduler-run analytics-snapshot-local analytics-backfill-local analytics-snapshot-run analytics-snapshot-status analytics-backfill-staging seed-local stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets scheduler-activate scheduler-pause scheduler-status scheduler-run analytics-snapshot-local analytics-backfill-local analytics-snapshot-run analytics-snapshot-status analytics-backfill-staging seed-local seed-activity-staging stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token
