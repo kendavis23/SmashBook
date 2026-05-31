@@ -16,12 +16,22 @@ function formatLocalDate(date: Date): string {
 
 function defaultRange(): DateRange {
     const toDate = new Date();
+    toDate.setDate(toDate.getDate() - 1);
     const fromDate = new Date(toDate);
     fromDate.setDate(toDate.getDate() - 6);
     return {
         from: formatLocalDate(fromDate),
         to: formatLocalDate(toDate),
     };
+}
+
+function clampRangeToYesterday(next: DateRange): DateRange {
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() - 1);
+    const max = formatLocalDate(maxDate);
+    const to = next.to > max ? max : next.to;
+    const from = next.from > max ? max : next.from;
+    return { from, to: to < from ? from : to };
 }
 
 export default function ClubUtilisationContainer(): JSX.Element {
@@ -45,6 +55,9 @@ export default function ClubUtilisationContainer(): JSX.Element {
     );
 
     const handleRefresh = useCallback(() => void refetch(), [refetch]);
+    const handleRangeChange = useCallback((next: DateRange) => {
+        setRange(clampRangeToYesterday(next));
+    }, []);
 
     return (
         <ClubUtilisationView
@@ -54,7 +67,7 @@ export default function ClubUtilisationContainer(): JSX.Element {
             summary={summary}
             isLoading={isLoading}
             error={(error as Error | null) ?? null}
-            onRangeChange={setRange}
+            onRangeChange={handleRangeChange}
             onRefresh={handleRefresh}
         />
     );

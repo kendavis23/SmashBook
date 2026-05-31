@@ -1,5 +1,7 @@
 import { MONTHS_SHORT, WEEKDAYS_SHORT } from "@repo/ui";
 
+export { MONTHS_SHORT } from "@repo/ui";
+
 /** "2026-05-25" → "25 May" (no timezone shift). */
 export function formatShortDate(snapshotDate: string): string {
     const [, month = "1", day = "1"] = snapshotDate.split("-");

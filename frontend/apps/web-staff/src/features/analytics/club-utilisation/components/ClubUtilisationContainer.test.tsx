@@ -36,6 +36,16 @@ vi.mock("./ClubUtilisationView", () => ({
                 >
                     change-range
                 </button>
+                <button
+                    onClick={() =>
+                        (props.onRangeChange as (r: { from: string; to: string }) => void)({
+                            from: "9999-01-01",
+                            to: "9999-01-02",
+                        })
+                    }
+                >
+                    change-future-range
+                </button>
             </div>
         );
     },
@@ -53,21 +63,22 @@ beforeEach(() => {
 });
 
 describe("ClubUtilisationContainer", () => {
-    it("defaults the date range to the last seven calendar days", () => {
+    it("defaults the date range to the last seven completed calendar days", () => {
         const now = new Date();
-        const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
-            now.getDate()
-        ).padStart(2, "0")}`;
-        const fromDate = new Date(now);
-        fromDate.setDate(now.getDate() - 6);
-        const sevenDaysAgo = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(
-            2,
-            "0"
-        )}-${String(fromDate.getDate()).padStart(2, "0")}`;
+        const yesterdayDate = new Date(now);
+        yesterdayDate.setDate(now.getDate() - 1);
+        const yesterday = `${yesterdayDate.getFullYear()}-${String(
+            yesterdayDate.getMonth() + 1
+        ).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
+        const fromDate = new Date(yesterdayDate);
+        fromDate.setDate(yesterdayDate.getDate() - 6);
+        const sevenCompletedDaysAgo = `${fromDate.getFullYear()}-${String(
+            fromDate.getMonth() + 1
+        ).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
         render(<ClubUtilisationContainer />);
         const props = viewProps.mock.calls[0]?.[0] as { range: { from: string; to: string } };
-        expect(props.range.from).toBe(sevenDaysAgo);
-        expect(props.range.to).toBe(today);
+        expect(props.range.from).toBe(sevenCompletedDaysAgo);
+        expect(props.range.to).toBe(yesterday);
     });
 
     it("passes the club id and date range to the hook", () => {
@@ -94,6 +105,21 @@ describe("ClubUtilisationContainer", () => {
         fireEvent.click(screen.getByText("change-range"));
         expect(screen.getByText("range:2026-04-01")).toBeInTheDocument();
         expect(screen.getByText("label:1 Apr – 5 Apr")).toBeInTheDocument();
+    });
+
+    it("clamps incoming current or future ranges to yesterday", () => {
+        const now = new Date();
+        const yesterdayDate = new Date(now);
+        yesterdayDate.setDate(now.getDate() - 1);
+        const yesterday = `${yesterdayDate.getFullYear()}-${String(
+            yesterdayDate.getMonth() + 1
+        ).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
+
+        render(<ClubUtilisationContainer />);
+        fireEvent.click(screen.getByText("change-future-range"));
+
+        const props = viewProps.mock.calls.at(-1)?.[0] as { range: { from: string; to: string } };
+        expect(props.range).toEqual({ from: yesterday, to: yesterday });
     });
 
     it("handles a missing club id by passing an empty string", () => {

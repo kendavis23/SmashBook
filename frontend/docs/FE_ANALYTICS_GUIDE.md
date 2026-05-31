@@ -1,4 +1,4 @@
-_Last updated: 2026-05-31 18:45 UTC_
+_Last updated: 2026-05-31 21:20 UTC_
 
 # Frontend Analytics Guide
 
@@ -32,15 +32,16 @@ apps/web-staff/src/features/analytics/
       DateRangeControl.tsx
       UtilisationKpiCards.tsx
       UtilisationLineChart.tsx
-      ComparisonBarChart.tsx
-      UtilisationOverviewBar.tsx
+      GroupedBarChart.tsx          # grouped/series bar chart (revenue + slots)
       DailySummaryTable.tsx
       *.test.tsx
     pages/
       ClubUtilisationPage.tsx
-    utilisationSummary.ts        # pure aggregation service
+    utilisationSummary.ts        # pure aggregation service (range totals)
+    utilisationBuckets.ts        # pure time-bucketing service (daily/weekly/monthly)
     utilisationConstants.ts      # short-date/weekday formatters + shared class strings
     utilisationSummary.test.ts
+    utilisationBuckets.test.ts
     utilisationConstants.test.ts
 ```
 
@@ -239,9 +240,11 @@ The View is pure rendering. It receives `range`, `rangeLabel`, `points`, `summar
 2. **State branches** — `error` → alert; `isLoading` → spinner; `points.length === 0` → empty state; otherwise the dashboard.
 3. **KPI cards** (`UtilisationKpiCards`) — Total Slots, Booked Slots, (Average) Utilisation, Revenue actual / potential.
 4. **A zero-slots warning banner** when `summary.totalSlots === 0` but data exists.
-5. **Charts row** — daily-utilisation line chart + the actual-vs-potential revenue bar chart (with its revenue-opportunity callout) side by side.
-6. **Utilisation Overview** (`UtilisationOverviewBar`) — a full-width horizontal progress bar: Booked Slots (left) · "% Utilised" fill · Available Slots (right), with "Total Slots: N" centred beneath.
+5. **Charts row** — daily-utilisation line chart + the actual-vs-potential revenue **grouped bar chart** (one Actual/Potential pair per time bucket, with its revenue-opportunity callout) side by side.
+6. **Total vs Booked Slots** — a full-width `GroupedBarChart` of total-vs-booked slots, one pair per time bucket.
 7. **Daily summary table** with a Total / Avg column.
+
+Both bar charts are **time-bucketed** and carry a granularity selector — see the granularity section in Step 5.
 
 ### Single-day vs multi-day copy
 
@@ -269,24 +272,30 @@ Loading, error, **and** empty must each render. The empty state ("No data for th
 - Uses a fixed `viewBox` and `width="100%" height="100%"` so it scales to its panel.
 - Colours fills/strokes with **`hsl(var(--token))`**, never a hex literal and never `var(--color-…)`. The design tokens are HSL triplets (`--cta: 221 83% 53%`), so the correct form is `hsl(var(--cta))` or `hsl(var(--muted-foreground) / 0.45)` for an alpha variant. Axis labels and gridlines use Tailwind `className` with `fill-*`/`text-*` tokens.
 
-The reference feature ships three reusable chart primitives:
+The reference feature ships two reusable chart primitives:
 
-| Component                | Use                                                                   | Shape of `data`                      |
-| ------------------------ | --------------------------------------------------------------------- | ------------------------------------ |
-| `UtilisationLineChart`   | Daily utilisation %, one point per snapshot day, 0–100 axis           | `DailyUtilisationPoint[]`            |
-| `ComparisonBarChart`     | Two-bar comparisons (Actual vs Potential revenue)                     | `{ label, value, color, display }[]` |
-| `UtilisationOverviewBar` | Booked-vs-available slots as one horizontal "% Utilised" progress bar | `UtilisationSummary`                 |
+| Component              | Use                                                              | Shape of `data`           |
+| ---------------------- | ---------------------------------------------------------------- | ------------------------- |
+| `UtilisationLineChart` | Daily utilisation %, one point per snapshot day, 0–100 axis      | `DailyUtilisationPoint[]` |
+| `GroupedBarChart`      | N series compared side by side within each group (a time bucket) | `groups[]` + `series[]`   |
 
-`ComparisonBarChart` is deliberately generic — drive it with different bars for any two-value comparison. **Prefer one generic chart over two near-identical ones.** When you add a report, check whether these primitives already cover it before writing a new SVG; only build a new primitive for a genuinely new shape (e.g. the heatmap grid).
+`GroupedBarChart` is deliberately generic — it drives **both** the Actual-vs-Potential **revenue** chart and the Total-vs-Booked **slots** chart from the same component. **Prefer one generic chart over two near-identical ones.** When you add a report, check whether these primitives already cover it before writing a new SVG; only build a new primitive for a genuinely new shape (e.g. the heatmap grid).
 
-`UtilisationOverviewBar` is the "booked vs available" view of slot data (the slot counts are also in the KPI cards, so a second bar chart for them was redundant). It takes the whole `UtilisationSummary`, derives `availableSlots = max(totalSlots − bookedSlots, 0)`, and clamps the fill to 0–100, guarding the zero-slot divisor (renders "No slots available" instead of a 0%/NaN fill).
+`GroupedBarChart` takes `groups: string[]` (one x-axis label per bucket) and `series: GroupedSeries[]`, where each series has a `key`, `label`, `color`, a `values[]` aligned to `groups`, and a **pre-formatted** `display[]` (the labels drawn above each bar — `"£2,860"`, `"350"`). It draws a real **y-axis**: it rounds the largest value up to a tidy ceiling (`niceCeil`), lays out evenly-spaced dashed gridlines, and labels each tick. Props:
 
-`ComparisonBarChart` draws a real **y-axis**: it rounds the largest bar value up to a tidy ceiling (`niceCeil`), lays out evenly-spaced dashed gridlines, and labels each tick. Two optional props adapt it per panel:
+- `showLegend` — renders a colour-keyed legend above the plot (each series' `label` + `color`).
+- `formatTick(value) => string` — formats the y-axis tick labels. Defaults to a locale-grouped integer (`"50"`), so the **slots** chart passes nothing; the **revenue** chart passes `formatTick={(v) => formatCurrency(v)}` to get `£0 / £150 / …`. The tick formatter and `display[]` are the **only** number formatting near the chart — formatting happens in the View (via `formatCurrency`), never inside the chart.
+- `showValueLabels` — draws the `display` value above each bar (as in the mock). Defaults **on** when there are few enough groups to stay legible and **off** beyond that; pass it explicitly to force either way.
 
-- `showLegend` — renders a colour-keyed legend above the plot (the bars' `label` + `color`).
-- `formatTick(value) => string` — formats the y-axis tick labels. Defaults to a locale-grouped integer (`"50"`), so the **Total Slots vs Booked Slots** panel passes nothing; the **revenue** panel passes `formatTick={(v) => formatCurrency(v)}` to get `£0 / £150 / …`. The tick formatter is the **only** number-formatting the chart does — bar-top labels still come pre-formatted in `display`.
+### Time-bucket granularity (daily / weekly / monthly)
 
-The bar's `display` field is the **pre-formatted** label drawn above the bar (`"£2,860"`, `"350"`). Formatting happens in the View (via `formatCurrency`) — the chart never formats `display`.
+A range of more than a week is unreadable as one-bar-per-day, so both bar charts **aggregate the daily points into buckets**. The bucketing is a pure, tested service — `utilisationBuckets.ts` — never inline in a component:
+
+- `bucketPoints(points, granularity)` → `UtilisationBucket[]`, summing slots and revenue per bucket and returning them in chronological order. `daily` is a pass-through (one bucket per point) so the View has a single code path. Weeks are **Monday-anchored**; months are calendar months. Labels: `"1 Apr"` (daily) · `"30 Mar – 5 Apr"` (weekly) · `"Apr"` (monthly).
+- `defaultGranularity(dayCount)` → the auto default: **≤ 7 days daily, ≤ 30 days weekly, otherwise monthly**.
+- `availableGranularities(dayCount)` → what the selector offers: a single snapshot day offers nothing (one bar regardless); any multi-day range offers the full `daily → weekly → monthly` set so the user can keep the readable default or coarsen.
+
+In the View, each chart owns a `Granularity | null` `useState` (UI-only state, so `useState` not Zustand — see the state rules). `null` means "follow the auto default", so the chart re-defaults when the range changes until the user explicitly overrides it; a non-null value is the override. Resolve with `granularity ?? defaultGranularity(points.length)`, run `bucketPoints`, then map buckets to the chart's `groups` + `series`. Render the selector with `SelectInput` from `@repo/ui` (only when `availableGranularities(...).length > 1`), `aria-label="… chart granularity"`. The same dates flow through `bucketOf`, which uses `Date.UTC` so weekday/month lookups never shift across timezones (see Step 6).
 
 ---
 
@@ -366,9 +375,15 @@ Same testing rules as every feature ([`FE_FEATURE_LAYER_GUIDE.md`](FE_FEATURE_LA
 - **`total_slots === 0` → `0`, never `NaN`**
 - revenue opportunity clamps negatives to `0`
 
+**Bucketing service (`utilisationBuckets.test.ts`)** — also high-value:
+
+- `defaultGranularity` thresholds (7 → daily, 8/30 → weekly, 31 → monthly)
+- `availableGranularities` (1 day → `["daily"]`; multi-day → full set)
+- `bucketPoints` daily pass-through, **Monday-anchored** weekly grouping, calendar-month grouping, string-decimal coercion, chronological order
+
 **Constants (`utilisationConstants.test.ts`)** — `formatShortDate`, `formatWeekday` (assert no timezone drift), `utilisationTone` buckets.
 
-**View** — mock `@repo/ui` (`formatCurrency`, `DatePicker`); assert title + three chart sections render, loading/error/empty branches, the zero-slots banner, single-day vs multi-day copy, the revenue-opportunity callout, and that Refresh / date-change fire their callbacks. Avoid asserting on text that appears in more than one place (e.g. the word "Utilisation" is both a KPI label and a chart legend — assert on something unique like "Average Utilisation" / "Day Summary" instead).
+**View** — mock `@repo/ui` (`formatCurrency`, `SelectInput`, `DatePicker`); assert title + the chart sections render, loading/error/empty branches, the zero-slots banner, single-day vs multi-day copy, the revenue-opportunity callout, the **granularity selector** (present for multi-day, hidden for a single day, defaults to the range-length default), and that Refresh / date-change fire their callbacks. Avoid asserting on text that appears in more than one place (e.g. the word "Utilisation" is both a KPI label and a chart legend — assert on something unique like "Average Utilisation" / "Day Summary" instead).
 
 **Container** — mock the domain hook and `useClubAccess`; assert the default range is the last 7 calendar days, the hook is called with `clubId` + `{ dateFrom, dateTo }`, points are forwarded, Refresh calls `refetch`, the range label updates on range change, and a missing club id passes `""`. Mock the View to capture props rather than rendering the full SVG tree.
 
@@ -392,7 +407,8 @@ pnpm --filter web-staff lint
 - [ ] View renders loading **and** error **and** empty states
 - [ ] Single-day vs multi-day copy switches on `summary.isSingleDay`
 - [ ] Zero-slots (`total_slots === 0`) shows an explanatory banner, never `NaN%`
-- [ ] Charts are hand-rolled SVG (no charting library); reuse `ComparisonBarChart` / `UtilisationLineChart` where the shape fits
+- [ ] Charts are hand-rolled SVG (no charting library); reuse `GroupedBarChart` / `UtilisationLineChart` where the shape fits
+- [ ] Multi-bar charts bucket the range with `bucketPoints` (pure, tested) and expose a granularity selector defaulting to `defaultGranularity(dayCount)`
 - [ ] Chart colours use `hsl(var(--token))`; labels use `fill-*`/`text-*` tokens — no hex, no `var(--color-…)`
 - [ ] `formatCurrency` for money; `formatShortDate`/`formatWeekday` for snapshot dates (no `toLocaleDateString`)
 - [ ] `DatePicker` from `@repo/ui` with `className="input-base"` — never a bare `<input type="date">`

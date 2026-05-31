@@ -21,6 +21,29 @@ vi.mock("@repo/ui", () => ({
         "Dec",
     ],
     WEEKDAYS_SHORT: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        "aria-label": ariaLabel,
+    }: {
+        value: string;
+        onValueChange: (v: string) => void;
+        options: { value: string; label: string }[];
+        "aria-label"?: string;
+    }) => (
+        <select
+            aria-label={ariaLabel}
+            value={value}
+            onChange={(e) => onValueChange(e.target.value)}
+        >
+            {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                    {o.label}
+                </option>
+            ))}
+        </select>
+    ),
     DatePicker: ({
         value,
         onChange,
@@ -41,8 +64,9 @@ vi.mock("@repo/ui", () => ({
 
 const range: DateRange = { from: "2026-05-25", to: "2026-05-26" };
 
-function todayLocalDate(): string {
+function yesterdayLocalDate(): string {
     const today = new Date();
+    today.setDate(today.getDate() - 1);
     const year = today.getFullYear();
     const month = String(today.getMonth() + 1).padStart(2, "0");
     const day = String(today.getDate()).padStart(2, "0");
@@ -93,7 +117,7 @@ describe("ClubUtilisationView", () => {
         expect(screen.getByText("Club Utilisation Analytics")).toBeInTheDocument();
         expect(screen.getByText("Daily Utilisation (%)")).toBeInTheDocument();
         expect(screen.getByText("Actual vs Potential Revenue")).toBeInTheDocument();
-        expect(screen.getByText("Utilisation Overview")).toBeInTheDocument();
+        expect(screen.getByText("Booked vs Total Slots")).toBeInTheDocument();
     });
 
     it("shows the loading state", () => {
@@ -145,6 +169,35 @@ describe("ClubUtilisationView", () => {
         expect(screen.getByText("Revenue Opportunity")).toBeInTheDocument();
     });
 
+    it("offers a granularity selector defaulting to weekly for a multi-week range", () => {
+        const multi: DailyUtilisationPoint[] = Array.from({ length: 10 }, (_, i) => ({
+            snapshot_date: `2026-04-${String(i + 1).padStart(2, "0")}`,
+            total_slots: 10,
+            booked_slots: 4,
+            utilisation_pct: 40,
+            revenue_actual: 100,
+            revenue_potential: 250,
+        }));
+        renderView({ points: multi, summary: computeUtilisationSummary(multi) });
+        const selects = screen.getAllByLabelText(/chart granularity/);
+        expect(selects).toHaveLength(2); // revenue + slots
+        expect((selects[0] as HTMLSelectElement).value).toBe("weekly");
+    });
+
+    it("defaults to daily and shows a granularity selector for a ≤7-day multi-day range", () => {
+        renderView();
+        const selects = screen.getAllByLabelText(/chart granularity/);
+        expect(selects).toHaveLength(2);
+        expect((selects[0] as HTMLSelectElement).value).toBe("daily");
+    });
+
+    it("hides the granularity selector for a single-day range", () => {
+        const single = [points()[0] as DailyUtilisationPoint];
+        renderView({ points: single, summary: computeUtilisationSummary(single) });
+        // one snapshot day → only "daily" is meaningful, so no selector
+        expect(screen.queryByLabelText(/chart granularity/)).not.toBeInTheDocument();
+    });
+
     it("calls onRefresh when Refresh is clicked", () => {
         const { onRefresh } = renderView();
         fireEvent.click(screen.getByRole("button", { name: "Refresh analytics" }));
@@ -158,18 +211,21 @@ describe("ClubUtilisationView", () => {
         expect(onRangeChange).toHaveBeenCalled();
     });
 
-    it("prevents both date pickers from selecting future dates", () => {
+    it("prevents both date pickers from selecting current and future dates", () => {
         const { onRangeChange } = renderView();
-        const today = todayLocalDate();
+        const maxSelectableDate = yesterdayLocalDate();
         const inputs = screen.getAllByLabelText("date");
 
-        expect(inputs[0]).toHaveAttribute("max", today);
-        expect(inputs[1]).toHaveAttribute("max", today);
+        expect(inputs[0]).toHaveAttribute("max", maxSelectableDate);
+        expect(inputs[1]).toHaveAttribute("max", maxSelectableDate);
 
         fireEvent.change(inputs[0] as HTMLElement, { target: { value: "9999-01-01" } });
-        expect(onRangeChange).toHaveBeenLastCalledWith({ from: today, to: today });
+        expect(onRangeChange).toHaveBeenLastCalledWith({
+            from: maxSelectableDate,
+            to: maxSelectableDate,
+        });
 
         fireEvent.change(inputs[1] as HTMLElement, { target: { value: "9999-01-01" } });
-        expect(onRangeChange).toHaveBeenLastCalledWith({ from: range.from, to: today });
+        expect(onRangeChange).toHaveBeenLastCalledWith({ from: range.from, to: maxSelectableDate });
     });
 });

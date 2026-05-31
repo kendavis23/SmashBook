@@ -1,7 +1,17 @@
 import { useEffect, useMemo, useState, type JSX, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import type { DailyUtilisationPoint, UtilisationSummary } from "../../types";
 import { formatShortDate, formatWeekday, utilisationTone } from "../utilisationConstants";
+
+type SortKey = "booked_slots" | "utilisation_pct" | "revenue_actual";
+type SortDir = "asc" | "desc";
+
+const SORT_ACCESSORS: Record<SortKey, (p: DailyUtilisationPoint) => number> = {
+    booked_slots: (p) => p.booked_slots,
+    utilisation_pct: (p) => Number(p.utilisation_pct),
+    revenue_actual: (p) => Number(p.revenue_actual),
+};
 
 type Props = {
     points: DailyUtilisationPoint[];
@@ -33,10 +43,34 @@ function UtilisationBadge({ pct, hasSlots }: { pct: number; hasSlots: boolean })
 /** Per-day breakdown table with a compact Total / Avg footer. */
 export function DailySummaryTable({ points, summary }: Props): JSX.Element {
     const [page, setPage] = useState(0);
-    const totalPages = Math.max(1, Math.ceil(points.length / PAGE_SIZE));
+    const [sort, setSort] = useState<{ key: SortKey; dir: SortDir } | null>(null);
+
+    const sortedPoints = useMemo(() => {
+        if (!sort) {
+            return points;
+        }
+        const accessor = SORT_ACCESSORS[sort.key];
+        const factor = sort.dir === "asc" ? 1 : -1;
+        return [...points].sort((a, b) => (accessor(a) - accessor(b)) * factor);
+    }, [points, sort]);
+
+    const totalPages = Math.max(1, Math.ceil(sortedPoints.length / PAGE_SIZE));
     const clampedPage = Math.min(page, totalPages - 1);
     const start = clampedPage * PAGE_SIZE;
-    const visiblePoints = useMemo(() => points.slice(start, start + PAGE_SIZE), [points, start]);
+    const visiblePoints = useMemo(
+        () => sortedPoints.slice(start, start + PAGE_SIZE),
+        [sortedPoints, start]
+    );
+
+    function handleSort(key: SortKey): void {
+        setPage(0);
+        setSort((current) => {
+            if (current?.key !== key) {
+                return { key, dir: "desc" };
+            }
+            return { key, dir: current.dir === "desc" ? "asc" : "desc" };
+        });
+    }
 
     useEffect(() => {
         setPage(0);
@@ -50,9 +84,30 @@ export function DailySummaryTable({ points, summary }: Props): JSX.Element {
                         <tr className="border-b border-border bg-muted/30 text-left">
                             <HeaderCell>Date</HeaderCell>
                             <HeaderCell align="right">Total Slots</HeaderCell>
-                            <HeaderCell align="right">Booked Slots</HeaderCell>
-                            <HeaderCell align="center">Utilisation</HeaderCell>
-                            <HeaderCell align="right">Actual Revenue</HeaderCell>
+                            <HeaderCell
+                                align="right"
+                                sortKey="booked_slots"
+                                sort={sort}
+                                onSort={handleSort}
+                            >
+                                Booked Slots
+                            </HeaderCell>
+                            <HeaderCell
+                                align="center"
+                                sortKey="utilisation_pct"
+                                sort={sort}
+                                onSort={handleSort}
+                            >
+                                Utilisation
+                            </HeaderCell>
+                            <HeaderCell
+                                align="right"
+                                sortKey="revenue_actual"
+                                sort={sort}
+                                onSort={handleSort}
+                            >
+                                Actual Revenue
+                            </HeaderCell>
                             <HeaderCell align="right">Potential Revenue</HeaderCell>
                         </tr>
                     </thead>
@@ -140,9 +195,15 @@ export function DailySummaryTable({ points, summary }: Props): JSX.Element {
 function HeaderCell({
     children,
     align = "left",
+    sortKey,
+    sort,
+    onSort,
 }: {
     children: ReactNode;
     align?: "left" | "center" | "right";
+    sortKey?: SortKey;
+    sort?: { key: SortKey; dir: SortDir } | null;
+    onSort?: (key: SortKey) => void;
 }): JSX.Element {
     const alignCls = {
         left: "text-left",
@@ -150,11 +211,39 @@ function HeaderCell({
         right: "text-right",
     }[align];
 
+    const baseCls = `px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground ${alignCls}`;
+
+    if (!sortKey || !onSort) {
+        return <th className={baseCls}>{children}</th>;
+    }
+
+    const isActive = sort?.key === sortKey;
+    const justifyCls = {
+        left: "justify-start",
+        center: "justify-center",
+        right: "justify-end",
+    }[align];
+
     return (
-        <th
-            className={`px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground ${alignCls}`}
-        >
-            {children}
+        <th className={baseCls}>
+            <button
+                type="button"
+                onClick={() => onSort(sortKey)}
+                className={`flex w-full items-center gap-1 uppercase tracking-wide transition-colors hover:text-foreground ${justifyCls} ${
+                    isActive ? "text-foreground" : ""
+                }`}
+            >
+                <span>{children}</span>
+                {isActive ? (
+                    sort?.dir === "asc" ? (
+                        <ArrowUp className="h-3 w-3" />
+                    ) : (
+                        <ArrowDown className="h-3 w-3" />
+                    )
+                ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-40" />
+                )}
+            </button>
         </th>
     );
 }
