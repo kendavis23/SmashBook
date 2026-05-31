@@ -1,4 +1,5 @@
-const MONTHS = [
+/** Three-letter month abbreviations, Jan–Dec (index 0 = Jan). */
+export const MONTHS_SHORT = [
     "Jan",
     "Feb",
     "Mar",
@@ -12,6 +13,9 @@ const MONTHS = [
     "Nov",
     "Dec",
 ] as const;
+
+/** Three-letter weekday abbreviations, Sun–Sat (index 0 = Sun, matches Date.getUTCDay()). */
+export const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 function parseIso(iso: string): {
     year: string;
@@ -38,13 +42,13 @@ export function formatUTCDateTime(iso: string): string {
     const { year, month, day, hour, minute } = parseIso(iso);
     const ampm = hour >= 12 ? "PM" : "AM";
     const hour12 = hour % 12 || 12;
-    return `${MONTHS[month - 1]} ${day}, ${year}, ${hour12}:${minute} ${ampm}`;
+    return `${MONTHS_SHORT[month - 1]} ${day}, ${year}, ${hour12}:${minute} ${ampm}`;
 }
 
 /** Formats ISO datetime as date only (no timezone conversion): "Apr 17, 2026" */
 export function formatUTCDate(iso: string): string {
     const { year, month, day } = parseIso(iso);
-    return `${MONTHS[month - 1]} ${day}, ${year}`;
+    return `${MONTHS_SHORT[month - 1]} ${day}, ${year}`;
 }
 
 /** Formats ISO datetime as time only (no timezone conversion): "10:00 AM" */

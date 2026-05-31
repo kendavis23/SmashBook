@@ -70,6 +70,15 @@ export type {
     UpdatePaymentMethodResult,
 } from "./subscription.model";
 export type {
+    DailyUtilisationPoint,
+    ClubDailyUtilisation,
+    CourtUtilisationSummary,
+    ClubCourtsUtilisation,
+    HeatmapCell,
+    ClubUtilisationHeatmap,
+    UtilisationDateRange,
+} from "./utilisation.model";
+export type {
     BookingType,
     BookingStatus,
     PlayerRole,
