@@ -59,6 +59,8 @@ export default function ClubUtilisationView({
 
     const revenueBuckets = useMemo(() => bucketPoints(points, revenueG), [points, revenueG]);
     const slotBuckets = useMemo(() => bucketPoints(points, slotsG), [points, slotsG]);
+    const actualRevenueColor = "hsl(226 70% 55%)";
+    const potentialRevenueColor = "hsl(222 84% 86%)";
 
     const slotUtilisation = useMemo(() => {
         const totalSlots = slotBuckets.reduce((sum, b) => sum + b.totalSlots, 0);
@@ -73,14 +75,14 @@ export default function ClubUtilisationView({
         {
             key: "actual",
             label: "Actual Revenue",
-            color: "hsl(226 70% 55%)",
+            color: actualRevenueColor,
             values: revenueBuckets.map((b) => b.revenueActual),
             display: revenueBuckets.map((b) => formatCurrency(b.revenueActual)),
         },
         {
             key: "potential",
             label: "Potential Revenue",
-            color: "hsl(222 84% 86%)",
+            color: potentialRevenueColor,
             values: revenueBuckets.map((b) => b.revenuePotential),
             display: revenueBuckets.map((b) => formatCurrency(b.revenuePotential)),
         },
@@ -91,14 +93,14 @@ export default function ClubUtilisationView({
         {
             key: "booked",
             label: "Booked Slots",
-            color: "hsl(var(--success))",
+            color: actualRevenueColor,
             values: slotBuckets.map((b) => b.bookedSlots),
             display: slotBuckets.map((b) => b.bookedSlots.toLocaleString()),
         },
         {
             key: "total",
             label: "Total Slots",
-            color: "hsl(var(--success) / 0.24)",
+            color: potentialRevenueColor,
             values: slotBuckets.map((b) => b.totalSlots),
             display: slotBuckets.map((b) => b.totalSlots.toLocaleString()),
         },
@@ -179,7 +181,9 @@ export default function ClubUtilisationView({
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                         <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
                             <div className="mb-2 flex items-center justify-between gap-2">
-                                <h2 className={panelTitleCls}>Actual vs Potential Revenue</h2>
+                                <h2 className={`${panelTitleCls} min-w-0`}>
+                                    Actual vs Potential Revenue
+                                </h2>
                                 {granularityOptions.length > 1 ? (
                                     <SelectInput
                                         value={revenueG}
@@ -188,7 +192,7 @@ export default function ClubUtilisationView({
                                         }
                                         options={granularityOptions}
                                         aria-label="Revenue chart granularity"
-                                        className="h-8 w-28 py-1 text-xs"
+                                        className="h-8 w-28 flex-shrink-0 py-1 text-xs"
                                     />
                                 ) : (
                                     <span className="text-xs text-muted-foreground">
@@ -227,14 +231,16 @@ export default function ClubUtilisationView({
 
                         <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
                             <div className="mb-2 flex items-center justify-between gap-2">
-                                <h2 className={panelTitleCls}>Booked vs Total Slots</h2>
+                                <h2 className={`${panelTitleCls} min-w-0`}>
+                                    Booked vs Total Slots
+                                </h2>
                                 {granularityOptions.length > 1 ? (
                                     <SelectInput
                                         value={slotsG}
                                         onValueChange={(v) => setSlotsGranularity(v as Granularity)}
                                         options={granularityOptions}
                                         aria-label="Slots chart granularity"
-                                        className="h-8 w-28 py-1 text-xs"
+                                        className="h-8 w-28 flex-shrink-0 py-1 text-xs"
                                     />
                                 ) : (
                                     <span className="text-xs text-muted-foreground">
