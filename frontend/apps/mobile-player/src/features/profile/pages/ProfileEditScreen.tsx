@@ -11,12 +11,12 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import type { UserResponse } from "@repo/auth";
 import { useAuthStore } from "@repo/auth";
 import { useUpdateMyProfile } from "@repo/player-domain/hooks";
 import { ReadOnlyField } from "../components/ReadOnlyField";
+import { ProfileScreenShell } from "../components/ProfileScreenShell";
 import { getInitials, getSkillLabel, parseSkillLevel } from "../utils/profileFormatters";
 import { useThemeColors } from "../../../theme";
 
@@ -71,47 +71,42 @@ export function ProfileEditScreen({ user, onCancel, onDone }: Props) {
         onCancel();
     };
 
+    const doneAction = (
+        <Pressable
+            onPress={() => void handleDone()}
+            disabled={updateMutation.isPending}
+            accessibilityRole="button"
+            accessibilityLabel="Done editing"
+            hitSlop={12}
+            style={{
+                height: 40,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+                backgroundColor: colors.heroForeground,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: updateMutation.isPending ? 0.6 : 1,
+            }}
+        >
+            {updateMutation.isPending ? (
+                <ActivityIndicator size="small" color={colors.hero} />
+            ) : (
+                <Text style={{ fontSize: 14, fontWeight: "700", color: colors.hero }}>Done</Text>
+            )}
+        </Pressable>
+    );
+
     return (
         <KeyboardAvoidingView
-            className="flex-1 bg-background"
+            className="flex-1"
             behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-            <SafeAreaView className="flex-1">
-                <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
-                    <Pressable
-                        onPress={handleCancel}
-                        accessibilityRole="button"
-                        accessibilityLabel="Cancel editing"
-                        hitSlop={12}
-                        className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
-                    >
-                        <Ionicons name="chevron-back" size={28} color={colors.foreground} />
-                    </Pressable>
-
-                    <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
-                        Edit Profile
-                    </Text>
-
-                    <Pressable
-                        onPress={() => void handleDone()}
-                        disabled={updateMutation.isPending}
-                        accessibilityRole="button"
-                        accessibilityLabel="Done editing"
-                        hitSlop={12}
-                        className={`min-w-16 items-end px-1 py-2 ${
-                            updateMutation.isPending ? "opacity-50" : "active:opacity-50"
-                        }`}
-                    >
-                        {updateMutation.isPending ? (
-                            <ActivityIndicator size="small" color={colors.cta} />
-                        ) : (
-                            <Text className="text-right text-[15px] font-semibold text-cta">
-                                Done
-                            </Text>
-                        )}
-                    </Pressable>
-                </View>
-
+            <ProfileScreenShell
+                title="Edit Profile"
+                onBack={handleCancel}
+                backLabel="Cancel editing"
+                headerAction={doneAction}
+            >
                 <ScrollView
                     showsVerticalScrollIndicator={false}
                     contentContainerClassName="px-4 pt-6 pb-10"
@@ -225,7 +220,7 @@ export function ProfileEditScreen({ user, onCancel, onDone }: Props) {
                         </View>
                     </View>
                 </ScrollView>
-            </SafeAreaView>
+            </ProfileScreenShell>
         </KeyboardAvoidingView>
     );
 }

@@ -1,7 +1,5 @@
 import { useCallback, useState, type JSX } from "react";
-import { Text, View, Pressable } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
+import { Text, View } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@repo/auth";
@@ -11,6 +9,7 @@ import {
     useCancelPendingDowngrade,
 } from "@repo/player-domain";
 import { MyMembershipView } from "./MyMembershipView";
+import { ProfileScreenShell } from "../../components/ProfileScreenShell";
 import { useThemeColors } from "../../../../theme";
 
 export function MyMembershipScreen(): JSX.Element {
@@ -48,32 +47,10 @@ export function MyMembershipScreen(): JSX.Element {
     }, [cancelDowngradeMutation]);
 
     return (
-        <SafeAreaView className="flex-1 bg-background">
-            <StatusBar style="dark" />
-
-            {/* Header — mirrors ProfileEditScreen */}
-            <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
-                <Pressable
-                    onPress={() => router.back()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Go back"
-                    hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
-                >
-                    <Ionicons name="chevron-back" size={28} color={colors.foreground} />
-                </Pressable>
-
-                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
-                    My Membership
-                </Text>
-
-                {/* Spacer — keeps title centred */}
-                <View className="h-11 w-11" />
-            </View>
-
+        <ProfileScreenShell title="My Membership" onBack={() => router.back()}>
             {/* Loading */}
             {isLoading && (
-                <View className="flex-1 items-center justify-center bg-background gap-3">
+                <View className="flex-1 items-center justify-center gap-3">
                     <View className="h-12 w-12 items-center justify-center rounded-full bg-card shadow-sm">
                         <Ionicons name="ribbon-outline" size={22} color={colors.cta} />
                     </View>
@@ -85,7 +62,7 @@ export function MyMembershipScreen(): JSX.Element {
 
             {/* Error */}
             {!isLoading && error && (
-                <View className="flex-1 items-center justify-center bg-background px-6 gap-3">
+                <View className="flex-1 items-center justify-center px-6 gap-3">
                     <View className="h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
                         <Ionicons
                             name="alert-circle-outline"
@@ -104,7 +81,7 @@ export function MyMembershipScreen(): JSX.Element {
 
             {/* No membership */}
             {!isLoading && !error && !membership && (
-                <View className="flex-1 items-center justify-center bg-background px-8 gap-3">
+                <View className="flex-1 items-center justify-center px-8 gap-3">
                     <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-secondary">
                         <Ionicons name="ribbon-outline" size={30} color={colors.cta} />
                     </View>
@@ -129,6 +106,6 @@ export function MyMembershipScreen(): JSX.Element {
                     cancelDowngradeError={cancelDowngradeError}
                 />
             )}
-        </SafeAreaView>
+        </ProfileScreenShell>
     );
 }

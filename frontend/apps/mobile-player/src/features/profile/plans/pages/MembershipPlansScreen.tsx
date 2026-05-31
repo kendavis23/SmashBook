@@ -1,7 +1,5 @@
 import { useCallback, useState, type JSX } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import { useRouter, type Href } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@repo/auth";
@@ -13,6 +11,7 @@ import {
 import type { MembershipPlan } from "@repo/player-domain";
 import { MobilePlanCard } from "../components/MobilePlanCard";
 import { MobileSelectCardSheet } from "../components/MobileSelectCardSheet";
+import { ProfileScreenShell } from "../../components/ProfileScreenShell";
 import { useThemeColors } from "../../../../theme";
 
 type SuccessState = { plan: MembershipPlan; wasPlanChange: boolean } | null;
@@ -78,28 +77,7 @@ export function MembershipPlansScreen(): JSX.Element {
     );
 
     return (
-        <SafeAreaView className="flex-1 bg-background">
-            <StatusBar style="dark" />
-
-            {/* Header */}
-            <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
-                <Pressable
-                    onPress={() => router.back()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Go back"
-                    hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
-                >
-                    <Ionicons name="chevron-back" size={28} color={colors.foreground} />
-                </Pressable>
-
-                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
-                    Plans
-                </Text>
-
-                <View className="h-11 w-11" />
-            </View>
-
+        <ProfileScreenShell title="Plans" onBack={() => router.back()}>
             {/* Success state */}
             {success ? (
                 <View className="flex-1 items-center justify-center px-8 gap-4">
@@ -132,16 +110,28 @@ export function MembershipPlansScreen(): JSX.Element {
                     showsVerticalScrollIndicator={false}
                 >
                     {/* Sub-header banner */}
-                    <View className="mb-5 overflow-hidden rounded-[20px] bg-hero px-5 py-4">
+                    <View
+                        className="mb-5 overflow-hidden rounded-[20px] px-5 py-4"
+                        style={{ backgroundColor: colors.hero }}
+                    >
                         <View className="flex-row items-center gap-3">
-                            <View className="h-10 w-10 items-center justify-center rounded-xl bg-card/10">
-                                <Ionicons name="list" size={20} color={colors.heroMuted} />
+                            <View
+                                className="h-10 w-10 items-center justify-center rounded-xl"
+                                style={{ backgroundColor: colors.heroGlass }}
+                            >
+                                <Ionicons name="list" size={20} color={colors.heroForeground} />
                             </View>
                             <View className="flex-1">
-                                <Text className="text-[15px] font-bold text-cta-foreground">
+                                <Text
+                                    className="text-[15px] font-bold"
+                                    style={{ color: colors.heroForeground }}
+                                >
                                     Membership Plans
                                 </Text>
-                                <Text className="mt-0.5 text-[12px] text-cta-foreground/55">
+                                <Text
+                                    className="mt-0.5 text-[12px]"
+                                    style={{ color: colors.heroMuted }}
+                                >
                                     {hasActiveMembership
                                         ? `Current: ${membership?.plan.name} · Upgrade or switch`
                                         : "Compare credits, discounts, and booking access"}
@@ -212,6 +202,6 @@ export function MembershipPlansScreen(): JSX.Element {
                     }
                 />
             )}
-        </SafeAreaView>
+        </ProfileScreenShell>
     );
 }

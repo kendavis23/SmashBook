@@ -1,7 +1,5 @@
 import { type JSX, useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -10,6 +8,7 @@ import {
     useSetDefaultPaymentMethod,
 } from "@repo/player-domain";
 import { CardTile } from "../components/CardTile";
+import { ProfileScreenShell } from "../../components/ProfileScreenShell";
 import { useThemeColors } from "../../../../theme";
 import { AddCardSheet } from "../components/AddCardSheet";
 
@@ -52,41 +51,32 @@ export function CardsScreen(): JSX.Element {
         void refetch();
     }, [refetch]);
 
+    const addAction = (
+        <Pressable
+            onPress={() => {
+                setSuccessMessage(null);
+                setShowAddSheet(true);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Add new card"
+            hitSlop={12}
+            style={{
+                height: 40,
+                paddingHorizontal: 14,
+                borderRadius: 20,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                backgroundColor: colors.heroForeground,
+            }}
+        >
+            <Ionicons name="add" size={16} color={colors.hero} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: colors.hero }}>Add</Text>
+        </Pressable>
+    );
+
     return (
-        <SafeAreaView className="flex-1 bg-background">
-            <StatusBar style="dark" />
-
-            {/* Header */}
-            <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
-                <Pressable
-                    onPress={() => router.back()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Go back"
-                    hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
-                >
-                    <Ionicons name="chevron-back" size={28} color={colors.foreground} />
-                </Pressable>
-
-                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
-                    Cards
-                </Text>
-
-                {/* Add card button */}
-                <Pressable
-                    onPress={() => {
-                        setSuccessMessage(null);
-                        setShowAddSheet(true);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel="Add new card"
-                    className="h-9 flex-row items-center gap-1.5 rounded-full bg-cta px-3.5 active:opacity-75"
-                >
-                    <Ionicons name="add" size={16} color={colors.ctaForeground} />
-                    <Text className="text-[13px] font-semibold text-cta-foreground">Add</Text>
-                </Pressable>
-            </View>
-
+        <ProfileScreenShell title="Cards" onBack={() => router.back()} headerAction={addAction}>
             <ScrollView
                 className="flex-1"
                 contentContainerClassName="px-4 pb-10 pt-4 gap-3"
@@ -109,16 +99,28 @@ export function CardsScreen(): JSX.Element {
                 )}
 
                 {/* Hero banner */}
-                <View className="overflow-hidden rounded-[20px] bg-hero px-5 py-4">
+                <View
+                    className="overflow-hidden rounded-[20px] px-5 py-4"
+                    style={{ backgroundColor: colors.hero }}
+                >
                     <View className="flex-row items-center gap-3">
-                        <View className="h-10 w-10 items-center justify-center rounded-xl bg-card/10">
-                            <Ionicons name="card" size={20} color={colors.heroMuted} />
+                        <View
+                            className="h-10 w-10 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: colors.heroGlass }}
+                        >
+                            <Ionicons name="card" size={20} color={colors.heroForeground} />
                         </View>
                         <View className="flex-1">
-                            <Text className="text-[15px] font-bold text-cta-foreground">
+                            <Text
+                                className="text-[15px] font-bold"
+                                style={{ color: colors.heroForeground }}
+                            >
                                 Payment Methods
                             </Text>
-                            <Text className="mt-0.5 text-[12px] text-cta-foreground/55">
+                            <Text
+                                className="mt-0.5 text-[12px]"
+                                style={{ color: colors.heroMuted }}
+                            >
                                 Saved cards for bookings and membership payments
                             </Text>
                         </View>
@@ -208,6 +210,6 @@ export function CardsScreen(): JSX.Element {
                 onClose={() => setShowAddSheet(false)}
                 onSuccess={handleAddSuccess}
             />
-        </SafeAreaView>
+        </ProfileScreenShell>
     );
 }

@@ -1,11 +1,10 @@
 import { type JSX, useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useGetWallet } from "@repo/player-domain";
 import { formatCurrency } from "../../../../lib";
+import { ProfileScreenShell } from "../../components/ProfileScreenShell";
 import { useThemeColors } from "../../../../theme";
 import { TransactionTile } from "../components/TransactionTile";
 import { TopUpSheet } from "../components/TopUpSheet";
@@ -43,39 +42,35 @@ export function WalletScreen(): JSX.Element {
     const totalPages = Math.ceil(transactions.length / PAGE_SIZE);
     const pageTxs = transactions.slice(txPage * PAGE_SIZE, (txPage + 1) * PAGE_SIZE);
 
+    const refreshAction = (
+        <Pressable
+            onPress={handleRefresh}
+            disabled={isLoading}
+            accessibilityRole="button"
+            accessibilityLabel="Refresh wallet"
+            hitSlop={12}
+            style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: colors.heroGlass,
+                borderWidth: 1,
+                borderColor: colors.heroGlassBorder,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: isLoading ? 0.6 : 1,
+            }}
+        >
+            <Ionicons name="refresh-outline" size={18} color={colors.heroForeground} />
+        </Pressable>
+    );
+
     return (
-        <SafeAreaView className="flex-1 bg-background">
-            <StatusBar style="dark" />
-
-            {/* Header */}
-            <View className="flex-row items-center justify-between bg-background px-5 pb-2.5 pt-1 android:pt-3.5">
-                <Pressable
-                    onPress={() => router.back()}
-                    accessibilityRole="button"
-                    accessibilityLabel="Go back"
-                    hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50"
-                >
-                    <Ionicons name="chevron-back" size={28} color={colors.foreground} />
-                </Pressable>
-
-                <Text className="absolute left-[76px] right-[76px] text-center text-[16px] font-semibold text-foreground">
-                    Wallet
-                </Text>
-
-                {/* Refresh button */}
-                <Pressable
-                    onPress={handleRefresh}
-                    disabled={isLoading}
-                    accessibilityRole="button"
-                    accessibilityLabel="Refresh wallet"
-                    hitSlop={12}
-                    className="h-11 w-11 items-center justify-center rounded-full bg-card shadow-sm active:opacity-50 disabled:opacity-40"
-                >
-                    <Ionicons name="refresh-outline" size={20} color={colors.foreground} />
-                </Pressable>
-            </View>
-
+        <ProfileScreenShell
+            title="Wallet"
+            onBack={() => router.back()}
+            headerAction={refreshAction}
+        >
             <ScrollView
                 className="flex-1"
                 contentContainerClassName="px-4 pb-10 pt-4 gap-4"
@@ -98,16 +93,29 @@ export function WalletScreen(): JSX.Element {
                 )}
 
                 {/* Balance card */}
-                <View className="overflow-hidden rounded-[24px] bg-hero">
+                <View
+                    className="overflow-hidden rounded-[24px]"
+                    style={{ backgroundColor: colors.hero }}
+                >
                     {/* Top section */}
                     <View className="px-5 pt-5 pb-4">
                         <View className="flex-row items-center justify-between">
                             <View className="flex-row items-center gap-2.5">
-                                <View className="h-10 w-10 items-center justify-center rounded-xl bg-card/10">
-                                    <Ionicons name="wallet" size={20} color={colors.success} />
+                                <View
+                                    className="h-10 w-10 items-center justify-center rounded-xl"
+                                    style={{ backgroundColor: colors.heroGlass }}
+                                >
+                                    <Ionicons
+                                        name="wallet"
+                                        size={20}
+                                        color={colors.heroForeground}
+                                    />
                                 </View>
                                 <View>
-                                    <Text className="text-[11px] font-bold uppercase tracking-[0.6px] text-cta-foreground/50">
+                                    <Text
+                                        className="text-[11px] font-bold uppercase tracking-[0.6px]"
+                                        style={{ color: colors.heroMuted }}
+                                    >
                                         Wallet balance
                                     </Text>
                                 </View>
@@ -117,31 +125,39 @@ export function WalletScreen(): JSX.Element {
                         {/* Balance */}
                         {isLoading ? (
                             <View className="mt-5 flex-row items-center gap-2">
-                                <ActivityIndicator size="small" color={colors.success} />
-                                <Text className="text-[14px] text-cta-foreground/60">Loading…</Text>
+                                <ActivityIndicator size="small" color={colors.heroForeground} />
+                                <Text className="text-[14px]" style={{ color: colors.heroMuted }}>
+                                    Loading…
+                                </Text>
                             </View>
                         ) : error ? (
                             <Text className="mt-5 text-[15px] font-semibold text-destructive">
                                 Failed to load wallet.
                             </Text>
                         ) : (
-                            <Text className="mt-5 text-[42px] font-bold leading-none tracking-tight text-cta-foreground">
+                            <Text
+                                className="mt-5 text-[42px] font-bold leading-none tracking-tight"
+                                style={{ color: colors.heroForeground }}
+                            >
                                 {formatBalance(wallet?.balance ?? 0)}
                             </Text>
                         )}
 
-                        <Text className="mt-2 text-[13px] text-cta-foreground/45">
+                        <Text className="mt-2 text-[13px]" style={{ color: colors.heroMuted }}>
                             Available for bookings and instant checkout
                         </Text>
                     </View>
 
                     {/* Divider */}
-                    <View className="mx-5 h-px bg-card/10" />
+                    <View
+                        className="mx-5 h-px"
+                        style={{ backgroundColor: colors.heroGlassBorder }}
+                    />
 
                     {/* Top-up button row */}
                     <View className="flex-row items-center justify-between px-5 py-4">
                         {wallet && (
-                            <Text className="text-[12px] text-cta-foreground/40">
+                            <Text className="text-[12px]" style={{ color: colors.heroMuted }}>
                                 Currency: {wallet.currency.toUpperCase()}
                             </Text>
                         )}
@@ -282,6 +298,6 @@ export function WalletScreen(): JSX.Element {
                 onClose={() => setShowTopUp(false)}
                 onSuccess={handleTopUpSuccess}
             />
-        </SafeAreaView>
+        </ProfileScreenShell>
     );
 }

@@ -72,34 +72,47 @@ export function MyMembershipView({
             showsVerticalScrollIndicator={false}
         >
             {/* ── Hero membership card ───────────────────────────────── */}
-            <View className="mb-5 overflow-hidden rounded-[24px] bg-hero shadow-lg">
+            <View
+                className="mb-5 overflow-hidden rounded-[24px] shadow-lg"
+                style={{ backgroundColor: colors.hero }}
+            >
                 {/* Top: plan name + status + price */}
                 <View className="flex-row items-start justify-between px-5 pt-5 pb-4">
                     <View className="flex-1 pr-4">
                         {/* Status pill */}
                         <View
-                            className={`mb-2 self-start rounded-full px-3 py-0.5 ${
-                                status === "active" || status === "trialing"
-                                    ? "bg-success/20"
-                                    : "bg-card/15"
-                            }`}
+                            className="mb-2 self-start rounded-full px-3 py-0.5"
+                            style={{
+                                backgroundColor:
+                                    status === "active" || status === "trialing"
+                                        ? colors.successSurface
+                                        : colors.heroGlass,
+                            }}
                         >
                             <Text
-                                className={`text-[11px] font-bold uppercase tracking-[0.5px] ${
-                                    status === "active" || status === "trialing"
-                                        ? "text-success"
-                                        : "text-cta-foreground/60"
-                                }`}
+                                className="text-[11px] font-bold uppercase tracking-[0.5px]"
+                                style={{
+                                    color:
+                                        status === "active" || status === "trialing"
+                                            ? colors.success
+                                            : colors.heroForeground,
+                                }}
                             >
                                 {style.label}
                             </Text>
                         </View>
 
-                        <Text className="text-[26px] font-bold leading-tight text-cta-foreground">
+                        <Text
+                            className="text-[26px] font-bold leading-tight"
+                            style={{ color: colors.heroForeground }}
+                        >
                             {plan.name}
                         </Text>
                         {!!plan.description && (
-                            <Text className="mt-1 text-[13px] leading-5 text-cta-foreground/55">
+                            <Text
+                                className="mt-1 text-[13px] leading-5"
+                                style={{ color: colors.heroMuted }}
+                            >
                                 {plan.description}
                             </Text>
                         )}
@@ -107,25 +120,34 @@ export function MyMembershipView({
 
                     {/* Price block */}
                     <View className="items-end">
-                        <Text className="text-[22px] font-extrabold text-cta-foreground">
+                        <Text
+                            className="text-[22px] font-extrabold"
+                            style={{ color: colors.heroForeground }}
+                        >
                             {formatCurrency(plan.price)}
                         </Text>
-                        <Text className="text-[12px] text-cta-foreground/55">
+                        <Text className="text-[12px]" style={{ color: colors.heroMuted }}>
                             / {billingPeriod}
                         </Text>
                     </View>
                 </View>
 
                 {/* Divider */}
-                <View className="mx-5 h-px bg-card/10" />
+                <View className="mx-5 h-px" style={{ backgroundColor: colors.heroGlassBorder }} />
 
                 {/* Bottom: membership icon + renews */}
                 <View className="flex-row items-center justify-between px-5 py-4">
                     <View className="flex-row items-center gap-2.5">
-                        <View className="h-9 w-9 items-center justify-center rounded-xl bg-card/10">
-                            <Ionicons name="ribbon" size={18} color={colors.heroMuted} />
+                        <View
+                            className="h-9 w-9 items-center justify-center rounded-xl"
+                            style={{ backgroundColor: colors.heroGlass }}
+                        >
+                            <Ionicons name="ribbon" size={18} color={colors.heroForeground} />
                         </View>
-                        <Text className="text-[13px] font-medium text-cta-foreground/70">
+                        <Text
+                            className="text-[13px] font-medium"
+                            style={{ color: colors.heroMuted }}
+                        >
                             Member plan
                         </Text>
                     </View>
@@ -133,9 +155,9 @@ export function MyMembershipView({
                         <Ionicons
                             name="refresh-circle-outline"
                             size={14}
-                            color={colors.heroGlassBorder}
+                            color={colors.heroMuted}
                         />
-                        <Text className="text-[12px] text-cta-foreground/45">
+                        <Text className="text-[12px]" style={{ color: colors.heroMuted }}>
                             Renews {formatUTCDate(membership.current_period_end)}
                         </Text>
                     </View>
