@@ -21,16 +21,9 @@ type Props = {
         item: PlayerBookingItem,
         action: Extract<InviteStatus, "accepted" | "declined">
     ) => void;
-    onNewBooking: () => void;
 };
 
-function EmptyState({
-    tab,
-    onNewBooking,
-}: {
-    tab: BookingTab;
-    onNewBooking: () => void;
-}): JSX.Element {
+function EmptyState({ tab }: { tab: BookingTab }): JSX.Element {
     const colors = useThemeColors();
     const isUpcoming = tab === "upcoming";
     return (
@@ -71,31 +64,9 @@ function EmptyState({
                 }}
             >
                 {isUpcoming
-                    ? "Book a court to get started!"
+                    ? "Browse courts from the Explore tab to make a booking."
                     : "Your past bookings will appear here."}
             </Text>
-            {isUpcoming ? (
-                <Pressable
-                    onPress={onNewBooking}
-                    accessibilityRole="button"
-                    accessibilityLabel="Book a court"
-                    style={{
-                        marginTop: 4,
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                        borderRadius: 22,
-                        backgroundColor: colors.cta,
-                        paddingHorizontal: 22,
-                        paddingVertical: 12,
-                    }}
-                >
-                    <Ionicons name="add" size={16} color={colors.ctaForeground} />
-                    <Text style={{ fontSize: 14, fontWeight: "600", color: colors.ctaForeground }}>
-                        Book a Court
-                    </Text>
-                </Pressable>
-            ) : null}
         </View>
     );
 }
@@ -110,7 +81,6 @@ export function BookingsListView({
     onRefresh,
     onManageClick,
     onPayClick,
-    onNewBooking,
 }: Props): JSX.Element {
     const colors = useThemeColors();
     const items = activeTab === "upcoming" ? upcoming : past;
@@ -230,7 +200,7 @@ export function BookingsListView({
                     />
                 </View>
             }
-            ListEmptyComponent={<EmptyState tab={activeTab} onNewBooking={onNewBooking} />}
+            ListEmptyComponent={<EmptyState tab={activeTab} />}
             renderItem={({ item }) => (
                 <View style={{ paddingHorizontal: 16 }}>
                     <BookingCard

@@ -502,7 +502,7 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                             >
                                 <View
                                     style={{
-                                        backgroundColor: isSelected ? colors.cta : colors.muted,
+                                        backgroundColor: isSelected ? colors.cta : colors.card,
                                         borderWidth: 1,
                                         borderColor: isSelected ? colors.cta : colors.border,
                                         borderRadius: 14,
@@ -595,51 +595,73 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                     <View
                         style={{
                             backgroundColor: colors.card,
-                            borderTopLeftRadius: 28,
-                            borderTopRightRadius: 28,
+                            borderTopLeftRadius: 32,
+                            borderTopRightRadius: 32,
                             paddingHorizontal: 20,
                             paddingTop: 10,
-                            paddingBottom: 24,
+                            paddingBottom: 32,
+                            shadowColor: colors.shadow,
+                            shadowOpacity: 0.18,
+                            shadowRadius: 24,
+                            shadowOffset: { width: 0, height: -8 },
+                            elevation: 20,
                         }}
                     >
-                        <View style={{ alignItems: "center", marginBottom: 14 }}>
+                        {/* Drag handle */}
+                        <View style={{ alignItems: "center", marginBottom: 18 }}>
                             <View
                                 style={{
-                                    width: 40,
+                                    width: 36,
                                     height: 4,
                                     borderRadius: 2,
                                     backgroundColor: colors.border,
                                 }}
                             />
                         </View>
+
+                        {/* Header */}
                         <View
                             style={{
                                 flexDirection: "row",
-                                alignItems: "center",
+                                alignItems: "flex-start",
                                 justifyContent: "space-between",
-                                marginBottom: 18,
+                                marginBottom: 24,
                             }}
                         >
                             <View>
                                 <Text
                                     style={{
-                                        fontSize: 22,
-                                        fontWeight: "700",
+                                        fontSize: 24,
+                                        fontWeight: "800",
                                         color: colors.foreground,
+                                        letterSpacing: -0.5,
                                     }}
                                 >
                                     Select Date
                                 </Text>
-                                <Text
+                                <View
                                     style={{
-                                        fontSize: 13,
-                                        fontWeight: "600",
-                                        color: colors.mutedForeground,
-                                        marginTop: 3,
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        gap: 5,
+                                        marginTop: 4,
                                     }}
                                 >
-                                    Next 35 days
-                                </Text>
+                                    <Ionicons
+                                        name="calendar-outline"
+                                        size={12}
+                                        color={colors.mutedForeground}
+                                    />
+                                    <Text
+                                        style={{
+                                            fontSize: 13,
+                                            fontWeight: "500",
+                                            color: colors.mutedForeground,
+                                        }}
+                                    >
+                                        Next 35 days available
+                                    </Text>
+                                </View>
                             </View>
                             <Pressable
                                 onPress={() => setIsCalendarOpen(false)}
@@ -648,69 +670,130 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                 hitSlop={10}
                                 className="active:opacity-60"
                                 style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 18,
+                                    width: 38,
+                                    height: 38,
+                                    borderRadius: 19,
                                     backgroundColor: colors.muted,
+                                    borderWidth: 1,
+                                    borderColor: colors.border,
                                     alignItems: "center",
                                     justifyContent: "center",
                                 }}
                             >
-                                <Ionicons name="close" size={20} color={colors.foreground} />
+                                <Ionicons name="close" size={18} color={colors.foreground} />
                             </Pressable>
                         </View>
-                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
-                            {calendarDays.map((day) => {
-                                const isSelected = day.iso === date;
-                                return (
-                                    <Pressable
-                                        key={day.iso}
-                                        onPress={() => {
-                                            onDateChange(day.iso);
-                                            setIsCalendarOpen(false);
-                                        }}
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`Select ${day.topLabel} ${day.shortLabel}`}
-                                        accessibilityState={{ selected: isSelected }}
-                                        className="active:opacity-75"
+
+                        {/* Day-of-week header row */}
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                marginBottom: 8,
+                            }}
+                        >
+                            {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map((d) => (
+                                <View key={d} style={{ flex: 1, alignItems: "center" }}>
+                                    <Text
                                         style={{
-                                            width: "12%",
-                                            minHeight: 54,
-                                            borderRadius: 16,
-                                            backgroundColor: isSelected ? colors.cta : colors.muted,
-                                            borderWidth: 1,
-                                            borderColor: isSelected ? colors.cta : colors.border,
-                                            alignItems: "center",
-                                            justifyContent: "center",
+                                            fontSize: 11,
+                                            fontWeight: "700",
+                                            color: colors.mutedForeground,
+                                            letterSpacing: 0.3,
                                         }}
                                     >
-                                        <Text
-                                            style={{
-                                                fontSize: 9,
-                                                fontWeight: "700",
-                                                color: isSelected
-                                                    ? colors.heroMuted
-                                                    : colors.mutedForeground,
-                                                textTransform: "uppercase",
-                                            }}
-                                        >
-                                            {day.topLabel}
-                                        </Text>
-                                        <Text
-                                            style={{
-                                                fontSize: 15,
-                                                fontWeight: "700",
-                                                color: isSelected
-                                                    ? colors.ctaForeground
-                                                    : colors.foreground,
-                                                marginTop: 2,
-                                            }}
-                                        >
-                                            {day.shortLabel}
-                                        </Text>
-                                    </Pressable>
-                                );
-                            })}
+                                        {d}
+                                    </Text>
+                                </View>
+                            ))}
+                        </View>
+
+                        {/* Calendar grid — 7 columns */}
+                        <View>
+                            {Array.from({ length: Math.ceil(calendarDays.length / 7) }, (_, week) => (
+                                <View
+                                    key={week}
+                                    style={{
+                                        flexDirection: "row",
+                                        marginBottom: 6,
+                                    }}
+                                >
+                                    {calendarDays.slice(week * 7, week * 7 + 7).map((day) => {
+                                        const isSelected = day.iso === date;
+                                        const isToday = day.topLabel === "TOD";
+                                        return (
+                                            <Pressable
+                                                key={day.iso}
+                                                onPress={() => {
+                                                    onDateChange(day.iso);
+                                                    setIsCalendarOpen(false);
+                                                }}
+                                                accessibilityRole="button"
+                                                accessibilityLabel={`Select ${day.topLabel} ${day.shortLabel}`}
+                                                accessibilityState={{ selected: isSelected }}
+                                                className="active:opacity-70"
+                                                style={{ flex: 1, alignItems: "center" }}
+                                            >
+                                                <View
+                                                    style={{
+                                                        width: 42,
+                                                        height: 52,
+                                                        borderRadius: 14,
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        backgroundColor: isSelected
+                                                            ? colors.cta
+                                                            : isToday
+                                                              ? colors.ctaSurface
+                                                              : "transparent",
+                                                        borderWidth: isSelected
+                                                            ? 0
+                                                            : isToday
+                                                              ? 1.5
+                                                              : 0,
+                                                        borderColor: colors.ctaBorder,
+                                                        shadowColor: isSelected ? colors.cta : "transparent",
+                                                        shadowOpacity: isSelected ? 0.35 : 0,
+                                                        shadowRadius: isSelected ? 8 : 0,
+                                                        shadowOffset: { width: 0, height: 4 },
+                                                        elevation: isSelected ? 6 : 0,
+                                                    }}
+                                                >
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 9,
+                                                            fontWeight: "700",
+                                                            color: isSelected
+                                                                ? colors.heroMuted
+                                                                : isToday
+                                                                  ? colors.cta
+                                                                  : colors.mutedForeground,
+                                                            letterSpacing: 0.4,
+                                                            textTransform: "uppercase",
+                                                        }}
+                                                    >
+                                                        {day.topLabel}
+                                                    </Text>
+                                                    <Text
+                                                        style={{
+                                                            fontSize: 17,
+                                                            fontWeight: isSelected || isToday ? "800" : "600",
+                                                            color: isSelected
+                                                                ? colors.ctaForeground
+                                                                : isToday
+                                                                  ? colors.cta
+                                                                  : colors.foreground,
+                                                            marginTop: 1,
+                                                            letterSpacing: -0.3,
+                                                        }}
+                                                    >
+                                                        {day.shortLabel}
+                                                    </Text>
+                                                </View>
+                                            </Pressable>
+                                        );
+                                    })}
+                                </View>
+                            ))}
                         </View>
                     </View>
                 </View>
