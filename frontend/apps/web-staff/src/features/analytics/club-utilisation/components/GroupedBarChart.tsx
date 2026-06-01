@@ -36,7 +36,7 @@ const PAD = { top: 24, right: 16, bottom: 44, left: 68 };
 const PLOT_H = H - PAD.top - PAD.bottom;
 const PLOT_W = W - PAD.left - PAD.right;
 const Y_TICKS = 5;
-const GROUP_GAP_RATIO = 0.2; // share of each group slot left empty between groups
+const GROUP_GAP_RATIO = 0.4; // share of each group slot left empty between groups
 const BAR_GAP = 4; // px between bars within a group
 
 const defaultFormatTick = (value: number): string => Math.round(value).toLocaleString();
@@ -182,9 +182,9 @@ export function GroupedBarChart({
                                         {showValueLabelsResolved ? (
                                             <text
                                                 x={x + barW / 2}
-                                                y={y - 7}
+                                                y={y - 6}
                                                 textAnchor="middle"
-                                                fontSize={11.5}
+                                                fontSize={13}
                                                 fontWeight={700}
                                                 className="fill-foreground/90"
                                             >
@@ -198,7 +198,7 @@ export function GroupedBarChart({
                                 x={cx}
                                 y={PAD.top + PLOT_H + 24}
                                 textAnchor="middle"
-                                fontSize={12.5}
+                                fontSize={15}
                                 fontWeight={600}
                                 className="fill-muted-foreground/80"
                             >

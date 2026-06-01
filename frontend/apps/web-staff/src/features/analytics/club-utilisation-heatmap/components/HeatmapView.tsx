@@ -74,14 +74,14 @@ export default function HeatmapView({
                     <DateRangeControl range={range} onChange={onRangeChange} />
                     <button
                         onClick={onCurrentMonth}
-                        className="btn-outline min-h-9 px-3.5 text-sm"
+                        className="btn-outline h-9 px-3.5 text-sm"
                         aria-label="Show current month analytics"
                     >
                         <CalendarDays size={14} /> Current month
                     </button>
                     <button
                         onClick={onRefresh}
-                        className="btn-outline min-h-9 px-3.5 text-sm"
+                        className="btn-outline h-9 px-3.5 text-sm"
                         aria-label="Refresh analytics"
                     >
                         <RefreshCw size={14} /> Refresh
