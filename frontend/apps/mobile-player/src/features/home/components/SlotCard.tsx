@@ -26,7 +26,7 @@ export function SlotCard({ slot, isSelected, onPress }: Props): JSX.Element {
                 style={{
                     borderWidth: 1,
                     borderColor: isSelected ? colors.cta : colors.border,
-                    backgroundColor: isSelected ? colors.cta : colors.muted,
+                    backgroundColor: isSelected ? colors.cta : colors.card,
                     borderRadius: 14,
                     width: 100,
                     paddingHorizontal: 12,

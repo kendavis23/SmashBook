@@ -3,23 +3,19 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuth } from "@repo/auth";
 import { useMyBookings } from "../hooks";
 import type { BookingTab, InviteStatus, PlayerBookingItem } from "../types";
 import { BookingsListView } from "../bookings-list/pages/BookingsListView";
 import { BookingDetailSheet } from "../manage-booking/components/BookingDetailSheet";
-import { NewBookingSheet } from "../new-booking/components/NewBookingSheet";
 import { useThemeColors } from "../../../theme";
 
 type SelectedBooking = { bookingId: string; clubId: string };
 
 export function BookScreen(): JSX.Element {
     const colors = useThemeColors();
-    const { clubId } = useAuth();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
     const [pastTabVisited, setPastTabVisited] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
-    const [newBookingVisible, setNewBookingVisible] = useState(false);
     const [pendingPayment, setPendingPayment] = useState<PlayerBookingItem | null>(null);
 
     const now = new Date();
@@ -67,18 +63,6 @@ export function BookScreen(): JSX.Element {
     const handlePayClick = useCallback((item: PlayerBookingItem) => {
         setPendingPayment(item);
     }, []);
-
-    const handleBookingCreated = useCallback(
-        (payable: PlayerBookingItem) => {
-            setPendingPayment(payable);
-            void refetchUpcoming();
-        },
-        [refetchUpcoming]
-    );
-
-    const handleNewBookingSuccess = useCallback(() => {
-        void refetchUpcoming();
-    }, [refetchUpcoming]);
 
     const handleInvitePlayer = useCallback((_item: PlayerBookingItem, _userId: string) => {
         // Handled inside BookingDetailSheet for the organiser flow
@@ -149,49 +133,29 @@ export function BookScreen(): JSX.Element {
                         </Text>
                     </View>
 
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        {/* Refresh */}
-                        <Pressable
-                            onPress={handleRefresh}
-                            disabled={isLoading}
-                            accessibilityRole="button"
-                            accessibilityLabel="Refresh bookings"
-                            hitSlop={12}
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                backgroundColor: colors.heroGlass,
-                                borderWidth: 1,
-                                borderColor: colors.heroGlassBorder,
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Ionicons
-                                name="refresh-outline"
-                                size={18}
-                                color={colors.heroForeground}
-                            />
-                        </Pressable>
-
-                        {/* New booking */}
-                        <Pressable
-                            onPress={() => setNewBookingVisible(true)}
-                            accessibilityRole="button"
-                            accessibilityLabel="New booking"
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                backgroundColor: colors.heroForeground,
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Ionicons name="add" size={22} color={colors.hero} />
-                        </Pressable>
-                    </View>
+                    <Pressable
+                        onPress={handleRefresh}
+                        disabled={isLoading}
+                        accessibilityRole="button"
+                        accessibilityLabel="Refresh bookings"
+                        hitSlop={12}
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            backgroundColor: colors.heroGlass,
+                            borderWidth: 1,
+                            borderColor: colors.heroGlassBorder,
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <Ionicons
+                            name="refresh-outline"
+                            size={18}
+                            color={colors.heroForeground}
+                        />
+                    </Pressable>
                 </View>
             </View>
 
@@ -281,7 +245,6 @@ export function BookScreen(): JSX.Element {
                     onPayClick={handlePayClick}
                     onInvitePlayer={handleInvitePlayer}
                     onRespondInvite={handleRespondInvite}
-                    onNewBooking={() => setNewBookingVisible(true)}
                 />
             </View>
 
@@ -291,13 +254,6 @@ export function BookScreen(): JSX.Element {
                 onPayClick={handlePayClick}
             />
 
-            <NewBookingSheet
-                visible={newBookingVisible}
-                clubId={clubId ?? null}
-                onClose={() => setNewBookingVisible(false)}
-                onBookingCreated={handleBookingCreated}
-                onSuccess={handleNewBookingSuccess}
-            />
         </SafeAreaView>
     );
 }

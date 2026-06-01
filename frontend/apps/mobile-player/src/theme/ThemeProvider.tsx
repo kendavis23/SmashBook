@@ -35,20 +35,15 @@ const ThemeContext = createContext<ThemeContextValue>({
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const { colorScheme, setColorScheme } = useColorScheme();
-    const [preference, setPreferenceState] = useState<ThemePreference>("system");
+    const [preference, setPreferenceState] = useState<ThemePreference>("light");
 
+    // Light is the only theme today — the in-app appearance toggle is intentionally not
+    // exposed yet (the Appearance row was removed from Profile). We pin the color scheme
+    // to light on mount so the app ignores the device dark setting. The full
+    // preference/persistence machinery below is kept intact so a user-facing toggle can
+    // be reintroduced later without re-plumbing the provider — just surface setPreference.
     useEffect(() => {
-        let mounted = true;
-        void AsyncStorage.getItem(THEME_PREFERENCE_KEY).then((stored) => {
-            if (!mounted) return;
-            if (stored === "light" || stored === "dark" || stored === "system") {
-                setPreferenceState(stored);
-                setColorScheme(stored);
-            }
-        });
-        return () => {
-            mounted = false;
-        };
+        setColorScheme("light");
     }, [setColorScheme]);
 
     const setPreference = useCallback(
@@ -66,13 +61,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         [preference, setPreference, theme]
     );
 
-    // The `dark` className must live on a node in the tree for NativeWind to apply the
-    // `.dark { --token: ... }` CSS-variable overrides to every `className` token below it.
-    // Without it, `setColorScheme` flips JS color objects (useThemeColors) but leaves
-    // className tokens (bg-background, text-foreground, …) stuck on their light values.
+    // With `darkMode: "class"` (Tailwind config), NativeWind only resolves the `dark:`
+    // variant and the `.dark { --token: ... }` CSS-variable overrides under a node that
+    // carries the `dark` class. Without this wrapper, `setColorScheme` flips the JS color
+    // objects (useThemeColors → hero, tab bar) but leaves className tokens (bg-card,
+    // text-foreground, …) stuck on their light values.
+    //
+    // The class string must be a STABLE host prop — always either "dark" or "light",
+    // never "" / undefined. When colorScheme is briefly undefined on first render the
+    // class would toggle ""→"dark", which NativeWind treats as a structural change and
+    // remounts the subtree below — tearing down the Expo Router navigation container
+    // mid-render and throwing "Couldn't find a navigation context". A constant key and a
+    // non-empty class on both branches keep the node stable so only styles update.
     return (
         <ThemeContext.Provider value={value}>
-            <View className={colorScheme === "dark" ? "dark flex-1" : "flex-1"}>{children}</View>
+            <View key="theme-root" style={{ flex: 1 }} className={colorScheme === "dark" ? "dark" : "light"}>
+                {children}
+            </View>
         </ThemeContext.Provider>
     );
 }

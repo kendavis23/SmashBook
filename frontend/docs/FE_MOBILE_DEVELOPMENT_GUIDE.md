@@ -1,4 +1,4 @@
-_Last updated: 2026-05-30 14:30 UTC_
+_Last updated: 2026-06-01 00:00 UTC_
 
 # Mobile Player Development Guide
 
@@ -185,7 +185,9 @@ import { config } from "@repo/config";
 
 ## Styling — Theme Tokens (NativeWind + `useTheme()`)
 
-**All colors come from the theme. Never hardcode a hex/rgb value** (`#2563EB`, `rgba(...)`) or a raw Tailwind palette class (`bg-slate-100`, `text-[#0f172a]`) in a feature file. Light/dark are driven by the OS color scheme; new screens get dark mode for free as long as every color is a token.
+**All colors come from the theme. Never hardcode a hex/rgb value** (`#2563EB`, `rgba(...)`) or a raw Tailwind palette class (`bg-slate-100`, `text-[#0f172a]`) in a feature file.
+
+> **Light is the only theme shipped today.** The app is pinned to light and the in-app appearance toggle (and the Profile → Appearance row) has been removed on purpose — a user-facing light/dark switch is a **planned future feature**. The full dark theme (`darkColors` in `themes.ts`, the `.dark` tokens in `tokens.css`) already exists and the provider machinery is kept intact, so the switch can be reintroduced later without re-plumbing anything. **This is exactly why the no-hardcoded-color rule is non-negotiable:** every screen built today must use semantic tokens only, so the day the toggle ships, dark mode works for free across the whole app with zero rework. A single hardcoded hex is a screen that will be broken in dark mode.
 
 There are two places color is applied in React Native, and each has its own token source:
 
@@ -214,7 +216,7 @@ function MyCard() {
 
 - `src/theme/palette.ts` — raw fixed hue/shade constants (`blue600`, `slate100`, …). Mode-agnostic.
 - `src/theme/themes.ts` — `lightColors` / `darkColors` semantic token objects (the RN-side mirror of `tokens.css`).
-- `src/theme/ThemeProvider.tsx` — `<ThemeProvider>` (wired into `AppProviders`) + `useTheme()` / `useThemeColors()`. The active theme follows `useColorScheme()`; light is the default look today. A manual toggle can be added later without touching consumers.
+- `src/theme/ThemeProvider.tsx` — `<ThemeProvider>` (wired into `AppProviders`) + `useTheme()` / `useThemeColors()`. The active scheme is **pinned to light** on mount (`setColorScheme("light")`) and ignores the device dark setting. The `preference` / `setPreference` / persistence machinery is retained but not surfaced anywhere in the UI — wiring a future appearance toggle is just a matter of rendering `setPreference` again; consumers (`useThemeColors`) need no changes.
 
 ### Semantic token reference
 

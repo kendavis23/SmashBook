@@ -21,12 +21,6 @@ export const PROFILE_MODULE_GROUPS: ProfileModuleRow[][] = [
             label: "Notification",
             href: "/profile-notifications",
         },
-        {
-            id: "appearance",
-            icon: "color-palette",
-            iconBgClassName: "bg-[#64748B]",
-            label: "Appearance",
-        },
     ],
     [
         {
