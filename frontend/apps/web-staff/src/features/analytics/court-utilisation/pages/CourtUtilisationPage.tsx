@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import CourtUtilisationContainer from "../court-utilisation/components/CourtUtilisationContainer";
+import CourtUtilisationContainer from "../components/CourtUtilisationContainer";
 
 export default function CourtUtilisationPage(): JSX.Element {
     return <CourtUtilisationContainer />;
