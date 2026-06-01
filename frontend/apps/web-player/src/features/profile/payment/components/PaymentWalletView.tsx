@@ -1,6 +1,4 @@
 import { type JSX, useState, useCallback } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { config } from "@repo/config";
 import { useGetWallet, useTopUpWallet, useListPaymentMethods } from "@repo/player-domain/hooks";
 import type { PaymentMethod } from "@repo/player-domain/models";
 import { AlertToast, SelectInput, formatCurrency, formatUTCDateTime } from "@repo/ui";
@@ -15,10 +13,9 @@ import {
     RefreshCw,
     Wallet,
 } from "lucide-react";
+import { stripePromise } from "../../../../lib/stripe";
 
 const PAGE_SIZE = 8;
-
-const stripePromise = loadStripe(config.stripePublishableKey);
 
 function TopUpPanel({
     methods,

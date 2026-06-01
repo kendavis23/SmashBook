@@ -1,5 +1,6 @@
 import {
     AlertToast,
+    Breadcrumb,
     DatePicker,
     SelectInput,
     TimeInput,
@@ -13,6 +14,7 @@ import {
     ChevronRight,
     Clock3,
     DoorOpen,
+    LayoutGrid,
     Loader2,
     MapPin,
     RefreshCw,
@@ -163,34 +165,29 @@ export default function BookByCourtView({
     );
 
     return (
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
-            <section className="rounded-lg border border-border bg-card px-4 py-2.5 shadow-sm sm:px-5">
-                <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                        <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                            Book a court or join a game
-                        </h1>
-                        <p className="text-xs text-muted-foreground">
-                            {club.selectedName
-                                ? `${club.selectedName} options`
-                                : "Select a club to see available options"}
-                        </p>
-                    </div>
+        <div className="w-full space-y-5">
+            <Breadcrumb items={[{ label: "Book by court" }]} />
 
-                    <div className="flex shrink-0 items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground">Club</span>
-                        <SelectInput
-                            value={club.selectedId}
-                            onValueChange={club.onChange}
-                            options={club.clubs.map((c) => ({
-                                value: c.id,
-                                label: c.name,
-                            }))}
-                            placeholder="Select club"
-                            className="input-base h-8 w-[200px] text-sm"
-                        />
+            <section className="card-surface overflow-hidden">
+                <header className="flex flex-row items-center justify-between gap-3 border-b border-border bg-muted/10 px-5 py-4 sm:px-6">
+                    <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2.5">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-secondary text-secondary-foreground shadow-xs">
+                                <LayoutGrid size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <h1 className="text-lg font-semibold tracking-tight text-foreground">
+                                    Book by court
+                                </h1>
+                                <p className="mt-0.5 text-sm text-muted-foreground">
+                                    {club.selectedName
+                                        ? `${club.selectedName} options`
+                                        : "Select a club to see available options"}
+                                </p>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </header>
             </section>
 
             {feedback.joinError ? (

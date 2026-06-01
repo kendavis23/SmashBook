@@ -46,6 +46,9 @@ vi.mock("@repo/ui", () => ({
             <button onClick={onClose}>Dismiss {title}</button>
         </div>
     ),
+    Breadcrumb: ({ items }: { items: { label: string }[] }) => (
+        <nav>{items.map((item) => item.label).join(" / ")}</nav>
+    ),
     DatePicker: ({
         value,
         onChange,
@@ -225,9 +228,8 @@ describe("BookByCourtView", () => {
             />
         );
 
-        expect(
-            screen.getByRole("heading", { name: /book a court or join a game/i })
-        ).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: /book by court/i })).toBeInTheDocument();
+        expect(screen.queryByLabelText("Select club")).not.toBeInTheDocument();
         expect(screen.getAllByText("Court One")).not.toHaveLength(0);
         expect(screen.getByText("Peak · £24")).toBeInTheDocument();
         expect(screen.getByText("Booked")).toBeInTheDocument();
@@ -242,7 +244,6 @@ describe("BookByCourtView", () => {
     });
 
     it("emits filter and refresh changes", () => {
-        const onClubChange = vi.fn();
         const onJoinFilterDateChange = vi.fn();
         const onBookFilterDateChange = vi.fn();
         const onBookFilterSurfaceChange = vi.fn();
@@ -253,7 +254,6 @@ describe("BookByCourtView", () => {
         render(
             <BookByCourtView
                 {...defaultProps}
-                club={{ ...defaultProps.club, onChange: onClubChange }}
                 joinSection={{
                     ...defaultProps.joinSection,
                     onFilterDateChange: onJoinFilterDateChange,
@@ -270,7 +270,6 @@ describe("BookByCourtView", () => {
             />
         );
 
-        fireEvent.change(screen.getByLabelText("Select club"), { target: { value: "club-1" } });
         fireEvent.change(screen.getByLabelText("All dates"), { target: { value: "2026-05-21" } });
         fireEvent.change(getAt(screen.getAllByLabelText("date"), 0), {
             target: { value: "2026-05-22" },
@@ -282,7 +281,6 @@ describe("BookByCourtView", () => {
         fireEvent.click(getAt(screen.getAllByRole("button", { name: /refresh/i }), 0));
         fireEvent.click(getAt(screen.getAllByRole("button", { name: /refresh/i }), 1));
 
-        expect(onClubChange).toHaveBeenCalledWith("club-1");
         expect(onJoinFilterDateChange).toHaveBeenCalledWith("2026-05-21");
         expect(onBookFilterDateChange).toHaveBeenCalledWith("2026-05-22");
         expect(onBookFilterSurfaceChange).toHaveBeenCalledWith("outdoor");

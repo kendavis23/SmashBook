@@ -276,13 +276,13 @@ describe("Sidebar — group headers", () => {
         fireEvent.click(screen.getByRole("button", { name: /operations/i }));
 
         const bookingButton = screen.getByRole("button", { name: /^booking$/i });
-        const playersButton = screen.getByRole("button", { name: /^players$/i });
+        const peopleButton = screen.getByRole("button", { name: /^people$/i });
 
         fireEvent.click(bookingButton);
         expect(bookingButton.nextElementSibling).toHaveClass("max-h-[40rem]");
 
-        fireEvent.click(playersButton);
+        fireEvent.click(peopleButton);
         expect(bookingButton.nextElementSibling).toHaveClass("max-h-[40rem]");
-        expect(playersButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+        expect(peopleButton.nextElementSibling).toHaveClass("max-h-[40rem]");
     });
 });

@@ -162,7 +162,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "View and manage registered players.",
                 breadcrumb: ["Operations", "Players"],
                 roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
-                subgroup: "Players",
+                subgroup: "People",
             },
             {
                 key: "register-player",
@@ -173,7 +173,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "Invite a new player to join your club.",
                 breadcrumb: ["Operations", "Players", "Register Player"],
                 roles: ["owner", "admin", "ops_lead", "staff", "front_desk"],
-                subgroup: "Players",
+                subgroup: "People",
             },
             {
                 key: "trainers",
@@ -184,7 +184,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "View trainer profiles, availability, and bookings.",
                 breadcrumb: ["Operations", "Trainers"],
                 roles: ["owner", "admin", "ops_lead", "viewer", "trainer"],
-                subgroup: "Players",
+                subgroup: "People",
             },
             {
                 key: "staff",
@@ -195,7 +195,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "Manage team members and their roles.",
                 breadcrumb: ["Operations", "Staff"],
                 roles: ["owner", "admin"],
-                subgroup: "Players",
+                subgroup: "People",
             },
             {
                 key: "clubs",
@@ -206,7 +206,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "Manage your clubs and locations.",
                 breadcrumb: ["Operations", "Clubs"],
                 roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
-                subgroup: "Club",
+                subgroup: "Management",
             },
             {
                 key: "courts",
@@ -217,7 +217,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "Configure and manage playing courts.",
                 breadcrumb: ["Operations", "Courts"],
                 roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
-                subgroup: "Club",
+                subgroup: "Management",
             },
             {
                 key: "membership-plans",
@@ -228,7 +228,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "Define and manage recurring membership plans.",
                 breadcrumb: ["Operations", "Memberships"],
                 roles: ["owner", "admin"],
-                subgroup: "Club",
+                subgroup: "Management",
             },
             {
                 key: "equipment",
@@ -239,7 +239,7 @@ export const ROUTES: RouteConfig[] = [
                 subtitle: "Track gear, inventory, and condition.",
                 breadcrumb: ["Operations", "Equipment"],
                 roles: ["owner", "admin", "ops_lead", "staff", "front_desk", "viewer"],
-                subgroup: "Club",
+                subgroup: "Management",
             },
         ],
     },

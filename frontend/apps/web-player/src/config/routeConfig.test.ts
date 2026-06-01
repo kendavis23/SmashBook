@@ -35,8 +35,8 @@ describe("ROUTES", () => {
 
         expect(grouped["Overview"]).toEqual(["dashboard"]);
         expect(grouped["Bookings"]).toEqual([
-            "book-by-court",
             "book-by-timeslot",
+            "book-by-court",
             "bookings",
             "my-games",
         ]);

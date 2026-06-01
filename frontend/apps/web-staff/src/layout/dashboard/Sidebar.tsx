@@ -179,7 +179,7 @@ export default function Sidebar({
             }
 
             /* When the section uses named subgroups (e.g. Operations →
-               Booking / Players / Club) we render them as labelled blocks
+               Booking / People / Management) we render them as labelled blocks
                separated by dividers, with the subgroup's leading icon echoed
                on the right of its heading — instead of the single left rail. */
             const hasSubgroups = subgroups.some((sg) => sg.label);
@@ -222,7 +222,7 @@ export default function Sidebar({
                         }`}
                     >
                         {hasSubgroups ? (
-                            /* Collapsible subgroup blocks (Booking / Players / Club).
+                            /* Collapsible subgroup blocks (Booking / People / Management).
                                Each subgroup heading is its own toggle with a chevron,
                                so the section nests collapse → expand (Cloudflare-style). */
                             <div className="ml-1 border-l border-border/60 pl-1.5 pb-0.5">

@@ -1,14 +1,8 @@
 import { type JSX, useState, useCallback, useEffect, useRef } from "react";
-import { loadStripe } from "@stripe/stripe-js";
-import { config } from "@repo/config";
+import { stripePromise } from "../../../../lib/stripe";
 import { useGetSubscription, useCreateSetupIntent } from "../../hooks";
 import type { Subscription } from "../../types";
 import PaymentView from "./PaymentView";
-
-// Initialise Stripe once — module-level so the promise is shared.
-const stripePromise = loadStripe(config.stripePublishableKey, {
-    developerTools: { assistant: { enabled: false } },
-});
 
 export default function PaymentContainer(): JSX.Element {
     const { data, isLoading, error, refetch } = useGetSubscription();

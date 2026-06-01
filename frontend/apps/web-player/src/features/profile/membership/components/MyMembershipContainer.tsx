@@ -1,7 +1,5 @@
 import { useCallback, useState, type JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { loadStripe } from "@stripe/stripe-js";
-import { config } from "@repo/config";
 import { formatCurrency } from "@repo/ui";
 import { BadgeCheck, Star, Zap, ArrowUp } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
@@ -15,8 +13,7 @@ import {
 import { useAuth } from "../../store";
 import { CurrentMembershipCard } from "./CurrentMembershipCard";
 import { SelectCardStep } from "./SelectCardStep";
-
-const stripePromise = loadStripe(config.stripePublishableKey);
+import { stripePromise } from "../../../../lib/stripe";
 
 type FlowStep =
     | { id: "current" }

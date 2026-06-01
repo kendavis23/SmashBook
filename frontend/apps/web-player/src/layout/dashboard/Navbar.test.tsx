@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mockNavigate = vi.hoisted(() => vi.fn());
 const mockClearAuth = vi.hoisted(() => vi.fn());
 const mockLogoutMutate = vi.hoisted(() => vi.fn());
+const mockSetActiveClubId = vi.hoisted(() => vi.fn());
 let currentPath = "/dashboard";
 let currentUser: {
     full_name: string;
@@ -34,6 +35,11 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 });
 
 let currentActiveClubName: string | null = "Alpha Club";
+let currentClubId: string | null = "club-1";
+let currentClubs = [
+    { club_id: "club-1", club_name: "Alpha Club", role: "player" },
+    { club_id: "club-2", club_name: "Beta Club", role: "player" },
+];
 
 vi.mock("@repo/auth", () => {
     const makeStore = (): {
@@ -45,12 +51,12 @@ vi.mock("@repo/auth", () => {
         } | null;
         clearAuth: ReturnType<typeof vi.fn>;
         accessToken: string | null;
-        setActiveClubId: ReturnType<typeof vi.fn>;
+        setActiveClubId: typeof mockSetActiveClubId;
     } => ({
         user: currentUser,
         clearAuth: mockClearAuth,
         accessToken: "test-token",
-        setActiveClubId: vi.fn(),
+        setActiveClubId: mockSetActiveClubId,
     });
     const useAuthStore = vi.fn((selector?: (s: ReturnType<typeof makeStore>) => unknown) => {
         const store = makeStore();
@@ -69,11 +75,39 @@ vi.mock("@repo/auth", () => {
             role: currentUser?.role ?? null,
             isAuthenticated: currentUser !== null,
             activeClubName: currentActiveClubName,
-            clubs: [],
-            setActiveClubId: vi.fn(),
+            clubId: currentClubId,
+            clubs: currentClubs,
+            setActiveClubId: mockSetActiveClubId,
         }),
     };
 });
+
+vi.mock("@repo/ui", () => ({
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        placeholder,
+    }: {
+        value: string;
+        onValueChange: (value: string) => void;
+        options: { value: string; label: string }[];
+        placeholder?: string;
+    }) => (
+        <select
+            aria-label={placeholder ?? "select"}
+            value={value}
+            onChange={(event) => onValueChange(event.target.value)}
+        >
+            {placeholder ? <option value="">{placeholder}</option> : null}
+            {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                    {option.label}
+                </option>
+            ))}
+        </select>
+    ),
+}));
 
 vi.mock("./ProfileEditModal", () => ({
     default: ({ isOpen }: { isOpen: boolean }) =>
@@ -99,6 +133,11 @@ describe("Navbar — brand", () => {
     beforeEach(() => {
         currentPath = "/dashboard";
         currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentClubId = "club-1";
+        currentClubs = [
+            { club_id: "club-1", club_name: "Alpha Club", role: "player" },
+            { club_id: "club-2", club_name: "Beta Club", role: "player" },
+        ];
     });
 
     it("renders the search input", () => {
@@ -118,6 +157,7 @@ describe("Navbar — user info", () => {
     beforeEach(() => {
         currentPath = "/dashboard";
         currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
+        currentClubId = "club-1";
     });
 
     it("renders user initials in avatar", () => {
@@ -157,6 +197,7 @@ describe("Navbar — dropdown actions", () => {
         currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
         mockNavigate.mockClear();
         mockClearAuth.mockClear();
+        mockSetActiveClubId.mockClear();
         mockLogoutMutate.mockImplementation((_vars, options?: { onSettled?: () => void }) => {
             options?.onSettled?.();
         });
@@ -329,17 +370,24 @@ describe("Navbar — active club pill", () => {
         currentPath = "/dashboard";
         currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
         currentActiveClubName = "Alpha Club";
+        currentClubId = "club-1";
+        currentClubs = [
+            { club_id: "club-1", club_name: "Alpha Club", role: "player" },
+            { club_id: "club-2", club_name: "Beta Club", role: "player" },
+        ];
     });
 
     it("does not render active club name in the compact navbar", () => {
         render(<Navbar />);
-        expect(screen.queryByText("Alpha Club")).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Select club")).toHaveValue("club-1");
     });
 
     it("does not render the club pill when activeClubName is null", () => {
         currentActiveClubName = null;
+        currentClubs = [];
         render(<Navbar />);
         expect(screen.queryByText("Active Club")).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Select club")).not.toBeInTheDocument();
     });
 });
 
@@ -348,6 +396,12 @@ describe("Navbar — Switch Club", () => {
         currentPath = "/dashboard";
         currentUser = { full_name: "Alice Admin", email: "alice@test.com", role: "admin" };
         currentActiveClubName = "Alpha Club";
+        currentClubId = "club-1";
+        currentClubs = [
+            { club_id: "club-1", club_name: "Alpha Club", role: "player" },
+            { club_id: "club-2", club_name: "Beta Club", role: "player" },
+        ];
+        mockSetActiveClubId.mockClear();
     });
 
     it("does not show Switch Club in the profile dropdown", () => {
@@ -361,5 +415,11 @@ describe("Navbar — Switch Club", () => {
         render(<Navbar />);
         fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
         expect(screen.queryByTestId("switch-club-modal")).not.toBeInTheDocument();
+    });
+
+    it("switches the active club from the navbar selector", () => {
+        render(<Navbar />);
+        fireEvent.change(screen.getByLabelText("Select club"), { target: { value: "club-2" } });
+        expect(mockSetActiveClubId).toHaveBeenCalledWith("club-2", "Beta Club", "player");
     });
 });

@@ -77,16 +77,6 @@ export const ROUTES: RouteConfig[] = [
         group: "Overview",
     },
     {
-        key: "book-by-court",
-        path: "/book-by-court",
-        label: "Book by court",
-        icon: LayoutGrid,
-        title: "Book by court",
-        subtitle: "Browse courts and join open games",
-        breadcrumb: ["Bookings", "Book by court"],
-        group: "Bookings",
-    },
-    {
         key: "book-by-timeslot",
         path: "/book-by-timeslot",
         label: "Book by timeslot",
@@ -94,6 +84,16 @@ export const ROUTES: RouteConfig[] = [
         title: "Book by timeslot",
         subtitle: "Pick a time, then choose a court or join an open game",
         breadcrumb: ["Bookings", "Book by timeslot"],
+        group: "Bookings",
+    },
+    {
+        key: "book-by-court",
+        path: "/book-by-court",
+        label: "Book by court",
+        icon: LayoutGrid,
+        title: "Book by court",
+        subtitle: "Browse courts and join open games",
+        breadcrumb: ["Bookings", "Book by court"],
         group: "Bookings",
     },
     {

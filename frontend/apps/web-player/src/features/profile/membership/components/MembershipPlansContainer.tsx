@@ -1,7 +1,5 @@
 import { useCallback, useState, type JSX } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { loadStripe } from "@stripe/stripe-js";
-import { config } from "@repo/config";
 import { formatUTCDate } from "@repo/ui";
 import { BadgeCheck, ArrowUpDown, ArrowDown } from "lucide-react";
 import type { MembershipPlan } from "@repo/player-domain/models";
@@ -16,8 +14,7 @@ import {
 import { useAuth } from "../../store";
 import { PlansStep } from "./PlansStep";
 import { PlanChangeModal } from "./PlanChangeModal";
-
-const stripePromise = loadStripe(config.stripePublishableKey);
+import { stripePromise } from "../../../../lib/stripe";
 
 export type PlanIntent = "subscribe" | "upgrade" | "downgrade";
 

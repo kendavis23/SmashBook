@@ -1,9 +1,7 @@
 import { useEffect, useState, useCallback, useRef, type JSX } from "react";
 import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
 import { AlertCircle, Check, CreditCard, LockKeyhole, X } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
-import { config } from "@repo/config";
 import {
     useListPaymentMethods,
     useCreatePaymentIntent,
@@ -21,8 +19,7 @@ import { PaymentErrorBanner } from "./PaymentErrorBanner";
 import { ChooseMethodStep } from "./ChooseMethodStep";
 import { BookingInfoPanel } from "./BookingInfoPanel";
 import { useSaveCard } from "../hooks/useSaveCard";
-
-const stripePromise = loadStripe(config.stripePublishableKey);
+import { stripePromise } from "../../../lib/stripe";
 
 // ─── Save-card form ───────────────────────────────────────────────────────────
 

@@ -35,7 +35,7 @@ describe("ROUTES", () => {
         expect(grouped["Finance & Reports"]).toBeUndefined();
     });
 
-    it("Operations is a collapsible section grouped into Booking / Players / Club", () => {
+    it("Operations is a collapsible section grouped into Booking / People / Management", () => {
         const ops = ROUTES.find((r) => r.key === "operations");
         const childKeys = ops?.children?.map((c) => c.key) ?? [];
         expect(childKeys).toContain("calendar");
@@ -52,12 +52,14 @@ describe("ROUTES", () => {
             ops?.children?.find((c) => c.key === key)?.subgroup;
         expect(subgroupOf("calendar")).toBe("Booking");
         expect(subgroupOf("reservations")).toBe("Booking");
-        expect(subgroupOf("players")).toBe("Players");
-        expect(subgroupOf("staff")).toBe("Players");
-        expect(subgroupOf("courts")).toBe("Club");
-        expect(subgroupOf("equipment")).toBe("Club");
+        expect(subgroupOf("players")).toBe("People");
+        expect(subgroupOf("staff")).toBe("People");
+        expect(subgroupOf("courts")).toBe("Management");
+        expect(subgroupOf("equipment")).toBe("Management");
         expect(
-            ops?.children?.every((c) => ["Booking", "Players", "Club"].includes(c.subgroup ?? ""))
+            ops?.children?.every((c) =>
+                ["Booking", "People", "Management"].includes(c.subgroup ?? "")
+            )
         ).toBe(true);
     });
 
