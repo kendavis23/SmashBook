@@ -20,7 +20,7 @@ export default function Sidebar({
     collapsed = false,
     onToggleCollapse = () => {},
 }: SidebarProps): JSX.Element {
-    const [openMenu, setOpenMenu] = useState<string | null>(null);
+    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
     const [openSubgroups, setOpenSubgroups] = useState<Record<string, boolean>>({});
     const [isHovered, setIsHovered] = useState(false);
 
@@ -36,20 +36,30 @@ export default function Sidebar({
        `collapsed` state never changes — only the visual presentation does. */
     const expanded = !collapsed || isHovered;
 
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent): void => {
-            if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
-                setOpenMenu(null);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
     /* Clear any stuck hover-expansion when the persistent collapsed state flips. */
     useEffect(() => {
         setIsHovered(false);
     }, [collapsed]);
+
+    /* Seed the section/subgroup owning the active route as open — additively,
+       so navigating never *closes* a section the user opened. From here on the
+       open state is purely explicit (records below), so opening one section
+       leaves others alone and route changes can't auto-collapse anything.
+       The user closes a menu only by clicking its toggle. */
+    useEffect(() => {
+        for (const item of ROUTES) {
+            if (!item.children) continue;
+            const activeChild = item.children.find((c) => isPathActive(c.path));
+            if (!activeChild) continue;
+            setOpenMenus((prev) => (prev[item.label] ? prev : { ...prev, [item.label]: true }));
+            const sg = activeChild.subgroup;
+            if (sg) {
+                const subKey = `${item.label}::${sg}`;
+                setOpenSubgroups((prev) => (prev[subKey] ? prev : { ...prev, [subKey]: true }));
+            }
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [location.pathname]);
 
     const handleLogout = (): void => {
         logout.mutate(undefined, {
@@ -119,12 +129,14 @@ export default function Sidebar({
 
         /* ── Collapsible section (has children) ──────────────────────────── */
         if (item.children) {
-            const isOpen = openMenu === item.label;
+            const isOpen = openMenus[item.label] ?? false;
             const visibleChildren = item.children.filter((child) =>
                 canAccess(child.roles, role ?? undefined)
             );
             const isChildActive = visibleChildren.some((child) => isPathActive(child.path));
-            const isExpanded = isOpen || isChildActive;
+            /* Open state is explicit only (seeded for the active route by the
+               effect above) so opening/closing one section never affects others. */
+            const isExpanded = isOpen;
             if (visibleChildren.length === 0) return null;
 
             /* Collapsed (rail, not hover-expanded): show icon only, clicking navigates to first child */
@@ -175,7 +187,7 @@ export default function Sidebar({
             return (
                 <div key={item.key}>
                     <button
-                        onClick={() => setOpenMenu(isOpen ? null : item.label)}
+                        onClick={() => setOpenMenus((prev) => ({ ...prev, [item.label]: !isOpen }))}
                         className={`group flex w-full items-center justify-between rounded-md
                             px-2.5 py-[5px] text-sm transition-all duration-150
                             ${
@@ -218,7 +230,9 @@ export default function Sidebar({
                                     const SubIcon = sg.items[0]?.icon;
                                     const subKey = `${item.label}::${sg.label}`;
                                     const subActive = sg.items.some((c) => isPathActive(c.path));
-                                    const subOpen = (openSubgroups[subKey] ?? false) || subActive;
+                                    /* Explicit-only (seeded for the active route by the
+                                       effect above) — toggling one leaves others alone. */
+                                    const subOpen = openSubgroups[subKey] ?? false;
 
                                     /* No label → flat list, no toggle (defensive). */
                                     if (!sg.label) {
@@ -399,9 +413,14 @@ export default function Sidebar({
                 ref={sidebarRef}
                 onMouseEnter={() => collapsed && setIsHovered(true)}
                 onMouseLeave={() => {
+                    /* Hover behaviour applies ONLY to the collapsed rail.
+                       In full (pinned-open) mode, moving the cursor off the
+                       sidebar must never close or collapse anything — only the
+                       user closes menus, by clicking. */
+                    if (!collapsed) return;
+                    /* Only retract the hover overlay — keep the user's open
+                       sections so the next hover reveals them exactly as left. */
                     setIsHovered(false);
-                    setOpenMenu(null);
-                    setOpenSubgroups({});
                 }}
                 className={`
                     z-50 flex h-screen md:h-full flex-shrink-0 flex-col

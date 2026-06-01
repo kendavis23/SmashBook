@@ -17,16 +17,16 @@ import type {
     AvailabilitySectionProps,
     BookSectionProps,
     ClubSectionProps,
-    DashboardViewProps,
+    BookByCourtViewProps,
     FeedbackProps,
     JoinSectionProps,
-} from "./DashboardView";
+} from "./BookByCourtView";
 
 export type {
     AvailabilitySectionProps,
     BookSectionProps,
     ClubSectionProps,
-    DashboardViewProps,
+    BookByCourtViewProps,
     FeedbackProps,
     JoinSectionProps,
 };
@@ -54,7 +54,7 @@ function slotPriceLabel(price: number | string | null, priceLabel: string | null
     return `${priceLabel} · ${formattedPrice}`;
 }
 
-export default function DashboardViewMobile({
+export default function BookByCourtViewMobile({
     currentUserId,
     club,
     joinSection,
@@ -65,7 +65,7 @@ export default function DashboardViewMobile({
     onBookingSuccess,
     onBookingPaid,
     feedback,
-}: DashboardViewProps): JSX.Element {
+}: BookByCourtViewProps): JSX.Element {
     const [activeTab, setActiveTab] = useState<ActiveTab>("join");
     const scrollRef = useRef<HTMLDivElement>(null);
 

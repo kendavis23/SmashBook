@@ -255,4 +255,34 @@ describe("Sidebar — group headers", () => {
         // Settings is gated to owner — staff should not see it
         expect(screen.queryByText("Settings")).not.toBeInTheDocument();
     });
+
+    it("keeps sibling sections open when another section is toggled", () => {
+        render(<Sidebar />);
+
+        const operationsButton = screen.getByRole("button", { name: /operations/i });
+        const analyticsButton = screen.getByRole("button", { name: /analytics/i });
+
+        fireEvent.click(operationsButton);
+        expect(operationsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+
+        fireEvent.click(analyticsButton);
+        expect(operationsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+        expect(analyticsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+    });
+
+    it("keeps sibling subgroups open when another subgroup is toggled", () => {
+        render(<Sidebar />);
+
+        fireEvent.click(screen.getByRole("button", { name: /operations/i }));
+
+        const bookingButton = screen.getByRole("button", { name: /^booking$/i });
+        const playersButton = screen.getByRole("button", { name: /^players$/i });
+
+        fireEvent.click(bookingButton);
+        expect(bookingButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+
+        fireEvent.click(playersButton);
+        expect(bookingButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+        expect(playersButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+    });
 });

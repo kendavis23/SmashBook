@@ -20,6 +20,8 @@ export { DatePicker, DateTimePicker } from "./DatePicker";
 export type { DatePickerProps, DateTimePickerProps } from "./DatePicker";
 export { StatPill } from "./StatPill";
 export type { StatPillProps } from "./StatPill";
+export { Pagination } from "./Pagination";
+export type { PaginationProps } from "./Pagination";
 export { RecurrencePicker } from "./RecurrencePicker";
 export type { RecurrencePickerProps } from "./RecurrencePicker";
 export { SkillLineChart } from "./SkillLineChart";

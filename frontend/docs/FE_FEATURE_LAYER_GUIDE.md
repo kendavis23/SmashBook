@@ -1,4 +1,4 @@
-_Last updated: 2026-04-25 00:00 UTC_
+_Last updated: 2026-06-01 00:00 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -576,6 +576,62 @@ import { StatPill } from "@repo/ui";
 - Goes in the scrollable body, not the sticky header
 - Is always the first child of `space-y-5`, placed after the `AlertToast` error block
 - Never define a local `StatPill` in a feature file — always import from `@repo/ui`
+
+---
+
+### Pagination
+
+`Pagination` from `@repo/ui` renders the windowed page bar (range label + first/last/current page buttons with ellipses for the gaps, e.g. `1 … 9 10 11 … 32`). **Never hand-roll a page bar in a feature** — and in particular never render one button per page with `Array.from({ length: totalPages }, ...)`. That produces hundreds of buttons for large datasets; the shared component windows the list to a fixed, small set.
+
+The feature owns only the client-side slicing state (`page`, `PAGE_SIZE`) and passes derived values down. The component is **0-indexed** and returns `null` on its own when `totalPages <= 1`, so no `totalPages > 1` guard is needed around it.
+
+```tsx
+import { Pagination } from "@repo/ui";
+
+const PAGE_SIZE = 10;
+
+function ListView({ items }: { items: Item[] }): JSX.Element {
+    const [page, setPage] = useState(0);
+    const totalPages = Math.ceil(items.length / PAGE_SIZE);
+    const pageItems = useMemo(
+        () => items.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE),
+        [items, page]
+    );
+
+    // Reset to the first page whenever the underlying list changes (search/refresh/sort).
+    useEffect(() => setPage(0), [items]);
+
+    return (
+        <>
+            {/* render pageItems (table rows / cards) */}
+
+            {/* Pagination — render unconditionally; it hides itself when totalPages <= 1 */}
+            <Pagination
+                page={page}
+                totalPages={totalPages}
+                totalItems={items.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setPage}
+            />
+        </>
+    );
+}
+```
+
+| Prop           | Type                     | Purpose                                                 |
+| -------------- | ------------------------ | ------------------------------------------------------- |
+| `page`         | `number`                 | Current page, **0-indexed**                             |
+| `totalPages`   | `number`                 | Total page count (`Math.ceil(totalItems / pageSize)`)   |
+| `totalItems`   | `number`                 | Total item count — drives the `1–10 of 542` range label |
+| `pageSize`     | `number`                 | Items per page — drives the range label                 |
+| `onPageChange` | `(page: number) => void` | Called with the new 0-indexed page                      |
+| `siblingCount` | `number` (default `1`)   | Page buttons shown on each side of the current page     |
+
+**Rules:**
+
+- Always import from `@repo/ui` — never copy a page bar into a feature, and never loop over `totalPages` to emit a button per page.
+- The feature keeps `page` 0-indexed; reset it to `0` whenever the list it paginates changes.
+- If you need a different page-bar variant, extend `Pagination` in `packages/ui/components/Pagination.tsx` — never fork it inside a feature.
 
 ---
 
@@ -1240,6 +1296,7 @@ Additional rules:
 - [ ] `pages/` contains re-export files pointing to sub-feature pages
 - [ ] No hardcoded colors (`bg-[#xxx]`, `text-amber-700`, etc.)
 - [ ] No bare `<input type="number|time|date|datetime-local">` or `<select>` — use `NumberInput`, `TimeInput`, `DatePicker`, `DateTimePicker`, `SelectInput` from `@repo/ui`
+- [ ] No hand-rolled pagination — use `Pagination` from `@repo/ui` (never `Array.from({ length: totalPages }, ...)` to emit a button per page)
 - [ ] No cross-feature imports
 - [ ] No imports from `@repo/api-client` inside features
 - [ ] No `process.env` / `import.meta.env` access (use `@repo/config`)

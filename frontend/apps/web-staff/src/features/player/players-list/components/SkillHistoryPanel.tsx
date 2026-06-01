@@ -1,14 +1,7 @@
-import {
-    CalendarDays,
-    TrendingUp,
-    RefreshCw,
-    ChevronLeft,
-    ChevronRight,
-    ArrowRight,
-} from "lucide-react";
+import { CalendarDays, TrendingUp, RefreshCw, ArrowRight } from "lucide-react";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
-import { formatUTCDate, SkillLineChart } from "@repo/ui";
+import { formatUTCDate, Pagination, SkillLineChart } from "@repo/ui";
 import type { SkillDataPoint } from "@repo/ui";
 import { useGetSkillHistory } from "@repo/staff-domain/hooks";
 import type { PlayerSearchResult } from "../../hooks";
@@ -331,49 +324,13 @@ export default function SkillHistoryPanel({
                                 </div>
 
                                 {/* Pagination */}
-                                {totalPages > 1 ? (
-                                    <div className="flex items-center justify-between border-t border-border/60 bg-muted/10 px-5 py-2.5">
-                                        <span className="text-[11px] text-muted-foreground">
-                                            {page * PAGE_SIZE + 1}–
-                                            {Math.min((page + 1) * PAGE_SIZE, history.length)} of{" "}
-                                            {history.length}
-                                        </span>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                type="button"
-                                                disabled={page === 0}
-                                                onClick={() => setPage((p) => p - 1)}
-                                                className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition hover:border-cta/40 hover:text-cta disabled:cursor-not-allowed disabled:opacity-40"
-                                                aria-label="Previous page"
-                                            >
-                                                <ChevronLeft size={13} />
-                                            </button>
-                                            {Array.from({ length: totalPages }, (_, i) => (
-                                                <button
-                                                    key={i}
-                                                    type="button"
-                                                    onClick={() => setPage(i)}
-                                                    className={`flex h-7 w-7 items-center justify-center rounded-lg border text-[11px] font-semibold transition ${
-                                                        i === page
-                                                            ? "border-cta bg-cta text-cta-foreground shadow-sm shadow-cta/20"
-                                                            : "border-border bg-background text-muted-foreground hover:border-cta/40 hover:text-cta"
-                                                    }`}
-                                                >
-                                                    {i + 1}
-                                                </button>
-                                            ))}
-                                            <button
-                                                type="button"
-                                                disabled={page === totalPages - 1}
-                                                onClick={() => setPage((p) => p + 1)}
-                                                className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition hover:border-cta/40 hover:text-cta disabled:cursor-not-allowed disabled:opacity-40"
-                                                aria-label="Next page"
-                                            >
-                                                <ChevronRight size={13} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ) : null}
+                                <Pagination
+                                    page={page}
+                                    totalPages={totalPages}
+                                    totalItems={history.length}
+                                    pageSize={PAGE_SIZE}
+                                    onPageChange={setPage}
+                                />
                             </>
                         )}
                     </div>

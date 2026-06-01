@@ -9,13 +9,13 @@ import type { ClubAvailabilityParams, PlayerBookingItem } from "@repo/player-dom
 import type { Booking } from "@repo/player-domain/models";
 import { NewBookingModal } from "../../../booking/new-booking/components/NewBookingModal";
 import { PaymentModal } from "../../../payment";
-import BookCourtView from "./BookCourtView";
+import BookByTimeslotView from "./BookByTimeslotView";
 
 function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
-type BookCourtSearch = {
+type BookByTimeslotSearch = {
     date?: string;
     surface?: string;
     from?: string;
@@ -24,10 +24,10 @@ type BookCourtSearch = {
 
 type BookingModal = { courtId: string; courtName: string; date: string; startTime: string } | null;
 
-export default function BookCourtContainer(): JSX.Element {
+export default function BookByTimeslotContainer(): JSX.Element {
     const navigate = useNavigate();
     const { clubId } = useClubAccess();
-    const search = useSearch({ strict: false }) as BookCourtSearch;
+    const search = useSearch({ strict: false }) as BookByTimeslotSearch;
 
     const [date, setDate] = useState(search.date ?? todayIso());
     const [surface, setSurface] = useState(search.surface ?? "");
@@ -90,7 +90,7 @@ export default function BookCourtContainer(): JSX.Element {
     const syncUrl = useCallback(
         (patch: Partial<{ date: string; surface: string; from: string; to: string }>) => {
             void navigate({
-                to: "/book-court",
+                to: "/book-by-timeslot",
                 search: {
                     date: patch.date ?? date,
                     surface: (patch.surface ?? surface) || undefined,
@@ -180,7 +180,7 @@ export default function BookCourtContainer(): JSX.Element {
         setToTime("");
         setSelectedSlot(null);
         void navigate({
-            to: "/book-court",
+            to: "/book-by-timeslot",
             search: { date: today, surface: undefined, from: undefined, to: undefined },
             replace: true,
         });
@@ -206,7 +206,7 @@ export default function BookCourtContainer(): JSX.Element {
 
     return (
         <>
-            <BookCourtView
+            <BookByTimeslotView
                 date={date}
                 surface={surface}
                 fromTime={fromTime}

@@ -12,8 +12,11 @@ import { lazy, Suspense } from "react";
 import { getAccessToken } from "@repo/auth";
 import { DashboardLayout } from "../layout/dashboard";
 
-const BookCourtPage = lazy(() => import("../features/dashboard2/pages/BookCourtPage"));
+const BookByTimeslotPage = lazy(
+    () => import("../features/book-by-timeslot/pages/BookByTimeslotPage")
+);
 const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage"));
+const BookByCourtPage = lazy(() => import("../features/book-by-court/pages/BookByCourtPage"));
 const DashboardPage = lazy(() => import("../features/dashboard/pages/DashboardPage"));
 const MyGamesPage = lazy(() => import("../features/my-games/pages/MyGamesPage"));
 const ProfilePage = lazy(() => import("../features/profile/pages/ProfilePage"));
@@ -137,16 +140,22 @@ const dashboardRoute = createRoute({
     component: DashboardPage,
 });
 
-const bookCourtRoute = createRoute({
+const bookByCourtRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
-    path: "/book-court",
+    path: "/book-by-court",
+    component: BookByCourtPage,
+});
+
+const bookByTimeslotRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/book-by-timeslot",
     validateSearch: (search: Record<string, unknown>) => ({
         date: typeof search.date === "string" ? search.date : undefined,
         surface: typeof search.surface === "string" ? search.surface : undefined,
         from: typeof search.from === "string" ? search.from : undefined,
         to: typeof search.to === "string" ? search.to : undefined,
     }),
-    component: BookCourtPage,
+    component: BookByTimeslotPage,
 });
 
 const bookingsRoute = createRoute({
@@ -209,7 +218,8 @@ const routeTree = rootRoute.addChildren([
     completeInvitationRoute,
     dashboardLayoutRoute.addChildren([
         dashboardRoute,
-        bookCourtRoute,
+        bookByCourtRoute,
+        bookByTimeslotRoute,
         bookingsRoute,
         myGamesRoute,
         profileRoute,

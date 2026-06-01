@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import DashboardContainer from "./DashboardContainer";
+import BookByCourtContainer from "./BookByCourtContainer";
 
 const mockSetActiveClubId = vi.fn();
 const mockRefetchOpenGames = vi.fn();
@@ -62,7 +62,7 @@ vi.mock("../../hooks", () => ({
     })),
 }));
 
-vi.mock("./DashboardView", () => ({
+vi.mock("./BookByCourtView", () => ({
     default: (props: {
         club: { selectedId: string; selectedName: string; onChange: (id: string) => void };
         joinSection: {
@@ -124,7 +124,7 @@ vi.mock("./DashboardView", () => ({
     ),
 }));
 
-vi.mock("./DashboardViewMobile", () => ({
+vi.mock("./BookByCourtViewMobile", () => ({
     default: () => <div>mobile view</div>,
 }));
 
@@ -146,7 +146,7 @@ function setupMatchMedia() {
     });
 }
 
-describe("DashboardContainer", () => {
+describe("BookByCourtContainer", () => {
     beforeEach(() => {
         mockClubId = "club-1";
         mockInnerWidth = 1024;
@@ -162,7 +162,7 @@ describe("DashboardContainer", () => {
     });
 
     it("renders desktop view with selected club props", () => {
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         expect(screen.getByText("desktop view")).toBeInTheDocument();
         expect(screen.getByText("selected:club-1")).toBeInTheDocument();
@@ -173,7 +173,7 @@ describe("DashboardContainer", () => {
         mockInnerWidth = 375;
         setupMatchMedia();
 
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         expect(screen.getByText("mobile view")).toBeInTheDocument();
     });
@@ -181,13 +181,13 @@ describe("DashboardContainer", () => {
     it("selects the first club when no club is active", () => {
         mockClubId = null;
 
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         expect(mockSetActiveClubId).toHaveBeenCalledWith("club-1", "Club One", "member");
     });
 
     it("passes skill-level open-game filters and court filters to hooks", () => {
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         expect(vi.mocked(useListOpenGames)).toHaveBeenCalledWith(
             "club-1",
@@ -200,7 +200,7 @@ describe("DashboardContainer", () => {
     });
 
     it("updates club, filters, availability, and refreshes", () => {
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         fireEvent.click(screen.getByRole("button", { name: "Change club" }));
         fireEvent.click(screen.getByRole("button", { name: "Join date" }));
@@ -240,7 +240,7 @@ describe("DashboardContainer", () => {
                 ],
             })
         );
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         fireEvent.click(screen.getByRole("button", { name: "Join game" }));
 
@@ -255,7 +255,7 @@ describe("DashboardContainer", () => {
         mockJoinMutate.mockImplementation((_payload, options) =>
             options.onError(new Error("Join failed"))
         );
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         fireEvent.click(screen.getByRole("button", { name: "Join game" }));
 
@@ -265,7 +265,7 @@ describe("DashboardContainer", () => {
     });
 
     it("opens booking modal state and refreshes after booking success", () => {
-        render(<DashboardContainer />);
+        render(<BookByCourtContainer />);
 
         fireEvent.click(screen.getByRole("button", { name: "Check availability" }));
         fireEvent.click(screen.getByRole("button", { name: "Open booking" }));
