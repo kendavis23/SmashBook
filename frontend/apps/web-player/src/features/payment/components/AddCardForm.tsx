@@ -1,13 +1,10 @@
 import { type JSX, useState, useCallback } from "react";
 import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import { config } from "@repo/config";
 import { useCreateSetupIntent } from "@repo/player-domain/hooks";
+import { stripePromise } from "../../../lib/stripe";
 import { useSaveCard } from "../hooks/useSaveCard";
 import { PaymentMethodStep } from "./PaymentMethodStep";
 import { PaymentErrorBanner } from "./PaymentErrorBanner";
-
-const stripePromise = loadStripe(config.stripePublishableKey);
 
 function AddCardInner({
     clientSecret,
@@ -31,7 +28,7 @@ function AddCardInner({
         } finally {
             setIsPending(false);
         }
-    }, [confirmSetup, onSuccess]);
+    }, [clientSecret, confirmSetup, onSuccess]);
 
     return (
         <div className="flex flex-col gap-4">

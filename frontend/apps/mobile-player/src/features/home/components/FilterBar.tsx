@@ -709,91 +709,99 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
 
                         {/* Calendar grid — 7 columns */}
                         <View>
-                            {Array.from({ length: Math.ceil(calendarDays.length / 7) }, (_, week) => (
-                                <View
-                                    key={week}
-                                    style={{
-                                        flexDirection: "row",
-                                        marginBottom: 6,
-                                    }}
-                                >
-                                    {calendarDays.slice(week * 7, week * 7 + 7).map((day) => {
-                                        const isSelected = day.iso === date;
-                                        const isToday = day.topLabel === "TOD";
-                                        return (
-                                            <Pressable
-                                                key={day.iso}
-                                                onPress={() => {
-                                                    onDateChange(day.iso);
-                                                    setIsCalendarOpen(false);
-                                                }}
-                                                accessibilityRole="button"
-                                                accessibilityLabel={`Select ${day.topLabel} ${day.shortLabel}`}
-                                                accessibilityState={{ selected: isSelected }}
-                                                className="active:opacity-70"
-                                                style={{ flex: 1, alignItems: "center" }}
-                                            >
-                                                <View
-                                                    style={{
-                                                        width: 42,
-                                                        height: 52,
-                                                        borderRadius: 14,
-                                                        alignItems: "center",
-                                                        justifyContent: "center",
-                                                        backgroundColor: isSelected
-                                                            ? colors.cta
-                                                            : isToday
-                                                              ? colors.ctaSurface
-                                                              : "transparent",
-                                                        borderWidth: isSelected
-                                                            ? 0
-                                                            : isToday
-                                                              ? 1.5
-                                                              : 0,
-                                                        borderColor: colors.ctaBorder,
-                                                        shadowColor: isSelected ? colors.cta : "transparent",
-                                                        shadowOpacity: isSelected ? 0.35 : 0,
-                                                        shadowRadius: isSelected ? 8 : 0,
-                                                        shadowOffset: { width: 0, height: 4 },
-                                                        elevation: isSelected ? 6 : 0,
+                            {Array.from(
+                                { length: Math.ceil(calendarDays.length / 7) },
+                                (_, week) => (
+                                    <View
+                                        key={week}
+                                        style={{
+                                            flexDirection: "row",
+                                            marginBottom: 6,
+                                        }}
+                                    >
+                                        {calendarDays.slice(week * 7, week * 7 + 7).map((day) => {
+                                            const isSelected = day.iso === date;
+                                            const isToday = day.topLabel === "TOD";
+                                            return (
+                                                <Pressable
+                                                    key={day.iso}
+                                                    onPress={() => {
+                                                        onDateChange(day.iso);
+                                                        setIsCalendarOpen(false);
                                                     }}
+                                                    accessibilityRole="button"
+                                                    accessibilityLabel={`Select ${day.topLabel} ${day.shortLabel}`}
+                                                    accessibilityState={{ selected: isSelected }}
+                                                    className="active:opacity-70"
+                                                    style={{ flex: 1, alignItems: "center" }}
                                                 >
-                                                    <Text
+                                                    <View
                                                         style={{
-                                                            fontSize: 9,
-                                                            fontWeight: "700",
-                                                            color: isSelected
-                                                                ? colors.heroMuted
+                                                            width: 42,
+                                                            height: 52,
+                                                            borderRadius: 14,
+                                                            alignItems: "center",
+                                                            justifyContent: "center",
+                                                            backgroundColor: isSelected
+                                                                ? colors.cta
                                                                 : isToday
-                                                                  ? colors.cta
-                                                                  : colors.mutedForeground,
-                                                            letterSpacing: 0.4,
-                                                            textTransform: "uppercase",
+                                                                  ? colors.ctaSurface
+                                                                  : "transparent",
+                                                            borderWidth: isSelected
+                                                                ? 0
+                                                                : isToday
+                                                                  ? 1.5
+                                                                  : 0,
+                                                            borderColor: colors.ctaBorder,
+                                                            shadowColor: isSelected
+                                                                ? colors.cta
+                                                                : "transparent",
+                                                            shadowOpacity: isSelected ? 0.35 : 0,
+                                                            shadowRadius: isSelected ? 8 : 0,
+                                                            shadowOffset: { width: 0, height: 4 },
+                                                            elevation: isSelected ? 6 : 0,
                                                         }}
                                                     >
-                                                        {day.topLabel}
-                                                    </Text>
-                                                    <Text
-                                                        style={{
-                                                            fontSize: 17,
-                                                            fontWeight: isSelected || isToday ? "800" : "600",
-                                                            color: isSelected
-                                                                ? colors.ctaForeground
-                                                                : isToday
-                                                                  ? colors.cta
-                                                                  : colors.foreground,
-                                                            marginTop: 1,
-                                                            letterSpacing: -0.3,
-                                                        }}
-                                                    >
-                                                        {day.shortLabel}
-                                                    </Text>
-                                                </View>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </View>
-                            ))}
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 9,
+                                                                fontWeight: "700",
+                                                                color: isSelected
+                                                                    ? colors.heroMuted
+                                                                    : isToday
+                                                                      ? colors.cta
+                                                                      : colors.mutedForeground,
+                                                                letterSpacing: 0.4,
+                                                                textTransform: "uppercase",
+                                                            }}
+                                                        >
+                                                            {day.topLabel}
+                                                        </Text>
+                                                        <Text
+                                                            style={{
+                                                                fontSize: 17,
+                                                                fontWeight:
+                                                                    isSelected || isToday
+                                                                        ? "800"
+                                                                        : "600",
+                                                                color: isSelected
+                                                                    ? colors.ctaForeground
+                                                                    : isToday
+                                                                      ? colors.cta
+                                                                      : colors.foreground,
+                                                                marginTop: 1,
+                                                                letterSpacing: -0.3,
+                                                            }}
+                                                        >
+                                                            {day.shortLabel}
+                                                        </Text>
+                                                    </View>
+                                                </Pressable>
+                                            );
+                                        })}
+                                    </View>
+                                )
+                            )}
                         </View>
                     </View>
                 </View>

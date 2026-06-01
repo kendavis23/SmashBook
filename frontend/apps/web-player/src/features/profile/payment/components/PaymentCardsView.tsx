@@ -1,8 +1,6 @@
 import { type JSX, useState, useCallback, useEffect } from "react";
 import { Elements, useStripe, useElements, PaymentElement } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
 import { useQueryClient } from "@tanstack/react-query";
-import { config } from "@repo/config";
 import {
     useListPaymentMethods,
     useCreateSetupIntent,
@@ -13,8 +11,7 @@ import {
 import { AlertToast, ConfirmDeleteModal } from "@repo/ui";
 import { Lock, Plus, Star, Trash2, X } from "lucide-react";
 import type { PaymentMethod } from "@repo/player-domain/models";
-
-const stripePromise = loadStripe(config.stripePublishableKey);
+import { stripePromise } from "../../../../lib/stripe";
 
 function CardTile({
     card,

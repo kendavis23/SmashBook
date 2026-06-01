@@ -217,7 +217,7 @@ function SlotRow({
     );
 }
 
-export default function BookCourtView({
+export default function BookByTimeslotView({
     date,
     surface,
     fromTime,
@@ -284,7 +284,7 @@ export default function BookCourtView({
 
     return (
         <div className="w-full space-y-5">
-            <Breadcrumb items={[{ label: "Book Court" }]} />
+            <Breadcrumb items={[{ label: "Book by timeslot" }]} />
             {joinError ? (
                 <AlertToast
                     variant="error"
@@ -310,7 +310,7 @@ export default function BookCourtView({
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h1 className="text-lg font-semibold tracking-tight text-foreground">
-                                        Book a Court
+                                        Book by timeslot
                                     </h1>
                                 </div>
                                 <p className="mt-0.5 text-sm text-muted-foreground">

@@ -17,16 +17,16 @@ import type {
     AvailabilitySectionProps,
     BookSectionProps,
     ClubSectionProps,
-    DashboardViewProps,
+    BookByCourtViewProps,
     FeedbackProps,
     JoinSectionProps,
-} from "./DashboardView";
+} from "./BookByCourtView";
 
 export type {
     AvailabilitySectionProps,
     BookSectionProps,
     ClubSectionProps,
-    DashboardViewProps,
+    BookByCourtViewProps,
     FeedbackProps,
     JoinSectionProps,
 };
@@ -54,9 +54,8 @@ function slotPriceLabel(price: number | string | null, priceLabel: string | null
     return `${priceLabel} · ${formattedPrice}`;
 }
 
-export default function DashboardViewMobile({
+export default function BookByCourtViewMobile({
     currentUserId,
-    club,
     joinSection,
     bookSection,
     availability,
@@ -65,7 +64,7 @@ export default function DashboardViewMobile({
     onBookingSuccess,
     onBookingPaid,
     feedback,
-}: DashboardViewProps): JSX.Element {
+}: BookByCourtViewProps): JSX.Element {
     const [activeTab, setActiveTab] = useState<ActiveTab>("join");
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -88,20 +87,6 @@ export default function DashboardViewMobile({
 
     return (
         <div className="-mx-[var(--page-padding)] -mt-[var(--page-padding)] flex min-h-[calc(100dvh-var(--nav-height))] flex-col gap-3 bg-background pb-6">
-            {/* Club selector */}
-            <div className="border-b border-border bg-card px-3 pb-3 pt-3 shadow-sm">
-                <p className="mb-2 truncate text-xs font-medium text-muted-foreground">
-                    {club.selectedName || "Select a club"}
-                </p>
-                <SelectInput
-                    value={club.selectedId}
-                    onValueChange={club.onChange}
-                    options={club.clubs.map((c) => ({ value: c.id, label: c.name }))}
-                    placeholder="Select club"
-                    className="input-base h-11 w-full rounded-lg text-sm font-semibold"
-                />
-            </div>
-
             {/* Toasts */}
             {feedback.joinError ? (
                 <div className="px-3">

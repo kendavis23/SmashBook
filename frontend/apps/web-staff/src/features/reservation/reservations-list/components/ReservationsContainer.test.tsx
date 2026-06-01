@@ -80,6 +80,38 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
+    Pagination: ({
+        page,
+        totalPages,
+        totalItems,
+        pageSize,
+        onPageChange,
+    }: {
+        page: number;
+        totalPages: number;
+        totalItems: number;
+        pageSize: number;
+        onPageChange: (page: number) => void;
+    }) =>
+        totalPages > 1 ? (
+            <nav aria-label="pagination">
+                <span>
+                    {page * pageSize + 1}–{Math.min((page + 1) * pageSize, totalItems)} of{" "}
+                    {totalItems}
+                </span>
+                <button onClick={() => onPageChange(page - 1)} disabled={page === 0}>
+                    Previous page
+                </button>
+                {Array.from({ length: totalPages }, (_, index) => (
+                    <button key={index} onClick={() => onPageChange(index)}>
+                        Page {index + 1}
+                    </button>
+                ))}
+                <button onClick={() => onPageChange(page + 1)} disabled={page === totalPages - 1}>
+                    Next page
+                </button>
+            </nav>
+        ) : null,
 }));
 
 import { useListCourts, useListCalendarReservations } from "../../hooks";

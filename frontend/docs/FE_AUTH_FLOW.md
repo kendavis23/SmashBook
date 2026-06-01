@@ -60,24 +60,22 @@ DashboardLayout mounts
   → clubs = jwtClubs.map(c => ({ id, name, role }))
   → if activeClubId is null and clubs.length > 0
       → setActiveClubId(clubs[0].id, clubs[0].name, clubs[0].role)  persisted to store
-  → Navbar receives clubs[] + isClubsLoading=false as props
-      → passes them to SwitchClubModal
+  → Navbar reads clubs[] + active club from useAuth()
+      → inline club selector calls setActiveClubId(id, name, role)
 ```
 
 **No owner API call:** Owners no longer call `GET /api/v1/clubs`. All roles use the `clubs` array returned by the login response.
 
-**SwitchClubModal is data-agnostic** — it accepts `clubs: ClubOption[]` and `isLoading` as props. It does not fetch data itself. This makes it reusable by any app.
+**Navbar club switching is store-backed** — the selector uses the login response clubs from `useAuth()` and persists the active club via `setActiveClubId`. Feature pages read the active `clubId` from the same auth/player-domain store instead of owning their own club dropdowns.
 
 **Architecture for multi-app club switching:**
 
-| App          | Club data source                       | Notes                                      |
-| ------------ | -------------------------------------- | ------------------------------------------ |
-| `web-staff`  | JWT clubs from login response          | Passed via `DashboardLayout` → `Navbar`    |
-| `web-player` | Future hook from `@repo/player-domain` | Same pattern — layout fetches, passes down |
+| App          | Club data source              | Notes                                   |
+| ------------ | ----------------------------- | --------------------------------------- |
+| `web-staff`  | JWT clubs from login response | Passed via `DashboardLayout` → `Navbar` |
+| `web-player` | JWT clubs from login response | `Navbar` reads `useAuth()` directly     |
 
-The `ClubOption { id, name, role }` interface is exported from `SwitchClubModal.tsx` and is the only contract the modal cares about.
-
-**Switch Club is visible for all roles** in the navbar dropdown. The active club name is shown in the navbar header for all roles.
+**Club switching is visible for all roles** in the navbar. The active club id/name/role are persisted in the auth store.
 
 ---
 

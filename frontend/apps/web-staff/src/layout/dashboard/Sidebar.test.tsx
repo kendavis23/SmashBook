@@ -135,17 +135,12 @@ describe("Sidebar — unrestricted routes (staff role)", () => {
 
     it("renders Players link", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Players")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /^players$/i })).toBeInTheDocument();
     });
 
     it("renders Equipment link", () => {
         render(<Sidebar />);
         expect(screen.getByText("Equipment")).toBeInTheDocument();
-    });
-
-    it("renders Support link", () => {
-        render(<Sidebar />);
-        expect(screen.getAllByText("Support")[0]).toBeInTheDocument();
     });
 });
 
@@ -165,19 +160,16 @@ describe("Sidebar — role-restricted routes hidden from staff", () => {
         expect(screen.queryByText("Staff")).not.toBeInTheDocument();
     });
 
-    it("does NOT render Finance link for staff role", () => {
+    it("does NOT render the Analytics section for staff role", () => {
         render(<Sidebar />);
-        expect(screen.queryByText("Finance")).not.toBeInTheDocument();
+        expect(screen.queryByText("Analytics")).not.toBeInTheDocument();
+        expect(screen.queryByText("Club Utilisation")).not.toBeInTheDocument();
     });
 
-    it("does NOT render Reports link for staff role", () => {
+    it("does NOT render the Settings section for staff role", () => {
         render(<Sidebar />);
-        expect(screen.queryByText("Reports")).not.toBeInTheDocument();
-    });
-
-    it("does NOT render Finance section for staff role", () => {
-        render(<Sidebar />);
-        expect(screen.queryByText("Finance")).not.toBeInTheDocument();
+        expect(screen.queryByText("Settings")).not.toBeInTheDocument();
+        expect(screen.queryByText("My Plan")).not.toBeInTheDocument();
     });
 });
 
@@ -197,14 +189,15 @@ describe("Sidebar — role-restricted routes visible to admin", () => {
         expect(screen.getByText("Staff")).toBeInTheDocument();
     });
 
-    it("does NOT render Finance link for admin (owner only)", () => {
+    it("renders the Analytics section for admin", () => {
         render(<Sidebar />);
-        expect(screen.queryByText("Finance")).not.toBeInTheDocument();
+        expect(screen.getByText("Analytics")).toBeInTheDocument();
+        expect(screen.getByText("Club Utilisation")).toBeInTheDocument();
     });
 
-    it("renders Reports link for admin", () => {
+    it("does NOT render the Settings section for admin (owner only)", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Reports")).toBeInTheDocument();
+        expect(screen.queryByText("My Plan")).not.toBeInTheDocument();
     });
 });
 
@@ -219,14 +212,16 @@ describe("Sidebar — all routes visible to owner", () => {
         expect(screen.getByText("Staff")).toBeInTheDocument();
     });
 
-    it("renders Finance link for owner", () => {
+    it("renders the Settings section for owner", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Finance")).toBeInTheDocument();
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+        expect(screen.getByText("My Plan")).toBeInTheDocument();
+        expect(screen.getByText("Cards")).toBeInTheDocument();
     });
 
-    it("renders Reports link for owner", () => {
+    it("renders the Analytics section for owner", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Reports")).toBeInTheDocument();
+        expect(screen.getByText("Analytics")).toBeInTheDocument();
     });
 });
 
@@ -254,10 +249,40 @@ describe("Sidebar — group headers", () => {
         currentPath = "/dashboard";
     });
 
-    it("does not render group headers for role-gated groups when role lacks access", () => {
+    it("does not render section headers for role-gated sections when role lacks access", () => {
         currentRole = "staff";
         render(<Sidebar />);
-        // Finance & Reports is gated to owner/admin — staff should not see it
-        expect(screen.queryByText("Finance & Reports")).not.toBeInTheDocument();
+        // Settings is gated to owner — staff should not see it
+        expect(screen.queryByText("Settings")).not.toBeInTheDocument();
+    });
+
+    it("keeps sibling sections open when another section is toggled", () => {
+        render(<Sidebar />);
+
+        const operationsButton = screen.getByRole("button", { name: /operations/i });
+        const analyticsButton = screen.getByRole("button", { name: /analytics/i });
+
+        fireEvent.click(operationsButton);
+        expect(operationsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+
+        fireEvent.click(analyticsButton);
+        expect(operationsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+        expect(analyticsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+    });
+
+    it("keeps sibling subgroups open when another subgroup is toggled", () => {
+        render(<Sidebar />);
+
+        fireEvent.click(screen.getByRole("button", { name: /operations/i }));
+
+        const bookingButton = screen.getByRole("button", { name: /^booking$/i });
+        const peopleButton = screen.getByRole("button", { name: /^people$/i });
+
+        fireEvent.click(bookingButton);
+        expect(bookingButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+
+        fireEvent.click(peopleButton);
+        expect(bookingButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+        expect(peopleButton.nextElementSibling).toHaveClass("max-h-[40rem]");
     });
 });

@@ -1,12 +1,5 @@
-import { Breadcrumb } from "@repo/ui";
-import {
-    Building2,
-    ChevronLeft,
-    ChevronRight,
-    ExternalLink,
-    RefreshCw,
-    Search,
-} from "lucide-react";
+import { Breadcrumb, Pagination } from "@repo/ui";
+import { Building2, ExternalLink, RefreshCw, Search } from "lucide-react";
 import { type JSX, useState } from "react";
 
 import type { TenantSummary } from "../../types";
@@ -59,7 +52,7 @@ export default function TenantsView({
     onManageClick,
 }: TenantsViewProps): JSX.Element {
     const [search, setSearch] = useState("");
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState(0);
     const PAGE_SIZE = 10;
 
     const filtered = search.trim()
@@ -73,12 +66,12 @@ export default function TenantsView({
         : tenants;
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const safePage = Math.min(page, totalPages);
-    const paginated = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    const safePage = Math.min(page, totalPages - 1);
+    const paginated = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
 
     function handleSearch(value: string) {
         setSearch(value);
-        setPage(1);
+        setPage(0);
     }
 
     return (
@@ -254,44 +247,14 @@ export default function TenantsView({
                     )}
                 </div>
 
-                {!isLoading && !error && filtered.length > PAGE_SIZE ? (
-                    <footer className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
-                        <span className="text-xs text-muted-foreground">
-                            {(safePage - 1) * PAGE_SIZE + 1}–
-                            {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
-                        </span>
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={safePage === 1}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
-                                aria-label="Previous page"
-                            >
-                                <ChevronLeft size={14} />
-                            </button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                                <button
-                                    key={p}
-                                    onClick={() => setPage(p)}
-                                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md border text-xs font-medium transition ${
-                                        p === safePage
-                                            ? "border-cta bg-cta text-cta-foreground"
-                                            : "border-border bg-background text-foreground hover:bg-muted"
-                                    }`}
-                                >
-                                    {p}
-                                </button>
-                            ))}
-                            <button
-                                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                                disabled={safePage === totalPages}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
-                                aria-label="Next page"
-                            >
-                                <ChevronRight size={14} />
-                            </button>
-                        </div>
-                    </footer>
+                {!isLoading && !error ? (
+                    <Pagination
+                        page={safePage}
+                        totalPages={totalPages}
+                        totalItems={filtered.length}
+                        pageSize={PAGE_SIZE}
+                        onPageChange={setPage}
+                    />
                 ) : null}
             </section>
         </div>

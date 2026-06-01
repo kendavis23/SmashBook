@@ -1,4 +1,5 @@
 import { useAuth, useAuthStore, useLogout } from "@repo/auth";
+import { SelectInput } from "@repo/ui";
 import { useNavigate } from "@tanstack/react-router";
 import { LogOut, Menu, Search, Settings } from "lucide-react";
 import type { JSX, KeyboardEvent as ReactKeyboardEvent } from "react";
@@ -51,9 +52,11 @@ export default function Navbar({
     const searchInputRef = useRef<HTMLInputElement>(null);
     const navigate = useNavigate();
 
-    const { role } = useAuth();
+    const { role, clubs, clubId } = useAuth();
     const user = useAuthStore((state) => state.user);
+    const setActiveClubId = useAuthStore((state) => state.setActiveClubId);
     const logout = useLogout();
+    const selectedClubId = clubId ?? clubs[0]?.club_id ?? "";
     const searchResults = getSearchableRoutes(role ?? undefined).filter((route) =>
         route.label.toLowerCase().includes(searchQuery.trim().toLowerCase())
     );
@@ -125,6 +128,12 @@ export default function Navbar({
         void navigate({ to: path });
     };
 
+    const handleClubChange = (nextClubId: string): void => {
+        const nextClub = clubs.find((club) => club.club_id === nextClubId);
+        if (!nextClub) return;
+        setActiveClubId(nextClub.club_id, nextClub.club_name, nextClub.role);
+    };
+
     const handleSearchKeyDown = (event: ReactKeyboardEvent<HTMLInputElement>): void => {
         if (searchResults.length === 0) {
             if (event.key === "Escape") {
@@ -175,7 +184,7 @@ export default function Navbar({
         <>
             <div className="flex w-full items-center justify-between gap-3">
                 {/* ── Left: mobile trigger + search ── */}
-                <div className="flex items-center gap-2">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
                     <button
                         onClick={onOpenMobile}
                         aria-label="Open menu"
@@ -188,7 +197,10 @@ export default function Navbar({
                     </button>
 
                     {/* ── Search ── */}
-                    <div ref={searchRef} className="relative w-48 sm:w-72 md:w-96 lg:w-[32rem]">
+                    <div
+                        ref={searchRef}
+                        className="relative min-w-[96px] flex-1 sm:w-72 sm:flex-none md:w-96 lg:w-[32rem]"
+                    >
                         <Search
                             size={14}
                             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/50"
@@ -252,7 +264,25 @@ export default function Navbar({
                 {/* end left group */}
 
                 {/* ── Right: profile menu ── */}
-                <div className="flex flex-shrink-0 items-center gap-4">
+                <div className="flex flex-shrink-0 items-center gap-3">
+                    {clubs.length > 0 ? (
+                        <div className="flex items-center gap-2">
+                            <span className="hidden text-xs font-semibold text-muted-foreground lg:inline">
+                                Club
+                            </span>
+                            <SelectInput
+                                value={selectedClubId}
+                                onValueChange={handleClubChange}
+                                options={clubs.map((club) => ({
+                                    value: club.club_id,
+                                    label: club.club_name,
+                                }))}
+                                placeholder="Select club"
+                                className="input-base h-8 w-[112px] text-sm sm:w-[180px] lg:w-[200px]"
+                            />
+                        </div>
+                    ) : null}
+
                     <div className="relative" ref={dropdownRef}>
                         <button
                             type="button"

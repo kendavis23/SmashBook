@@ -5,8 +5,6 @@ import {
     ArrowUp,
     ArrowUpDown,
     CheckCircle,
-    ChevronLeft,
-    ChevronRight,
     Clock,
     RefreshCw,
     Settings2,
@@ -14,7 +12,7 @@ import {
     Users,
     XCircle,
 } from "lucide-react";
-import { AlertToast, Breadcrumb, formatUTCDate } from "@repo/ui";
+import { AlertToast, Breadcrumb, Pagination, formatUTCDate } from "@repo/ui";
 import type { Trainer, TrainerAvailability } from "../../types";
 import { DAY_LABELS } from "../../types";
 import { formatTime } from "../../utils";
@@ -515,48 +513,13 @@ export default function TrainersView({
                             />
                         </div>
 
-                        {totalPages > 1 ? (
-                            <div className="flex items-center justify-between border-t border-border px-5 py-3 sm:px-6">
-                                <span className="text-xs text-muted-foreground">
-                                    {page * PAGE_SIZE + 1}-
-                                    {Math.min((page + 1) * PAGE_SIZE, sortedTrainers.length)} of{" "}
-                                    {sortedTrainers.length}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        onClick={() => setPage((p) => p - 1)}
-                                        disabled={page === 0}
-                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
-                                        aria-label="Previous page"
-                                    >
-                                        <ChevronLeft size={14} />
-                                    </button>
-                                    {Array.from({ length: totalPages }, (_, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => setPage(i)}
-                                            className={`inline-flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-medium transition ${
-                                                i === page
-                                                    ? "border-cta bg-cta text-cta-foreground"
-                                                    : "border-border bg-card text-foreground hover:bg-muted"
-                                            }`}
-                                            aria-label={`Page ${i + 1}`}
-                                            aria-current={i === page ? "page" : undefined}
-                                        >
-                                            {i + 1}
-                                        </button>
-                                    ))}
-                                    <button
-                                        onClick={() => setPage((p) => p + 1)}
-                                        disabled={page === totalPages - 1}
-                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card text-foreground transition hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
-                                        aria-label="Next page"
-                                    >
-                                        <ChevronRight size={14} />
-                                    </button>
-                                </div>
-                            </div>
-                        ) : null}
+                        <Pagination
+                            page={page}
+                            totalPages={totalPages}
+                            totalItems={sortedTrainers.length}
+                            pageSize={PAGE_SIZE}
+                            onPageChange={setPage}
+                        />
                     </>
                 ) : null}
             </section>

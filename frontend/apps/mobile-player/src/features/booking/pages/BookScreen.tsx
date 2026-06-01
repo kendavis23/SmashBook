@@ -150,11 +150,7 @@ export function BookScreen(): JSX.Element {
                             justifyContent: "center",
                         }}
                     >
-                        <Ionicons
-                            name="refresh-outline"
-                            size={18}
-                            color={colors.heroForeground}
-                        />
+                        <Ionicons name="refresh-outline" size={18} color={colors.heroForeground} />
                     </Pressable>
                 </View>
             </View>
@@ -253,7 +249,6 @@ export function BookScreen(): JSX.Element {
                 onClose={() => setSelectedBooking(null)}
                 onPayClick={handlePayClick}
             />
-
         </SafeAreaView>
     );
 }

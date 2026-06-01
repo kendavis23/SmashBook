@@ -219,8 +219,8 @@ describe("Navbar — module search", () => {
 
     it("shows matching authorized modules in search results", () => {
         render(<Navbar />);
-        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "rep" } });
-        expect(screen.getByRole("button", { name: /reports/i })).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText("Search modules"), { target: { value: "court u" } });
+        expect(screen.getByRole("button", { name: /court utilisation/i })).toBeInTheDocument();
     });
 
     it("does not show restricted modules for staff role", () => {
@@ -233,21 +233,21 @@ describe("Navbar — module search", () => {
     it("navigates to the selected search result", () => {
         render(<Navbar />);
         fireEvent.change(screen.getByLabelText("Search modules"), {
-            target: { value: "reports" },
+            target: { value: "court utilisation" },
         });
-        fireEvent.click(screen.getByRole("button", { name: /reports/i }));
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reports" });
+        fireEvent.click(screen.getByRole("button", { name: /court utilisation/i }));
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/analytics/court-utilisation" });
     });
 
     it("supports keyboard navigation for search results", () => {
         render(<Navbar />);
 
         const searchInput = screen.getByLabelText("Search modules");
-        fireEvent.change(searchInput, { target: { value: "reports" } });
+        fireEvent.change(searchInput, { target: { value: "court utilisation" } });
         fireEvent.keyDown(searchInput, { key: "ArrowDown" });
         fireEvent.keyDown(searchInput, { key: "Enter" });
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reports" });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/analytics/court-utilisation" });
     });
 
     it("wraps to the last search result on ArrowUp from the first result", () => {
@@ -269,11 +269,11 @@ describe("Navbar — module search", () => {
         });
 
         const bookingsResult = screen.getByRole("button", { name: /bookings/i });
-        const supportResult = screen.getByRole("button", { name: /support/i });
+        const staffResult = screen.getByRole("button", { name: /^staff\s+\/staff$/i });
 
         expect(bookingsResult.className).toContain("text-foreground/60");
-        fireEvent.mouseEnter(supportResult);
-        expect(supportResult.className).toContain("bg-accent");
+        fireEvent.mouseEnter(staffResult);
+        expect(staffResult.className).toContain("bg-accent");
     });
 
     it("closes search results on escape and outside click", () => {

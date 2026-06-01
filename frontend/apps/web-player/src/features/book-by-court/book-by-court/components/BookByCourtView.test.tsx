@@ -1,20 +1,29 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import DashboardViewMobile from "./DashboardViewMobile";
+import BookByCourtView from "./BookByCourtView";
 import type { Court, CourtAvailability, OpenGame } from "../../types";
 
 vi.mock("../../../booking/new-booking/components/NewBookingModal", () => ({
     NewBookingModal: ({
         courtId,
+        courtName,
+        date,
+        startTime,
         onClose,
         onSuccess,
     }: {
         courtId: string;
+        courtName: string;
+        date: string;
+        startTime: string;
         onClose: () => void;
         onSuccess: () => void;
     }) => (
         <div>
             <span>Booking modal {courtId}</span>
+            <span>{courtName}</span>
+            <span>{date}</span>
+            <span>{startTime}</span>
             <button onClick={onClose}>Close booking modal</button>
             <button onClick={onSuccess}>Booking success</button>
         </div>
@@ -36,6 +45,9 @@ vi.mock("@repo/ui", () => ({
             {description ? <span>{description}</span> : null}
             <button onClick={onClose}>Dismiss {title}</button>
         </div>
+    ),
+    Breadcrumb: ({ items }: { items: { label: string }[] }) => (
+        <nav>{items.map((item) => item.label).join(" / ")}</nav>
     ),
     DatePicker: ({
         value,
@@ -91,28 +103,32 @@ vi.mock("@repo/ui", () => ({
     formatUTCTime: (value: string) => value.slice(11, 16),
 }));
 
-const openGame: OpenGame = {
-    id: "game-1",
-    court_id: "court-1",
-    court_name: "Court One",
-    start_datetime: "2026-05-20T10:00:00Z",
-    end_datetime: "2026-05-20T11:00:00Z",
-    min_skill_level: 2,
-    max_skill_level: 5,
-    slots_available: 2,
-    total_price: 24,
-    players: [],
-};
+const openGame = (overrides: Partial<OpenGame> = {}): OpenGame =>
+    ({
+        id: "game-1",
+        court_id: "court-1",
+        court_name: "Court One",
+        start_datetime: "2026-05-20T10:00:00Z",
+        end_datetime: "2026-05-20T11:00:00Z",
+        min_skill_level: 2,
+        max_skill_level: 5,
+        slots_available: 2,
+        total_price: 24,
+        players: [],
+        ...overrides,
+    }) as OpenGame;
 
-const court: Court = {
-    id: "court-1",
-    club_id: "club-1",
-    name: "Court One",
-    surface_type: "indoor",
-    has_lighting: true,
-    lighting_surcharge: 5,
-    is_active: true,
-};
+const court = (overrides: Partial<Court> = {}): Court =>
+    ({
+        id: "court-1",
+        club_id: "club-1",
+        name: "Court One",
+        surface_type: "indoor",
+        has_lighting: true,
+        lighting_surcharge: 5,
+        is_active: true,
+        ...overrides,
+    }) as Court;
 
 const availability: CourtAvailability = {
     court_id: "court-1",
@@ -124,6 +140,13 @@ const availability: CourtAvailability = {
             is_available: true,
             price: 24,
             price_label: "Peak",
+        },
+        {
+            start_time: "11:00",
+            end_time: "12:00",
+            is_available: false,
+            price: 24,
+            price_label: null,
         },
     ],
 };
@@ -139,7 +162,7 @@ const defaultProps = {
     joinSection: {
         filterDate: "",
         filterStatus: "all" as const,
-        games: [openGame],
+        games: [openGame()],
         isLoading: false,
         error: null,
         isJoining: false,
@@ -154,7 +177,7 @@ const defaultProps = {
         filterSurface: "" as const,
         filterTimeFrom: "",
         filterTimeTo: "",
-        courts: [court],
+        courts: [court()],
         isLoading: false,
         error: null,
         onFilterDateChange: vi.fn(),
@@ -191,101 +214,99 @@ function getAt<T>(items: T[], index: number): T {
     return item;
 }
 
-describe("DashboardViewMobile", () => {
-    it("renders join tab and handles join/filter actions", () => {
+describe("BookByCourtView", () => {
+    it("renders open games, courts, availability, and handles primary actions", () => {
         const onJoinGame = vi.fn();
-        const onFilterDateChange = vi.fn();
-        const onRefresh = vi.fn();
-        render(
-            <DashboardViewMobile
-                {...defaultProps}
-                joinSection={{
-                    ...defaultProps.joinSection,
-                    onJoinGame,
-                    onFilterDateChange,
-                    onRefresh,
-                }}
-            />
-        );
-
-        expect(onRefresh).toHaveBeenCalled();
-        expect(screen.getByText("Court One")).toBeInTheDocument();
-        fireEvent.change(screen.getByLabelText("All dates"), {
-            target: { value: "2026-05-21" },
-        });
-        fireEvent.click(screen.getAllByRole("button", { name: /join/i }).at(-1)!);
-
-        expect(onFilterDateChange).toHaveBeenCalledWith("2026-05-21");
-        expect(onJoinGame).toHaveBeenCalledWith("game-1");
-    });
-
-    it("switches to book tab, auto-checks the first court, and books a slot", () => {
-        const onCheckAvailability = vi.fn();
-        const onRefresh = vi.fn();
-        render(
-            <DashboardViewMobile
-                {...defaultProps}
-                availability={{ ...defaultProps.availability, courtId: "" }}
-                bookSection={{ ...defaultProps.bookSection, onCheckAvailability, onRefresh }}
-            />
-        );
-
-        fireEvent.click(screen.getByRole("button", { name: "Book" }));
-
-        expect(onRefresh).toHaveBeenCalled();
-        expect(onCheckAvailability).toHaveBeenCalledWith("court-1");
-    });
-
-    it("emits book filters and court/slot actions", () => {
-        const onFilterDateChange = vi.fn();
-        const onFilterSurfaceChange = vi.fn();
-        const onFilterTimeFromChange = vi.fn();
-        const onFilterTimeToChange = vi.fn();
         const onCheckAvailability = vi.fn();
         const onOpenBooking = vi.fn();
         render(
-            <DashboardViewMobile
+            <BookByCourtView
                 {...defaultProps}
-                bookSection={{
-                    ...defaultProps.bookSection,
-                    onFilterDateChange,
-                    onFilterSurfaceChange,
-                    onFilterTimeFromChange,
-                    onFilterTimeToChange,
-                    onCheckAvailability,
-                }}
+                joinSection={{ ...defaultProps.joinSection, onJoinGame }}
+                bookSection={{ ...defaultProps.bookSection, onCheckAvailability }}
                 availability={{ ...defaultProps.availability, onOpenBooking }}
             />
         );
 
-        fireEvent.click(screen.getByRole("button", { name: "Book" }));
-        fireEvent.change(screen.getByLabelText("date"), { target: { value: "2026-05-21" } });
-        fireEvent.change(screen.getByLabelText("Any"), { target: { value: "outdoor" } });
-        const timeInputs = screen.getAllByLabelText("time");
-        fireEvent.change(getAt(timeInputs, 0), { target: { value: "09:00" } });
-        fireEvent.change(getAt(timeInputs, 1), { target: { value: "12:00" } });
-        fireEvent.click(screen.getByRole("button", { name: "Court One" }));
+        expect(screen.getByRole("heading", { name: /book by court/i })).toBeInTheDocument();
+        expect(screen.queryByLabelText("Select club")).not.toBeInTheDocument();
+        expect(screen.getAllByText("Court One")).not.toHaveLength(0);
+        expect(screen.getByText("Peak · £24")).toBeInTheDocument();
+        expect(screen.getByText("Booked")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole("button", { name: /join/i }));
+        fireEvent.click(screen.getByRole("button", { name: /availability/i }));
         fireEvent.click(screen.getByRole("button", { name: /10:00/i }));
 
-        expect(onFilterDateChange).toHaveBeenCalledWith("2026-05-21");
-        expect(onFilterSurfaceChange).toHaveBeenCalledWith("outdoor");
-        expect(onFilterTimeFromChange).toHaveBeenCalledWith("09:00");
-        expect(onFilterTimeToChange).toHaveBeenCalledWith("12:00");
+        expect(onJoinGame).toHaveBeenCalledWith("game-1");
         expect(onCheckAvailability).toHaveBeenCalledWith("court-1");
         expect(onOpenBooking).toHaveBeenCalledWith("court-1", "Court One", "10:00");
     });
 
-    it("renders errors, empty states, loading states, and modal callbacks", () => {
-        const onDismissJoinError = vi.fn();
-        const onDismissSuccess = vi.fn();
-        const onCloseBooking = vi.fn();
-        const onBookingSuccess = vi.fn();
-        const { rerender } = render(
-            <DashboardViewMobile
+    it("emits filter and refresh changes", () => {
+        const onJoinFilterDateChange = vi.fn();
+        const onBookFilterDateChange = vi.fn();
+        const onBookFilterSurfaceChange = vi.fn();
+        const onFilterTimeFromChange = vi.fn();
+        const onFilterTimeToChange = vi.fn();
+        const onJoinRefresh = vi.fn();
+        const onBookRefresh = vi.fn();
+        render(
+            <BookByCourtView
                 {...defaultProps}
                 joinSection={{
                     ...defaultProps.joinSection,
-                    error: new Error("Open failed"),
+                    onFilterDateChange: onJoinFilterDateChange,
+                    onRefresh: onJoinRefresh,
+                }}
+                bookSection={{
+                    ...defaultProps.bookSection,
+                    onFilterDateChange: onBookFilterDateChange,
+                    onFilterSurfaceChange: onBookFilterSurfaceChange,
+                    onFilterTimeFromChange,
+                    onFilterTimeToChange,
+                    onRefresh: onBookRefresh,
+                }}
+            />
+        );
+
+        fireEvent.change(screen.getByLabelText("All dates"), { target: { value: "2026-05-21" } });
+        fireEvent.change(getAt(screen.getAllByLabelText("date"), 0), {
+            target: { value: "2026-05-22" },
+        });
+        fireEvent.change(screen.getByLabelText("Any"), { target: { value: "outdoor" } });
+        const timeInputs = screen.getAllByLabelText("time");
+        fireEvent.change(getAt(timeInputs, 0), { target: { value: "09:00" } });
+        fireEvent.change(getAt(timeInputs, 1), { target: { value: "12:00" } });
+        fireEvent.click(getAt(screen.getAllByRole("button", { name: /refresh/i }), 0));
+        fireEvent.click(getAt(screen.getAllByRole("button", { name: /refresh/i }), 1));
+
+        expect(onJoinFilterDateChange).toHaveBeenCalledWith("2026-05-21");
+        expect(onBookFilterDateChange).toHaveBeenCalledWith("2026-05-22");
+        expect(onBookFilterSurfaceChange).toHaveBeenCalledWith("outdoor");
+        expect(onFilterTimeFromChange).toHaveBeenCalledWith("09:00");
+        expect(onFilterTimeToChange).toHaveBeenCalledWith("12:00");
+        expect(onJoinRefresh).toHaveBeenCalledOnce();
+        expect(onBookRefresh).toHaveBeenCalledOnce();
+    });
+
+    it("renders loading, error, empty, and toast states", () => {
+        const onDismissJoinError = vi.fn();
+        const onDismissSuccess = vi.fn();
+        const { rerender } = render(
+            <BookByCourtView
+                {...defaultProps}
+                joinSection={{
+                    ...defaultProps.joinSection,
+                    error: new Error("Open games failed"),
+                }}
+                bookSection={{
+                    ...defaultProps.bookSection,
+                    error: new Error("Courts failed"),
+                }}
+                availability={{
+                    ...defaultProps.availability,
+                    error: new Error("Availability failed"),
                 }}
                 feedback={{
                     joinError: "Join failed",
@@ -295,6 +316,68 @@ describe("DashboardViewMobile", () => {
                     onDismissSuccess,
                     onDismissWarning: vi.fn(),
                 }}
+            />
+        );
+
+        expect(screen.getByText("Open games failed")).toBeInTheDocument();
+        expect(screen.getByText("Courts failed")).toBeInTheDocument();
+        expect(screen.getByText("Availability failed")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button", { name: "Dismiss Unable to join game" }));
+        fireEvent.click(screen.getByRole("button", { name: "Dismiss Done" }));
+        expect(onDismissJoinError).toHaveBeenCalledOnce();
+        expect(onDismissSuccess).toHaveBeenCalledOnce();
+
+        rerender(
+            <BookByCourtView
+                {...defaultProps}
+                joinSection={{ ...defaultProps.joinSection, games: [] }}
+                bookSection={{ ...defaultProps.bookSection, courts: [] }}
+                availability={{ ...defaultProps.availability, courtId: "", data: null }}
+            />
+        );
+        expect(screen.getByText("No open games yet")).toBeInTheDocument();
+        expect(screen.getByText("No courts are available for this club.")).toBeInTheDocument();
+        expect(screen.getByText("Select Check Availability on a court.")).toBeInTheDocument();
+
+        rerender(
+            <BookByCourtView
+                {...defaultProps}
+                joinSection={{ ...defaultProps.joinSection, isLoading: true }}
+                bookSection={{ ...defaultProps.bookSection, isLoading: true }}
+                availability={{ ...defaultProps.availability, isLoading: true }}
+            />
+        );
+        expect(screen.getByText("Loading open games")).toBeInTheDocument();
+        expect(screen.getByText("Loading courts")).toBeInTheDocument();
+        expect(screen.getByText("Checking availability")).toBeInTheDocument();
+    });
+
+    it("shows pagination summaries for long open game and court lists", () => {
+        const games = Array.from({ length: 4 }, (_, index) =>
+            openGame({ id: `game-${index + 1}`, court_name: `Game Court ${index + 1}` })
+        );
+        const courts = Array.from({ length: 5 }, (_, index) =>
+            court({ id: `court-${index + 1}`, name: `Court ${index + 1}` })
+        );
+        render(
+            <BookByCourtView
+                {...defaultProps}
+                joinSection={{ ...defaultProps.joinSection, games }}
+                bookSection={{ ...defaultProps.bookSection, courts }}
+            />
+        );
+
+        expect(screen.getAllByText("Page 1 of 2")).toHaveLength(2);
+        expect(screen.queryByText("Game Court 4")).not.toBeInTheDocument();
+        expect(screen.queryByText("Court 5")).not.toBeInTheDocument();
+    });
+
+    it("renders booking modal and forwards modal callbacks", () => {
+        const onCloseBooking = vi.fn();
+        const onBookingSuccess = vi.fn();
+        render(
+            <BookByCourtView
+                {...defaultProps}
                 bookingModal={{
                     courtId: "court-1",
                     courtName: "Court One",
@@ -306,36 +389,10 @@ describe("DashboardViewMobile", () => {
             />
         );
 
-        expect(screen.getByText("Open failed")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Dismiss Unable to join game" }));
-        fireEvent.click(screen.getByRole("button", { name: "Dismiss Done" }));
+        expect(screen.getByText("Booking modal court-1")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Close booking modal" }));
         fireEvent.click(screen.getByRole("button", { name: "Booking success" }));
-        expect(onDismissJoinError).toHaveBeenCalledOnce();
-        expect(onDismissSuccess).toHaveBeenCalledOnce();
         expect(onCloseBooking).toHaveBeenCalledOnce();
         expect(onBookingSuccess).toHaveBeenCalledOnce();
-
-        rerender(
-            <DashboardViewMobile
-                {...defaultProps}
-                joinSection={{ ...defaultProps.joinSection, games: [] }}
-                bookSection={{ ...defaultProps.bookSection, courts: [] }}
-                availability={{ ...defaultProps.availability, courtId: "", data: null }}
-            />
-        );
-        expect(screen.getByText("No open games yet")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: "Book" }));
-        expect(screen.getByText("No courts available for this club.")).toBeInTheDocument();
-
-        rerender(
-            <DashboardViewMobile
-                {...defaultProps}
-                joinSection={{ ...defaultProps.joinSection, isLoading: true }}
-                bookSection={{ ...defaultProps.bookSection, isLoading: true }}
-                availability={{ ...defaultProps.availability, isLoading: true }}
-            />
-        );
-        expect(screen.getByText("Loading courts")).toBeInTheDocument();
     });
 });
