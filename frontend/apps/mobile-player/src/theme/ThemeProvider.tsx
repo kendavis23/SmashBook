@@ -75,7 +75,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // non-empty class on both branches keep the node stable so only styles update.
     return (
         <ThemeContext.Provider value={value}>
-            <View key="theme-root" style={{ flex: 1 }} className={colorScheme === "dark" ? "dark" : "light"}>
+            <View
+                key="theme-root"
+                style={{ flex: 1 }}
+                className={colorScheme === "dark" ? "dark" : "light"}
+            >
                 {children}
             </View>
         </ThemeContext.Provider>
