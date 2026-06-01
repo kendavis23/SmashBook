@@ -1,6 +1,6 @@
 import { useAuth, useLogout } from "@repo/auth";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, LogOut } from "lucide-react";
+import { ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { JSX } from "react";
 import { useEffect, useRef, useState } from "react";
 
@@ -10,11 +10,15 @@ import { canAccess, ROUTES } from "../../config/routeConfig";
 interface SidebarProps {
     mobileOpen?: boolean;
     onCloseMobile?: () => void;
+    collapsed?: boolean;
+    onToggleCollapse?: () => void;
 }
 
 export default function Sidebar({
     mobileOpen = false,
     onCloseMobile = () => {},
+    collapsed = false,
+    onToggleCollapse = () => {},
 }: SidebarProps): JSX.Element {
     const [openMenu, setOpenMenu] = useState<string | null>(null);
 
@@ -78,6 +82,35 @@ export default function Sidebar({
             const isChildActive = visibleChildren.some((child) => isPathActive(child.path));
             const isExpanded = isOpen || isChildActive;
             if (visibleChildren.length === 0) return null;
+
+            /* Collapsed: show icon only, clicking navigates to first child */
+            if (collapsed) {
+                const firstChild = visibleChildren[0];
+                return (
+                    <Link
+                        key={item.key}
+                        to={firstChild?.path ?? "/"}
+                        onClick={onCloseMobile}
+                        title={item.label}
+                        className={`group flex w-full items-center justify-center rounded-md
+                            py-[7px] no-underline transition-all duration-150 hover:no-underline
+                            ${
+                                isChildActive
+                                    ? "bg-[var(--sidebar-active-bg)] text-cta"
+                                    : "text-foreground/80 hover:bg-accent hover:text-foreground"
+                            }`}
+                    >
+                        <Icon
+                            size={16}
+                            className={`flex-shrink-0 transition-colors ${
+                                isChildActive
+                                    ? "text-cta"
+                                    : "text-foreground/55 group-hover:text-foreground/85"
+                            }`}
+                        />
+                    </Link>
+                );
+            }
 
             return (
                 <div key={item.key}>
@@ -145,6 +178,33 @@ export default function Sidebar({
         /* ── Leaf item ───────────────────────────────────────────────────── */
         const active = isPathActive(item.path);
 
+        if (collapsed) {
+            return (
+                <Link
+                    key={item.key}
+                    to={item.path!}
+                    onClick={onCloseMobile}
+                    title={item.label}
+                    className={`group flex w-full items-center justify-center rounded-md
+                        py-[7px] no-underline transition-all duration-150 hover:no-underline
+                        ${
+                            active
+                                ? "bg-[var(--sidebar-active-bg)] text-cta"
+                                : "text-foreground/80 hover:bg-accent hover:text-foreground"
+                        }`}
+                >
+                    <Icon
+                        size={16}
+                        className={`flex-shrink-0 transition-colors ${
+                            active
+                                ? "text-cta"
+                                : "text-foreground/55 group-hover:text-foreground/85"
+                        }`}
+                    />
+                </Link>
+            );
+        }
+
         return (
             <Link
                 key={item.key}
@@ -198,29 +258,58 @@ export default function Sidebar({
                     overflow-hidden bg-background
                     border-r border-border
                     transition-all duration-300 ease-in-out
-                    w-[min(var(--sidebar-width),calc(100vw-1rem))] md:w-[var(--sidebar-width)]
+                    ${
+                        collapsed
+                            ? "w-[3.25rem] md:w-[3.25rem]"
+                            : "w-[min(var(--sidebar-width),calc(100vw-1rem))] md:w-[var(--sidebar-width)]"
+                    }
                     ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
                 `}
             >
                 {/* ── Brand header ─────────────────────────────────────────── */}
                 <div
-                    className="flex h-[var(--nav-height)] flex-shrink-0 items-center justify-center
-                        border-b border-border/70 px-4"
+                    className="flex h-[var(--nav-height)] flex-shrink-0 items-center
+                        border-b border-border/70 px-2"
                 >
-                    <span className="select-none text-[16px] font-bold tracking-[-0.01em] text-foreground">
-                        Smash<span className="text-cta">Book</span>
-                    </span>
+                    {collapsed ? (
+                        <button
+                            onClick={onToggleCollapse}
+                            title="Expand sidebar"
+                            className="flex w-full items-center justify-center rounded-md p-1.5
+                                text-foreground/50 transition-colors hover:bg-accent hover:text-foreground"
+                        >
+                            <PanelLeftOpen size={16} />
+                        </button>
+                    ) : (
+                        <div className="flex w-full items-center justify-between pl-2">
+                            <span className="select-none text-[16px] font-bold tracking-[-0.01em] text-foreground">
+                                Smash<span className="text-cta">Book</span>
+                            </span>
+                            <button
+                                onClick={onToggleCollapse}
+                                title="Collapse sidebar"
+                                className="rounded-md p-1.5 text-foreground/40
+                                    transition-colors hover:bg-accent hover:text-foreground"
+                            >
+                                <PanelLeftClose size={15} />
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Navigation ─────────────────────────────────────────── */}
-                <nav className="flex-1 overflow-y-auto px-2 py-2">
+                <nav className="flex-1 overflow-y-auto px-1.5 py-2">
                     {groupedRoutes.map(({ group, items }, idx) => (
                         <div key={group} className={idx > 0 ? "mt-3" : ""}>
-                            {/* Section label */}
-                            {group && (
+                            {/* Section label — hidden when collapsed */}
+                            {group && !collapsed && (
                                 <p className="mb-0.5 px-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-foreground/45">
                                     {group}
                                 </p>
+                            )}
+                            {/* Divider between groups when collapsed */}
+                            {group && collapsed && idx > 0 && (
+                                <div className="my-1.5 border-t border-border/50" />
                             )}
                             <div className="space-y-px">{items.map(renderItem)}</div>
                         </div>
@@ -228,20 +317,22 @@ export default function Sidebar({
                 </nav>
 
                 {/* ── Bottom: logout ──────────────────────────────────────── */}
-                <div className="flex-shrink-0 border-t border-border/70 px-2 py-2">
+                <div className="flex-shrink-0 border-t border-border/70 px-1.5 py-2">
                     <button
                         onClick={handleLogout}
-                        className="group flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5
+                        title="Logout"
+                        className={`group flex w-full items-center rounded-md
                             text-[13px] text-foreground/60
                             transition-all duration-150
-                            hover:bg-[var(--sidebar-hover-bg)] hover:text-foreground"
+                            hover:bg-[var(--sidebar-hover-bg)] hover:text-foreground
+                            ${collapsed ? "justify-center py-[7px]" : "gap-2.5 px-2.5 py-1.5"}`}
                     >
                         <LogOut
-                            size={14}
+                            size={collapsed ? 16 : 14}
                             className="flex-shrink-0 transition-all duration-150
                                 group-hover:text-foreground"
                         />
-                        <span>Logout</span>
+                        {!collapsed && <span>Logout</span>}
                     </button>
                 </div>
             </aside>
