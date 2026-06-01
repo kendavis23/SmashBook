@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     PUBSUB_TOPIC_NOTIFICATION_EVENTS: str = "notification-events"
     # Cloud Scheduler publishes here to trigger analytics snapshot/rollup workers.
     PUBSUB_TOPIC_ANALYTICS_EVENTS: str = "analytics-events"
+    # Materialized-view refresh failures publish here for alerting.
+    PUBSUB_TOPIC_ANALYTICS_ALERTS: str = "analytics-alerts"
 
     # Cloud Storage
     GCS_BUCKET_VIDEOS: str = ""

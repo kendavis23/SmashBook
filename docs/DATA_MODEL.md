@@ -1,4 +1,4 @@
-_Last updated: 2026-05-30 15:05 UTC_
+_Last updated: 2026-06-01 18:00 UTC_
 
 # SmashBook Data Model
 
@@ -760,7 +760,28 @@ Hourly (and daily-rollup) court utilisation snapshots written by the analytics w
 
 **Relationships:** `club`, `court`
 
-> The remaining G7 analytics reports (revenue-by-site, rolling-30-day active players, sign-ups/month, player LTV, most-active players, churner list, coach popularity, RFV pre-aggregate) are served by **materialized views refreshed by the analytics worker**, not ORM tables — they are not yet built and do not appear here.
+#### `analytics_refresh_log`
+Audit trail for materialized-view refreshes run by `app/analytics/workers/refresh_views.py` — one row per (view, refresh attempt). Not tenant-scoped (views are tenant-wide aggregates; refresh is a platform operation). On failure the worker also publishes to the `analytics-alerts` Pub/Sub topic.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `view_name` | VARCHAR(100) | Which materialized view was refreshed |
+| `status` | ENUM `refreshstatus` | `success` \| `failed` |
+| `started_at` | TIMESTAMPTZ | |
+| `completed_at` | TIMESTAMPTZ | Nullable |
+| `duration_ms` | INTEGER | Nullable |
+| `row_count` | INTEGER | Nullable — rows in the view after refresh |
+| `error` | TEXT | Nullable — exception text on failure |
+| `triggered_by` | VARCHAR(50) | Nullable — event_type or `"manual"` |
+| `created_at` | TIMESTAMPTZ | Default `now()` |
+
+**Indexes:** `ix_analytics_refresh_log_view_started (view_name, started_at)`
+
+#### Materialized views: `mv_revenue_by_club_day_service` / `mv_revenue_by_club_day_cash`
+Back the "Revenue by club, period" report (G7). **Materialized views, not ORM tables** — created by hand-written DDL in migration `a04c76851993`, refreshed nightly by `app/analytics/workers/refresh_views.py`. Two parallel views with identical schema: `…_service` buckets by `bookings.start_datetime` (accrual), `…_cash` by `payments.created_at` (cash); the API selects via `?basis=`. Grain: one row per `(club_id, revenue_date, revenue_type, currency)` — `revenue_date` is club-local; `revenue_type` is the five `booking_type`s plus `equipment`; measures `gross_amount`, `refund_amount`, `net_amount`, `transaction_count`. Computed from `payments` ⋈ `bookings` ∪ embedded `equipment_rentals` (subtract-embedded split so totals reconcile to `SUM(payments.amount)`; membership MRR excluded). `UNIQUE (club_id, revenue_date, revenue_type, currency)` on each (required for `REFRESH … CONCURRENTLY`). Full spec: [`REPORT_CATALOG.md`](../backend/app/analytics/docs/REPORT_CATALOG.md) and [`MATERIALIZED_VIEWS.md`](../backend/app/analytics/docs/MATERIALIZED_VIEWS.md).
+
+> The remaining G7 analytics reports (rolling-30-day active players, sign-ups/month, player LTV, most-active players, churner list, coach popularity, RFV pre-aggregate) are served by **materialized views refreshed by the analytics worker**, not ORM tables — they are not yet built and do not appear here.
 
 ---
 
@@ -797,6 +818,7 @@ Hourly (and daily-rollup) court utilisation snapshots written by the analytics w
 | `SupportTicketPriority` | `low`, `medium`, `high` |
 | `SupportHandledBy` | `staff`, `ai`, `hybrid` |
 | `MessageSenderType` | `player`, `staff`, `ai` |
+| `RefreshStatus` | `success`, `failed` — `analytics_refresh_log.status` (G7) |
 
 ---
 
@@ -845,6 +867,8 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `ae37b6ee82be` | G6 — New tables `promo_codes`, `announcements`, `support_tickets`, `support_messages`; `bookings`: add `promo_code_id` (FK → `promo_codes`); `skill_level_history`: add `club_id` (FK → `clubs`, NOT NULL), `change_source` (`skillchangesource` enum, default `staff_manual`), `ai_inference_id` (UUID, FK deferred to G8), and make `assigned_by` nullable. New enums: `promodiscounttype`, `promoappliesto`, `supportticketstatus`, `supportticketpriority`, `supporthandledby`, `messagesendertype`, `skillchangesource` |
 | `8800a16daf16` | G3 reconcile — add index `ix_waitlist_club_date (club_id, desired_date, status)` on `waitlist_entries`. Closes a doc-vs-DB gap: the index was listed in `DATA_MODEL_TARGET_STATE.md` (tagged G3) but was never carried into the model or the original G3 migration `62a903cfb227`. Serves the waitlist-sweep query (waiting entries for a club on a date) |
 | `b210c7b03579` | G7 (Analytics) — new table `court_utilisation_snapshots` (`UNIQUE(court_id, snapshot_date, hour_of_day)`); `clubs`: add `timezone` (default `"Europe/London"`); `users`: add aspirational demographics `date_of_birth`, `gender` (`gender` enum), `postcode`, `latitude`, `longitude` (all nullable). REPORT_CATALOG materialized views are worker-managed and not part of this migration |
+| `a04c76851993` | G7 (Analytics) — revenue-by-club report: new materialized views `mv_revenue_by_club_day_service` (bucketed by booking start) and `mv_revenue_by_club_day_cash` (bucketed by payment date), each with `UNIQUE(club_id, revenue_date, revenue_type, currency)` for `REFRESH … CONCURRENTLY`. Hand-written DDL (views aren't ORM models). Subtract-embedded equipment split; membership MRR excluded |
+| `520ea227119a` | G7 (Analytics) — new table `analytics_refresh_log` (`refreshstatus` enum) recording every materialized-view refresh run by `app/analytics/workers/refresh_views.py`; index `ix_analytics_refresh_log_view_started (view_name, started_at)` |
 
 To run migrations:
 ```bash

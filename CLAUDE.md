@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-05-30_
+_Last updated: 2026-06-01_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -302,13 +302,15 @@ op.add_column('users', sa.Column('is_suspended', sa.Boolean(),
 
 ## Testing
 
-Integration tests use a separate Docker Postgres instance at `postgresql://test:test@localhost/test`:
+Integration tests use a separate Docker Postgres instance at `postgresql://test:test@localhost:5433/test`. It runs on host port **5433** so it does not collide with the dev DB (which holds port 5432 via `docker compose`):
 
 ```bash
 docker run -d --name smashbook-test-db \
   -e POSTGRES_USER=test -e POSTGRES_PASSWORD=test -e POSTGRES_DB=test \
-  -p 5432:5432 postgres:18
+  -p 5433:5432 postgres:16
 ```
+
+The test DB connection string lives in `backend/tests/conftest.py` (`DATABASE_URL` / `DATABASE_READ_REPLICA_URL` default to `postgresql+asyncpg://test:test@localhost:5433/test`) — that file is the source of truth for the test port, not this doc.
 
 Run tests:
 ```bash

@@ -1,4 +1,4 @@
-_Last updated: 2026-05-31 00:00 UTC_
+_Last updated: 2026-06-01 18:00 UTC_
 
 # Materialized Views & Rollup Tables
 
@@ -30,11 +30,37 @@ The precomputed surfaces that back the report catalog. A live query against `boo
 - Refresh cadence: _TBD_
 - Indexes: _TBD_
 
-### `mv_revenue_by_club_month`
-- Purpose: _TBD_
-- Source: _TBD_
-- Refresh cadence: _TBD_
-- Indexes: _TBD_
+### `mv_revenue_by_club_day_service` / `mv_revenue_by_club_day_cash`
+- Purpose: back the "Revenue by club, period" report (financials-by-club, G7).
+  Two **parallel views with identical schema** because revenue can be anchored
+  on two dates: `…_service` buckets by `bookings.start_datetime` (accrual —
+  when the court time is delivered); `…_cash` buckets by `payments.created_at`
+  (when money moved). The API picks one via `?basis=service|cash`. A single view
+  can't carry two bucket dates without exploding cardinality.
+- Grain: one row per `(club_id, revenue_date, revenue_type, currency)`.
+  `revenue_date` is club-local (`date_trunc(... AT TIME ZONE clubs.timezone)`).
+  `revenue_type` ∈ {`regular`, `lesson_individual`, `lesson_group`,
+  `corporate_event`, `tournament`, `equipment`}. Measures: `gross_amount`,
+  `refund_amount`, `net_amount`, `transaction_count`.
+- Source: `payments` (state `succeeded`/`refunded`/`partially_refunded`) ⋈
+  `bookings` (for `booking_type`) ∪ embedded `equipment_rentals`, joined to
+  `clubs` for timezone/currency. **Subtract-embedded** equipment split: since
+  `payments.amount` already includes equipment (it's added to the player's
+  `amount_due`), each payment is split into a court portion and an `equipment`
+  portion so `SUM(types) == SUM(payments.amount)`. Refunds land on the
+  booking-type portion. Membership MRR is excluded (Stripe-only). Full spec:
+  [REPORT_CATALOG.md](REPORT_CATALOG.md) → "Revenue by club, period".
+- Refresh cadence: nightly 03:00 UTC via `app/analytics/workers/refresh_views.py`
+  (the first MV-refresh worker; logs every run to `analytics_refresh_log`).
+- Indexes: `UNIQUE (club_id, revenue_date, revenue_type, currency)` on each view
+  — required for `REFRESH MATERIALIZED VIEW CONCURRENTLY`.
+- Migration: `a04c76851993` (hand-written DDL — views aren't ORM models).
+
+> **Adding a new view to the refresh worker:** append its name to
+> `REFRESH_VIEWS` in `app/analytics/workers/refresh_views.py`. Refresh requests
+> are intersected with that list, so only registered views are ever executed.
+> Failures write a `failed` row to `analytics_refresh_log` and publish to the
+> `analytics-alerts` topic (`PUBSUB_TOPIC_ANALYTICS_ALERTS`).
 
 ### `rollup_ai_cost_by_feature_day`
 - Purpose: daily cost rollup of `ai_inference_log`, scoped to (tenant_id, feature, day)

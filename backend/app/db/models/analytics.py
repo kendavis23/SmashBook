@@ -1,11 +1,17 @@
+import enum
+
 from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Enum,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     SmallInteger,
+    String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -49,3 +55,35 @@ class CourtUtilisationSnapshot(Base, UUIDMixin):
 
     club = relationship("Club")
     court = relationship("Court")
+
+
+class RefreshStatus(str, enum.Enum):
+    success = "success"
+    failed = "failed"
+
+
+class AnalyticsRefreshLog(Base, UUIDMixin):
+    """Audit trail for materialized-view refreshes run by
+    ``app/analytics/workers/refresh_views.py``.
+
+    One row per (view, refresh attempt). On failure the worker also publishes to
+    the ``analytics-alerts`` Pub/Sub topic; this table is the durable record used
+    to answer "is the revenue report stale?" and to alert on repeated failures.
+    Not tenant-scoped — views are tenant-wide aggregates and refresh is a
+    platform operation.
+    """
+
+    __tablename__ = "analytics_refresh_log"
+    __table_args__ = (
+        Index("ix_analytics_refresh_log_view_started", "view_name", "started_at"),
+    )
+
+    view_name = Column(String(100), nullable=False)
+    status = Column(Enum(RefreshStatus, name="refreshstatus"), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+    row_count = Column(Integer, nullable=True)  # rows in the view after refresh
+    error = Column(Text, nullable=True)  # exception text on failure
+    triggered_by = Column(String(50), nullable=True)  # event_type / "manual"
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())

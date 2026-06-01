@@ -1,4 +1,4 @@
-_Last updated: 2026-05-31 00:00 UTC_
+_Last updated: 2026-06-01 18:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -226,7 +226,27 @@ Read-only, `staff`+ only, tenant-isolated, served off the **read replica** from
 
 Percentages are recomputed as `SUM(booked)/SUM(total)`, never averaged from per-row percentages.
 
-**Worker:** `app/analytics/workers/snapshot_court_utilisation.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`). `analytics.snapshot_daily` snapshots each club's local yesterday; `analytics.snapshot_backfill` backfills a trailing window (default 90 days). Delete-then-insert per (court, day) → idempotent.
+### Revenue ("Financials by club") — `/api/v1/analytics/revenue`
+
+Read-only, `staff`+ only, tenant-isolated, served off the **read replica** from the
+revenue materialized views (`mv_revenue_by_club_day_service` / `…_cash`). All
+totals are **transactional revenue** (membership MRR excluded). `?basis=service|cash`
+selects the view: `service` buckets by booking start (accrual), `cash` by payment date.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/analytics/revenue/clubs/{club_id}/timeseries` | Net/gross/refund over time. `granularity=day\|week\|month` (default day), `basis=` (default service), optional `date_from`/`date_to` (trailing 30d; 366-day cap → 413). Tenant-isolated (404 for another tenant's club). |
+| `GET` | `/api/v1/analytics/revenue/clubs/{club_id}/by-type` | Revenue split across the six revenue types (5 booking types + `equipment`). |
+| `GET` | `/api/v1/analytics/revenue/clubs/{club_id}/summary` | KPI block: gross / refunds / net / per-type / avg-per-transaction. |
+| `GET` | `/api/v1/analytics/revenue/clubs` | Tenant-wide per-club comparison (multi-site ROI view); clubs with no revenue still appear with zeroed totals. |
+
+Aggregation rolls up the pre-aggregated MV grain with `SUM(net)` etc. — never
+averages per-row figures. Equipment uses **subtract-embedded** attribution so the
+six types reconcile exactly to `SUM(payments.amount)`.
+
+**Workers:**
+- `app/analytics/workers/snapshot_court_utilisation.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`). `analytics.snapshot_daily` snapshots each club's local yesterday; `analytics.snapshot_backfill` backfills a trailing window (default 90 days). Delete-then-insert per (court, day) → idempotent.
+- `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered revenue views; logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
 
 ---
 
