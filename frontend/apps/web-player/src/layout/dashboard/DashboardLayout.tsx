@@ -13,6 +13,7 @@ export default function DashboardLayout(): JSX.Element {
     const setActiveClubId = useAuthStore((s) => s.setActiveClubId);
     const navigate = useNavigate();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
 
     const { clubs: jwtClubs } = useAuth();
 
@@ -47,7 +48,12 @@ export default function DashboardLayout(): JSX.Element {
     return (
         /* Root shell: sidebar on the left, content column on the right */
         <div className="flex h-screen overflow-hidden bg-background text-foreground">
-            <Sidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+            <Sidebar
+                mobileOpen={mobileOpen}
+                onCloseMobile={() => setMobileOpen(false)}
+                collapsed={collapsed}
+                onToggleCollapse={() => setCollapsed((c) => !c)}
+            />
 
             {/* Right column — navbar + scrollable content */}
             <div className="flex min-w-0 flex-1 flex-col">
