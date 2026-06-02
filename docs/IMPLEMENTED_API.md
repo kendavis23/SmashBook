@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 14:40 UTC_
+_Last updated: 2026-06-02 15:25 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -259,9 +259,21 @@ member" has an active subscription on a plan with `price > 0`. All paginate via
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/most-active` | Most-active players ranked by on-court bookings in the window. `?window_days=30\|90` (else 422). |
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/inactive-members` | Paid members idle ≥ `?inactive_days` (default 30, never-played included), longest-gone first. Returns `member_count` (denominator) + `inactive_count`. The non-AI sibling of Sprint-9 churn scoring. |
 
+Club-level **player-flow** metrics (workstream A) read two further views —
+`mv_club_active_player_day` (presence) and `mv_club_signups_day` (flow) — same
+`staff`+ / tenant-isolated / read-replica contract. Active counts are always
+`COUNT(DISTINCT user_id)` (never summed across days); sign-ups count new **paid**
+subscription starts only (`membership_plans.price > 0`).
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/analytics/players/clubs/{club_id}/active` | Active-players KPI: distinct players on court in the trailing `?window_days` (default 30, 1–365) ending `?as_of` (default today). |
+| `GET` | `/api/v1/analytics/players/clubs/{club_id}/active/timeseries` | Distinct active players per calendar bucket (WAP/MAP). `?granularity=day\|week\|month` (default week), optional `date_from`/`date_to` (trailing 30d; 366-day cap → 413). Calendar buckets, not a trailing window. |
+| `GET` | `/api/v1/analytics/players/clubs/{club_id}/signups` | New paid-member sign-ups over time + range total. `?granularity=day\|week\|month` (default month), optional range (366-day cap → 413). |
+
 **Workers:**
 - `app/analytics/workers/snapshot_court_utilisation.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`). `analytics.snapshot_daily` snapshots each club's local yesterday; `analytics.snapshot_backfill` backfills a trailing window (default 90 days). Delete-then-insert per (court, day) → idempotent.
-- `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered views (`mv_revenue_by_club_day_service`, `…_cash`, `mv_player_value`); logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
+- `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered views (`mv_revenue_by_club_day_service`, `…_cash`, `mv_player_value`, `mv_club_active_player_day`, `mv_club_signups_day`); logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
 
 ---
 

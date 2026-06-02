@@ -4,8 +4,8 @@ Pub/Sub subscriber: materialized-view refresh worker (Sprint 7 / G7).
 The first MV-refresh infrastructure in the system. ``snapshot_court_utilisation``
 is a *physical snapshot* worker; this one runs ``REFRESH MATERIALIZED VIEW
 CONCURRENTLY`` over the views that back report queries (the two revenue-by-club
-views plus ``mv_player_value``) and records every attempt in
-``analytics_refresh_log``.
+views, ``mv_player_value``, and the two club player-flow views) and records every
+attempt in ``analytics_refresh_log``.
 
 Deployed as a separate Cloud Run service from the same image
 (``Dockerfile.worker``), triggered by **Cloud Scheduler → Pub/Sub** (default:
@@ -43,6 +43,8 @@ REFRESH_VIEWS: list[str] = [
     "mv_revenue_by_club_day_service",
     "mv_revenue_by_club_day_cash",
     "mv_player_value",
+    "mv_club_active_player_day",
+    "mv_club_signups_day",
 ]
 
 app = FastAPI()

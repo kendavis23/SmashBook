@@ -7,14 +7,22 @@ scoped to the caller's tenant. The view is refreshed nightly by
 
 Final paths: ``/api/v1/analytics/players/...``
 
-Three reports off one view:
+Per-player reports (workstream B) off ``mv_player_value``:
   * GET /clubs/{id}/value             — per-player LTV leaderboard (?members_only)
   * GET /clubs/{id}/most-active       — most-active players (?window_days=30|90)
   * GET /clubs/{id}/inactive-members  — paid members idle >= ?inactive_days
+
+Club-level flow reports (workstream A) off ``mv_club_active_player_day`` /
+``mv_club_signups_day``:
+  * GET /clubs/{id}/active            — active-players KPI (trailing window)
+  * GET /clubs/{id}/active/timeseries — active players per calendar bucket
+  * GET /clubs/{id}/signups           — new paid-member sign-ups over time
 """
 from __future__ import annotations
 
 import uuid
+from datetime import date, datetime, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
@@ -26,6 +34,13 @@ from app.analytics.schemas.player import (
     PlayerSort,
     PlayerValueLeaderboard,
 )
+from app.analytics.schemas.player_flow import (
+    ActivePlayersKpi,
+    ActivePlayersTimeseries,
+    FlowGranularity,
+    SignupsTimeseries,
+)
+from app.analytics.services.player_flow_service import PlayerFlowService
 from app.analytics.services.player_value_service import PlayerValueService
 from app.api.v1.dependencies.auth import require_staff
 from app.api.v1.dependencies.tenant import get_tenant
@@ -34,6 +49,26 @@ from app.db.models.tenant import Tenant
 from app.db.session import get_read_db
 
 router = APIRouter(prefix="/players", tags=["analytics-players"])
+
+_MAX_RANGE_DAYS = 366
+_DEFAULT_RANGE_DAYS = 30
+
+
+def _resolve_range(date_from: date | None, date_to: date | None) -> tuple[date, date]:
+    today = datetime.now(timezone.utc).date()
+    end = date_to or today
+    start = date_from or (end - timedelta(days=_DEFAULT_RANGE_DAYS))
+    if start > end:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="date_from must be on or before date_to",
+        )
+    if (end - start).days > _MAX_RANGE_DAYS:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Date range exceeds the {_MAX_RANGE_DAYS}-day maximum",
+        )
+    return start, end
 
 
 async def _load_club(db: AsyncSession, club_id: uuid.UUID, tenant: Tenant) -> Club:
@@ -106,4 +141,62 @@ async def club_inactive_members(
     await _load_club(db, club_id, tenant)
     return await PlayerValueService(db).inactive_members(
         club_id, inactive_days, limit, offset
+    )
+
+
+# ---------------------------------------------------------------------------
+# Workstream A — club-level player-flow metrics
+# ---------------------------------------------------------------------------
+
+
+@router.get("/clubs/{club_id}/active", response_model=ActivePlayersKpi)
+async def club_active_players(
+    club_id: uuid.UUID,
+    window_days: int = Query(30, ge=1, le=365),
+    as_of: Optional[date] = Query(None),
+    _staff=Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """Distinct players on court in the trailing ``window_days`` ending ``as_of``
+    (default today) — the "active players over the last N days" headline."""
+    as_of = as_of or datetime.now(timezone.utc).date()
+    await _load_club(db, club_id, tenant)
+    return await PlayerFlowService(db).active_kpi(club_id, as_of, window_days)
+
+
+@router.get("/clubs/{club_id}/active/timeseries", response_model=ActivePlayersTimeseries)
+async def club_active_players_timeseries(
+    club_id: uuid.UUID,
+    granularity: FlowGranularity = Query(FlowGranularity.week),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    _staff=Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """Distinct active players per calendar bucket (WAP/MAP). Buckets are
+    calendar periods, not a trailing window."""
+    start, end = _resolve_range(date_from, date_to)
+    await _load_club(db, club_id, tenant)
+    return await PlayerFlowService(db).active_timeseries(
+        club_id, granularity, start, end
+    )
+
+
+@router.get("/clubs/{club_id}/signups", response_model=SignupsTimeseries)
+async def club_member_signups(
+    club_id: uuid.UUID,
+    granularity: FlowGranularity = Query(FlowGranularity.month),
+    date_from: Optional[date] = Query(None),
+    date_to: Optional[date] = Query(None),
+    _staff=Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """New paid-member sign-ups over time, plus the range total."""
+    start, end = _resolve_range(date_from, date_to)
+    await _load_club(db, club_id, tenant)
+    return await PlayerFlowService(db).signups_timeseries(
+        club_id, granularity, start, end
     )

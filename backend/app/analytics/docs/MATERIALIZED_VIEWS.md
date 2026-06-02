@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 14:40 UTC_
+_Last updated: 2026-06-02 15:25 UTC_
 
 # Materialized Views & Rollup Tables
 
@@ -84,6 +84,31 @@ The precomputed surfaces that back the report catalog. A live query against `boo
   derived at query time from `last_played_at`, so any day threshold works.
 - Indexes: `UNIQUE (club_id, user_id)` — required for `REFRESH … CONCURRENTLY`.
 - Migration: `fd3c5c3192ab` (hand-written DDL — views aren't ORM models).
+
+### `mv_club_active_player_day` / `mv_club_signups_day`
+- Purpose: back the club-level "Active players & member sign-ups" report (G7,
+  workstream A).
+- Grains:
+  - `mv_club_active_player_day` — `(club_id, activity_date, user_id)`: a
+    **presence** set, one row per player per club-local day they were on court
+    (`booking_players` ⋈ `bookings`, non-cancelled + already-started). Deliberately
+    presence rows, **not** a precomputed rolling count: the service derives both
+    the trailing-window active KPI (`COUNT(DISTINCT)` over the last N days) and
+    the calendar WAP/MAP timeseries (`COUNT(DISTINCT) GROUP BY date_trunc`) from
+    it, so the window stays flexible at query time.
+  - `mv_club_signups_day` — `(club_id, signup_date, signups)`: additive count of
+    new **paid** membership subscription starts per club-local day
+    (`membership_subscriptions.created_at`, `membership_plans.price > 0`).
+- Source: `booking_players`, `bookings`, `membership_subscriptions`,
+  `membership_plans`, `clubs` (for timezone). Both bucket dates club-local. Full
+  spec: [REPORT_CATALOG.md](REPORT_CATALOG.md) → "Active players & member sign-ups".
+- Refresh cadence: nightly 03:00 UTC via `app/analytics/workers/refresh_views.py`.
+  The active view's `start_datetime <= now()` filter makes its trailing edge
+  refresh-time-relative (acceptable at nightly cadence).
+- Indexes: `UNIQUE (club_id, activity_date, user_id)` and
+  `UNIQUE (club_id, signup_date)` respectively — required for `REFRESH …
+  CONCURRENTLY`.
+- Migration: `4d439313634d` (hand-written DDL — views aren't ORM models).
 
 ### `rollup_ai_cost_by_feature_day`
 - Purpose: daily cost rollup of `ai_inference_log`, scoped to (tenant_id, feature, day)

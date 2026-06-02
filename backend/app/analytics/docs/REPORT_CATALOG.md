@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 14:40 UTC_
+_Last updated: 2026-06-02 15:25 UTC_
 
 # Report Catalog
 
@@ -137,6 +137,51 @@ Each report has:
   `membership_subscriptions`, `membership_plans` (view definition).
 - Consumer: staff portal (player/CRM dashboard); the inactive-members list is
   the non-AI sibling of Sprint-9 churn scoring (same substrate, no model).
+
+### Active players & member sign-ups (club flow)
+- Owner: `staff`+ (all staff roles)
+- Scope: club-scoped (tenant-isolated).
+- Refresh: **two materialized views** — `mv_club_active_player_day` (presence)
+  and `mv_club_signups_day` (flow), refreshed by
+  `app/analytics/workers/refresh_views.py` (`REFRESH … CONCURRENTLY`, nightly
+  03:00 UTC). See [MATERIALIZED_VIEWS.md](MATERIALIZED_VIEWS.md).
+- Compute model — the club-level counterpart to the per-player "Player value"
+  report. Two grains:
+  - **active** (`mv_club_active_player_day`, grain `(club_id, activity_date,
+    user_id)`): one row per player per club-local day they were actually on
+    court (`booking_players` ⋈ `bookings`, `status IN (confirmed, completed)`
+    and `start_datetime <= now()`). A presence set. **The rolling-distinct-active
+    metric is deliberately not precomputed per day** — storing presence rows lets
+    the service derive any window at query time with `COUNT(DISTINCT user_id)`,
+    and a precomputed daily rolling count would bake the window and explode to a
+    row per calendar day. Two shapes are served from it:
+    - a trailing-window **KPI** (`COUNT(DISTINCT)` over the last `window_days`
+      ending `as_of`) — answers "active players over the last N days";
+    - a **calendar timeseries** (`COUNT(DISTINCT) GROUP BY date_trunc`) — the
+      WAP/MAP trend; buckets are calendar periods, *not* a trailing window, so a
+      player is counted once per bucket, never deduplicated across the range.
+  - **signups** (`mv_club_signups_day`, grain `(club_id, signup_date)`): count of
+    new **paid** membership subscription starts that club-local day
+    (`membership_subscriptions.created_at`, plan `price > 0`; the free default
+    "basic" plan does not count). Additive — the service `SUM`s over the range.
+- Aggregation rule: active counts are always `COUNT(DISTINCT user_id)`, never
+  summed across days (a player active on five days is one active player); signups
+  are additive (`SUM`). Both bucket dates in the club's local timezone, matching
+  the revenue and player-value views.
+- Source tables (read replica): `mv_club_active_player_day`,
+  `mv_club_signups_day` (serving); computed from `booking_players`, `bookings`,
+  `membership_subscriptions`, `membership_plans`, `clubs` (view definitions).
+- Endpoints:
+  - `GET /api/v1/analytics/players/clubs/{club_id}/active?window_days=&as_of=`
+    — trailing-window active-players KPI.
+  - `GET /api/v1/analytics/players/clubs/{club_id}/active/timeseries?granularity=day|week|month`
+    — active players per calendar bucket (WAP/MAP).
+  - `GET /api/v1/analytics/players/clubs/{club_id}/signups?granularity=day|week|month`
+    — new paid-member sign-ups over time, with range total.
+- Consumer: staff portal (club/CRM dashboard); pairs with the per-player "Player
+  value" report. Note the trailing-30d/90d active *count as of now* is also
+  derivable from `mv_player_value.played_last_30d/90d`; this report adds the
+  sign-up flow and the active **trend over time**.
 
 ### Membership churn cohort
 - Owner: _TBD_
