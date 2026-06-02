@@ -30,6 +30,23 @@ class PlayerSort(str, enum.Enum):
     last_played_at = "last_played_at"
 
 
+class GroupDimension(str, enum.Enum):
+    """Which attribute to group players by for the group-LTV report (workstream
+    C). All three are computed from ``mv_player_value`` alone — no segmentation
+    table (structured multi-dimensional segmentation is deliberately deferred).
+
+    * ``membership_tier``  — the player's current paid plan (`membership_plan_name`),
+      with non-members collapsed into a single "Non-member" bucket.
+    * ``member_status``    — paid member vs non-member.
+    * ``activity_status``  — active / lapsed / never-played, split on
+      ``inactive_days`` (reuses the inactive-members recency threshold).
+    """
+
+    membership_tier = "membership_tier"
+    member_status = "member_status"
+    activity_status = "activity_status"
+
+
 class PlayerValueRow(BaseModel):
     """One player's lifetime value + recency at a club. ``full_name`` / ``email``
     are joined live from ``users`` (kept out of the MV to avoid stale PII)."""
@@ -86,3 +103,30 @@ class InactiveMembersReport(BaseModel):
     limit: int
     offset: int
     rows: list[PlayerValueRow]
+
+
+class GroupValueRow(BaseModel):
+    """Aggregated lifetime value for one group of players (workstream C)."""
+
+    group_key: str  # raw grouping value (plan name, "paid_member", "lapsed", …)
+    group_label: str  # human-readable label
+    player_count: int
+    paid_member_count: int
+    total_lifetime_spend: Decimal
+    avg_lifetime_spend: Decimal  # total / player_count (0 when the group is empty)
+    total_lifetime_refunds: Decimal
+    total_bookings_played: int
+
+
+class GroupValueReport(BaseModel):
+    """Lifetime value rolled up by a grouping dimension — "financial results per
+    group of members". Aggregates ``mv_player_value`` at query time; groups are
+    ordered by ``total_lifetime_spend`` descending."""
+
+    club_id: uuid.UUID
+    dimension: GroupDimension
+    # Only meaningful for ``activity_status`` (echoes the recency threshold used
+    # to split active/lapsed); ignored for the other dimensions.
+    inactive_days: int
+    currency: Optional[str]
+    rows: list[GroupValueRow]

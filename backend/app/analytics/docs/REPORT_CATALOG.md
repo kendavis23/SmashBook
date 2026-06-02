@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 15:25 UTC_
+_Last updated: 2026-06-02 16:05 UTC_
 
 # Report Catalog
 
@@ -126,7 +126,18 @@ Each report has:
   - `GET /api/v1/analytics/players/clubs/{club_id}/inactive-members` — paid
     members idle ≥ `?inactive_days` (default 30; never-played included),
     longest-gone first. Carries `member_count` (denominator) + `inactive_count`.
-  All paginate via `?limit`/`?offset`.
+  - `GET /api/v1/analytics/players/clubs/{club_id}/value/by-group` — **group LTV**
+    (workstream C): lifetime value rolled up by `?dimension=` ∈
+    {`membership_tier`, `member_status`, `activity_status`}, groups ordered by
+    total spend. Pure `GROUP BY` over the same view (no new MV, no migration) —
+    each group row carries `player_count`, `paid_member_count`,
+    `total_lifetime_spend`, `avg_lifetime_spend`, `total_lifetime_refunds`,
+    `total_bookings_played`. `?inactive_days` only applies to `activity_status`
+    (active/lapsed/never-played split). **Deliberately no RFV/cohort segmentation
+    taxonomy** — structured multi-dimensional player segmentation stays deferred
+    (see the dropped `player_segments` decision); only attribute-based and
+    single-axis-recency cuts are offered.
+  The leaderboard endpoints paginate via `?limit`/`?offset`.
 - Aggregation rule: the view pre-aggregates per player; the service only
   filters/sorts/paginates that grain. The inactivity cutoff is evaluated at
   query time against `last_played_at` (`now − inactive_days`), so any threshold

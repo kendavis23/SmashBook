@@ -17,10 +17,26 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import asc, column, desc, func, nullsfirst, nullslast, select, table
+from sqlalchemy import (
+    Integer,
+    asc,
+    case,
+    cast,
+    column,
+    desc,
+    func,
+    literal,
+    nullsfirst,
+    nullslast,
+    select,
+    table,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.schemas.player import (
+    GroupDimension,
+    GroupValueReport,
+    GroupValueRow,
     InactiveMembersReport,
     PlayerActivityLeaderboard,
     PlayerSort,
@@ -28,6 +44,18 @@ from app.analytics.schemas.player import (
     PlayerValueRow,
 )
 from app.db.models.user import User
+
+_NON_MEMBER_LABEL = "Non-member"
+
+# Static labels for the two enumerable dimensions; membership_tier labels are the
+# plan name itself (or Non-member), so they are not table-driven.
+_GROUP_LABELS = {
+    "paid_member": "Paid member",
+    "non_member": _NON_MEMBER_LABEL,
+    "active": "Active",
+    "lapsed": "Lapsed",
+    "never_played": "Never played",
+}
 
 _COLUMNS = (
     "club_id",
@@ -210,4 +238,78 @@ class PlayerValueService:
             limit=limit,
             offset=offset,
             rows=[self._to_row(r) for r in rows],
+        )
+
+    def _group_expr(self, dimension: GroupDimension, inactive_days: int):
+        """The SQL grouping key for a dimension — all derived from columns already
+        on ``mv_player_value`` (no segmentation table)."""
+        mv = self.mv
+        if dimension is GroupDimension.membership_tier:
+            return func.coalesce(mv.c.membership_plan_name, _NON_MEMBER_LABEL)
+        if dimension is GroupDimension.member_status:
+            return case(
+                (mv.c.is_paid_member.is_(True), literal("paid_member")),
+                else_=literal("non_member"),
+            )
+        # activity_status
+        cutoff = datetime.now(timezone.utc) - timedelta(days=inactive_days)
+        return case(
+            (mv.c.last_played_at.is_(None), literal("never_played")),
+            (mv.c.last_played_at < cutoff, literal("lapsed")),
+            else_=literal("active"),
+        )
+
+    async def group_value(
+        self,
+        club_id: uuid.UUID,
+        dimension: GroupDimension,
+        inactive_days: int,
+        currency: str | None,
+    ) -> GroupValueReport:
+        """Lifetime value rolled up by a grouping dimension — group LTV. Pure
+        ``GROUP BY`` over the per-player view; groups ordered by total spend."""
+        mv = self.mv
+        group_key = self._group_expr(dimension, inactive_days).label("group_key")
+        paid_int = cast(mv.c.is_paid_member, Integer)
+        total_spend = func.sum(mv.c.lifetime_spend)
+
+        rows = (
+            await self.db.execute(
+                select(
+                    group_key,
+                    func.count().label("player_count"),
+                    func.sum(paid_int).label("paid_member_count"),
+                    total_spend.label("total_lifetime_spend"),
+                    func.sum(mv.c.lifetime_refunds).label("total_lifetime_refunds"),
+                    func.sum(mv.c.bookings_played).label("total_bookings_played"),
+                )
+                .where(mv.c.club_id == club_id)
+                .group_by(group_key)
+                .order_by(desc(total_spend))
+            )
+        ).all()
+
+        return GroupValueReport(
+            club_id=club_id,
+            dimension=dimension,
+            inactive_days=inactive_days,
+            currency=currency,
+            rows=[self._to_group_row(r) for r in rows],
+        )
+
+    @staticmethod
+    def _to_group_row(r) -> GroupValueRow:
+        key = str(r[0])
+        count = int(r[1] or 0)
+        total = _d(r[3])
+        avg = (total / count).quantize(Decimal("0.01")) if count else Decimal("0")
+        return GroupValueRow(
+            group_key=key,
+            group_label=_GROUP_LABELS.get(key, key),
+            player_count=count,
+            paid_member_count=int(r[2] or 0),
+            total_lifetime_spend=total,
+            avg_lifetime_spend=avg,
+            total_lifetime_refunds=_d(r[4]),
+            total_bookings_played=int(r[5] or 0),
         )

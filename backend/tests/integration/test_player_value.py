@@ -315,3 +315,60 @@ class TestInactiveMembers:
         row = body["rows"][0]
         assert row["is_paid_member"] is True
         assert row["last_played_at"] is None  # never played
+
+
+class TestGroupValue:
+    async def test_empty_state(self, client, staff_headers, club, player_view, test_engine):
+        await _refresh(test_engine)
+        resp = await client.get(
+            f"/api/v1/analytics/players/clubs/{club.id}/value/by-group", headers=staff_headers
+        )
+        assert resp.status_code == 200
+        assert resp.json()["rows"] == []
+
+    async def test_member_status_totals(self, client, staff_headers, club, seeded_players):
+        resp = await client.get(
+            f"/api/v1/analytics/players/clubs/{club.id}/value/by-group"
+            f"?dimension=member_status",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        groups = {r["group_key"]: r for r in body["rows"]}
+        # Paid members A (£30) + B (£0) = £30 across 2 players; non-member C = £20.
+        assert groups["paid_member"]["player_count"] == 2
+        assert groups["paid_member"]["paid_member_count"] == 2
+        assert Decimal(groups["paid_member"]["total_lifetime_spend"]) == Decimal("30.00")
+        assert Decimal(groups["paid_member"]["avg_lifetime_spend"]) == Decimal("15.00")
+        assert groups["non_member"]["player_count"] == 1
+        assert Decimal(groups["non_member"]["total_lifetime_spend"]) == Decimal("20.00")
+        # ordered by total spend desc -> paid_member first
+        assert body["rows"][0]["group_key"] == "paid_member"
+
+    async def test_membership_tier_buckets(self, client, staff_headers, club, seeded_players):
+        resp = await client.get(
+            f"/api/v1/analytics/players/clubs/{club.id}/value/by-group"
+            f"?dimension=membership_tier",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        groups = {r["group_key"]: r for r in resp.json()["rows"]}
+        # A & B on the "Gold" paid plan; C collapses into "Non-member".
+        assert groups["Gold"]["player_count"] == 2
+        assert groups["Non-member"]["player_count"] == 1
+        assert groups["Non-member"]["group_label"] == "Non-member"
+
+    async def test_activity_status_split(self, client, staff_headers, club, seeded_players):
+        resp = await client.get(
+            f"/api/v1/analytics/players/clubs/{club.id}/value/by-group"
+            f"?dimension=activity_status&inactive_days=30",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        groups = {r["group_key"]: r for r in body["rows"]}
+        assert body["inactive_days"] == 30
+        # A & C played 5 days ago -> active; B never played -> never_played.
+        assert groups["active"]["player_count"] == 2
+        assert groups["never_played"]["player_count"] == 1
+        assert groups["never_played"]["group_label"] == "Never played"

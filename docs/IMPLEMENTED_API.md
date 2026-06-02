@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 15:25 UTC_
+_Last updated: 2026-06-02 16:05 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -258,6 +258,7 @@ member" has an active subscription on a plan with `price > 0`. All paginate via
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/value` | Per-player LTV leaderboard, highest first. `?members_only=true` restricts to paid members; `?sort=lifetime_spend\|bookings_played\|last_played_at`. Tenant-isolated (404 for another tenant's club). |
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/most-active` | Most-active players ranked by on-court bookings in the window. `?window_days=30\|90` (else 422). |
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/inactive-members` | Paid members idle ≥ `?inactive_days` (default 30, never-played included), longest-gone first. Returns `member_count` (denominator) + `inactive_count`. The non-AI sibling of Sprint-9 churn scoring. |
+| `GET` | `/api/v1/analytics/players/clubs/{club_id}/value/by-group` | Group LTV (workstream C): lifetime value rolled up by `?dimension=membership_tier\|member_status\|activity_status` (default tier), groups ordered by total spend. Each row: `player_count`, `paid_member_count`, `total_lifetime_spend`, `avg_lifetime_spend`, `total_lifetime_refunds`, `total_bookings_played`. `?inactive_days` applies only to `activity_status`. Pure `GROUP BY` over `mv_player_value` — no new view. |
 
 Club-level **player-flow** metrics (workstream A) read two further views —
 `mv_club_active_player_day` (presence) and `mv_club_signups_day` (flow) — same

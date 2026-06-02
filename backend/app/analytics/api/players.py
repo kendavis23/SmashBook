@@ -29,6 +29,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.analytics.schemas.player import (
+    GroupDimension,
+    GroupValueReport,
     InactiveMembersReport,
     PlayerActivityLeaderboard,
     PlayerSort,
@@ -141,6 +143,24 @@ async def club_inactive_members(
     await _load_club(db, club_id, tenant)
     return await PlayerValueService(db).inactive_members(
         club_id, inactive_days, limit, offset
+    )
+
+
+@router.get("/clubs/{club_id}/value/by-group", response_model=GroupValueReport)
+async def club_player_value_by_group(
+    club_id: uuid.UUID,
+    dimension: GroupDimension = Query(GroupDimension.membership_tier),
+    inactive_days: int = Query(30, ge=1, le=365),
+    _staff=Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """Lifetime value rolled up by a grouping dimension — "financial results per
+    group of members". ``inactive_days`` only applies to the ``activity_status``
+    dimension (active/lapsed split)."""
+    club = await _load_club(db, club_id, tenant)
+    return await PlayerValueService(db).group_value(
+        club_id, dimension, inactive_days, club.currency
     )
 
 
