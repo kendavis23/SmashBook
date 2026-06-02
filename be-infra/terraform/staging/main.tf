@@ -76,14 +76,20 @@ module "cloud_run" {
 }
 
 module "pubsub" {
-  source                  = "../modules/pubsub"
-  project_id              = var.project_id
-  region                  = var.region
-  compute_sa_email        = module.iam.compute_sa_email
-  booking_worker_uri      = module.cloud_run.booking_worker_uri
-  payment_worker_uri      = module.cloud_run.payment_worker_uri
-  notification_worker_uri = module.cloud_run.notification_worker_uri
-  analytics_worker_uri    = module.cloud_run.analytics_worker_uri
+  source                       = "../modules/pubsub"
+  project_id                   = var.project_id
+  region                       = var.region
+  compute_sa_email             = module.iam.compute_sa_email
+  booking_worker_uri           = module.cloud_run.booking_worker_uri
+  payment_worker_uri           = module.cloud_run.payment_worker_uri
+  notification_worker_uri      = module.cloud_run.notification_worker_uri
+  analytics_worker_uri         = module.cloud_run.analytics_worker_uri
+  analytics_refresh_worker_uri = module.cloud_run.analytics_refresh_worker_uri
+
+  # The run.invoker IAM members reference services by literal name, so Terraform
+  # has no implicit edge to their creation — force pubsub to wait for cloud_run
+  # so a clean apply doesn't race the IAM bindings ahead of the services (404).
+  depends_on = [module.cloud_run]
 }
 
 module "storage" {
@@ -109,6 +115,11 @@ module "scheduler" {
   # analytics data stays warm; flip `analytics_snapshot_paused = true` to disable.
   analytics_events_topic_id = module.pubsub.analytics_events_topic_id
   analytics_snapshot_paused = var.analytics_snapshot_paused
+
+  # Nightly materialized-view refresh job (03:00 UTC) for the revenue views.
+  # Flip `analytics_refresh_paused = true` to disable.
+  analytics_refresh_events_topic_id = module.pubsub.analytics_refresh_events_topic_id
+  analytics_refresh_paused          = var.analytics_refresh_paused
 }
 
 # ---------------------------------------------------------------------------
@@ -121,6 +132,10 @@ output "api_url" {
 
 output "analytics_worker_uri" {
   value = module.cloud_run.analytics_worker_uri
+}
+
+output "analytics_refresh_worker_uri" {
+  value = module.cloud_run.analytics_refresh_worker_uri
 }
 
 output "artifact_registry_url" {

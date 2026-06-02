@@ -671,3 +671,117 @@ resource "google_cloud_run_v2_service" "analytics_worker" {
     ]
   }
 }
+
+# ---------------------------------------------------------------------------
+# padel-analytics-refresh-worker  (Sprint 7 / G7 — materialized-view refresh)
+#
+# The first MV-refresh worker. Triggered by Cloud Scheduler → Pub/Sub
+# (analytics-refresh-events — a topic SEPARATE from analytics-events, because the
+# snapshot worker treats any unknown event_type as snapshot_daily) → push to
+# /pubsub. Runs REFRESH MATERIALIZED VIEW CONCURRENTLY on the **primary** (a
+# write op) and logs each run to analytics_refresh_log; it does NOT read the
+# replica, so unlike the snapshot worker it mounts the primary only.
+# ---------------------------------------------------------------------------
+
+resource "google_cloud_run_v2_service" "analytics_refresh_worker" {
+  name     = "padel-analytics-refresh-worker"
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    service_account = var.compute_sa_email
+
+    vpc_access {
+      connector = var.vpc_connector_id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
+    scaling {
+      max_instance_count = var.max_instance_count
+    }
+
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [var.cloud_sql_connection]
+      }
+    }
+
+    containers {
+      image   = "${var.worker_image}:${var.image_tag}"
+      command = ["uvicorn"]
+      args    = ["app.analytics.workers.refresh_views:app", "--host", "0.0.0.0", "--port", "8080"]
+
+      ports {
+        name           = "http1"
+        container_port = 8080
+      }
+
+      resources {
+        limits            = local.resource_limits
+        cpu_idle          = true
+        startup_cpu_boost = true
+      }
+
+      startup_probe {
+        failure_threshold = local.startup_probe.failure_threshold
+        period_seconds    = local.startup_probe.period_seconds
+        timeout_seconds   = local.startup_probe.timeout_seconds
+        tcp_socket {
+          port = 8080
+        }
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["padel-database-url"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["padel-secret-key"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
+    }
+
+    max_instance_request_concurrency = 80
+    timeout                          = "300s"
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].annotations,
+      client,
+      client_version,
+    ]
+  }
+}

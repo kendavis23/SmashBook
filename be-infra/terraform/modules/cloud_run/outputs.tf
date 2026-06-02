@@ -17,3 +17,7 @@ output "notification_worker_uri" {
 output "analytics_worker_uri" {
   value = google_cloud_run_v2_service.analytics_worker.uri
 }
+
+output "analytics_refresh_worker_uri" {
+  value = google_cloud_run_v2_service.analytics_refresh_worker.uri
+}

@@ -151,6 +151,30 @@ analytics-backfill-staging:
 		--project=smashbook-488121 \
 		--message '{"event_type":"analytics.snapshot_backfill","payload":{"days":$(DAYS)}}'
 
+# ── Analytics: revenue materialized-view refresh (G7) ─────────────────────────
+# Local: refresh the revenue MVs directly against the dev DB (api container up).
+analytics-refresh-local:
+	docker-compose exec api python -c "import asyncio; from app.analytics.workers.refresh_views import refresh_views; print(asyncio.run(refresh_views(triggered_by='make-local')))"
+
+# Staging: trigger the nightly Cloud Scheduler refresh job once now (without un-pausing it).
+analytics-refresh-run:
+	gcloud scheduler jobs run analytics-refresh-daily \
+		--location=europe-west2 --project=smashbook-488121
+
+# Show ENABLED / PAUSED for the nightly refresh job.
+analytics-refresh-status:
+	gcloud scheduler jobs describe analytics-refresh-daily \
+		--location=europe-west2 --project=smashbook-488121 \
+		--format="value(state)"
+
+# Staging: refresh now by publishing directly to the refresh topic (bypasses the
+# scheduler). Refreshes all registered views. For a subset, append a payload, e.g.
+# "payload":{"views":["mv_revenue_by_club_day_cash"]}.
+analytics-refresh-staging:
+	gcloud pubsub topics publish analytics-refresh-events \
+		--project=smashbook-488121 \
+		--message '{"event_type":"analytics.refresh_views"}'
+
 # Run seed against the local dev DB (api container must be up)
 seed-local:
 	docker-compose exec api python scripts/seed_staging.py
@@ -209,4 +233,4 @@ get-token:
 shell:
 	docker-compose exec api bash
 
-.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets scheduler-activate scheduler-pause scheduler-status scheduler-run analytics-snapshot-local analytics-backfill-local analytics-snapshot-run analytics-snapshot-status analytics-backfill-staging seed-local seed-activity-staging stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token
+.PHONY: up down restart logs build migrate migrate-down migrate-status migration db sql shell erd erd-drawio erd-drawio-local migrate-local migrate-down-local migration-local issues project-fields test-db-up test-db-down seed-staging staging-api-secrets scheduler-activate scheduler-pause scheduler-status scheduler-run analytics-snapshot-local analytics-backfill-local analytics-snapshot-run analytics-snapshot-status analytics-backfill-staging analytics-refresh-local analytics-refresh-run analytics-refresh-status analytics-refresh-staging seed-local seed-activity-staging stripe-connect-local stripe-connect-staging cloud-sql-proxy-staging payment-intent get-token

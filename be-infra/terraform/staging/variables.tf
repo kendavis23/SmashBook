@@ -47,3 +47,9 @@ variable "analytics_snapshot_paused" {
   type        = bool
   default     = false
 }
+
+variable "analytics_refresh_paused" {
+  description = "Pause the nightly materialized-view refresh Cloud Scheduler job in staging. Defaults to false so the revenue views stay current."
+  type        = bool
+  default     = false
+}

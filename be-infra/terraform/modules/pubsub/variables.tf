@@ -25,3 +25,7 @@ variable "notification_worker_uri" {
 variable "analytics_worker_uri" {
   type = string
 }
+
+variable "analytics_refresh_worker_uri" {
+  type = string
+}

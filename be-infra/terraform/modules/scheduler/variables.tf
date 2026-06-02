@@ -44,3 +44,20 @@ variable "analytics_snapshot_paused" {
   type        = bool
   default     = false
 }
+
+variable "analytics_refresh_events_topic_id" {
+  description = "Full topic id (projects/.../topics/analytics-refresh-events) the nightly MV-refresh job publishes to"
+  type        = string
+}
+
+variable "analytics_refresh_schedule" {
+  description = "Cron schedule (UTC) for the nightly materialized-view refresh job"
+  type        = string
+  default     = "0 3 * * *" # 03:00 UTC daily, after the 02:00 snapshot
+}
+
+variable "analytics_refresh_paused" {
+  description = "When true, the nightly MV-refresh job exists but does not fire"
+  type        = bool
+  default     = false
+}

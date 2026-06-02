@@ -1,4 +1,4 @@
-_Last updated: 2026-05-31 00:00 UTC_
+_Last updated: 2026-06-01 19:15 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -77,6 +77,8 @@ All services use the `padel-runtime` service account, mount the `smashbook-stagi
 | `padel-booking-worker` | `padel-worker` | `uvicorn app.workers.booking_worker:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Processes booking events — confirmations, reminders, waitlist logic. |
 | `padel-payment-worker` | `padel-worker` | `uvicorn app.workers.payment_worker:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Handles payment events, Stripe webhook fanout, refund flows. |
 | `padel-notification-worker` | `padel-worker` | `uvicorn app.workers.notification_worker:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Dispatches push (Firebase), email (SendGrid), and SMS notifications. |
+| `padel-analytics-worker` | `padel-worker` | `uvicorn app.analytics.workers.snapshot_court_utilisation:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Court-utilisation snapshots (G7). Mounts primary + read replica. |
+| `padel-analytics-refresh-worker` | `padel-worker` | `uvicorn app.analytics.workers.refresh_views:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Revenue MV refresh (G7). Primary only. |
 
 **Images (Artifact Registry):**
 
@@ -117,10 +119,11 @@ Images are tagged with git SHA by CI/CD. Terraform ignores image tag drift (`lif
 
 ### Cloud Scheduler
 
-No Cloud Scheduler jobs are live yet. Both jobs below are **defined in Terraform** (`be-infra/terraform/modules/scheduler`) but have **not been applied**. Both require `cloudscheduler.googleapis.com` enabled on the project.
+`release-expired-holds`, `analytics-snapshot-daily`, and `analytics-refresh-daily` are all **live in staging** (present in Terraform state). All jobs are defined in `be-infra/terraform/modules/scheduler` and require `cloudscheduler.googleapis.com` enabled on the project.
 
-- **`release-expired-holds`** (court-hold expiry sweep → `POST /api/v1/admin/bookings/release-expired-holds`), wired into both `staging/` and `prod/`. On apply it runs every minute in prod and is created **paused** in staging (toggle via the `release_holds_scheduler_paused` variable). It authenticates with the `X-Platform-Key` header sourced from the `padel-platform-api-key` secret — no OIDC SA required, since `padel-api` is public and the endpoint is header-gated.
+- **`release-expired-holds`** (court-hold expiry sweep → `POST /api/v1/admin/bookings/release-expired-holds`), wired into both `staging/` and `prod/`. Runs every minute in prod; created **paused** in staging (toggle via the `release_holds_scheduler_paused` variable). It authenticates with the `X-Platform-Key` header sourced from the `padel-platform-api-key` secret — no OIDC SA required, since `padel-api` is public and the endpoint is header-gated.
 - **`analytics-snapshot-daily`** (Sprint 7 / G7), wired into `staging/`. **Pub/Sub target** — publishes `{"event_type":"analytics.snapshot_daily"}` to `analytics-events` at **02:00 UTC daily**, delivered to `padel-analytics-worker`. The worker snapshots each club's *local* yesterday, so a single UTC fire time suffices. Created **unpaused** in staging (toggle via `analytics_snapshot_paused`). The Cloud Scheduler service agent (`service-607958067144@gcp-sa-cloudscheduler.iam.gserviceaccount.com`) is granted `roles/pubsub.publisher` on the topic by the module. The one-time 90-day backfill is **not** scheduled — trigger on demand (`make analytics-backfill-staging`, or `scripts/run_court_snapshots.py`).
+- **`analytics-refresh-daily`** (Sprint 7 / G7), wired into `staging/`. **Pub/Sub target** — publishes `{"event_type":"analytics.refresh_views"}` to `analytics-refresh-events` at **03:00 UTC daily** (after the 02:00 snapshot; the two are independent), delivered to `padel-analytics-refresh-worker`, which runs `REFRESH MATERIALIZED VIEW CONCURRENTLY` over the revenue views and logs each run to `analytics_refresh_log`. Created **unpaused** in staging (toggle via `analytics_refresh_paused`). The Cloud Scheduler service agent is granted `roles/pubsub.publisher` on `analytics-refresh-events` by the module. Trigger manually with `make analytics-refresh-run` (job) or `make analytics-refresh-staging` (publish directly).
 
 ---
 
@@ -137,7 +140,7 @@ A Serverless VPC Access connector lets Cloud Run services reach internal-only re
 | Machine type | `e2-micro` |
 | Min / max instances | 2 / 3 |
 
-All four Cloud Run services (`padel-api`, `padel-booking-worker`, `padel-payment-worker`, `padel-notification-worker`) attach to this connector with `egress = "PRIVATE_RANGES_ONLY"` — only RFC1918 destinations route through the connector; public egress (Stripe, SendGrid, Anthropic, Firebase) continues to leave via the standard Cloud Run network path.
+All Cloud Run services (`padel-api`, `padel-booking-worker`, `padel-payment-worker`, `padel-notification-worker`, `padel-analytics-worker`, `padel-analytics-refresh-worker`) attach to this connector with `egress = "PRIVATE_RANGES_ONLY"` — only RFC1918 destinations route through the connector; public egress (Stripe, SendGrid, Anthropic, Firebase) continues to leave via the standard Cloud Run network path.
 
 > **Prod note:** `be-infra/terraform/prod/` declares an equivalent `padel-connector-prod` connector on `10.9.0.0/28`. Not yet applied — no prod GCP project exists.
 
@@ -182,8 +185,11 @@ All four Cloud Run services (`padel-api`, `padel-booking-worker`, `padel-payment
 | `booking-events-dlq` | MVP | Dead-letter sink for `booking-events-sub` |
 | `payment-events-dlq` | MVP | Dead-letter sink for `payment-events-sub` |
 | `notification-events-dlq` | MVP | Dead-letter sink for `notification-events-sub` |
-| `analytics-events` | Sprint 7 (G7) | Court-utilisation snapshot triggers. **Defined in Terraform, not yet applied** |
-| `analytics-events-dlq` | Sprint 7 (G7) | Dead-letter sink for `analytics-events-sub`. **Not yet applied** |
+| `analytics-events` | Sprint 7 (G7) | Court-utilisation snapshot triggers. Live |
+| `analytics-events-dlq` | Sprint 7 (G7) | Dead-letter sink for `analytics-events-sub`. Live |
+| `analytics-refresh-events` | Sprint 7 (G7) | Materialized-view refresh triggers (revenue views). Separate topic from `analytics-events` so the snapshot worker never receives refresh messages. Live |
+| `analytics-refresh-events-dlq` | Sprint 7 (G7) | Dead-letter sink for `analytics-refresh-events-sub`. Live |
+| `analytics-alerts` | Sprint 7 (G7) | Sink for MV-refresh failure alerts published by `refresh_views.py`. Live; no subscription yet (alerting consumer is a future gap). |
 
 ### Push Subscriptions
 
@@ -192,9 +198,10 @@ All four Cloud Run services (`padel-api`, `padel-booking-worker`, `padel-payment
 | `booking-events-sub` | `booking-events` | `padel-booking-worker /pubsub` | 300s | 7 days | `booking-events-dlq` | 5 |
 | `payment-events-sub` | `payment-events` | `padel-payment-worker /pubsub` | 300s | 7 days | `payment-events-dlq` | 5 |
 | `notification-events-sub` | `notification-events` | `padel-notification-worker /pubsub` | 300s | 7 days | `notification-events-dlq` | 5 |
-| `analytics-events-sub` | `analytics-events` | `padel-analytics-worker /pubsub` | 600s | 7 days | `analytics-events-dlq` | 5 |  ⟵ **defined in Terraform, not yet applied** |
+| `analytics-events-sub` | `analytics-events` | `padel-analytics-worker /pubsub` | 600s | 7 days | `analytics-events-dlq` | 5 | |
+| `analytics-refresh-events-sub` | `analytics-refresh-events` | `padel-analytics-refresh-worker /pubsub` | 600s | 7 days | `analytics-refresh-events-dlq` | 5 | |
 
-All subscriptions use exponential backoff retry (10s–600s; `analytics-events-sub` uses 30s–600s). Push authentication via OIDC token using `padel-runtime` SA. The Pub/Sub service agent (`service-607958067144@gcp-sa-pubsub.iam.gserviceaccount.com`) holds `roles/pubsub.publisher` on each DLQ topic.
+All subscriptions use exponential backoff retry (10s–600s; `analytics-events-sub` and `analytics-refresh-events-sub` use 30s–600s). Push authentication via OIDC token using `padel-runtime` SA. The Pub/Sub service agent (`service-607958067144@gcp-sa-pubsub.iam.gserviceaccount.com`) holds `roles/pubsub.publisher` on each DLQ topic.
 
 ---
 
@@ -330,8 +337,9 @@ These are gaps between the current state and the next stage of infrastructure wo
 | No production GCP project | — | `be-infra/terraform/prod/` scaffold exists with prod-tuned settings (HA, backups, larger tier); replace `smashbook-prod-REPLACE_ME` in `prod/terraform.tfvars` and `prod/main.tf` once the GCP project is created |
 | No monitoring or alerting | Stage 2.3 | No paging on 5xx spikes, DB storage, or subscription backlogs |
 | Cloud SQL on public IP | Stage 2.1 follow-on | VPC connector now live (`padel-connector-staging`); the private IP migration itself is still pending |
-| `release-expired-holds` scheduler not applied | Stage 1.8 | Terraform written for staging + prod but not yet `apply`-ed; until then abandoned court holds are only released on payment success/failure, not by the periodic sweep. Requires `cloudscheduler.googleapis.com` enabled and the `padel-platform-api-key` secret version to exist |
-| Analytics snapshot pipeline not applied (G7) | Sprint 7 | `padel-analytics-worker` Cloud Run service, `analytics-events` topic + DLQ + subscription, and the `analytics-snapshot-daily` (02:00 UTC) scheduler job are written in Terraform (`staging/`) but not yet `apply`-ed. Until applied, `court_utilisation_snapshots` is not populated and the `/api/v1/analytics/utilisation/...` endpoints return empty. After apply: run the one-time backfill (`make analytics-backfill-staging`). Requires `cloudscheduler.googleapis.com` enabled |
+| `release-expired-holds` sweep paused in staging | Stage 1.8 | The job is **applied** in staging but created **paused** (`release_holds_scheduler_paused` defaults true), so the periodic sweep does not run there — abandoned court holds are only released on payment success/failure. Resume with `make scheduler-activate` (or flip the variable) for a testing session. Prod runs it every minute once the prod project exists. |
+| `analytics-alerts` has no subscriber (G7) | Sprint 7 | The revenue MV-refresh pipeline is live, and `refresh_views.py` publishes a message to `analytics-alerts` on refresh failure, but nothing consumes that topic yet — so a failed nightly refresh is recorded in `analytics_refresh_log` but does not page anyone. Wire an alerting consumer (or a log-based alert on `RefreshStatus = failed`) as part of monitoring (Stage 2.3). |
+| Analytics infra not wired into `prod/` (G7) | Sprint 7 | `prod/main.tf` does not pass `analytics_worker_uri` or `analytics_refresh_worker_uri` to the `pubsub` module, so `terraform validate` fails in `prod/` — analytics is intentionally **staging-only** until prod exists. Wire both args (mirroring `staging/main.tf`) when the prod project is created |
 
 ---
 

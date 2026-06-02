@@ -93,3 +93,41 @@ resource "google_cloud_scheduler_job" "analytics_snapshot_daily" {
     data       = base64encode(jsonencode({ event_type = "analytics.snapshot_daily" }))
   }
 }
+
+# ---------------------------------------------------------------------------
+# Cloud Scheduler — nightly materialized-view refresh (Sprint 7 / G7)
+#
+# Publishes {"event_type": "analytics.refresh_views"} to analytics-refresh-events
+# (a topic distinct from analytics-events), delivered to
+# padel-analytics-refresh-worker, which runs REFRESH MATERIALIZED VIEW
+# CONCURRENTLY over the revenue views and logs to analytics_refresh_log. Fires at
+# 03:00 UTC — after the 02:00 snapshot job, though the two are independent.
+# ---------------------------------------------------------------------------
+
+resource "google_pubsub_topic_iam_member" "scheduler_publish_analytics_refresh" {
+  topic  = var.analytics_refresh_events_topic_id
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
+
+resource "google_cloud_scheduler_job" "analytics_refresh_daily" {
+  name      = "analytics-refresh-daily"
+  project   = var.project_id
+  region    = var.region
+  schedule  = var.analytics_refresh_schedule
+  time_zone = "Etc/UTC"
+
+  paused = var.analytics_refresh_paused
+
+  # The push delivery does the real work; the publish itself is instant.
+  attempt_deadline = "320s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  pubsub_target {
+    topic_name = var.analytics_refresh_events_topic_id
+    data       = base64encode(jsonencode({ event_type = "analytics.refresh_views" }))
+  }
+}
