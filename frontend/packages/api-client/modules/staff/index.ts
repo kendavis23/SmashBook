@@ -17,3 +17,5 @@ export * from "./subscription/subscription.api";
 export * from "./subscription/subscription.types";
 export * from "./utilisation/utilisation.api";
 export * from "./utilisation/utilisation.types";
+export * from "./revenue/revenue.api";
+export * from "./revenue/revenue.types";

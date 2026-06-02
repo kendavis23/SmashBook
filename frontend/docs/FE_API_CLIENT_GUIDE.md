@@ -1,4 +1,4 @@
-_Last updated: 2026-04-12 00:00 UTC_
+_Last updated: 2026-06-02 00:00 UTC_
 
 # Backend Schema → Frontend API Client
 
@@ -271,5 +271,6 @@ export * from "./<module>/<module>.types";
 | `staff`  | `membership` | `membership.types.ts` | `membership.api.ts` | `membership.api.test.ts` |
 | `staff`  | `equipment`  | `equipment.types.ts`  | `equipment.api.ts`  | `equipment.api.test.ts`  |
 | `staff`  | `trainer`    | `trainer.types.ts`    | `trainer.api.ts`    | `trainer.api.test.ts`    |
+| `staff`  | `revenue`    | `revenue.types.ts`    | `revenue.api.ts`    | `revenue.api.test.ts`    |
 | `player` | —            | —                     | —                   | —                        |
 | `share`  | `profile`    | `profile.types.ts`    | `profile.api.ts`    | —                        |

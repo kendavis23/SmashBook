@@ -5,6 +5,11 @@ export type {
     HeatmapCell,
     UtilisationDateRange,
 } from "@repo/staff-domain/models";
+export type {
+    RevenueBasis,
+    ClubRevenueComparisonRow,
+    TenantRevenueComparison,
+} from "@repo/staff-domain/models";
 
 // Feature-specific types — not in domain
 

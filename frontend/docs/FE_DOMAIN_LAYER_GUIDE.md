@@ -1,4 +1,4 @@
-_Last updated: 2026-04-25 21:30 UTC_
+_Last updated: 2026-06-02 00:00 UTC_
 
 # Frontend Domain Layer Guide
 
@@ -449,4 +449,5 @@ New module added to api-client?
 | `staff`  | `membership` | `membership.model.ts` | —                | —                     | —       | `membership.hooks.ts` | `membership.hooks.test.tsx` |
 | `staff`  | `equipment`  | `equipment.model.ts`  | —                | —                     | —       | `equipment.hooks.ts`  | `equipment.hooks.test.tsx`  |
 | `staff`  | `trainer`    | `trainer.model.ts`    | —                | —                     | —       | `trainer.hooks.ts`    | `trainer.hooks.test.tsx`    |
+| `staff`  | `revenue`    | `revenue.model.ts`    | —                | —                     | —       | `revenue.hooks.ts`    | `revenue.hooks.test.tsx`    |
 | `player` | `profile`    | `profile.model.ts`    | —                | —                     | —       | `profile.hooks.ts`    | `profile.hooks.test.tsx`    |

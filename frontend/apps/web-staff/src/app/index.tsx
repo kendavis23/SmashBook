@@ -54,6 +54,10 @@ const CourtUtilisationPage = lazy(() => import("../features/analytics/pages/Cour
 const ClubUtilisationHeatmapPage = lazy(
     () => import("../features/analytics/pages/ClubUtilisationHeatmapPage")
 );
+const RevenuePerformancePage = lazy(
+    () => import("../features/analytics/pages/RevenuePerformancePage")
+);
+const ClubsRevenuePage = lazy(() => import("../features/analytics/pages/ClubsRevenuePage"));
 const MySubscriptionPage = lazy(() => import("../features/subscription/pages/MySubscriptionPage"));
 const InvoicesPage = lazy(() => import("../features/subscription/pages/InvoicesPage"));
 const PaymentPage = lazy(() => import("../features/subscription/pages/PaymentPage"));
@@ -350,6 +354,20 @@ const clubUtilisationHeatmapRoute = createRoute({
     component: ClubUtilisationHeatmapPage,
 });
 
+const revenuePerformanceRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/revenue-performance",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: RevenuePerformancePage,
+});
+
+const clubsRevenueRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/clubs-revenue",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: ClubsRevenuePage,
+});
+
 const staffRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/staff",
@@ -477,6 +495,8 @@ const routeTree = rootRoute.addChildren([
         clubUtilisationRoute,
         courtUtilisationRoute,
         clubUtilisationHeatmapRoute,
+        revenuePerformanceRoute,
+        clubsRevenueRoute,
         clubsRoute,
         newClubRoute,
         clubDetailRoute,
