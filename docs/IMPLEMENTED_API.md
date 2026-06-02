@@ -1,4 +1,4 @@
-_Last updated: 2026-06-01 18:00 UTC_
+_Last updated: 2026-06-02 14:40 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -244,9 +244,24 @@ Aggregation rolls up the pre-aggregated MV grain with `SUM(net)` etc. — never
 averages per-row figures. Equipment uses **subtract-embedded** attribution so the
 six types reconcile exactly to `SUM(payments.amount)`.
 
+### Player value — `/api/v1/analytics/players`
+
+Read-only, `staff`+ only, tenant-isolated, served off the **read replica** from the
+`mv_player_value` materialized view (grain `(club_id, user_id)`), joined to `users`
+for display names. `lifetime_spend` is **net realised spend** (player's own
+succeeded/refunded payments, minus refunds; membership MRR excluded). A "paid
+member" has an active subscription on a plan with `price > 0`. All paginate via
+`?limit` (≤500) / `?offset`.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/analytics/players/clubs/{club_id}/value` | Per-player LTV leaderboard, highest first. `?members_only=true` restricts to paid members; `?sort=lifetime_spend\|bookings_played\|last_played_at`. Tenant-isolated (404 for another tenant's club). |
+| `GET` | `/api/v1/analytics/players/clubs/{club_id}/most-active` | Most-active players ranked by on-court bookings in the window. `?window_days=30\|90` (else 422). |
+| `GET` | `/api/v1/analytics/players/clubs/{club_id}/inactive-members` | Paid members idle ≥ `?inactive_days` (default 30, never-played included), longest-gone first. Returns `member_count` (denominator) + `inactive_count`. The non-AI sibling of Sprint-9 churn scoring. |
+
 **Workers:**
 - `app/analytics/workers/snapshot_court_utilisation.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`). `analytics.snapshot_daily` snapshots each club's local yesterday; `analytics.snapshot_backfill` backfills a trailing window (default 90 days). Delete-then-insert per (court, day) → idempotent.
-- `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered revenue views; logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
+- `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered views (`mv_revenue_by_club_day_service`, `…_cash`, `mv_player_value`); logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
 
 ---
 

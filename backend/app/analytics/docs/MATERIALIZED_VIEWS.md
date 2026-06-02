@@ -1,4 +1,4 @@
-_Last updated: 2026-06-01 18:00 UTC_
+_Last updated: 2026-06-02 14:40 UTC_
 
 # Materialized Views & Rollup Tables
 
@@ -61,6 +61,29 @@ The precomputed surfaces that back the report catalog. A live query against `boo
 > are intersected with that list, so only registered views are ever executed.
 > Failures write a `failed` row to `analytics_refresh_log` and publish to the
 > `analytics-alerts` topic (`PUBSUB_TOPIC_ANALYTICS_ALERTS`).
+
+### `mv_player_value`
+- Purpose: back the "Player value" report (G7, workstream B) — per-player LTV,
+  most-active players, and inactive members, all from one view.
+- Grain: one row per `(club_id, user_id)` — a point-in-time **stock**, not a
+  dated flow. Columns: `first_played_at`, `last_played_at`, `bookings_played`,
+  `played_last_30d`, `played_last_90d`, `lifetime_gross`, `lifetime_refunds`,
+  `lifetime_spend` (net), `payments_count`, `currency`, `is_paid_member`,
+  `membership_plan_name`.
+- Source: three sub-aggregates stitched on `(club_id, user_id)` via a
+  union-of-keys — **activity** (`booking_players` ⋈ `bookings`, non-cancelled
+  and already-started), **spend** (`payments` by `user_id`, states
+  `succeeded`/`refunded`/`partially_refunded`, net of refunds), **member**
+  (`membership_subscriptions` ⋈ `membership_plans`, `active` + `price > 0`). A
+  paid member with no activity/spend still appears. Display names are **not** in
+  the view — the service joins `users` live. Full spec:
+  [REPORT_CATALOG.md](REPORT_CATALOG.md) → "Player value".
+- Refresh cadence: nightly 03:00 UTC via `app/analytics/workers/refresh_views.py`.
+  Note the `played_last_30d` / `played_last_90d` windows use `now()`, so they are
+  relative to refresh time (acceptable at nightly cadence). Inactivity is instead
+  derived at query time from `last_played_at`, so any day threshold works.
+- Indexes: `UNIQUE (club_id, user_id)` — required for `REFRESH … CONCURRENTLY`.
+- Migration: `fd3c5c3192ab` (hand-written DDL — views aren't ORM models).
 
 ### `rollup_ai_cost_by_feature_day`
 - Purpose: daily cost rollup of `ai_inference_log`, scoped to (tenant_id, feature, day)

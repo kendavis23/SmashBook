@@ -1,4 +1,4 @@
-_Last updated: 2026-06-01 18:00 UTC_
+_Last updated: 2026-06-02 14:40 UTC_
 
 # SmashBook Data Model
 
@@ -781,7 +781,10 @@ Audit trail for materialized-view refreshes run by `app/analytics/workers/refres
 #### Materialized views: `mv_revenue_by_club_day_service` / `mv_revenue_by_club_day_cash`
 Back the "Revenue by club, period" report (G7). **Materialized views, not ORM tables** — created by hand-written DDL in migration `a04c76851993`, refreshed nightly by `app/analytics/workers/refresh_views.py`. Two parallel views with identical schema: `…_service` buckets by `bookings.start_datetime` (accrual), `…_cash` by `payments.created_at` (cash); the API selects via `?basis=`. Grain: one row per `(club_id, revenue_date, revenue_type, currency)` — `revenue_date` is club-local; `revenue_type` is the five `booking_type`s plus `equipment`; measures `gross_amount`, `refund_amount`, `net_amount`, `transaction_count`. Computed from `payments` ⋈ `bookings` ∪ embedded `equipment_rentals` (subtract-embedded split so totals reconcile to `SUM(payments.amount)`; membership MRR excluded). `UNIQUE (club_id, revenue_date, revenue_type, currency)` on each (required for `REFRESH … CONCURRENTLY`). Full spec: [`REPORT_CATALOG.md`](../backend/app/analytics/docs/REPORT_CATALOG.md) and [`MATERIALIZED_VIEWS.md`](../backend/app/analytics/docs/MATERIALIZED_VIEWS.md).
 
-> The remaining G7 analytics reports (rolling-30-day active players, sign-ups/month, player LTV, most-active players, churner list, coach popularity, RFV pre-aggregate) are served by **materialized views refreshed by the analytics worker**, not ORM tables — they are not yet built and do not appear here.
+#### Materialized view: `mv_player_value`
+Backs the "Player value" report (G7, workstream B — per-player LTV, most-active players, inactive members). **Materialized view, not an ORM table** — created by hand-written DDL in migration `fd3c5c3192ab`, refreshed nightly by `app/analytics/workers/refresh_views.py`. Grain: one row per `(club_id, user_id)` — a point-in-time stock. Three sub-aggregates stitched on `(club_id, user_id)` via a union-of-keys: **activity** (`booking_players` ⋈ `bookings`, non-cancelled + already-started) → `first_played_at`, `last_played_at`, `bookings_played`, `played_last_30d`, `played_last_90d`; **spend** (`payments` by `user_id`, states `succeeded`/`refunded`/`partially_refunded`) → `lifetime_gross`, `lifetime_refunds`, `lifetime_spend` (net), `payments_count`, `currency`; **member** (`membership_subscriptions` ⋈ `membership_plans`, `active` + `price > 0`) → `is_paid_member`, `membership_plan_name`. Display names join `users` live (no PII in the view). `UNIQUE (club_id, user_id)` (required for `REFRESH … CONCURRENTLY`). Full spec: [`REPORT_CATALOG.md`](../backend/app/analytics/docs/REPORT_CATALOG.md) and [`MATERIALIZED_VIEWS.md`](../backend/app/analytics/docs/MATERIALIZED_VIEWS.md).
+
+> The remaining G7 analytics reports (rolling-30-day active players, sign-ups/month, coach popularity, RFV pre-aggregate) are served by **materialized views refreshed by the analytics worker**, not ORM tables — they are not yet built and do not appear here.
 
 ---
 
@@ -869,6 +872,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `b210c7b03579` | G7 (Analytics) — new table `court_utilisation_snapshots` (`UNIQUE(court_id, snapshot_date, hour_of_day)`); `clubs`: add `timezone` (default `"Europe/London"`); `users`: add aspirational demographics `date_of_birth`, `gender` (`gender` enum), `postcode`, `latitude`, `longitude` (all nullable). REPORT_CATALOG materialized views are worker-managed and not part of this migration |
 | `a04c76851993` | G7 (Analytics) — revenue-by-club report: new materialized views `mv_revenue_by_club_day_service` (bucketed by booking start) and `mv_revenue_by_club_day_cash` (bucketed by payment date), each with `UNIQUE(club_id, revenue_date, revenue_type, currency)` for `REFRESH … CONCURRENTLY`. Hand-written DDL (views aren't ORM models). Subtract-embedded equipment split; membership MRR excluded |
 | `520ea227119a` | G7 (Analytics) — new table `analytics_refresh_log` (`refreshstatus` enum) recording every materialized-view refresh run by `app/analytics/workers/refresh_views.py`; index `ix_analytics_refresh_log_view_started (view_name, started_at)` |
+| `fd3c5c3192ab` | G7 (Analytics) — player-value report (workstream B): new materialized view `mv_player_value`, grain `(club_id, user_id)`, `UNIQUE(club_id, user_id)` for `REFRESH … CONCURRENTLY`. Hand-written DDL (views aren't ORM models). Stitches activity (`booking_players` ⋈ `bookings`), net spend (`payments` by `user_id`), and paid-membership flag (`membership_subscriptions` ⋈ `membership_plans`) per player. Backs `/api/v1/analytics/players/...` (LTV, most-active, inactive-members) |
 
 To run migrations:
 ```bash

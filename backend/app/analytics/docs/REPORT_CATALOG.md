@@ -1,4 +1,4 @@
-_Last updated: 2026-06-01 18:00 UTC_
+_Last updated: 2026-06-02 14:40 UTC_
 
 # Report Catalog
 
@@ -88,6 +88,55 @@ Each report has:
   - `GET /api/v1/analytics/revenue/clubs/{club_id}/summary?basis=` — KPI block: gross / refunds / net / per-type / avg-per-transaction
   - `GET /api/v1/analytics/revenue/clubs?basis=` — tenant-wide cross-club comparison (multi-site ROI view)
 - Consumer: staff portal (financials dashboard); multi-site operator ROI view.
+
+### Player value (LTV, activity, inactive members)
+- Owner: `staff`+ (all staff roles)
+- Scope: club-scoped (tenant-isolated; a club is only readable by its own tenant).
+- Refresh: **materialized view** — `mv_player_value`, refreshed by
+  `app/analytics/workers/refresh_views.py` (`REFRESH … CONCURRENTLY`, nightly
+  03:00 UTC). See [MATERIALIZED_VIEWS.md](MATERIALIZED_VIEWS.md).
+- Compute model: one row per `(club_id, user_id)` — a point-in-time **stock**,
+  not a dated flow. Three independent sub-aggregates are stitched on
+  `(club_id, user_id)` via a union-of-keys (so a player present in any one of
+  them appears):
+  - **activity** (`booking_players` ⋈ `bookings`) — who was actually on court.
+    Counts only non-cancelled bookings that have already started
+    (`status IN (confirmed, completed)` and `start_datetime <= now()`); future
+    reservations don't count as "played". `first_played_at`, `last_played_at`,
+    `bookings_played`, and refresh-time windows `played_last_30d` /
+    `played_last_90d`.
+  - **spend** (`payments`) — net realised lifetime value. Attributed via
+    `payments.user_id` (split payments: each player pays their own `amount_due`,
+    and `payment.amount` already embeds any equipment charge). States
+    `succeeded`/`refunded`/`partially_refunded`; `lifetime_spend = amount −
+    refund_amount`. Membership MRR excluded (matches the revenue report).
+  - **member** (`membership_subscriptions` ⋈ `membership_plans`) — a paid member
+    has an `active` subscription on a plan with `price > 0` (the free default
+    "basic" plan does not count). `is_paid_member`, `membership_plan_name`.
+  A paid member who has never played or paid still appears
+  (`last_played_at = NULL`, `lifetime_spend = 0`) — the prime inactive case.
+- Display fields (`full_name`, `email`) are joined live from `users`, **not**
+  denormalised into the view (no stale PII; names stay fresh).
+- One view, three reports via filter/sort:
+  - `GET /api/v1/analytics/players/clubs/{club_id}/value` — per-player LTV,
+    highest first. `?members_only=true` restricts to paid members;
+    `?sort=lifetime_spend|bookings_played|last_played_at`.
+  - `GET /api/v1/analytics/players/clubs/{club_id}/most-active` — ranked by
+    recent on-court bookings; `?window_days=30|90`.
+  - `GET /api/v1/analytics/players/clubs/{club_id}/inactive-members` — paid
+    members idle ≥ `?inactive_days` (default 30; never-played included),
+    longest-gone first. Carries `member_count` (denominator) + `inactive_count`.
+  All paginate via `?limit`/`?offset`.
+- Aggregation rule: the view pre-aggregates per player; the service only
+  filters/sorts/paginates that grain. The inactivity cutoff is evaluated at
+  query time against `last_played_at` (`now − inactive_days`), so any threshold
+  (30/60/90…) works without a per-window column. The 30/90-day activity counts,
+  by contrast, are baked at refresh time (the view uses `now()`).
+- Source tables (read replica): `mv_player_value` (serving), joined to `users`
+  for display; computed from `booking_players`, `bookings`, `payments`,
+  `membership_subscriptions`, `membership_plans` (view definition).
+- Consumer: staff portal (player/CRM dashboard); the inactive-members list is
+  the non-AI sibling of Sprint-9 churn scoring (same substrate, no model).
 
 ### Membership churn cohort
 - Owner: _TBD_
