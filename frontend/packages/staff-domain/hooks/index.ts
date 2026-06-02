@@ -61,6 +61,12 @@ export {
     useClubUtilisationHeatmap,
 } from "./utilisation.hooks";
 export {
+    useClubRevenueTimeseries,
+    useClubRevenueByType,
+    useClubRevenueSummary,
+    useTenantRevenueComparison,
+} from "./revenue.hooks";
+export {
     useListBookings,
     useGetBooking,
     useGetCalendarView,

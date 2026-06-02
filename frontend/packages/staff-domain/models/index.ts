@@ -79,6 +79,19 @@ export type {
     UtilisationDateRange,
 } from "./utilisation.model";
 export type {
+    RevenueBasis,
+    Granularity,
+    RevenueTimeseriesPoint,
+    ClubRevenueTimeseries,
+    RevenueByTypeRow,
+    ClubRevenueByType,
+    ClubRevenueSummary,
+    ClubRevenueComparisonRow,
+    TenantRevenueComparison,
+    RevenueParams,
+    RevenueTimeseriesParams,
+} from "./revenue.model";
+export type {
     BookingType,
     BookingStatus,
     PlayerRole,

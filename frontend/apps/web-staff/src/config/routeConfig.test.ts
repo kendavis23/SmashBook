@@ -63,14 +63,22 @@ describe("ROUTES", () => {
         ).toBe(true);
     });
 
-    it("Analytics groups its children under the Utilisation subgroup", () => {
+    it("Analytics groups its children under the expected subgroups", () => {
         const analytics = ROUTES.find((r) => r.key === "analytics");
         expect(analytics?.children?.map((c) => c.key)).toEqual([
             "club-utilisation",
             "court-utilisation",
             "club-utilisation-heatmap",
+            "revenue-performance",
+            "clubs-revenue",
         ]);
-        expect(analytics?.children?.every((c) => c.subgroup === "Utilisation")).toBe(true);
+        expect(analytics?.children?.map((c) => [c.key, c.subgroup])).toEqual([
+            ["club-utilisation", "Utilisation"],
+            ["court-utilisation", "Utilisation"],
+            ["club-utilisation-heatmap", "Utilisation"],
+            ["revenue-performance", "Revenue"],
+            ["clubs-revenue", "Revenue"],
+        ]);
     });
 
     it("Settings holds the billing/subscription items", () => {
