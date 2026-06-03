@@ -77,6 +77,7 @@ class PlayerValueLeaderboard(BaseModel):
     sort: PlayerSort
     limit: int
     offset: int
+    total_records: int  # total players matching the filter (pre-pagination)
     rows: list[PlayerValueRow]
 
 
@@ -87,6 +88,7 @@ class PlayerActivityLeaderboard(BaseModel):
     window_days: int
     limit: int
     offset: int
+    total_records: int  # total active players in the window (pre-pagination)
     rows: list[PlayerValueRow]
 
 
@@ -100,6 +102,7 @@ class InactiveMembersReport(BaseModel):
     cutoff: datetime  # last_played_at strictly before this counts as inactive
     member_count: int  # total paid members at the club (the denominator)
     inactive_count: int
+    total_records: int  # inactive members matching the filter (pre-pagination)
     limit: int
     offset: int
     rows: list[PlayerValueRow]

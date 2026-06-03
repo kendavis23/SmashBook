@@ -149,6 +149,11 @@ class PlayerValueService:
             PlayerSort.last_played_at: nullslast(desc(mv.c.last_played_at)),
         }[sort]
 
+        count_stmt = select(func.count()).select_from(mv).where(mv.c.club_id == club_id)
+        if members_only:
+            count_stmt = count_stmt.where(mv.c.is_paid_member.is_(True))
+        total_records = (await self.db.execute(count_stmt)).scalar_one()
+
         stmt = self._select_row().where(mv.c.club_id == club_id)
         if members_only:
             stmt = stmt.where(mv.c.is_paid_member.is_(True))
@@ -161,6 +166,7 @@ class PlayerValueService:
             sort=sort,
             limit=limit,
             offset=offset,
+            total_records=int(total_records or 0),
             rows=[self._to_row(r) for r in rows],
         )
 
@@ -175,6 +181,14 @@ class PlayerValueService:
         mv = self.mv
         window_col = mv.c[_WINDOW_COLUMN[window_days]]
 
+        total_records = (
+            await self.db.execute(
+                select(func.count())
+                .select_from(mv)
+                .where(mv.c.club_id == club_id, window_col > 0)
+            )
+        ).scalar_one()
+
         stmt = (
             self._select_row()
             .where(mv.c.club_id == club_id, window_col > 0)
@@ -188,6 +202,7 @@ class PlayerValueService:
             window_days=window_days,
             limit=limit,
             offset=offset,
+            total_records=int(total_records or 0),
             rows=[self._to_row(r) for r in rows],
         )
 
@@ -235,6 +250,7 @@ class PlayerValueService:
             cutoff=cutoff,
             member_count=int(member_count or 0),
             inactive_count=int(inactive_count or 0),
+            total_records=int(inactive_count or 0),
             limit=limit,
             offset=offset,
             rows=[self._to_row(r) for r in rows],

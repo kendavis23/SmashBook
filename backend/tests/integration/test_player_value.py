@@ -237,7 +237,9 @@ class TestEmptyState:
             f"/api/v1/analytics/players/clubs/{club.id}/value", headers=staff_headers
         )
         assert resp.status_code == 200
-        assert resp.json()["rows"] == []
+        body = resp.json()
+        assert body["rows"] == []
+        assert body["total_records"] == 0
 
     async def test_inactive_members_empty(
         self, client, staff_headers, club, player_view, test_engine
@@ -251,6 +253,7 @@ class TestEmptyState:
         body = resp.json()
         assert body["member_count"] == 0
         assert body["inactive_count"] == 0
+        assert body["total_records"] == 0
         assert body["rows"] == []
 
 
@@ -261,12 +264,14 @@ class TestValueLeaderboard:
             headers=staff_headers,
         )
         assert resp.status_code == 200
-        rows = resp.json()["rows"]
+        body = resp.json()
+        rows = body["rows"]
         # A (£30) > C (£20) > B (£0); all three present
         spends = [Decimal(r["lifetime_spend"]) for r in rows]
         assert spends == sorted(spends, reverse=True)
         assert spends[0] == Decimal("30.00")
         assert {Decimal("30.00"), Decimal("20.00"), Decimal("0.00")} <= set(spends)
+        assert body["total_records"] == 3
 
     async def test_members_only_filter(self, client, staff_headers, club, seeded_players):
         resp = await client.get(
@@ -274,10 +279,26 @@ class TestValueLeaderboard:
             headers=staff_headers,
         )
         assert resp.status_code == 200
-        rows = resp.json()["rows"]
+        body = resp.json()
+        rows = body["rows"]
         # Only the two paid members (A, B); non-member C excluded.
         assert len(rows) == 2
         assert all(r["is_paid_member"] for r in rows)
+        # total_records respects the members_only filter.
+        assert body["total_records"] == 2
+
+    async def test_total_records_ignores_pagination(
+        self, client, staff_headers, club, seeded_players
+    ):
+        """total_records is the full match count, not the returned page size."""
+        resp = await client.get(
+            f"/api/v1/analytics/players/clubs/{club.id}/value?limit=1&offset=0",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body["rows"]) == 1  # page is limited
+        assert body["total_records"] == 3  # but the count is the full set
 
 
 class TestMostActive:
@@ -287,10 +308,12 @@ class TestMostActive:
             headers=staff_headers,
         )
         assert resp.status_code == 200
-        rows = resp.json()["rows"]
+        body = resp.json()
+        rows = body["rows"]
         # A and C played in the window; B (never played) is absent.
         assert len(rows) == 2
         assert all(r["played_last_30d"] >= 1 for r in rows)
+        assert body["total_records"] == 2
 
     async def test_invalid_window_rejected(self, client, staff_headers, club, player_view):
         resp = await client.get(
@@ -311,6 +334,7 @@ class TestInactiveMembers:
         # Two paid members (A, B); only B is inactive (A played 5 days ago).
         assert body["member_count"] == 2
         assert body["inactive_count"] == 1
+        assert body["total_records"] == 1  # mirrors inactive_count
         assert len(body["rows"]) == 1
         row = body["rows"][0]
         assert row["is_paid_member"] is True
