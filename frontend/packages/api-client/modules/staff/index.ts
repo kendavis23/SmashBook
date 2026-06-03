@@ -19,3 +19,5 @@ export * from "./utilisation/utilisation.api";
 export * from "./utilisation/utilisation.types";
 export * from "./revenue/revenue.api";
 export * from "./revenue/revenue.types";
+export * from "./analytics-player/analytics-player.api";
+export * from "./analytics-player/analytics-player.types";
