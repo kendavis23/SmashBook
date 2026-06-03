@@ -12,7 +12,11 @@ type Props = {
 
 export function SlotCard({ slot, isSelected, onPress }: Props): JSX.Element {
     const colors = useThemeColors();
-    const courtCount = slot.available_courts.length;
+    const joinableIds = new Set(
+        slot.existing_matches.filter((m) => m.slots_available > 0).map((m) => m.court_id)
+    );
+    const allCourtIds = new Set([...slot.available_courts.map((c) => c.court_id), ...joinableIds]);
+    const courtCount = allCourtIds.size;
 
     return (
         <Pressable

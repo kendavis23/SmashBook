@@ -79,7 +79,7 @@ export function CardsScreen(): JSX.Element {
         <ProfileScreenShell title="Cards" onBack={() => router.back()} headerAction={addAction}>
             <ScrollView
                 className="flex-1"
-                contentContainerClassName="px-4 pb-10 pt-4 gap-3"
+                contentContainerClassName="px-4 pb-8 pt-4"
                 showsVerticalScrollIndicator={false}
             >
                 {/* Success toast */}
@@ -88,7 +88,7 @@ export function CardsScreen(): JSX.Element {
                         onPress={() => setSuccessMessage(null)}
                         accessibilityRole="button"
                         accessibilityLabel="Dismiss success message"
-                        className="flex-row items-center gap-2 rounded-2xl border border-success bg-success/10 px-4 py-3"
+                        className="mb-4 flex-row items-center gap-2 rounded-2xl border border-success bg-success/10 px-4 py-3"
                     >
                         <Ionicons name="checkmark-circle" size={16} color={colors.success} />
                         <Text className="flex-1 text-[13px] font-medium text-success">
@@ -98,38 +98,124 @@ export function CardsScreen(): JSX.Element {
                     </Pressable>
                 )}
 
-                {/* Hero banner */}
+                {/* Overview panel */}
                 <View
-                    className="overflow-hidden rounded-[20px] px-5 py-4"
-                    style={{ backgroundColor: colors.hero }}
+                    className="mb-3 overflow-hidden rounded-[22px]"
+                    style={{
+                        backgroundColor: colors.card,
+                        borderWidth: 1,
+                        borderColor: colors.border,
+                        shadowColor: colors.shadow,
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.08,
+                        shadowRadius: 18,
+                        elevation: 3,
+                    }}
                 >
-                    <View className="flex-row items-center gap-3">
-                        <View
-                            className="h-10 w-10 items-center justify-center rounded-xl"
-                            style={{ backgroundColor: colors.heroGlass }}
-                        >
-                            <Ionicons name="card" size={20} color={colors.heroForeground} />
+                    <View className="px-5 py-4">
+                        <View className="flex-row items-center gap-3">
+                            <View
+                                className="h-11 w-11 items-center justify-center rounded-2xl"
+                                style={{ backgroundColor: colors.ctaSurface }}
+                            >
+                                <Ionicons name="wallet" size={22} color={colors.cta} />
+                            </View>
+                            <View className="flex-1">
+                                <Text
+                                    className="text-[16px] font-bold"
+                                    style={{ color: colors.foreground }}
+                                >
+                                    Payment Methods
+                                </Text>
+                                <Text
+                                    className="mt-0.5 text-[12px] leading-5"
+                                    style={{ color: colors.mutedForeground }}
+                                >
+                                    Saved cards for bookings and memberships
+                                </Text>
+                            </View>
                         </View>
-                        <View className="flex-1">
-                            <Text
-                                className="text-[15px] font-bold"
-                                style={{ color: colors.heroForeground }}
-                            >
-                                Payment Methods
-                            </Text>
-                            <Text
-                                className="mt-0.5 text-[12px]"
-                                style={{ color: colors.heroMuted }}
-                            >
-                                Saved cards for bookings and membership payments
-                            </Text>
+                        <View
+                            className="mt-3 flex-row items-center justify-between rounded-2xl px-4 py-3"
+                            style={{
+                                backgroundColor: colors.muted,
+                                borderWidth: 1,
+                                borderColor: colors.border,
+                            }}
+                        >
+                            <View>
+                                <Text
+                                    className="text-[10px] font-semibold uppercase"
+                                    style={{ color: colors.mutedForeground }}
+                                >
+                                    Saved cards
+                                </Text>
+                                <Text
+                                    className="mt-0.5 text-[22px] font-bold"
+                                    style={{ color: colors.foreground }}
+                                >
+                                    {sortedMethods.length}
+                                </Text>
+                            </View>
+                            <View className="items-end">
+                                <Text
+                                    className="text-[10px] font-semibold uppercase"
+                                    style={{ color: colors.mutedForeground }}
+                                >
+                                    Default
+                                </Text>
+                                <View className="mt-1 flex-row items-center gap-1.5">
+                                    <Ionicons
+                                        name={
+                                            sortedMethods.some((card) => card.is_default)
+                                                ? "star"
+                                                : "star-outline"
+                                        }
+                                        size={14}
+                                        color={colors.cta}
+                                    />
+                                    <Text
+                                        className="text-[13px] font-semibold"
+                                        style={{ color: colors.foreground }}
+                                    >
+                                        {sortedMethods.some((card) => card.is_default)
+                                            ? "Ready"
+                                            : "None"}
+                                    </Text>
+                                </View>
+                            </View>
                         </View>
                     </View>
                 </View>
 
+                {!isLoading && !error && sortedMethods.length > 0 && (
+                    <View className="mb-2.5 flex-row items-center justify-between px-1">
+                        <View>
+                            <Text
+                                className="text-[12px] font-semibold uppercase"
+                                style={{ color: colors.mutedForeground }}
+                            >
+                                Your cards
+                            </Text>
+                            <Text
+                                className="mt-0.5 text-[12px]"
+                                style={{ color: colors.mutedForeground }}
+                            >
+                                Manage defaults and saved payment details
+                            </Text>
+                        </View>
+                        <View
+                            className="h-7 w-7 items-center justify-center rounded-full"
+                            style={{ backgroundColor: colors.ctaSurface }}
+                        >
+                            <Ionicons name="shield-checkmark" size={15} color={colors.cta} />
+                        </View>
+                    </View>
+                )}
+
                 {/* Loading */}
                 {isLoading && (
-                    <View className="items-center justify-center py-12 gap-3">
+                    <View className="items-center justify-center gap-3 rounded-[24px] border border-border bg-card py-12">
                         <ActivityIndicator size="large" color={colors.cta} />
                         <Text className="text-[14px] font-medium text-muted-foreground">
                             Loading cards…
@@ -139,7 +225,7 @@ export function CardsScreen(): JSX.Element {
 
                 {/* Error */}
                 {!isLoading && !!error && (
-                    <View className="flex-row items-center gap-2 rounded-2xl border border-destructive bg-destructive/10 px-4 py-4">
+                    <View className="flex-row items-center gap-2 rounded-[20px] border border-destructive bg-destructive/10 px-4 py-4">
                         <Ionicons
                             name="alert-circle-outline"
                             size={18}
@@ -153,8 +239,8 @@ export function CardsScreen(): JSX.Element {
 
                 {/* Empty */}
                 {!isLoading && !error && sortedMethods.length === 0 && (
-                    <View className="items-center justify-center py-12 gap-3">
-                        <View className="h-16 w-16 items-center justify-center rounded-[20px] bg-secondary">
+                    <View className="items-center justify-center gap-3 rounded-[24px] border border-border bg-card px-8 py-12">
+                        <View className="h-16 w-16 items-center justify-center rounded-[22px] bg-secondary">
                             <Ionicons name="card-outline" size={30} color={colors.cta} />
                         </View>
                         <Text className="text-[17px] font-bold text-foreground">
@@ -178,26 +264,32 @@ export function CardsScreen(): JSX.Element {
                 )}
 
                 {/* Card list */}
-                {sortedMethods.map((card) => (
-                    <CardTile
-                        key={card.id}
-                        card={card}
-                        onDelete={handleDelete}
-                        onSetDefault={handleSetDefault}
-                        isDeleting={
-                            deleteMutation.isPending && deleteMutation.variables === card.id
-                        }
-                        isSettingDefault={
-                            setDefaultMutation.isPending && setDefaultMutation.variables === card.id
-                        }
-                    />
-                ))}
+                <View className="gap-3">
+                    {sortedMethods.map((card) => (
+                        <CardTile
+                            key={card.id}
+                            card={card}
+                            onDelete={handleDelete}
+                            onSetDefault={handleSetDefault}
+                            isDeleting={
+                                deleteMutation.isPending && deleteMutation.variables === card.id
+                            }
+                            isSettingDefault={
+                                setDefaultMutation.isPending &&
+                                setDefaultMutation.variables === card.id
+                            }
+                        />
+                    ))}
+                </View>
 
                 {/* PCI notice at the bottom */}
                 {sortedMethods.length > 0 && (
-                    <View className="flex-row items-center justify-center gap-1.5 pt-2">
-                        <Ionicons name="lock-closed" size={11} color={colors.placeholder} />
-                        <Text className="text-[11px] text-muted-foreground">
+                    <View
+                        className="mx-2 mt-5 flex-row items-center justify-center gap-2 rounded-full px-4 py-3"
+                        style={{ backgroundColor: colors.muted }}
+                    >
+                        <Ionicons name="lock-closed" size={12} color={colors.placeholder} />
+                        <Text className="text-[11px] font-medium text-muted-foreground">
                             PCI DSS compliant · Secured by Stripe
                         </Text>
                     </View>

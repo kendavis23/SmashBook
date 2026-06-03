@@ -10,7 +10,7 @@ import {
     computeTotals,
     computeTimeBands,
 } from "../heatmapUtils";
-import { DateRangeControl } from "../../club-utilisation/components/DateRangeControl";
+import { DateRangeControl } from "../../components/DateRangeControl";
 import { HeatmapGrid } from "./HeatmapGrid";
 import { HeatmapKpiCards } from "./HeatmapKpiCards";
 import { HeatmapLegend } from "./HeatmapLegend";

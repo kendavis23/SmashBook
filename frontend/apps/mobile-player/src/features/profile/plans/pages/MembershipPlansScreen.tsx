@@ -112,25 +112,34 @@ export function MembershipPlansScreen(): JSX.Element {
                     {/* Sub-header banner */}
                     <View
                         className="mb-5 overflow-hidden rounded-[20px] px-5 py-4"
-                        style={{ backgroundColor: colors.hero }}
+                        style={{
+                            backgroundColor: colors.ctaSurface,
+                            borderWidth: 1,
+                            borderColor: colors.ctaBorder,
+                            shadowColor: colors.cta,
+                            shadowOffset: { width: 0, height: 8 },
+                            shadowOpacity: 0.1,
+                            shadowRadius: 18,
+                            elevation: 3,
+                        }}
                     >
                         <View className="flex-row items-center gap-3">
                             <View
                                 className="h-10 w-10 items-center justify-center rounded-xl"
-                                style={{ backgroundColor: colors.heroGlass }}
+                                style={{ backgroundColor: colors.card }}
                             >
-                                <Ionicons name="list" size={20} color={colors.heroForeground} />
+                                <Ionicons name="list" size={20} color={colors.cta} />
                             </View>
                             <View className="flex-1">
                                 <Text
                                     className="text-[15px] font-bold"
-                                    style={{ color: colors.heroForeground }}
+                                    style={{ color: colors.foreground }}
                                 >
                                     Membership Plans
                                 </Text>
                                 <Text
                                     className="mt-0.5 text-[12px]"
-                                    style={{ color: colors.heroMuted }}
+                                    style={{ color: colors.mutedForeground }}
                                 >
                                     {hasActiveMembership
                                         ? `Current: ${membership?.plan.name} · Upgrade or switch`

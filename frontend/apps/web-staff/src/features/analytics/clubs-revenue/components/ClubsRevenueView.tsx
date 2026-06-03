@@ -6,7 +6,7 @@ import type { RevenueBasis, TenantRevenueComparison } from "../../types";
 import type { DateRange } from "../../types";
 import { computeClubsRevenueSummary } from "../clubsRevenueSummary";
 import { panelCls, panelTitleCls } from "../clubsRevenueConstants";
-import { ClubsDateRangeControl } from "./ClubsDateRangeControl";
+import { DateRangeControl } from "../../components/DateRangeControl";
 import { ClubsRevenueKpiCards } from "./ClubsRevenueKpiCards";
 import { ClubsRevenueHighlights } from "./ClubsRevenueHighlights";
 import { NetRevenueBarChart } from "./NetRevenueBarChart";
@@ -72,7 +72,7 @@ export default function ClubsRevenueView({
                 </div>
 
                 <div className="flex flex-wrap items-end gap-2.5">
-                    <ClubsDateRangeControl range={range} onChange={onRangeChange} />
+                    <DateRangeControl range={range} onChange={onRangeChange} />
                     <label className="flex flex-col gap-0.5">
                         <span className="text-[11px] font-semibold leading-4 text-muted-foreground">
                             Basis

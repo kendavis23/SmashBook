@@ -104,6 +104,7 @@ function renderView(overrides: Partial<Parameters<typeof ClubUtilisationView>[0]
         isLoading: false,
         error: null,
         onRangeChange: vi.fn(),
+        onCurrentMonth: vi.fn(),
         onRefresh: vi.fn(),
         ...overrides,
     };
@@ -116,6 +117,9 @@ describe("ClubUtilisationView", () => {
         renderView();
         expect(screen.getByText("Club Utilisation Analytics")).toBeInTheDocument();
         expect(screen.getByText("Daily Utilisation (%)")).toBeInTheDocument();
+        expect(screen.getByText("Peak 60%")).toBeInTheDocument();
+        expect(screen.getByText("Lowest 44%")).toBeInTheDocument();
+        expect(screen.getByText("Latest 60%")).toBeInTheDocument();
         expect(screen.getByText("Actual vs Potential Revenue")).toBeInTheDocument();
         expect(screen.getByText("Booked vs Total Slots")).toBeInTheDocument();
     });

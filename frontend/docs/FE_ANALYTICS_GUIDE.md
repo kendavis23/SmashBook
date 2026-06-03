@@ -1,4 +1,4 @@
-_Last updated: 2026-05-31 21:20 UTC_
+_Last updated: 2026-06-03 18:30 UTC_
 
 # Frontend Analytics Guide
 
@@ -21,6 +21,8 @@ apps/web-staff/src/features/analytics/
     index.ts                     # re-exports useClubAccess + access fns
     access.ts                    # canViewAnalytics(role) — owner/admin only
   types/index.ts                 # domain model re-exports + feature-only types
+  components/
+    DateRangeControl.tsx         # shared From/To pickers + dynamic range label (used by all sub-features)
   pages/                         # thin shells — one file per route (real components, NOT bare re-exports — see below)
     ClubUtilisationPage.tsx
     CourtUtilisationPage.tsx
@@ -29,7 +31,6 @@ apps/web-staff/src/features/analytics/
     components/
       ClubUtilisationContainer.tsx
       ClubUtilisationView.tsx
-      DateRangeControl.tsx
       UtilisationKpiCards.tsx
       UtilisationLineChart.tsx
       GroupedBarChart.tsx          # grouped/series bar chart (revenue + slots)
@@ -171,7 +172,7 @@ These functions are trivial to unit-test and **must** be (zero/empty input, sing
 
 ## Step 3 — The Container
 
-The container owns date-range state and nothing else visual. The **default range is the last 7 calendar days** (`to` is today, `from` is 6 days before today, inclusive). It reads `clubId` from `useClubAccess`, calls the hook, runs the aggregation service, derives a human label, and hands everything to the View.
+The container owns date-range state and nothing else visual. The **default range is the last 30 calendar days** (`to` is yesterday, `from` is 29 days before `to`, inclusive — today's data is incomplete so the range ends yesterday). It reads `clubId` from `useClubAccess`, calls the hook, runs the aggregation service, derives a human label, and hands everything to the View.
 
 ```tsx
 function formatLocalDate(date: Date): string {
@@ -182,8 +183,9 @@ function formatLocalDate(date: Date): string {
 
 function defaultRange(): DateRange {
     const toDate = new Date();
+    toDate.setDate(toDate.getDate() - 1); // yesterday — today's data is incomplete
     const fromDate = new Date(toDate);
-    fromDate.setDate(toDate.getDate() - 6);
+    fromDate.setDate(toDate.getDate() - 29); // 30 days inclusive
     return { from: formatLocalDate(fromDate), to: formatLocalDate(toDate) };
 }
 
@@ -223,7 +225,7 @@ export default function ClubUtilisationContainer(): JSX.Element {
 
 **Container conventions for analytics:**
 
-- Default range = last 7 calendar days.
+- Default range = last 30 calendar days (`to` is yesterday, `from` is 29 days before `to`, inclusive). Pass the day count as a constant so it is easy to change per-report without touching shared code.
 - `clubId ?? ""` — the hook is `enabled: Boolean(clubId)`, so an empty club id simply yields no query rather than crashing.
 - Derive `points` and `summary` with `useMemo` so charts don't recompute on unrelated re-renders.
 - Pass a single `range` object + an `onRangeChange(range)` setter. Range state lives **only** here.
@@ -236,7 +238,7 @@ export default function ClubUtilisationContainer(): JSX.Element {
 
 The View is pure rendering. It receives `range`, `rangeLabel`, `points`, `summary`, `isLoading`, `error`, and the two callbacks. It renders, in order:
 
-1. **Header** — title, subtitle, the `DateRangeControl`, a Refresh button (`aria-label="Refresh analytics"`).
+1. **Header** — title, subtitle, the shared `DateRangeControl` (from `analytics/components/DateRangeControl`), a Refresh button (`aria-label="Refresh analytics"`).
 2. **State branches** — `error` → alert; `isLoading` → spinner; `points.length === 0` → empty state; otherwise the dashboard.
 3. **KPI cards** (`UtilisationKpiCards`) — Total Slots, Booked Slots, (Average) Utilisation, Revenue actual / potential.
 4. **A zero-slots warning banner** when `summary.totalSlots === 0` but data exists.
@@ -402,7 +404,7 @@ pnpm --filter web-staff lint
 - [ ] Sub-feature folder `analytics/<report>/` with `components/`, `pages/`, a pure summary service, and a constants file
 - [ ] Reuses root `analytics/hooks`, `analytics/store`, `analytics/types` (no new cross-feature imports)
 - [ ] Domain hook already exists in `@repo/staff-domain/hooks` (add via api-client + domain guides first if not)
-- [ ] Container owns date-range state; **default range = last 7 calendar days**
+- [ ] Container owns date-range state; **default range = last 30 calendar days** (`to` = yesterday, `from` = 29 days before)
 - [ ] Aggregation is a pure, unit-tested function — **slot-weighted, divide-by-zero guarded**
 - [ ] View renders loading **and** error **and** empty states
 - [ ] Single-day vs multi-day copy switches on `summary.isSingleDay`
@@ -421,8 +423,11 @@ pnpm --filter web-staff lint
 
 ## Implemented analytics reports
 
-| Sub-feature                | Route                                 | Domain hook                 | Status   |
-| -------------------------- | ------------------------------------- | --------------------------- | -------- |
-| `club-utilisation`         | `/analytics/club-utilisation`         | `useClubDailyUtilisation`   | ✅ Built |
-| `court-utilisation`        | `/analytics/court-utilisation`        | `useClubCourtsUtilisation`  | ⬜ Stub  |
-| `club-utilisation-heatmap` | `/analytics/club-utilisation-heatmap` | `useClubUtilisationHeatmap` | ⬜ Stub  |
+| Sub-feature                | Route                                 | Domain hook                                                                   | Status   |
+| -------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- | -------- |
+| `club-utilisation`         | `/analytics/club-utilisation`         | `useClubDailyUtilisation`                                                     | ✅ Built |
+| `court-utilisation`        | `/analytics/court-utilisation`        | `useClubCourtsUtilisation`                                                    | ⬜ Stub  |
+| `club-utilisation-heatmap` | `/analytics/club-utilisation-heatmap` | `useClubUtilisationHeatmap`                                                   | ⬜ Stub  |
+| `player-value`             | `/analytics/player-value`             | `usePlayerValueLeaderboard` + `useMostActivePlayers` + `useInactiveMembers`   | ✅ Built |
+| `player-segments`          | `/analytics/player-segments`          | `usePlayerValueByGroup`                                                       | ✅ Built |
+| `player-activity`          | `/analytics/player-activity`          | `useActivePlayersKpi` + `useActivePlayersTimeseries` + `useSignupsTimeseries` | ✅ Built |

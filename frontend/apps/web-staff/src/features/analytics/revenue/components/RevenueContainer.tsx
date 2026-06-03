@@ -17,7 +17,7 @@ function defaultRange(): DateRange {
     const toDate = new Date();
     toDate.setDate(toDate.getDate() - 1);
     const fromDate = new Date(toDate);
-    fromDate.setDate(toDate.getDate() - 90);
+    fromDate.setDate(toDate.getDate() - 29);
     return {
         from: formatLocalDate(fromDate),
         to: formatLocalDate(toDate),
@@ -35,7 +35,7 @@ function dayCount(range: DateRange): number {
 export default function RevenueContainer(): JSX.Element {
     const { clubId } = useClubAccess();
     const [range, setRange] = useState<DateRange>(() => defaultRange());
-    const [granularity, setGranularity] = useState<Granularity>("week");
+    const [granularity, setGranularity] = useState<Granularity>("day");
     const [basis, setBasis] = useState<RevenueBasis>("service");
 
     const params = useMemo(

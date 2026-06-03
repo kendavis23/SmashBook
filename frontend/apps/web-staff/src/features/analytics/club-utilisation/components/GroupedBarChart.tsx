@@ -5,6 +5,8 @@ export type GroupedSeries = {
     label: string;
     /** CSS color (token var or literal). */
     color: string;
+    /** Optional CSS color per group, used when each bar represents a category. */
+    colors?: string[];
     /** Value for this series within each group, indexed by group. */
     values: number[];
     /** Pre-formatted value per group, shown in the tooltip. */
@@ -110,19 +112,25 @@ export function GroupedBarChart({
                 aria-label="Grouped bar chart"
             >
                 <defs>
-                    {series.map((s) => (
-                        <linearGradient
-                            key={s.key}
-                            id={`bar-grad-${s.key}`}
-                            x1="0"
-                            x2="0"
-                            y1="0"
-                            y2="1"
-                        >
-                            <stop offset="0%" stopColor={s.color} stopOpacity="1" />
-                            <stop offset="100%" stopColor={s.color} stopOpacity="0.78" />
-                        </linearGradient>
-                    ))}
+                    {series.flatMap((s) => {
+                        const colors = s.colors ?? [s.color];
+                        return colors.map((color, idx) => {
+                            const suffix = s.colors ? `-${idx}` : "";
+                            return (
+                                <linearGradient
+                                    key={`${s.key}${suffix}`}
+                                    id={`bar-grad-${s.key}${suffix}`}
+                                    x1="0"
+                                    x2="0"
+                                    y1="0"
+                                    y2="1"
+                                >
+                                    <stop offset="0%" stopColor={color} stopOpacity="1" />
+                                    <stop offset="100%" stopColor={color} stopOpacity="0.78" />
+                                </linearGradient>
+                            );
+                        });
+                    })}
                 </defs>
 
                 {ticks.map((t) => {
@@ -176,7 +184,9 @@ export function GroupedBarChart({
                                                 height={barH}
                                                 rx={radius}
                                                 ry={radius}
-                                                fill={`url(#bar-grad-${s.key})`}
+                                                fill={`url(#bar-grad-${s.key}${
+                                                    s.colors ? `-${gi}` : ""
+                                                })`}
                                             />
                                         ) : null}
                                         {showValueLabelsResolved ? (

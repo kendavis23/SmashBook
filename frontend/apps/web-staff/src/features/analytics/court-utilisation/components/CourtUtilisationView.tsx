@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { BarChart3, CalendarDays, LayoutGrid, RefreshCw, TrendingUp } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import type { DateRange } from "../../types";
-import { DateRangeControl } from "../../club-utilisation/components/DateRangeControl";
+import { DateRangeControl } from "../../components/DateRangeControl";
 import { utilisationTone } from "../../club-utilisation/utilisationConstants";
 import {
     GroupedBarChart,

@@ -113,12 +113,43 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                                 accessibilityRole="radio"
                                 accessibilityState={{ checked: active }}
                                 accessibilityLabel={option.label}
-                                className={`flex-row items-center rounded-2xl border bg-card px-4 py-4 active:bg-muted ${
-                                    active ? "border-cta bg-secondary" : "border-border"
-                                }`}
+                                style={
+                                    active
+                                        ? {
+                                              backgroundColor: colors.ctaSurface,
+                                              borderColor: colors.cta,
+                                              borderWidth: 2,
+                                              borderRadius: 16,
+                                              paddingHorizontal: 16,
+                                              paddingVertical: 14,
+                                              flexDirection: "row",
+                                              alignItems: "center",
+                                          }
+                                        : {
+                                              backgroundColor: colors.card,
+                                              borderColor: colors.border,
+                                              borderWidth: 1,
+                                              borderRadius: 16,
+                                              paddingHorizontal: 16,
+                                              paddingVertical: 14,
+                                              flexDirection: "row",
+                                              alignItems: "center",
+                                          }
+                                }
                             >
                                 <View
                                     className={`mr-3 h-12 w-12 items-center justify-center rounded-2xl ${option.iconBgClassName}`}
+                                    style={
+                                        active
+                                            ? {
+                                                  shadowColor: colors.cta,
+                                                  shadowOffset: { width: 0, height: 2 },
+                                                  shadowOpacity: 0.25,
+                                                  shadowRadius: 6,
+                                                  elevation: 4,
+                                              }
+                                            : undefined
+                                    }
                                 >
                                     <Ionicons
                                         name={option.icon}
@@ -128,23 +159,44 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                                 </View>
 
                                 <View className="flex-1">
-                                    <Text className="text-[16px] font-bold text-foreground">
+                                    <Text
+                                        style={{
+                                            fontSize: 16,
+                                            fontWeight: "700",
+                                            color: active ? colors.cta : colors.foreground,
+                                        }}
+                                    >
                                         {option.label}
                                     </Text>
-                                    <Text className="mt-1 text-[13px] leading-5 text-muted-foreground">
+                                    <Text
+                                        style={{
+                                            marginTop: 2,
+                                            fontSize: 13,
+                                            lineHeight: 18,
+                                            color: active ? colors.cta : colors.mutedForeground,
+                                            opacity: active ? 0.8 : 1,
+                                        }}
+                                    >
                                         {option.description}
                                     </Text>
                                 </View>
 
                                 <View
-                                    className={`h-8 w-8 items-center justify-center rounded-full border ${
-                                        active ? "border-cta bg-cta" : "border-border bg-card"
-                                    }`}
+                                    style={{
+                                        width: 28,
+                                        height: 28,
+                                        borderRadius: 14,
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        backgroundColor: active ? colors.cta : "transparent",
+                                        borderWidth: active ? 0 : 2,
+                                        borderColor: colors.border,
+                                    }}
                                 >
                                     {active && (
                                         <Ionicons
                                             name="checkmark"
-                                            size={18}
+                                            size={16}
                                             color={colors.ctaForeground}
                                         />
                                     )}

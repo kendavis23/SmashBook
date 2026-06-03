@@ -58,6 +58,10 @@ const RevenuePerformancePage = lazy(
     () => import("../features/analytics/pages/RevenuePerformancePage")
 );
 const ClubsRevenuePage = lazy(() => import("../features/analytics/pages/ClubsRevenuePage"));
+const PlayerValuePage = lazy(() => import("../features/analytics/pages/PlayerValuePage"));
+const PlayerEngagementPage = lazy(() => import("../features/analytics/pages/PlayerEngagementPage"));
+const PlayerSegmentsPage = lazy(() => import("../features/analytics/pages/PlayerSegmentsPage"));
+const PlayerActivityPage = lazy(() => import("../features/analytics/pages/PlayerActivityPage"));
 const MySubscriptionPage = lazy(() => import("../features/subscription/pages/MySubscriptionPage"));
 const InvoicesPage = lazy(() => import("../features/subscription/pages/InvoicesPage"));
 const PaymentPage = lazy(() => import("../features/subscription/pages/PaymentPage"));
@@ -368,6 +372,34 @@ const clubsRevenueRoute = createRoute({
     component: ClubsRevenuePage,
 });
 
+const playerValueRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/player-value",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: PlayerValuePage,
+});
+
+const playerEngagementRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/player-engagement",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: PlayerEngagementPage,
+});
+
+const playerSegmentsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/player-segments",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: PlayerSegmentsPage,
+});
+
+const playerActivityRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/player-activity",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: PlayerActivityPage,
+});
+
 const staffRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/staff",
@@ -497,6 +529,10 @@ const routeTree = rootRoute.addChildren([
         clubUtilisationHeatmapRoute,
         revenuePerformanceRoute,
         clubsRevenueRoute,
+        playerValueRoute,
+        playerEngagementRoute,
+        playerSegmentsRoute,
+        playerActivityRoute,
         clubsRoute,
         newClubRoute,
         clubDetailRoute,

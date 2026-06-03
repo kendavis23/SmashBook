@@ -6,4 +6,11 @@ export {
     useClubRevenueTimeseries,
     useClubRevenueByType,
     useTenantRevenueComparison,
+    usePlayerValueLeaderboard,
+    useMostActivePlayers,
+    useInactiveMembers,
+    usePlayerValueByGroup,
+    useActivePlayersKpi,
+    useActivePlayersTimeseries,
+    useSignupsTimeseries,
 } from "@repo/staff-domain/hooks";

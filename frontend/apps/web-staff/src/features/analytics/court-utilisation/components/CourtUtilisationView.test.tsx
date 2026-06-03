@@ -9,8 +9,8 @@ vi.mock("@repo/ui", () => ({
     formatCurrency: (n: number | null | undefined) => (n == null ? "—" : `£${n}`),
 }));
 
-// Stub the reused date-range control so the SVG/date-picker tree stays out of the way.
-vi.mock("../../club-utilisation/components/DateRangeControl", () => ({
+// Stub the reused date-range control so the date-picker tree stays out of the way.
+vi.mock("../../components/DateRangeControl", () => ({
     DateRangeControl: ({ onChange }: { onChange: (r: DateRange) => void }) => (
         <button onClick={() => onChange({ from: "2026-04-01", to: "2026-04-05" })}>
             change-range

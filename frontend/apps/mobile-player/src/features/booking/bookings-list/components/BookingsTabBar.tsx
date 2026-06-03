@@ -6,11 +6,10 @@ import { useThemeColors } from "../../../../theme";
 
 type Props = {
     activeTab: BookingTab;
-    upcomingCount: number;
     onTabChange: (tab: BookingTab) => void;
 };
 
-export function BookingsTabBar({ activeTab, upcomingCount, onTabChange }: Props): JSX.Element {
+export function BookingsTabBar({ activeTab, onTabChange }: Props): JSX.Element {
     const colors = useThemeColors();
     return (
         <View
@@ -56,29 +55,6 @@ export function BookingsTabBar({ activeTab, upcomingCount, onTabChange }: Props)
                         >
                             {tab.label}
                         </Text>
-                        {tab.id === "upcoming" && upcomingCount > 0 ? (
-                            <View
-                                style={{
-                                    backgroundColor: isActive ? colors.cta : colors.mutedForeground,
-                                    height: 18,
-                                    minWidth: 18,
-                                    borderRadius: 9,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    paddingHorizontal: 5,
-                                }}
-                            >
-                                <Text
-                                    style={{
-                                        fontSize: 10,
-                                        fontWeight: "700",
-                                        color: colors.ctaForeground,
-                                    }}
-                                >
-                                    {upcomingCount}
-                                </Text>
-                            </View>
-                        ) : null}
                     </Pressable>
                 );
             })}

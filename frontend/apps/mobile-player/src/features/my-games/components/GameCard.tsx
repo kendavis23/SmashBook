@@ -32,10 +32,11 @@ export function GameCard({ game }: Props): JSX.Element {
     const isUpcoming = game.status === "confirmed" || game.status === "pending";
 
     return (
-        <View className="overflow-hidden rounded-[22px] bg-card shadow-sm" accessibilityRole="none">
-            {/* Top accent bar — coloured by status */}
-            <View style={{ backgroundColor: statusCfg.dot, height: 3 }} />
-
+        <View
+            className="overflow-hidden rounded-[22px] bg-card shadow-sm"
+            style={{ borderWidth: 1.5, borderColor: "rgba(0,0,0,0.07)" }}
+            accessibilityRole="none"
+        >
             <View className="px-4 pt-4 pb-4 gap-3">
                 {/* Row 1: Court name + status badge */}
                 <View className="flex-row items-start justify-between gap-2">

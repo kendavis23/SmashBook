@@ -71,10 +71,19 @@ export function MyMembershipView({
             contentContainerClassName="px-4 pb-12 pt-5"
             showsVerticalScrollIndicator={false}
         >
-            {/* ── Hero membership card ───────────────────────────────── */}
+            {/* ── Membership summary card ───────────────────────────── */}
             <View
                 className="mb-5 overflow-hidden rounded-[24px] shadow-lg"
-                style={{ backgroundColor: colors.hero }}
+                style={{
+                    backgroundColor: colors.ctaSurface,
+                    borderWidth: 1,
+                    borderColor: colors.ctaBorder,
+                    shadowColor: colors.cta,
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 18,
+                    elevation: 3,
+                }}
             >
                 {/* Top: plan name + status + price */}
                 <View className="flex-row items-start justify-between px-5 pt-5 pb-4">
@@ -86,7 +95,7 @@ export function MyMembershipView({
                                 backgroundColor:
                                     status === "active" || status === "trialing"
                                         ? colors.successSurface
-                                        : colors.heroGlass,
+                                        : colors.card,
                             }}
                         >
                             <Text
@@ -95,7 +104,7 @@ export function MyMembershipView({
                                     color:
                                         status === "active" || status === "trialing"
                                             ? colors.success
-                                            : colors.heroForeground,
+                                            : colors.foreground,
                                 }}
                             >
                                 {style.label}
@@ -104,14 +113,14 @@ export function MyMembershipView({
 
                         <Text
                             className="text-[26px] font-bold leading-tight"
-                            style={{ color: colors.heroForeground }}
+                            style={{ color: colors.foreground }}
                         >
                             {plan.name}
                         </Text>
                         {!!plan.description && (
                             <Text
                                 className="mt-1 text-[13px] leading-5"
-                                style={{ color: colors.heroMuted }}
+                                style={{ color: colors.mutedForeground }}
                             >
                                 {plan.description}
                             </Text>
@@ -122,31 +131,31 @@ export function MyMembershipView({
                     <View className="items-end">
                         <Text
                             className="text-[22px] font-extrabold"
-                            style={{ color: colors.heroForeground }}
+                            style={{ color: colors.foreground }}
                         >
                             {formatCurrency(plan.price)}
                         </Text>
-                        <Text className="text-[12px]" style={{ color: colors.heroMuted }}>
+                        <Text className="text-[12px]" style={{ color: colors.mutedForeground }}>
                             / {billingPeriod}
                         </Text>
                     </View>
                 </View>
 
                 {/* Divider */}
-                <View className="mx-5 h-px" style={{ backgroundColor: colors.heroGlassBorder }} />
+                <View className="mx-5 h-px" style={{ backgroundColor: colors.ctaBorder }} />
 
                 {/* Bottom: membership icon + renews */}
                 <View className="flex-row items-center justify-between px-5 py-4">
                     <View className="flex-row items-center gap-2.5">
                         <View
                             className="h-9 w-9 items-center justify-center rounded-xl"
-                            style={{ backgroundColor: colors.heroGlass }}
+                            style={{ backgroundColor: colors.card }}
                         >
-                            <Ionicons name="ribbon" size={18} color={colors.heroForeground} />
+                            <Ionicons name="ribbon" size={18} color={colors.cta} />
                         </View>
                         <Text
                             className="text-[13px] font-medium"
-                            style={{ color: colors.heroMuted }}
+                            style={{ color: colors.mutedForeground }}
                         >
                             Member plan
                         </Text>
@@ -155,9 +164,9 @@ export function MyMembershipView({
                         <Ionicons
                             name="refresh-circle-outline"
                             size={14}
-                            color={colors.heroMuted}
+                            color={colors.mutedForeground}
                         />
-                        <Text className="text-[12px]" style={{ color: colors.heroMuted }}>
+                        <Text className="text-[12px]" style={{ color: colors.mutedForeground }}>
                             Renews {formatUTCDate(membership.current_period_end)}
                         </Text>
                     </View>

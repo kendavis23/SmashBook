@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { DatePicker } from "@repo/ui";
-import type { DateRange } from "../../types";
+import type { DateRange } from "../types";
 
 type Props = {
     range: DateRange;
@@ -20,8 +20,22 @@ function clampToMaxDate(value: string, maxDate: string): string {
     return value > maxDate ? maxDate : value;
 }
 
-/** From/To date pickers for the clubs-revenue range. Current and future dates are disabled. */
-export function ClubsDateRangeControl({ range, onChange }: Props): JSX.Element {
+function daysBetween(from: string, to: string): number {
+    const [fy = 0, fm = 1, fd = 1] = from.split("-").map(Number);
+    const [ty = 0, tm = 1, td = 1] = to.split("-").map(Number);
+    const msPerDay = 86_400_000;
+    return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / msPerDay) + 1;
+}
+
+function rangeSummaryLabel(from: string, to: string): string {
+    const days = daysBetween(from, to);
+    if (days === 1) return "1 day selected";
+    if (days === 30) return "Last 30 days";
+    return `${days} days selected`;
+}
+
+/** Shared From/To date pickers with a dynamic range-length label for all analytics reports. */
+export function DateRangeControl({ range, onChange }: Props): JSX.Element {
     const maxSelectableDate = yesterdayLocalDate();
     const pickerCls =
         "h-9 w-[12rem] rounded-lg border-border/80 bg-card px-3 text-sm " +
@@ -58,6 +72,9 @@ export function ClubsDateRangeControl({ range, onChange }: Props): JSX.Element {
                     }}
                 />
             </label>
+            <span className="self-end pb-2 text-xs font-medium text-muted-foreground">
+                {rangeSummaryLabel(range.from, range.to)}
+            </span>
         </div>
     );
 }

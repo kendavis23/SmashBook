@@ -47,12 +47,12 @@ describe("RevenueContainer", () => {
         vi.clearAllMocks();
     });
 
-    it("default range: 'to' is yesterday, 'from' is 90 days before to", () => {
+    it("default range: 'to' is yesterday, 'from' starts the 30-day completed range", () => {
         render(<RevenueContainer />);
         const to = new Date();
         to.setDate(to.getDate() - 1);
         const from = new Date(to);
-        from.setDate(to.getDate() - 90);
+        from.setDate(to.getDate() - 29);
         const fmt = (d: Date) =>
             `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
         expect(screen.getByTestId("from").textContent).toBe(fmt(from));
@@ -69,7 +69,7 @@ describe("RevenueContainer", () => {
         );
         expect(useClubRevenueTimeseries).toHaveBeenCalledWith(
             "club-123",
-            expect.objectContaining({ granularity: "week" })
+            expect.objectContaining({ granularity: "day" })
         );
         expect(useClubRevenueByType).toHaveBeenCalledWith(
             "club-123",

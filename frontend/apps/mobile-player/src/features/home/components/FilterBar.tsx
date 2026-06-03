@@ -567,7 +567,7 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                         borderRadius: 12,
                         borderWidth: 1,
                         borderColor: colors.border,
-                        backgroundColor: colors.muted,
+                        backgroundColor: colors.card,
                         alignItems: "center",
                         justifyContent: "center",
                         marginLeft: 8,
