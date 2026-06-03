@@ -90,6 +90,15 @@ export function computeRevenueBreakdown(rows: RevenueByTypeRow[]): RevenueBreakd
     // Sort descending by net amount
     typed.sort((a, b) => b.netAmount - a.netAmount);
 
+    // Largest-remainder correction: adjust the last item so percentages sum to exactly 100.
+    if (typed.length > 0 && totalNet > 0) {
+        const sumOfOthers = typed
+            .slice(0, -1)
+            .reduce((s, r) => s + parseFloat(r.sharePct.toFixed(1)), 0);
+        const last = typed[typed.length - 1]!;
+        last.sharePct = Math.max(0, parseFloat((100 - sumOfOthers).toFixed(1)));
+    }
+
     return {
         rows: typed,
         totalGross,

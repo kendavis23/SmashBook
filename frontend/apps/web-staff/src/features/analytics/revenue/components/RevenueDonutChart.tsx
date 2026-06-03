@@ -105,18 +105,21 @@ export function RevenueDonutChart({ rows, totalNet }: Props): JSX.Element {
 
             {/* Legend */}
             <div className="w-full min-w-0">
-                <ul className="space-y-0.5">
+                <ul className="space-y-1">
                     {rows.map((r) => (
-                        <li key={r.revenueType} className="flex items-center gap-2 py-1 text-sm">
+                        <li
+                            key={r.revenueType}
+                            className="flex items-center gap-2.5 py-0.5 text-sm"
+                        >
                             <span
                                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                                 style={{ backgroundColor: revenueTypeColor(r.revenueType) }}
                             />
-                            <span className="min-w-0 truncate text-foreground">
-                                {revenueTypeLabel(r.revenueType)}{" "}
-                                <span className="tabular-nums text-muted-foreground">
-                                    ({r.sharePct.toFixed(1)}%)
-                                </span>
+                            <span className="text-foreground">
+                                {revenueTypeLabel(r.revenueType)}
+                            </span>
+                            <span className="tabular-nums text-muted-foreground">
+                                ({r.sharePct.toFixed(1)}%)
                             </span>
                         </li>
                     ))}
