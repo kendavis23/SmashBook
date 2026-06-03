@@ -77,3 +77,12 @@ export {
     useCancelBooking,
     useInvitePlayer,
 } from "./booking.hooks";
+export {
+    usePlayerValueLeaderboard,
+    useMostActivePlayers,
+    useInactiveMembers,
+    usePlayerValueByGroup,
+    useActivePlayersKpi,
+    useActivePlayersTimeseries,
+    useSignupsTimeseries,
+} from "./analytics-player.hooks";

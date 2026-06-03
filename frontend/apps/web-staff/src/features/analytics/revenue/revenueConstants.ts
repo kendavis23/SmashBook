@@ -26,20 +26,41 @@ export function formatMonthLabel(snapshotDate: string): string {
     return `${MONTHS_SHORT[monthIdx] ?? ""} ${year}`;
 }
 
-/** Colour tokens for each revenue type — uses hsl(var(--token)) per spec. */
+/** Colour tokens for each revenue type — uses hsl() values per spec. */
 export const REVENUE_TYPE_COLORS: Record<string, string> = {
-    regular: "hsl(210 90% 56%)",
-    court_booking: "hsl(210 90% 56%)",
-    coaching: "hsl(199 89% 48%)",
-    tournament: "hsl(160 84% 39%)",
-    membership: "hsl(38 92% 50%)",
-    private_event: "hsl(262 83% 58%)",
-    equipment: "hsl(346 77% 54%)",
+    regular: "hsl(213 94% 52%)", // vivid blue
+    court_booking: "hsl(213 94% 52%)", // vivid blue (alias)
+    lesson_group: "hsl(157 69% 42%)", // teal green
+    lesson_individual: "hsl(27 96% 55%)", // warm orange
+    coaching: "hsl(199 89% 48%)", // sky blue
+    tournament: "hsl(262 52% 56%)", // soft violet
+    membership: "hsl(38 92% 50%)", // amber
+    private_event: "hsl(338 82% 55%)", // rose pink
+    equipment: "hsl(173 60% 40%)", // dark teal
 };
 
+/** Palette of professional colors assigned dynamically to unknown types. */
+const DYNAMIC_PALETTE = [
+    "hsl(213 94% 52%)",
+    "hsl(157 69% 42%)",
+    "hsl(27 96% 55%)",
+    "hsl(262 52% 56%)",
+    "hsl(38 92% 50%)",
+    "hsl(338 82% 55%)",
+    "hsl(199 89% 48%)",
+    "hsl(173 60% 40%)",
+    "hsl(48 96% 48%)",
+    "hsl(4 86% 58%)",
+];
+
+const _dynamicColorMap: Record<string, string> = {};
+let _dynamicColorIdx = 0;
+
 export const REVENUE_TYPE_LABELS: Record<string, string> = {
-    regular: "regular",
+    regular: "Regular",
     court_booking: "Court Booking",
+    lesson_group: "Lesson Group",
+    lesson_individual: "Lesson Individual",
     coaching: "Coaching",
     tournament: "Tournament",
     membership: "Membership",
@@ -47,11 +68,18 @@ export const REVENUE_TYPE_LABELS: Record<string, string> = {
     equipment: "Equipment",
 };
 
-/** Fallback colour for unknown revenue types. */
-export const FALLBACK_COLOR = "hsl(var(--muted-foreground))";
+/** Fallback colour for unknown revenue types — assigns from palette so each type gets a unique color. */
+export function fallbackColor(type: string): string {
+    if (!_dynamicColorMap[type]) {
+        _dynamicColorMap[type] =
+            DYNAMIC_PALETTE[_dynamicColorIdx % DYNAMIC_PALETTE.length] ?? "hsl(215 14% 55%)";
+        _dynamicColorIdx++;
+    }
+    return _dynamicColorMap[type]!;
+}
 
 export function revenueTypeColor(type: string): string {
-    return REVENUE_TYPE_COLORS[type] ?? FALLBACK_COLOR;
+    return REVENUE_TYPE_COLORS[type] ?? fallbackColor(type);
 }
 
 export function revenueTypeLabel(type: string): string {
