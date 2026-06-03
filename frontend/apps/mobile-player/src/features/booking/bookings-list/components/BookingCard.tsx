@@ -51,7 +51,7 @@ export function BookingCard({
             style={{
                 backgroundColor: colors.card,
                 borderRadius: 18,
-                borderWidth: 1,
+                borderWidth: 1.5,
                 borderColor: colors.border,
                 overflow: "hidden",
                 shadowColor: colors.shadow,
@@ -62,9 +62,6 @@ export function BookingCard({
             }}
             accessibilityRole="none"
         >
-            {/* Top accent line — status colour */}
-            <View style={{ height: 3, backgroundColor: statusCfg.dot }} />
-
             <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 11 }}>
                 {/* Row 1: Court icon + name + status badge */}
                 <View

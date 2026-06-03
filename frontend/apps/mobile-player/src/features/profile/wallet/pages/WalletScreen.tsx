@@ -95,7 +95,16 @@ export function WalletScreen(): JSX.Element {
                 {/* Balance card */}
                 <View
                     className="overflow-hidden rounded-[24px]"
-                    style={{ backgroundColor: colors.hero }}
+                    style={{
+                        backgroundColor: colors.ctaSurface,
+                        borderWidth: 1,
+                        borderColor: colors.ctaBorder,
+                        shadowColor: colors.cta,
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 18,
+                        elevation: 3,
+                    }}
                 >
                     {/* Top section */}
                     <View className="px-5 pt-5 pb-4">
@@ -103,18 +112,14 @@ export function WalletScreen(): JSX.Element {
                             <View className="flex-row items-center gap-2.5">
                                 <View
                                     className="h-10 w-10 items-center justify-center rounded-xl"
-                                    style={{ backgroundColor: colors.heroGlass }}
+                                    style={{ backgroundColor: colors.card }}
                                 >
-                                    <Ionicons
-                                        name="wallet"
-                                        size={20}
-                                        color={colors.heroForeground}
-                                    />
+                                    <Ionicons name="wallet" size={20} color={colors.cta} />
                                 </View>
                                 <View>
                                     <Text
                                         className="text-[11px] font-bold uppercase tracking-[0.6px]"
-                                        style={{ color: colors.heroMuted }}
+                                        style={{ color: colors.mutedForeground }}
                                     >
                                         Wallet balance
                                     </Text>
@@ -125,8 +130,11 @@ export function WalletScreen(): JSX.Element {
                         {/* Balance */}
                         {isLoading ? (
                             <View className="mt-5 flex-row items-center gap-2">
-                                <ActivityIndicator size="small" color={colors.heroForeground} />
-                                <Text className="text-[14px]" style={{ color: colors.heroMuted }}>
+                                <ActivityIndicator size="small" color={colors.cta} />
+                                <Text
+                                    className="text-[14px]"
+                                    style={{ color: colors.mutedForeground }}
+                                >
                                     Loading…
                                 </Text>
                             </View>
@@ -137,27 +145,31 @@ export function WalletScreen(): JSX.Element {
                         ) : (
                             <Text
                                 className="mt-5 text-[42px] font-bold leading-none tracking-tight"
-                                style={{ color: colors.heroForeground }}
+                                style={{ color: colors.foreground }}
                             >
                                 {formatBalance(wallet?.balance ?? 0)}
                             </Text>
                         )}
 
-                        <Text className="mt-2 text-[13px]" style={{ color: colors.heroMuted }}>
+                        <Text
+                            className="mt-2 text-[13px]"
+                            style={{ color: colors.mutedForeground }}
+                        >
                             Available for bookings and instant checkout
                         </Text>
                     </View>
 
-                    {/* Divider */}
-                    <View
-                        className="mx-5 h-px"
-                        style={{ backgroundColor: colors.heroGlassBorder }}
-                    />
-
                     {/* Top-up button row */}
-                    <View className="flex-row items-center justify-between px-5 py-4">
+                    <View
+                        className="mx-4 mb-4 mt-3 flex-row items-center justify-between rounded-2xl px-4 py-3"
+                        style={{
+                            backgroundColor: colors.card,
+                            borderWidth: 1,
+                            borderColor: colors.ctaBorder,
+                        }}
+                    >
                         {wallet && (
-                            <Text className="text-[12px]" style={{ color: colors.heroMuted }}>
+                            <Text className="text-[12px]" style={{ color: colors.mutedForeground }}>
                                 Currency: {wallet.currency.toUpperCase()}
                             </Text>
                         )}
