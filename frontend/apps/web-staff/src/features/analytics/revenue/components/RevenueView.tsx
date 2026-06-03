@@ -13,7 +13,7 @@ import type { DateRange } from "../../types";
 import { computeRevenueSummaryStats, computeRevenueBreakdown } from "../revenueSummary";
 import { computeRevenueTrend } from "../revenueTrend";
 import { panelCls, panelTitleCls } from "../revenueConstants";
-import { DateRangeControl } from "../../club-utilisation/components/DateRangeControl";
+import { DateRangeControl } from "../../components/DateRangeControl";
 import { RevenueKpiCards } from "./RevenueKpiCards";
 import { RevenueTimeseriesChart } from "./RevenueTimeseriesChart";
 import { RevenueTrendStrip } from "./RevenueTrendStrip";

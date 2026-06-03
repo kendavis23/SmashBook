@@ -104,6 +104,7 @@ function renderView(overrides: Partial<Parameters<typeof ClubUtilisationView>[0]
         isLoading: false,
         error: null,
         onRangeChange: vi.fn(),
+        onCurrentMonth: vi.fn(),
         onRefresh: vi.fn(),
         ...overrides,
     };

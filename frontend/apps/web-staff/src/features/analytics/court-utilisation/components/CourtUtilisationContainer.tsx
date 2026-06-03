@@ -19,7 +19,7 @@ function defaultRange(): DateRange {
     const toDate = new Date();
     toDate.setDate(toDate.getDate() - 1);
     const fromDate = new Date(toDate);
-    fromDate.setDate(toDate.getDate() - 30);
+    fromDate.setDate(toDate.getDate() - 29);
     return { from: formatLocalDate(fromDate), to: formatLocalDate(toDate) };
 }
 

@@ -63,7 +63,7 @@ beforeEach(() => {
 });
 
 describe("ClubUtilisationContainer", () => {
-    it("defaults the date range to the last seven completed calendar days", () => {
+    it("defaults the date range to the last 30 completed calendar days", () => {
         const now = new Date();
         const yesterdayDate = new Date(now);
         yesterdayDate.setDate(now.getDate() - 1);
@@ -71,13 +71,13 @@ describe("ClubUtilisationContainer", () => {
             yesterdayDate.getMonth() + 1
         ).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
         const fromDate = new Date(yesterdayDate);
-        fromDate.setDate(yesterdayDate.getDate() - 6);
-        const sevenCompletedDaysAgo = `${fromDate.getFullYear()}-${String(
+        fromDate.setDate(yesterdayDate.getDate() - 29);
+        const thirtyCompletedDaysAgo = `${fromDate.getFullYear()}-${String(
             fromDate.getMonth() + 1
         ).padStart(2, "0")}-${String(fromDate.getDate()).padStart(2, "0")}`;
         render(<ClubUtilisationContainer />);
         const props = viewProps.mock.calls[0]?.[0] as { range: { from: string; to: string } };
-        expect(props.range.from).toBe(sevenCompletedDaysAgo);
+        expect(props.range.from).toBe(thirtyCompletedDaysAgo);
         expect(props.range.to).toBe(yesterday);
     });
 

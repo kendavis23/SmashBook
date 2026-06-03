@@ -18,7 +18,7 @@ function defaultRange(): DateRange {
     const toDate = new Date();
     toDate.setDate(toDate.getDate() - 1);
     const fromDate = new Date(toDate);
-    fromDate.setDate(toDate.getDate() - 6);
+    fromDate.setDate(toDate.getDate() - 29);
     return {
         from: formatLocalDate(fromDate),
         to: formatLocalDate(toDate),
@@ -32,6 +32,14 @@ function clampRangeToYesterday(next: DateRange): DateRange {
     const to = next.to > max ? max : next.to;
     const from = next.from > max ? max : next.from;
     return { from, to: to < from ? from : to };
+}
+
+function currentMonthRange(): DateRange {
+    const today = new Date();
+    const toDate = new Date(today);
+    toDate.setDate(today.getDate() - 1);
+    const fromDate = new Date(toDate.getFullYear(), toDate.getMonth(), 1);
+    return clampRangeToYesterday({ from: formatLocalDate(fromDate), to: formatLocalDate(toDate) });
 }
 
 export default function ClubUtilisationContainer(): JSX.Element {
@@ -58,6 +66,7 @@ export default function ClubUtilisationContainer(): JSX.Element {
     const handleRangeChange = useCallback((next: DateRange) => {
         setRange(clampRangeToYesterday(next));
     }, []);
+    const handleCurrentMonth = useCallback(() => setRange(currentMonthRange()), []);
 
     return (
         <ClubUtilisationView
@@ -68,6 +77,7 @@ export default function ClubUtilisationContainer(): JSX.Element {
             isLoading={isLoading}
             error={(error as Error | null) ?? null}
             onRangeChange={handleRangeChange}
+            onCurrentMonth={handleCurrentMonth}
             onRefresh={handleRefresh}
         />
     );

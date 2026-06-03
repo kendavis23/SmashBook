@@ -77,7 +77,7 @@ describe("CourtUtilisationContainer", () => {
             yesterdayDate.getMonth() + 1
         ).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
         const fromDate = new Date(yesterdayDate);
-        fromDate.setDate(yesterdayDate.getDate() - 30);
+        fromDate.setDate(yesterdayDate.getDate() - 29);
         const thirtyDaysAgo = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(
             2,
             "0"

@@ -61,9 +61,9 @@ describe("HeatmapContainer", () => {
         render(<HeatmapContainer />);
 
         const props = viewProps.mock.calls[0]?.[0] as { range: { from: string; to: string } };
-        expect(props.range).toEqual({ from: "2026-04-14", to: "2026-05-14" });
+        expect(props.range).toEqual({ from: "2026-04-15", to: "2026-05-14" });
         expect(useClubUtilisationHeatmap).toHaveBeenCalledWith("club-1", {
-            dateFrom: "2026-04-14",
+            dateFrom: "2026-04-15",
             dateTo: "2026-05-14",
         });
     });

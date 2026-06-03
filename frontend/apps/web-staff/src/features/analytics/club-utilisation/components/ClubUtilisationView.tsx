@@ -1,5 +1,5 @@
 import { useMemo, useState, type JSX } from "react";
-import { BarChart3, RefreshCw, TrendingUp } from "lucide-react";
+import { BarChart3, CalendarDays, RefreshCw, TrendingUp } from "lucide-react";
 import { formatCurrency, SelectInput } from "@repo/ui";
 import type { DateRange, DailyUtilisationPoint, UtilisationSummary } from "../../types";
 import { panelCls, panelTitleCls } from "../utilisationConstants";
@@ -10,7 +10,7 @@ import {
     GRANULARITY_LABELS,
     type Granularity,
 } from "../utilisationBuckets";
-import { DateRangeControl } from "./DateRangeControl";
+import { DateRangeControl } from "../../components/DateRangeControl";
 import { UtilisationKpiCards } from "./UtilisationKpiCards";
 import { UtilisationLineChart } from "./UtilisationLineChart";
 import { GroupedBarChart, type GroupedSeries } from "./GroupedBarChart";
@@ -24,6 +24,7 @@ type Props = {
     isLoading: boolean;
     error: Error | null;
     onRangeChange: (next: DateRange) => void;
+    onCurrentMonth: () => void;
     onRefresh: () => void;
 };
 
@@ -35,6 +36,7 @@ export default function ClubUtilisationView({
     isLoading,
     error,
     onRangeChange,
+    onCurrentMonth,
     onRefresh,
 }: Props): JSX.Element {
     const hasData = points.length > 0;
@@ -126,6 +128,13 @@ export default function ClubUtilisationView({
 
                 <div className="flex flex-wrap items-end gap-2.5">
                     <DateRangeControl range={range} onChange={onRangeChange} />
+                    <button
+                        onClick={onCurrentMonth}
+                        className="btn-outline h-9 px-3.5 text-sm"
+                        aria-label="Show current month analytics"
+                    >
+                        <CalendarDays size={14} /> Current month
+                    </button>
                     <button
                         onClick={onRefresh}
                         className="btn-outline h-9 px-3.5 text-sm"
