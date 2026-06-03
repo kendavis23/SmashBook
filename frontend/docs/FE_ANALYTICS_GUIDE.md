@@ -1,4 +1,4 @@
-_Last updated: 2026-06-03 00:00 UTC_
+_Last updated: 2026-06-03 18:30 UTC_
 
 # Frontend Analytics Guide
 
@@ -423,8 +423,11 @@ pnpm --filter web-staff lint
 
 ## Implemented analytics reports
 
-| Sub-feature                | Route                                 | Domain hook                 | Status   |
-| -------------------------- | ------------------------------------- | --------------------------- | -------- |
-| `club-utilisation`         | `/analytics/club-utilisation`         | `useClubDailyUtilisation`   | ✅ Built |
-| `court-utilisation`        | `/analytics/court-utilisation`        | `useClubCourtsUtilisation`  | ⬜ Stub  |
-| `club-utilisation-heatmap` | `/analytics/club-utilisation-heatmap` | `useClubUtilisationHeatmap` | ⬜ Stub  |
+| Sub-feature                | Route                                 | Domain hook                                                                   | Status   |
+| -------------------------- | ------------------------------------- | ----------------------------------------------------------------------------- | -------- |
+| `club-utilisation`         | `/analytics/club-utilisation`         | `useClubDailyUtilisation`                                                     | ✅ Built |
+| `court-utilisation`        | `/analytics/court-utilisation`        | `useClubCourtsUtilisation`                                                    | ⬜ Stub  |
+| `club-utilisation-heatmap` | `/analytics/club-utilisation-heatmap` | `useClubUtilisationHeatmap`                                                   | ⬜ Stub  |
+| `player-value`             | `/analytics/player-value`             | `usePlayerValueLeaderboard` + `useMostActivePlayers` + `useInactiveMembers`   | ✅ Built |
+| `player-segments`          | `/analytics/player-segments`          | `usePlayerValueByGroup`                                                       | ✅ Built |
+| `player-activity`          | `/analytics/player-activity`          | `useActivePlayersKpi` + `useActivePlayersTimeseries` + `useSignupsTimeseries` | ✅ Built |

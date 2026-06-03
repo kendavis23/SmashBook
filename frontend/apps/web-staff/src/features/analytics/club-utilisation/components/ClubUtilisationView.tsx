@@ -63,6 +63,16 @@ export default function ClubUtilisationView({
     const slotBuckets = useMemo(() => bucketPoints(points, slotsG), [points, slotsG]);
     const actualRevenueColor = "hsl(226 70% 55%)";
     const potentialRevenueColor = "hsl(222 84% 86%)";
+    const utilisationStats = useMemo(() => {
+        const values = points.map((p) => Math.round(Number(p.utilisation_pct) || 0));
+        if (values.length === 0) return { peak: 0, lowest: 0, latest: 0 };
+
+        return {
+            peak: Math.max(...values),
+            lowest: Math.min(...values),
+            latest: values[values.length - 1] ?? 0,
+        };
+    }, [points]);
 
     const slotUtilisation = useMemo(() => {
         const totalSlots = slotBuckets.reduce((sum, b) => sum + b.totalSlots, 0);
@@ -176,12 +186,19 @@ export default function ClubUtilisationView({
 
                     {/* Daily utilisation — full width */}
                     <section className="rounded-2xl border border-border/70 bg-card p-4 shadow-sm ring-1 ring-black/[0.02]">
-                        <div className="mb-2 flex items-center justify-between">
+                        <div className="mb-2 flex items-center justify-between gap-3">
                             <h2 className={panelTitleCls}>Daily Utilisation (%)</h2>
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-cta/10 px-2.5 py-1 text-[11px] font-semibold text-cta">
-                                <span className="h-2 w-2 rounded-full bg-cta" />
-                                Utilisation
-                            </span>
+                            <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                                <span className="rounded-full bg-cta/10 px-2.5 py-1 text-xs font-semibold text-cta">
+                                    Peak {utilisationStats.peak}%
+                                </span>
+                                <span className="rounded-full bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+                                    Lowest {utilisationStats.lowest}%
+                                </span>
+                                <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold text-secondary-foreground">
+                                    Latest {utilisationStats.latest}%
+                                </span>
+                            </div>
                         </div>
                         <UtilisationLineChart points={points} />
                     </section>

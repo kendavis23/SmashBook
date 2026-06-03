@@ -10,6 +10,24 @@ export type {
     ClubRevenueComparisonRow,
     TenantRevenueComparison,
 } from "@repo/staff-domain/models";
+export type {
+    PlayerValueRow,
+    PlayerValueLeaderboard,
+    PlayerSort,
+    PlayerActivityLeaderboard,
+    InactiveMembersReport,
+    GroupDimension,
+    GroupValueRow,
+    GroupValueReport,
+} from "@repo/staff-domain/models";
+export type {
+    FlowGranularity,
+    ActivePlayersKpi,
+    ActivePlayersPoint,
+    ActivePlayersTimeseries,
+    SignupsPoint,
+    SignupsTimeseries,
+} from "@repo/staff-domain/models";
 
 // Feature-specific types — not in domain
 
