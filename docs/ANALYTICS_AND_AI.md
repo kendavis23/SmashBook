@@ -1,10 +1,15 @@
-_Last updated: 2026-04-28 00:00 UTC_
+_Last updated: 2026-06-04 00:00 UTC_
 
 # SmashBook — Analytics & AI Design
 
 > **Audience:** Engineering (current and future contributors), technical investors/partners
-> **Status:** Design document. Sprint 1–6 (MVP) is in flight; AI phases (Sprints 7+) build on this design.
-> **Relationship to other docs:** This document is the design authority for everything reporting, analytics, and AI on SmashBook. [`ARCHITECTURE.md`](ARCHITECTURE.md) gives the high-level architecture and links here for detail. [`DATA_MODEL_TARGET_STATE.md`](DATA_MODEL_TARGET_STATE.md) is the schema authority — column-level definitions for every table referenced here live there.
+> **Status:** Design document. MVP (Sprints 1–6) shipped; Analytics (Sprint 7 / G7) is in flight; AI phases (Sprint 8+ / G8–G12) build on this design.
+>
+> **What this document is — and is not.** This is the *design rationale* for analytics and AI: the **why** behind the read-path tiers, the sync-vs-async split, the inference-logging contract, multi-tenancy/PII handling, and the roadmap. It is **not** the current-state record of what is built. When this document and a domain-local doc disagree about what exists today, **the domain-local doc wins**:
+> - AI provider routing, fallback contract, feature-flag matrix, inference-log schema, prompt templates → [`/backend/app/ai/docs/`](../backend/app/ai/docs/) (see [`ai/CLAUDE.md`](../backend/app/ai/CLAUDE.md)).
+> - Report catalogue, materialized-view inventory, analytics query patterns → [`/backend/app/analytics/docs/`](../backend/app/analytics/docs/) (see [`analytics/CLAUDE.md`](../backend/app/analytics/CLAUDE.md)).
+>
+> **Relationship to other docs:** [`ARCHITECTURE.md`](ARCHITECTURE.md) gives the high-level architecture and links here for detail. [`DATA_MODEL_TARGET_STATE.md`](DATA_MODEL_TARGET_STATE.md) is the schema authority — column-level definitions for every table referenced here live there. The roadmap and migration-group mapping below follow the **2026-05-29 re-prioritisation** (Analytics → AI infrastructure → CRM → Tournaments) and the May 2026 target-state simplification; features descoped on 2026-05-29 (all weather, all equipment/maintenance AI) are noted inline where they were previously listed.
 
 ---
 
@@ -84,7 +89,7 @@ Every user story in this section has been pulled from `issues.json` and mapped t
 | #62 | Staff: view full transaction log with filters | §16 — paginated Tier 1 query against `payments` |
 | #63 | Staff: export full financial report for a selected period | §16 — async export job for ranges >90 days |
 | #69 | Staff: view log of skill level changes per player | §16 — Tier 1 query against `skill_level_history` |
-| #39 | Staff: view daily revenue summary and transaction log | §16 — daily roll-up backed by `mv_daily_revenue_by_club` |
+| #39 | Staff: view daily revenue summary and transaction log | §16 — backed by `mv_revenue_by_club_day_{service,cash}` |
 | #186 | Reconciliation report | §16 — payouts reconciliation surface |
 | #98 | Player: view skill progression over time on personal dashboard | §16 — Tier 1 query against `skill_level_history`, scoped to `user_id` |
 
@@ -96,7 +101,7 @@ Every user story in this section has been pulled from `issues.json` and mapped t
 | #74 | Dynamic pricing runs automatically — no manual changes | §11 — same as #71, framed as outcome |
 | #75 | Revenue forecasting with weekly/monthly projections | §11, §17 — daily Cloud Run job, writes `ai_recommendations` of type `revenue_forecast` |
 | #77 | Alert staff to failed/anomalous payments via AI fraud detection | §11 — `payment-events` consumer, writes `payments.anomaly_flagged` and `ai_recommendations` |
-| #73 | Anomaly detection for unusual revenue patterns | §11 — daily Vertex AI scoring against `mv_daily_revenue_by_club` |
+| #73 | Anomaly detection for unusual revenue patterns | §11 — daily Vertex AI scoring against `mv_revenue_by_club_day_service` |
 | #78 | Failed payments auto-flagged and retried | §11 — overlaps with #77; payment retry logic in payment service, anomaly scoring layered on top |
 
 ### AI Phase 1 — Sprint 8
@@ -107,7 +112,7 @@ Every user story in this section has been pulled from `issues.json` and mapped t
 | #82 | Staff: AI smart push notifications to fill a specific gap | §11, §13 — campaign worker consumes `gap-detected` |
 | #83 | Player: AI slot suggestions matching typical patterns | §11 — uses `player_profiles` and `court_utilisation_snapshots` |
 | #81 | Player: personalised discount offers for off-peak slots | §11 — same pipeline as #79 |
-| #84 | Player: weather-aware alert for outdoor bookings | §11 — Anthropic API + weather API in scheduled worker |
+| ~~#84~~ | ~~Player: weather-aware alert for outdoor bookings~~ | **DESCOPED 2026-05-29** — all weather features dropped |
 | #76 | AI insights dashboard: NL summaries and action prompts | §17 — Anthropic-generated summary endpoint reading materialized views |
 
 ### AI Phase 2 — Sprints 9–10
@@ -121,12 +126,12 @@ Every user story in this section has been pulled from `issues.json` and mapped t
 | #99 | Auto-flag players at risk of churning | §11 — daily churn scoring, writes `player_engagement_scores` |
 | #100 | AI-drafted re-engagement messages for at-risk segments | §11 — Anthropic API in campaign worker |
 | #101 | Re-engagement campaigns sent automatically to at-risk players | §11, §13 — `churn-scores-updated` triggers campaign worker |
-| #102 | Players auto-segmented (casual / competitive / corporate) | §11 — segmentation worker, `player_segment_memberships` |
+| #102 | Players auto-segmented (casual / competitive / corporate) | **DEFERRED** — structured segmentation dropped; campaign targeting via `campaigns.target_filter` JSONB until reintroduced post-revenue |
 | #103 | Ops lead: AI staffing recommendations | §11 — recommendations engine, reads utilisation + staff schedules |
-| #72 | AI recommendations: which segments to target | §11 — segmentation + recommendation engine |
-| #104 | Predict equipment replacement from usage/rental history | §11 — `equipment_replacement_predictions` |
-| #105 | AI triggers purchase orders when stock depletion predicted | §11 — `equipment_replacement_predictions` actioned via `ai_recommendations` |
-| #107 | AI maintenance scheduling | §11 — recommendations engine reading `court_utilisation_snapshots` |
+| #72 | AI recommendations: which segments to target | §11 — recommendation engine over `campaigns.target_filter` audiences (see #102) |
+| ~~#104~~ | ~~Predict equipment replacement from usage/rental history~~ | **DESCOPED 2026-05-29** — all equipment/maintenance AI dropped |
+| ~~#105~~ | ~~AI triggers purchase orders when stock depletion predicted~~ | **DESCOPED 2026-05-29** |
+| ~~#107~~ | ~~AI maintenance scheduling~~ | **DESCOPED 2026-05-29** |
 | #86 | Player: optimal membership tier suggestion | §11 — wallet-event-driven recommendation |
 
 ### AI Phase 3 — Sprints 11–12
@@ -142,7 +147,7 @@ Every user story in this section has been pulled from `issues.json` and mapped t
 | #115 | Staff: competitor pricing intelligence in dashboard | §11 — `competitor_price_snapshots` + recommendation engine |
 | #89 | Auto-generated invoices, receipts, financial reports | §17 — Anthropic-formatted reports |
 | #108 | Payment disputes/chargebacks auto-flagged for human review | §11 — extends payment anomaly detection (#77) |
-| #106 | Equipment damage reported in-app, costs logged automatically | §11 — extends recommendation engine to actuation |
+| #106 | Equipment damage reported in-app, costs logged automatically | Operational only — damage charge logged via `equipment_rentals.damage_charge` (G5); the AI-actuation framing was **DESCOPED 2026-05-29** |
 
 Every issue has a home. Any new analytics or AI story needs a row added to this table before implementation begins.
 
@@ -210,7 +215,7 @@ This is where every read starts. The MVP analytics surface (issues #56–#69) is
 
 A scheduled worker pre-computes a time-bucketed answer and writes it to a small, focused table. Reads then become a lookup, not an aggregation.
 
-### `court_utilisation_snapshots` — required before Sprint 7
+### `court_utilisation_snapshots` — the first G7 (Sprint 7) analytics capability
 
 This table is the single most important pre-computed table on the platform.
 
@@ -220,17 +225,17 @@ This table is the single most important pre-computed table on the platform.
 
 **Schema reference.** Defined in `DATA_MODEL_TARGET_STATE.md` §20. Key columns: `club_id`, `court_id`, `snapshot_date`, `hour_of_day`, `total_slots`, `booked_slots`, `utilisation_pct`, `revenue_actual`, `revenue_potential`, `avg_booking_lead_time_h`. Unique constraint on `(court_id, snapshot_date, hour_of_day)`.
 
-**Why before Sprint 7 specifically.** Dynamic pricing (Sprint 7) and gap detection (Sprint 8) both depend on `court_utilisation_snapshots` as their primary input. If the table doesn't exist when those sprints begin, the AI features have no data to work from. The scheduled worker also needs time to accumulate history — weeks of snapshots are needed before a pricing model has enough signal to be meaningful. **Migration group G8 in `DATA_MODEL_TARGET_STATE.md` should be implemented at the start of Sprint 7, not Sprint 8, so the snapshot data is accumulating before the first AI feature consumes it.**
+**Why it leads the roadmap.** Under the 2026-05-29 re-prioritisation, analytics is **G7 / Sprint 7** — and `court_utilisation_snapshots` is its first capability — precisely because the Sprint 8 (G8) AI features depend on it. Dynamic pricing and gap detection (both G8) consume these snapshots as their primary input; if the table doesn't exist and warm when those features begin, they have no data to work from. The worker needs weeks of accumulated history before a pricing model has enough signal to be meaningful, so building it a full sprint ahead is the point, not an optimisation. Schema is **G7** in `DATA_MODEL_TARGET_STATE.md`.
 
-**Worker.** `utilisation-snapshot-job` — Cloud Run Job, hourly, triggered by Cloud Scheduler. Reads from `bookings`, `courts`, `pricing_rules`. Writes to `court_utilisation_snapshots`. Publishes to the `utilisation-snapshots` Pub/Sub topic on completion. Self-contained: failures retry with backoff but never block the API.
+**Worker.** `app/analytics/workers/snapshot_court_utilisation.py` — Cloud Run Job, scheduled (nightly), triggered by Cloud Scheduler. Reads from `bookings`, `operating_hours`, `pricing_rules`, `calendar_reservations`, `clubs`, `courts`. Writes to `court_utilisation_snapshots` via delete-then-insert per (court, day) so re-runs are idempotent. Self-contained: failures retry with backoff but never block the API. Authoritative compute model (slot-anchored attribution, the `hour_of_day = NULL` daily-rollup denominator) is in [`analytics/docs/REPORT_CATALOG.md`](../backend/app/analytics/docs/REPORT_CATALOG.md) → "Booking utilisation by court".
 
 ### Other Tier 2 tables
 
 | Table | Granularity | Worker | Sprint |
 |---|---|---|---|
-| `court_utilisation_snapshots` | Per court per hour | `utilisation-snapshot-job`, hourly | G8 (pull forward to Sprint 7) |
-| `player_engagement_scores` | Per player per day | `padel-churn-worker`, daily | G9 |
+| `court_utilisation_snapshots` | Per court per hour (+ daily rollup row) | `snapshot_court_utilisation.py`, nightly | **G7 (Sprint 7)** |
 | `gap_detection_events` | Event-driven | `padel-gap-detection-worker` (consumes utilisation snapshots) | G8 |
+| `player_engagement_scores` | Per player per day | `padel-churn-worker`, daily | G9 |
 | `cancellation_predictions` | Per booking, scored T-24h | scheduled job | G9 |
 
 These tables are append-only. Stale rows are pruned through a separate retention job (initial policy: retain 24 months in PostgreSQL, archive to Cloud Storage thereafter; revisit when storage cost matters).
@@ -243,21 +248,23 @@ A regular view re-runs its full scan on every query. A materialized view runs th
 
 **When to add one.** When a dashboard query is hitting Tier 1 every page load and starting to degrade. The threshold in practice has been roughly 10 tenants; below that, unoptimised queries are fast enough that the maintenance overhead isn't justified.
 
-**Example — monthly revenue by club.**
+**Example — revenue by club.** The first MV-backed report buckets payments by club-local day, split by revenue type, so the dashboard reads a tiny pre-aggregated table instead of scanning all of `payments`:
 
 ```sql
-CREATE MATERIALIZED VIEW mv_monthly_revenue_by_club AS
+CREATE MATERIALIZED VIEW mv_revenue_by_club_day_service AS
 SELECT
-    club_id,
-    DATE_TRUNC('month', created_at) AS month,
-    SUM(amount)                     AS total_revenue,
-    COUNT(*)                        AS payment_count
-FROM payments
-WHERE state = 'succeeded'
-GROUP BY club_id, DATE_TRUNC('month', created_at);
+    b.club_id,
+    date_trunc('day', b.start_datetime AT TIME ZONE c.timezone) AS revenue_date,
+    -- revenue_type derived from booking_type + embedded equipment split
+    ...
+    SUM(net_amount)        AS net_amount,
+    COUNT(*)               AS transaction_count
+FROM payments p JOIN bookings b ON ... JOIN clubs c ON c.id = b.club_id
+WHERE p.state IN ('succeeded','refunded','partially_refunded')
+GROUP BY b.club_id, revenue_date, revenue_type, currency;
 ```
 
-A nightly job runs `REFRESH MATERIALIZED VIEW mv_monthly_revenue_by_club`. The dashboard query then hits this tiny table (one row per club per month) instead of scanning all of `payments`.
+A nightly job runs `REFRESH MATERIALIZED VIEW CONCURRENTLY`. The exact column list, the service-vs-cash basis split, and the embedded-equipment attribution are in the authoritative spec — see below.
 
 **The trade-off.**
 
@@ -266,19 +273,14 @@ A nightly job runs `REFRESH MATERIALIZED VIEW mv_monthly_revenue_by_club`. The d
 | Historical aggregates (revenue summaries, monthly reports) | Materialized view — staleness up to 24h is acceptable |
 | Live operational data (bookings today, real-time availability) | Live tables — staleness is not acceptable |
 
-### Planned materialized views
+### Materialized view inventory — see the analytics domain doc
 
-| View | Source | Refresh | Story |
-|---|---|---|---|
-| `mv_daily_revenue_by_club` | `payments` | Hourly | #39, #60 |
-| `mv_monthly_revenue_by_club` | `payments` | Nightly | #60, #75 (revenue forecasting input) |
-| `mv_player_frequency_by_club` | `bookings` | Nightly | #57 |
-| `mv_court_utilisation_monthly` | `court_utilisation_snapshots` | Nightly | #56 (post-Sprint 7) |
-| `mv_payout_reconciliation` | `payments`, `platform_fees` | Hourly | #61, #186 |
+The **authoritative, current** list of materialized views (definitions, grain, refresh cadence, indexes, migration IDs) is [`analytics/docs/MATERIALIZED_VIEWS.md`](../backend/app/analytics/docs/MATERIALIZED_VIEWS.md). As of the G7 analytics work the built views are `mv_revenue_by_club_day_service` / `…_cash`, `mv_player_value`, and `mv_club_active_player_day` / `mv_club_signups_day`; `court_utilisation_snapshots` is a *physical snapshot* (a third category — see §6), **not** an MV. Do not maintain a parallel view list here.
 
-Materialized views are managed through Alembic. The `CREATE MATERIALIZED VIEW` and `REFRESH` statements live in dedicated migration files; the refresh schedule is owned by Cloud Scheduler triggering a Cloud Run Job, not by `pg_cron`.
+**Operational rules** (stable, hence kept here):
 
-**Concurrent refreshes.** Use `REFRESH MATERIALIZED VIEW CONCURRENTLY` once a unique index is established on the view. This avoids locking readers during refresh — necessary for views that back live dashboards.
+- Materialized views are managed through Alembic. The `CREATE MATERIALIZED VIEW` and `REFRESH` statements live in dedicated migration files (hand-written — views aren't ORM models); the refresh schedule is owned by Cloud Scheduler triggering the `app/analytics/workers/refresh_views.py` Cloud Run Job, not by `pg_cron`.
+- Always `REFRESH MATERIALIZED VIEW CONCURRENTLY`, which requires a unique index on the view. This avoids locking readers during refresh — necessary for views that back live dashboards.
 
 ---
 
@@ -339,7 +341,7 @@ class AIInferenceService:
         club: Club,
         fallback_fn: Callable,
     ) -> AIInferenceResult:
-        # 1. Feature flag check — both subscription_plan and ai_feature_flags
+        # 1. Feature flag check — ai_feature_flags only (per-tenant row)
         if not await self._is_enabled(feature, club.tenant_id):
             return AIInferenceResult(output=await fallback_fn(), fallback_used=True)
 
@@ -393,34 +395,36 @@ Result returned to feature service
     └──→ notification send
 ```
 
-### Two-layer feature gating
+### Single-layer feature gating
 
-Every AI call checks two flags:
+Every AI call checks **one** table: **`ai_feature_flags`**, one row per `(tenant_id, feature)` pair. `is_enabled` is the runtime toggle, and the row also carries `config` JSONB for tunable parameters (e.g. `{"min_gap_hours": 2, "max_discount_pct": 25}`).
 
-1. **`subscription_plans.<feature>_flag`** — plan-level entitlement. A plan that doesn't include dynamic pricing can never run dynamic pricing for any of its tenants.
-2. **`ai_feature_flags`** — per-tenant runtime override. Allows a single tenant to be opted out without changing their plan. Also carries `config` JSONB for tunable parameters (e.g. `{"min_gap_hours": 2, "max_discount_pct": 25}`).
+`subscription_plans` does **not** carry AI feature-flag columns. Plan-level *defaults* are encoded in the tenant-provisioning seed step: when a tenant is created, one row per AI feature is inserted into `ai_feature_flags` with `is_enabled` set from the plan default. This is deliberate — if flags lived on the plan, changing a default would silently flip every existing tenant on that plan; per-tenant rows let ops override without touching the plan, and a default change never retroactively changes live tenants.
 
-The check is cheap (both rows are cached in Redis on the inference service for 60 seconds) so it runs on every call. There is no way to call a model without passing through both checks.
+The check is cheap (the row is cached on the inference service for 60 seconds) so it runs on every call. There is no way to call a model without passing through it. Authoritative detail and the per-plan default matrix live in [`ai/docs/FEATURE_FLAG_MATRIX.md`](../backend/app/ai/docs/FEATURE_FLAG_MATRIX.md).
 
 ### Provider routing
+
+The deliberate split: generative models are slow and expensive for numeric outputs; structured ML models are unsuitable for natural language.
 
 | Provider | Used for |
 |---|---|
 | **Anthropic Claude API** | Anything that produces natural language: notification copy, AI insights summaries, re-engagement messages, support chatbot, conversational booking. Tool use for structured outputs when required. |
 | **Vertex AI** | Anything that produces a number or classification: price multiplier, churn score, demand forecast, anomaly flag, skill delta, embeddings. |
+| **pgvector (Cloud SQL)** | Vector similarity — matchmaking and Fill the Court, against `player_profiles.embedding`. |
 
-The split is deliberate. Generative models are slow and expensive for numeric outputs; structured ML models are unsuitable for natural language. Mixing them in a single feature is allowed (e.g. Fill the Court uses Vertex AI for player selection and Anthropic for the message copy) but each call goes through `ai_inference_service.py` independently.
+Mixing providers in a single feature is allowed (e.g. Fill the Court uses pgvector/Vertex AI for player selection and Anthropic for the message copy) but each call goes through `ai_inference_service.py` independently. The **authoritative routing matrix** (feature → provider → sync/async → fallback) is [`ai/docs/PROVIDER_ROUTING.md`](../backend/app/ai/docs/PROVIDER_ROUTING.md); keep that in sync, not this summary.
 
 ### Fallback responsibility
 
-Fallbacks live in the feature service, not the inference wrapper. Each feature defines the most appropriate fallback for its own context:
+Every AI feature has a deterministic non-AI fallback, and `ai_inference_service.run()` invokes it on any degraded path (flag off, provider error, timeout), recording `fallback_used = true` and a `fallback_reason` on the log row. The feature service supplies the fallback callable but never branches on flag state itself — it always receives a result of the same shape regardless of which path ran. Examples:
 
-- Dynamic pricing → `pricing_rules.base_rate`
+- Dynamic pricing → `pricing_rules.price_per_slot`
 - Matchmaking → proceed without partner suggestions, return open list
 - Smart notifications → use the static `notification_templates` row for that event type
 - Insights dashboard → return raw aggregate numbers without NL summary
 
-The inference wrapper invokes whichever callable the feature passes in. `fallback_used` is recorded on every log row so the rate of fallback firing is queryable per feature, per tenant, per model version.
+The full per-feature fallback contract is [`ai/docs/FALLBACK_CATALOG.md`](../backend/app/ai/docs/FALLBACK_CATALOG.md) — authoritative; this is a summary.
 
 ---
 
@@ -465,44 +469,42 @@ A Cloud Run Job (`ai-inference-log-partition-job`) runs monthly, scheduled for t
 
 ### Retention
 
-Full payloads are archived to Cloud Storage after 90 days. The metadata columns (feature, tokens, latency, fallback_used, club_id, created_at) are retained indefinitely on the live table for cost tracking and evaluation. Archive logic lives in a separate Cloud Run Job (`ai-inference-log-archive-job`), runs nightly, and updates a `payload_archived` boolean rather than deleting rows.
+Partitions older than 90 days are **dropped** by a nightly worker — dropping a whole monthly partition is a metadata operation, far cheaper than row-by-row deletes. If a specific feature needs longer retention (audit, ML training, drift evaluation), copy the relevant rows into a dedicated long-term table; do not extend the global log retention. See [`ai/docs/INFERENCE_LOGGING.md`](../backend/app/ai/docs/INFERENCE_LOGGING.md) → "Retention" for the authoritative policy.
 
 ---
 
 ## 11. AI Feature Catalogue
 
-Every AI feature on the platform. The full read/write mapping is in `DATA_MODEL_TARGET_STATE.md` §27 — this table is the architectural cross-reference.
+Every AI feature on the platform. The full read/write mapping is in `DATA_MODEL_TARGET_STATE.md` §27, and the **authoritative** feature → provider → sync/async → fallback matrix (with the per-sprint provider decisions as they firm up) is [`ai/docs/PROVIDER_ROUTING.md`](../backend/app/ai/docs/PROVIDER_ROUTING.md). This table is the architectural cross-reference only — it deliberately omits the sprint/migration-group column, which is owned by §22 and `DATA_MODEL_TARGET_STATE.md` so it can't drift here.
 
-| # | Feature | Trigger | Provider | Sync? | Stories | Sprint |
-|---|---|---|---|---|---|---|
-| 1 | Dynamic pricing | Booking request | Vertex AI | **Yes** | #71, #74 | 7 |
-| 2 | Payment anomaly detection | `payment-events` | Vertex AI | No | #77, #78 | 7 |
-| 3 | Revenue forecasting | Daily scheduler | Vertex AI | No | #75 | 7 |
-| 4 | Revenue anomaly detection | Daily scheduler | Vertex AI | No | #73 | 7 |
-| 5 | Gap detection | Hourly scheduler | Vertex AI | No | #79 | 8 |
-| 6 | Smart notifications (gap-fill) | `gap-detected` | Anthropic | No | #82 | 8 |
-| 7 | Personalised slot suggestions | `gap-detected` + player profiles | Vertex AI | No | #83, #81 | 8 |
-| 8 | Weather-aware reminders | T-6h scheduler | Anthropic + weather API | No | #84 | 8 |
-| 9 | AI insights dashboard | Dashboard load | Anthropic | **Yes** (cached) | #76, #89 | 8 |
-| 10 | Player profile builder | Booking completion + nightly batch | Vertex AI (embeddings) | No | #94 | 9 |
-| 11 | Skill rating updates (ELO) | Match result logged | Vertex AI | No | #97 | 9 |
-| 12 | Matchmaking / Fill the Court | Open game request | pgvector + Vertex AI | **Yes** | #92 | 9 |
-| 13 | Cancellation prediction | T-24h scheduler | Vertex AI | No | #96 | 9 |
-| 14 | Churn scoring | Daily scheduler | Vertex AI | No | #99 | 10 |
-| 15 | Player segmentation | Post-churn scoring | Vertex AI | No | #102 | 10 |
-| 16 | Re-engagement campaigns | `churn-scores-updated` | Anthropic + Vertex AI | No | #100, #101, #72 | 10 |
-| 17 | AI staffing recommendations | Daily scheduler | Vertex AI | No | #103 | 10 |
-| 18 | Equipment replacement prediction | Weekly scheduler | Vertex AI | No | #104, #105 | 10 |
-| 19 | Maintenance scheduling | Weekly scheduler | Vertex AI | No | #107 | 10 |
-| 20 | Membership tier suggestions | Wallet top-up event | Vertex AI | No | #86 | 10 |
-| 21 | Conversational booking | Player chat message | Anthropic (tool use) | **Yes** | #109 | 11 |
-| 22 | AI support chatbot | Player support request | Anthropic (tool use) | **Yes** | #110, #111, #112 | 11 |
-| 23 | Training recommendations | Match result + skill change | Anthropic | No | #113 | 12 |
-| 24 | CV court analysis | Video upload | Vertex AI Vision | No | #114 | 12 |
-| 25 | Competitor pricing intel | Weekly scheduler / web scrape | Anthropic + Vertex AI | No | #115 | 12 |
-| 26 | Payment dispute auto-flag | Stripe webhook | Vertex AI | No | #108 | 11 |
+| Feature | Trigger | Provider | Sync? | Stories |
+|---|---|---|---|---|
+| Dynamic pricing | Booking request | Vertex AI | **Yes** | #71, #74 |
+| Payment anomaly detection | `payment-events` | Vertex AI | No | #77, #78 |
+| Revenue forecasting | Daily scheduler | Vertex AI | No | #75 |
+| Revenue anomaly detection | Daily scheduler | Vertex AI | No | #73 |
+| Gap detection | Hourly scheduler | Vertex AI | No | #79 |
+| Smart notifications (gap-fill) | `gap-detected` | Anthropic | No | #82 |
+| Personalised slot suggestions | `gap-detected` + player profiles | Vertex AI | No | #83, #81 |
+| AI insights dashboard | Dashboard load | Anthropic | **Yes** (cached) | #76, #89 |
+| Player profile builder | Booking completion + nightly batch | Vertex AI (embeddings) | No | #94 |
+| Skill rating updates (ELO) | Match result logged | Vertex AI | No | #97 |
+| Matchmaking / Fill the Court | Open game request | pgvector + Vertex AI | **Yes** | #92 |
+| Cancellation prediction | T-24h scheduler | Vertex AI | No | #96 |
+| Churn scoring | Daily scheduler | Vertex AI | No | #99 |
+| Re-engagement campaigns | `churn-scores-updated` | Anthropic + Vertex AI | No | #100, #101, #72 |
+| AI staffing recommendations | Daily scheduler | Vertex AI | No | #103 |
+| Membership tier suggestions | Wallet top-up event | Vertex AI | No | #86 |
+| Conversational booking | Player chat message | Anthropic (tool use) | **Yes** | #109 |
+| AI support chatbot | Player support request | Anthropic (tool use) | **Yes** | #110, #111, #112 |
+| Training recommendations | Match result + skill change | Anthropic | No | #113 |
+| CV court analysis | Video upload | Vertex AI Vision | No | #114 |
+| Competitor pricing intel | Weekly scheduler / web scrape | Anthropic + Vertex AI | No | #115 |
+| Payment dispute auto-flag | Stripe webhook | Vertex AI | No | #108 |
 
-**Synchronous features (4):** dynamic pricing, matchmaking, conversational booking, AI support chatbot, AI insights dashboard. All others are async.
+> **Descoped 2026-05-29 (do not reintroduce without revisiting the note in `DATA_MODEL_TARGET_STATE.md`):** weather-aware reminders (#84), equipment replacement prediction (#104/#105), and AI maintenance scheduling (#107). **Deferred:** structured *player segmentation* (#102) — the `player_segments`/`player_segment_memberships` tables were dropped; campaign targeting now uses a `target_filter` JSONB saved-query on `campaigns` rather than a segmentation model. Reintroduce post-revenue when real clubs reveal what to segment by.
+
+**Synchronous features.** Dynamic pricing is the **only** synchronous AI call on the *booking* path — it blocks the booking request. Matchmaking, conversational booking, and the AI support chatbot are synchronous within their own chat/open-game flows; the AI insights dashboard is "synchronous" but served from a daily-regenerated cache (§17). Everything else is fully async via Pub/Sub.
 
 For each feature, the implementation pattern is:
 
@@ -584,7 +586,7 @@ graph LR
     end
 
     subgraph "Scheduled Jobs"
-        USJ[utilisation-snapshot-job<br/>hourly]
+        USJ[snapshot_court_utilisation<br/>nightly]
         RFJ[revenue-forecast-job<br/>daily]
     end
 
@@ -610,12 +612,14 @@ graph LR
 
 | Topic | Published by | Consumed by | Phase |
 |---|---|---|---|
-| `utilisation-snapshots` | `utilisation-snapshot-job` | `padel-gap-detection-worker` | 1 |
+| `utilisation-snapshots` | `snapshot_court_utilisation.py` | `padel-gap-detection-worker` | 1 |
 | `gap-detected` | `gap_detection_service` | `padel-campaign-worker`, `padel-notification-worker` | 1 |
 | `churn-scores-updated` | `padel-churn-worker` | `padel-campaign-worker` | 2 |
 | `segment-assigned` | `padel-segmentation-worker` | `padel-campaign-worker` | 2 |
 | `recommendation-created` | `ai_recommendation_service` | `padel-notification-worker` | 2 |
 | `campaign-triggered` | `campaign_service` | `padel-notification-worker` | 2 |
+
+> **Deferred:** `segment-assigned` and `padel-segmentation-worker` (and the diagram's `SW`/`SA` nodes above) belong to structured player segmentation, which was deferred in the May 2026 simplification (the `player_segments` tables were dropped). Until it returns, campaign audiences are resolved from each campaign's `target_filter` JSONB rather than a segment-assignment topic.
 
 ### Fan-out pattern
 
@@ -637,11 +641,10 @@ New service classes added alongside the AI-native schema.
 | `utilisation_service.py` | Compute and store `court_utilisation_snapshots`, expose utilisation queries | `bookings`, `courts`, `pricing_rules` | `court_utilisation_snapshots` |
 | `gap_detection_service.py` | Detect gaps, generate discount offers, write events, trigger notifications | `court_utilisation_snapshots`, `clubs` (config) | `gap_detection_events`, `ai_recommendations` |
 | `pricing_service.py` (extended) | Synchronous dynamic-pricing call at booking time, fallback to base rate | `pricing_rules`, `court_utilisation_snapshots` | None (price returned in-memory) |
-| `forecasting_service.py` | Daily revenue forecast and anomaly scoring | `mv_monthly_revenue_by_club`, `court_utilisation_snapshots`, `payments` | `ai_recommendations` (type `revenue_forecast`, `revenue_anomaly`) |
+| `forecasting_service.py` | Daily revenue forecast and anomaly scoring | `mv_revenue_by_club_day_service`, `court_utilisation_snapshots`, `payments` | `ai_recommendations` (type `revenue_forecast`, `revenue_anomaly`) |
 | `player_profile_service.py` | Maintain `player_profiles`, refresh embeddings nightly | `bookings`, `match_results`, `users` | `player_profiles` |
 | `churn_service.py` | Score players daily, update engagement scores, trigger re-engagement | `bookings`, `player_profiles` | `player_engagement_scores` |
-| `segmentation_service.py` | Create/update segments, run AI classifier, manage memberships | `player_engagement_scores`, `bookings` | `player_segments`, `player_segment_memberships` |
-| `campaign_service.py` | Campaign CRUD, audience selection, send orchestration, conversion tracking | `player_segment_memberships`, `player_engagement_scores` | `campaigns`, `campaign_messages`, `campaign_deliveries` |
+| `campaign_service.py` | Campaign CRUD, audience selection via `target_filter` JSONB saved-query, send orchestration, conversion tracking | `player_engagement_scores`, plus the tables named in the campaign's `target_filter` | `campaigns`, `message_deliveries` (`source='campaign'`) |
 | `cancellation_prediction_service.py` | Score upcoming bookings, prompt confirm/release | `bookings`, `player_profiles` | `cancellation_predictions`, `bookings.cancellation_risk_score` |
 | `matchmaking_service.py` | pgvector similarity search to fill open games | `player_profiles` (embedding) | None (suggestions returned in-memory) |
 | `ai_recommendation_service.py` | Create, route, and action recommendations; manage staff approval workflow | (varies by recommendation type) | `ai_recommendations` |
@@ -673,7 +676,7 @@ All workers are deployed from the same `padel-worker` Docker image with differen
 | Job | Trigger | Phase | Purpose |
 |---|---|---|---|
 | `run-migrations` | CI/CD | MVP | Alembic migrations |
-| `utilisation-snapshot-job` | Cloud Scheduler — hourly | Phase 1 | Compute utilisation snapshots; publish to `utilisation-snapshots` |
+| `snapshot_court_utilisation.py` | Cloud Scheduler — nightly | G7 (analytics) | Compute `court_utilisation_snapshots` (delete-then-insert per court/day); the G8 gap-detection worker reads the snapshots |
 | `revenue-forecast-job` | Cloud Scheduler — daily | Phase 1 | Run revenue forecasting and anomaly detection |
 | `dashboard-insights-job` | Cloud Scheduler — daily | Phase 1 | Generate AI insights summaries for all clubs |
 | `cancellation-prediction-job` | Cloud Scheduler — every 6h | Phase 2 | Score upcoming bookings within 24h |
@@ -684,7 +687,7 @@ All workers are deployed from the same `padel-worker` Docker image with differen
 | `staffing-recommendation-job` | Cloud Scheduler — weekly | Phase 2 | Generate staffing recommendations |
 | `materialized-view-refresh-job` | Cloud Scheduler — hourly + nightly variants | Phase 1 | `REFRESH MATERIALIZED VIEW CONCURRENTLY` per view |
 | `ai-inference-log-partition-job` | Cloud Scheduler — monthly (25th) | Phase 1 | Create next month's partition |
-| `ai-inference-log-archive-job` | Cloud Scheduler — nightly | Phase 1 | Archive payloads older than 90 days to Cloud Storage |
+| `ai-inference-log-retention-job` | Cloud Scheduler — nightly | Phase 1 | Drop partitions older than 90 days (see §10) |
 | `competitor-scrape-job` | Cloud Scheduler — weekly | Phase 3 | Scrape competitor prices, write `competitor_price_snapshots` |
 
 Job code lives in `app/jobs/` and the entry point is selected by the same `CMD` override mechanism as workers — same image, different command.
@@ -695,20 +698,20 @@ Job code lives in `app/jobs/` and the entry point is selected by the same `CMD` 
 
 The MVP analytics surface (the issues in the "Phase 1 / MVP Go-Live" milestone with the `Analytics` label) is served entirely from Tier 1 plus a small number of materialized views. No AI involvement at this stage.
 
-### Endpoint inventory
+### Endpoint inventory — see the report catalogue
 
-| Endpoint | Story | Source | Tier |
-|---|---|---|---|
-| `GET /api/v1/reports/utilisation` | #56 | `bookings`, `courts` (MVP); `court_utilisation_snapshots` (post-Sprint 7) | T1 → T2 |
-| `GET /api/v1/reports/player-retention` | #57 | `bookings` aggregated by user | T1 |
-| `GET /api/v1/reports/revenue` | #60 | `payments`, `bookings` | T1 → T3 (`mv_monthly_revenue_by_club`) |
-| `GET /api/v1/reports/revenue/corporate` | #59 | `payments` filtered by booking type | T1 |
-| `GET /api/v1/reports/transactions` | #62 | `payments` paginated | T1 |
-| `GET /api/v1/reports/payouts` | #61, #186, #179 | `payments`, `platform_fees`, Stripe `payout_id` | T1 → T3 (`mv_payout_reconciliation`) |
-| `GET /api/v1/reports/daily-summary` | #39 | `payments`, `bookings` | T1 → T3 (`mv_daily_revenue_by_club`) |
-| `GET /api/v1/reports/skill-history/{user_id}` | #69, #98 | `skill_level_history` | T1 |
-| `POST /api/v1/exports/bookings` | #58 | Async — Cloud Run Job, writes CSV to Cloud Storage | T1 with offload |
-| `POST /api/v1/exports/financial` | #63 | Same offload pattern | T1 with offload |
+Analytics endpoints live under `/api/v1/analytics/...` (the `analytics_router`), **not** `/api/v1/reports/...`. The **authoritative** per-report spec — owner role, scope, refresh tier, source tables, exact endpoint paths, and aggregation rules — is [`analytics/docs/REPORT_CATALOG.md`](../backend/app/analytics/docs/REPORT_CATALOG.md). The table below is an architectural index keyed to user stories; it is not the source of truth for paths.
+
+| Report (story) | Authoritative path prefix | Source / tier |
+|---|---|---|
+| Court utilisation (#56) | `/api/v1/analytics/utilisation/clubs/{club_id}/…` | `court_utilisation_snapshots` (Tier 2 physical snapshot, G7) |
+| Revenue by club (#39, #59, #60) | `/api/v1/analytics/revenue/clubs/{club_id}/…` and `…/revenue/clubs` (cross-club) | `mv_revenue_by_club_day_{service,cash}` (Tier 3, G7) |
+| Player value / activity / inactive (#57) | `/api/v1/analytics/players/clubs/{club_id}/…` | `mv_player_value` (Tier 3, G7) |
+| Active players & sign-ups | `/api/v1/analytics/players/clubs/{club_id}/active`, `…/signups` | `mv_club_active_player_day` / `mv_club_signups_day` (Tier 3, G7) |
+| Transaction log (#62) | (operational reporting) | `payments` paginated (Tier 1) |
+| Payout reconciliation (#61, #186, #179) | (planned) | `payments`, `platform_fees`, Stripe `payout_id` (Tier 1 → Tier 3) |
+| Skill history (#69, #98) | (planned) | `skill_level_history` (Tier 1) |
+| Booking / financial export (#58, #63) | async export job → CSV to Cloud Storage | Tier 1 with offload |
 
 ### Export pattern
 
@@ -747,7 +750,7 @@ A staff admin landing page with three panels:
 Not on dashboard load. The Anthropic call happens in the daily `dashboard-insights-job`:
 
 1. Job runs at 06:00 in each club's local timezone.
-2. Reads from `mv_daily_revenue_by_club`, `mv_court_utilisation_monthly`, `gap_detection_events`, `player_engagement_scores`, `ai_recommendations` (recent).
+2. Reads from `mv_revenue_by_club_day_service`, `court_utilisation_snapshots`, `gap_detection_events`, `player_engagement_scores`, `ai_recommendations` (recent).
 3. Builds a prompt with structured numbers and recent events.
 4. Calls Anthropic via `ai_inference_service.call(...)`.
 5. Writes the result as a row in `ai_recommendations` with `recommendation_type='dashboard_insight'` and `expires_at = now + 36h` (so today's summary is still valid if tomorrow's job fails once).
@@ -821,7 +824,7 @@ AI features are not free. The platform's pricing model relies on AI consumption 
 
 ### Token cost tracking
 
-Every Anthropic call writes `prompt_tokens`, `completion_tokens`, `total_tokens`, and `model_name` to `ai_inference_log`. A daily roll-up job (`ai-cost-rollup-job`, added with the rest of the AI infrastructure in Sprint 7) aggregates these into `mv_ai_cost_by_tenant_month`. This becomes the input to per-tenant overage billing if a tenant exceeds their plan's included AI quota.
+Every Anthropic call writes token counts and the pinned `model_id` to `ai_inference_log`, and `cost_usd` is computed at write time (see [`ai/docs/INFERENCE_LOGGING.md`](../backend/app/ai/docs/INFERENCE_LOGGING.md)). A daily roll-up job (`ai-cost-rollup-job`, added with the AI infrastructure in Sprint 8 / G8) aggregates these into `rollup_ai_cost_by_feature_day`. This becomes the input to per-tenant overage billing if a tenant exceeds their plan's included AI quota.
 
 ### Vertex AI cost tracking
 
@@ -829,7 +832,7 @@ Vertex AI calls log `latency_ms` and `model_name` but not tokens. Cost is comput
 
 ### Per-plan AI quotas
 
-`subscription_plans` carries `monthly_ai_inference_limit` (integer, nullable for unlimited) and `monthly_ai_token_limit` (integer, nullable). The inference service checks against current month's usage before each call. Soft limit: log a warning and continue. Hard limit: return the fallback for the rest of the month with `fallback_used=true` and the reason recorded.
+**Design intent (not yet in the schema):** a per-plan monthly inference/token quota (e.g. `monthly_ai_inference_limit`, nullable for unlimited) against which the inference service checks current-month usage before each call. Soft limit: log a warning and continue. Hard limit: return the fallback for the rest of the month with `fallback_used=true` and the reason recorded. These columns are **not** in `DATA_MODEL_TARGET_STATE.md` yet — add them there before relying on them. (Note: this is a usage *quota*, distinct from the per-feature on/off gating in `ai_feature_flags` — see §9.)
 
 ### Capacity assumptions
 
@@ -895,7 +898,7 @@ Anthropic and Vertex AI calls regularly include PII (player names, booking histo
 
 1. **Provider terms.** Both providers have data-handling agreements that prohibit training on customer data. These are confirmed at procurement time and re-confirmed before each new feature ships.
 2. **Payload minimisation.** Inference calls send only the fields needed. The inference service has a per-feature payload schema; extra fields are stripped before the call.
-3. **Logging of PII.** `ai_inference_log.input_payload` and `output_payload` contain PII by definition. The 90-day archive policy moves payloads to Cloud Storage with the same access controls as the database. Only platform staff with audit access can read archived payloads.
+3. **Logging of PII.** Player names, emails, and phone numbers are run through `redact_pii()` *before* `ai_inference_log.input_payload` / `output_payload` are written (tenant/club IDs are not PII). Payloads then live only as long as the partition does — they are dropped with it at 90 days (see §10). A feature needing longer-lived payloads must copy them to a purpose-built table with its own access controls and retention.
 
 ### Cross-tenant data flows
 
@@ -922,24 +925,28 @@ The deletion job is documented in `DEPLOYMENT.md` runbooks.
 
 ## 22. Roadmap & Phasing
 
-| Phase | Sprint | Deliverables | Migration groups |
+This follows the **2026-05-29 re-prioritisation** (Analytics → AI infrastructure → CRM → Tournaments). It supersedes the original AI-first phasing.
+
+| Phase | Sprint | Deliverables | Migration group |
 |---|---|---|---|
-| MVP analytics | 1–6 | Tier 1 reporting endpoints, exports, transaction logs, skill history | G1–G6 |
-| AI infrastructure | 7 | `ai_inference_log` (partitioned), `ai_feature_flags`, inference service, `court_utilisation_snapshots`, dynamic pricing, payment anomaly, revenue forecast | G7, G8 (pulled forward) |
-| Phase 1 AI surfaces | 8 | Gap detection, smart notifications, weather alerts, AI insights dashboard | G8 |
-| Phase 2 — player intelligence | 9 | Player profiles + embeddings, ELO/match results, matchmaking, cancellation prediction | G9 |
-| Phase 2 — operational AI | 10 | Churn, segmentation, campaigns, recommendations engine, equipment/maintenance/staffing | G10 |
-| Phase 3 — conversational | 11 | Conversational booking, support chatbot, training recommendations, dispute auto-flag | G11 |
-| Phase 3 — multimodal | 12 | Video analysis, competitor pricing intel | G12 |
-| Long-term | TBD | BigQuery onboarding, custom-model ML hires, cross-tenant analytics surface | (separate) |
+| MVP | 1–6 | Auth, tenant/club setup, booking, payments, wallet, staff admin, support, discounts; Tier 1 reporting + exports | G1–G6 |
+| **Analytics** | 7 | `court_utilisation_snapshots`; revenue-by-club + player-value + active-players/sign-ups materialized views; the `/api/v1/analytics/...` report surface | G7 |
+| **AI infrastructure** | 8 | `ai_inference_log` (partitioned), `ai_feature_flags`, `ai_inference_service`, dynamic pricing, payment anomaly detection, revenue forecasting | G8 |
+| **CRM I** | 9 | Player profiles + embeddings, engagement/churn scoring, delivery infra (`message_deliveries`), gap detection, smart notifications, matchmaking, cancellation prediction | G9 |
+| **CRM II** | 10 | Campaigns (`target_filter` audiences), AI recommendations, re-engagement, membership tiers, staffing recommendations | G10 |
+| **Tournaments + match/skill** | 11 | Tournaments, registrations, `match_results`, skill ELO; payment dispute auto-flag | G11 |
+| Phase 3 (deferred) | 12+ | Conversational booking, AI support chatbot, training recommendations, video analysis, competitor pricing intel | G12 |
+| Long-term | TBD | BigQuery onboarding, cross-tenant analytics surface | (separate) |
 
-### What gets pulled forward
+> **Descoped 2026-05-29:** all weather features and all equipment/maintenance AI — they no longer appear in any phase above. Structured player segmentation is **deferred** (see §11).
 
-The single most important roadmap decision: **`court_utilisation_snapshots` and the `utilisation-snapshot-job` move from G8 to the start of Sprint 7.** Multiple AI features depend on this data being warm by the time they ship. Six weeks of accumulated snapshots before the first AI feature consumes them is the target.
+### Why analytics leads
+
+The re-prioritisation puts analytics first because it carries the clearest multi-site-operator ROI story *and* because the AI sprints depend on its output. The keystone dependency: **`court_utilisation_snapshots` (G7, Sprint 7) must be accumulating history before the Sprint 8 AI features (dynamic pricing, gap detection) consume it.** Weeks of warm snapshots before the first model runs is the target — see §6.
 
 ### Materialized view introduction
 
-Materialized views are added one at a time, driven by measured dashboard latency. The first ones to land are likely `mv_daily_revenue_by_club` and `mv_payout_reconciliation` (both in Sprint 7 alongside the AI infrastructure, because they back the staff daily summary and reconciliation reports that have been waiting since Sprint 4).
+Materialized views are added one at a time, driven by measured need. The G7 set already shipped: `mv_revenue_by_club_day_{service,cash}`, `mv_player_value`, and `mv_club_active_player_day` / `mv_club_signups_day` (see [`analytics/docs/MATERIALIZED_VIEWS.md`](../backend/app/analytics/docs/MATERIALIZED_VIEWS.md)). Payout reconciliation and AI-cost rollups follow in later sprints alongside the features that need them.
 
 ### BigQuery introduction
 

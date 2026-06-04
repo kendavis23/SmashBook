@@ -1,4 +1,4 @@
-_Last updated: 2026-05-23 00:00 UTC_
+_Last updated: 2026-06-04 00:00 UTC_
 
 # AI Feature Flag Matrix
 
@@ -20,7 +20,8 @@ If AI flags lived on `subscription_plans`, changing a default would silently fli
 | Dynamic pricing | off | off | on | on |
 | Gap detection | off | on | on | on |
 | Smart notifications | off | on | on | on |
-| Autonomous finance | off | off | on | on |
+| Payment anomaly detection | off | off | on | on |
+| Revenue forecasting | off | off | on | on |
 | Matchmaking | off | off | on | on |
 | Fill the Court | off | off | on | on |
 | Cancellation prediction | off | off | on | on |

@@ -1,4 +1,4 @@
-_Last updated: 2026-05-29 13:30 UTC_
+_Last updated: 2026-06-04 00:00 UTC_
 
 # SmashBook — Architecture
 
@@ -143,8 +143,8 @@ subscription_plans          ← entitlement + feature flag layer
 ```
 
 **`subscription_plans`** controls what a tenant can do:
-- Court limits, booking type permissions, feature flags (e.g. `ai_dynamic_pricing`, `matchmaking_enabled`)
-- This is the entitlement layer — no AI feature runs for a tenant unless their plan has the flag set
+- Court/club/staff limits, booking type permissions, and **non-AI** feature flags (e.g. `tournaments_enabled`, `messaging_enabled`)
+- This is the entitlement layer for operational features. **AI features are gated separately** via the `ai_feature_flags` table (one row per tenant per feature); plan-level AI defaults are seeded into that table at tenant provisioning, not stored as columns here. See "AI feature gating" below.
 
 **`tenants`** represent the business entity (could own multiple clubs). Stripe billing is at tenant level.
 
@@ -167,13 +167,13 @@ There is no row-level security at the database level — isolation is enforced i
 
 ### AI feature gating
 
-AI features are gated per-tenant via feature flags on `subscription_plans`:
+AI features are gated per-tenant via the `ai_feature_flags` table — **not** `subscription_plans`. There is one row per `(tenant_id, feature)`; `is_enabled` is the runtime toggle, and plan-level defaults are seeded into these rows when a tenant is provisioned (changing a plan default never retroactively flips a live tenant). The check belongs inside `ai_inference_service`, not in feature code:
 
 ```python
 def requires_ai_feature(feature: str):
     def decorator(func):
         def wrapper(*args, club: Club, **kwargs):
-            if not club.tenant.subscription_plan.features.get(feature):
+            if not ai_feature_flags.is_enabled(feature, club.tenant_id):
                 raise FeatureNotAvailableError(feature)
             return func(*args, club=club, **kwargs)
         return wrapper
@@ -493,9 +493,9 @@ The general rule: if the user is waiting for the response, the AI call must be s
 
 **1. Graceful degradation** — every AI feature has a non-AI fallback. Fallback logic lives inside the feature service, not the inference wrapper.
 
-**2. Logging from day one** — all AI inputs and outputs are logged to `ai_inference_log` before any feature goes to production. The table is range-partitioned by month; payloads archive to Cloud Storage after 90 days.
+**2. Logging from day one** — all AI inputs and outputs are logged to `ai_inference_log` before any feature goes to production (PII-redacted at write time). The table is range-partitioned by month; partitions older than 90 days are dropped.
 
-**3. Per-tenant feature gating** — no AI feature runs unless enabled on both the tenant's `subscription_plan` (plan-level) and `ai_feature_flags` (runtime override).
+**3. Per-tenant feature gating** — no AI feature runs unless its `ai_feature_flags` row is enabled for the tenant. `subscription_plans` does not carry AI flag columns; plan-level defaults are seeded into `ai_feature_flags` at provisioning.
 
 **4. Async where possible** — AI calls that don't need to block the user request go through Pub/Sub.
 

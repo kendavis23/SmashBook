@@ -1,4 +1,4 @@
-_Last updated: 2026-05-23 00:00 UTC_
+_Last updated: 2026-06-04 00:00 UTC_
 
 # AI Fallback Catalog
 
@@ -23,7 +23,8 @@ A fallback must:
 | Dynamic pricing | Return `price_per_slot` for the matching rule | `pricing_rules` |
 | Gap detection | Return empty list (no recommended actions) | n/a |
 | Smart notifications | Use the static `notification_templates.body_default` | `notification_templates` |
-| Autonomous finance | Skip auto-action, surface a manual review item | `support_tickets` (category=`booking_inquiry`) |
+| Payment anomaly detection | Skip auto-action, surface a manual review item | `support_tickets` (category=`booking_inquiry`) |
+| Revenue forecasting | Naive last-period (carry-forward) forecast; no anomaly flag | `mv_revenue_by_club_day_service` |
 | Matchmaking | Return players sorted by recent activity | `player_profiles` |
 | Fill the Court | _TBD_ | _TBD_ |
 | Cancellation prediction | Return `risk_score = 0.0` (no flag) | n/a |
