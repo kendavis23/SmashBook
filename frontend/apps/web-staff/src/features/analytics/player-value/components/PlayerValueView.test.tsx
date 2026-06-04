@@ -57,6 +57,7 @@ const value: PlayerValueLeaderboard = {
     sort: "lifetime_spend",
     limit: 10,
     offset: 0,
+    total_records: 2,
     rows: [row({}), row({ user_id: "u2", full_name: "Rohan Sharma" })],
 };
 

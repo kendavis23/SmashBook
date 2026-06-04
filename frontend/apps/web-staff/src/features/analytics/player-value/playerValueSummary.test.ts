@@ -30,6 +30,7 @@ function value(rows: PlayerValueRow[]): PlayerValueLeaderboard {
         sort: "lifetime_spend",
         limit: 10,
         offset: 0,
+        total_records: rows.length,
         rows,
     };
 }

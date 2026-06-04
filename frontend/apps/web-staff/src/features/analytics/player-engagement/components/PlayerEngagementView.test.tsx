@@ -51,6 +51,7 @@ const mostActive: PlayerActivityLeaderboard = {
     window_days: 30,
     limit: 250,
     offset: 0,
+    total_records: 1,
     rows: [row({})],
 };
 
@@ -60,6 +61,7 @@ const inactive: InactiveMembersReport = {
     cutoff: "2026-04-19",
     member_count: 6,
     inactive_count: 1,
+    total_records: 1,
     limit: 250,
     offset: 0,
     rows: [row({ user_id: "u2", full_name: "Alice Hartley" })],

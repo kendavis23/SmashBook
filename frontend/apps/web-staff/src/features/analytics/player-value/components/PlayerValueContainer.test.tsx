@@ -47,7 +47,7 @@ describe("PlayerValueContainer", () => {
             expect.objectContaining({
                 members_only: false,
                 sort: "lifetime_spend",
-                limit: 50,
+                limit: 10,
                 offset: 0,
             })
         );
@@ -82,7 +82,7 @@ describe("PlayerValueContainer", () => {
         fireEvent.click(screen.getByText("Sort"));
         expect(usePlayerValueLeaderboard).toHaveBeenCalledWith(
             "club-1",
-            expect.objectContaining({ sort: "bookings_played", limit: 50, offset: 0 })
+            expect.objectContaining({ sort: "bookings_played", limit: 10, offset: 0 })
         );
         fireEvent.click(screen.getByText("Members"));
         expect(usePlayerValueLeaderboard).toHaveBeenCalledWith(

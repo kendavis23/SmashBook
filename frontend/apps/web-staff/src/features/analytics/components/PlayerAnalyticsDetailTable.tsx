@@ -138,9 +138,7 @@ export function PlayerAnalyticsDetailTable({
     paginateRows = false,
     onPageChange,
 }: Props): JSX.Element {
-    const pageRows = paginateRows
-        ? rows.slice(page * pageSize, (page + 1) * pageSize)
-        : rows.slice(0, pageSize);
+    const pageRows = paginateRows ? rows.slice(page * pageSize, (page + 1) * pageSize) : rows;
     const rowOffset = page * pageSize;
 
     if (rows.length === 0) {

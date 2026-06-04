@@ -35,6 +35,7 @@ export interface PlayerValueLeaderboard {
     sort: PlayerSort;
     limit: number;
     offset: number;
+    total_records: number;
     rows: PlayerValueRow[];
 }
 
@@ -43,6 +44,7 @@ export interface PlayerActivityLeaderboard {
     window_days: number;
     limit: number;
     offset: number;
+    total_records: number;
     rows: PlayerValueRow[];
 }
 
@@ -52,6 +54,7 @@ export interface InactiveMembersReport {
     cutoff: string;
     member_count: number;
     inactive_count: number;
+    total_records: number;
     limit: number;
     offset: number;
     rows: PlayerValueRow[];
