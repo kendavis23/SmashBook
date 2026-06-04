@@ -1,4 +1,4 @@
-_Last updated: 2026-06-04 00:00 UTC_
+_Last updated: 2026-06-04 11:48 UTC_
 
 # SmashBook — Architecture
 
@@ -330,6 +330,8 @@ erDiagram
 ---
 
 ## 6. Payments & Platform Fees
+
+> **Full payment flow reference:** [PAYMENT_FLOW_STRATEGY.md](PAYMENT_FLOW_STRATEGY.md) covers the three money rails, the payment/wallet/payout lifecycle, refund and dispute strategy, and open decisions. This section is the topology summary.
 
 ### Stripe Connect architecture
 

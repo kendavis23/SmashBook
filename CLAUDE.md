@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-06-01_
+_Last updated: 2026-06-04_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -69,6 +69,7 @@ backend/
 docs/                       # cross-cutting docs only — domain-local docs live in app/<domain>/docs/
   DATA_MODEL.md              # current live database state — always accurate
   DATA_MODEL_TARGET_STATE.md # target state — the migration blueprint
+  ENTITY_RELATIONSHIPS.md    # non-obvious constraints, bypass patterns & cross-entity gotchas
   ARCHITECTURE.md
   DEPLOYMENT.md
   API_TESTING.md
@@ -245,8 +246,14 @@ Always follow this order exactly — no shortcuts:
    (add a row to the Database Migrations table at the bottom)
 8. Update docs/DATA_MODEL_TARGET_STATE.md — flip the migration group's
    Status to ✅ Applied (with the migration revision ID)
-9. Bump the "_Last updated:_" line on both docs to today's date
-10. Leave the model file + migration file + both updated docs staged together
+9. Update docs/ENTITY_RELATIONSHIPS.md if the change touches any rule it
+   records — new/changed FK-bypass, nullable-FK semantics, state machine,
+   locking, tenant scoping, append-only behaviour, Stripe linkage, write
+   ordering, or a design decision that overrides intuition. Add/edit the
+   triple-format line; drop the **(planned)** marker once the table/column
+   is live. Self-evident FKs do not belong here — skip if nothing qualifies.
+10. Bump the "_Last updated:_" line on every doc touched to today's date
+11. Leave the model file + migration file + all updated docs staged together
     for the user — the user handles all commits manually (see "Commits" above)
 ```
 
@@ -364,6 +371,7 @@ Migration groups in `DATA_MODEL_TARGET_STATE.md` map to sprints. Implement the g
 | Pub/Sub publisher | `app/core/pubsub.py` |
 | Current DB state | `docs/DATA_MODEL.md` |
 | Target DB state | `docs/DATA_MODEL_TARGET_STATE.md` |
+| Cross-entity gotchas / bypass patterns | `docs/ENTITY_RELATIONSHIPS.md` |
 | Architecture | `docs/ARCHITECTURE.md` |
 | Deployment runbook | `docs/DEPLOYMENT.md` |
 | Integration test docs | `docs/API_TESTING.md` |
@@ -407,6 +415,7 @@ After any significant change, update the relevant `docs/` file(s) before finishi
 - Auth or tenant-isolation changes
 - New environment variables or config options
 - Changes to the deployment or worker setup
+- A new or changed cross-entity rule (FK bypass, nullable-FK meaning, state transition + side effects, locking requirement, tenant-scoping exception, append-only behaviour, Stripe linkage, write ordering, or an intuition-overriding design decision) → keep [docs/ENTITY_RELATIONSHIPS.md](docs/ENTITY_RELATIONSHIPS.md) current (see step 9 of the Database Change Workflow)
 
 If no single existing doc covers the change, add a note to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
