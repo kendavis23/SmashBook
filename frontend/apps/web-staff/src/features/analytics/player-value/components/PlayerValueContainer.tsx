@@ -1,10 +1,10 @@
 import type { JSX } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { usePlayerValueLeaderboard } from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { PlayerSort } from "../../types";
 import type { PlayerTab } from "../playerValueConstants";
-import { TABLE_LIMIT, TABLE_PAGE_SIZE } from "../playerValueConstants";
+import { TABLE_PAGE_SIZE } from "../playerValueConstants";
 import { computePlayerValueSummary } from "../playerValueSummary";
 import PlayerValueView from "./PlayerValueView";
 
@@ -17,14 +17,12 @@ export default function PlayerValueContainer(): JSX.Element {
 
     const offset = page * TABLE_PAGE_SIZE;
 
-    const reportParams = {
+    const value = usePlayerValueLeaderboard(clubId ?? "", {
         members_only: membersOnly,
         sort,
-        limit: TABLE_LIMIT,
+        limit: TABLE_PAGE_SIZE,
         offset,
-    };
-
-    const value = usePlayerValueLeaderboard(clubId ?? "", reportParams);
+    });
     const topLifetimeSpend = usePlayerValueLeaderboard(clubId ?? "", {
         members_only: membersOnly,
         sort: "lifetime_spend",
@@ -46,9 +44,7 @@ export default function PlayerValueContainer(): JSX.Element {
 
     const summary = useMemo(() => computePlayerValueSummary(value.data), [value.data]);
 
-    const rowCount = value.data?.rows.length ?? 0;
-    const hasMoreBackendRows = rowCount === TABLE_LIMIT;
-    const totalItems = offset + rowCount + (hasMoreBackendRows ? TABLE_PAGE_SIZE : 0);
+    const totalItems = value.data?.total_records ?? 0;
     const totalPages = Math.max(1, Math.ceil(totalItems / TABLE_PAGE_SIZE));
 
     const handleRefresh = useCallback(() => {
@@ -67,12 +63,6 @@ export default function PlayerValueContainer(): JSX.Element {
         setSort(nextSort);
         setPage(0);
     }, []);
-
-    useEffect(() => {
-        if (!value.isLoading && page > 0 && rowCount === 0) {
-            setPage((currentPage) => Math.max(0, currentPage - 1));
-        }
-    }, [page, rowCount, value.isLoading]);
 
     return (
         <PlayerValueView

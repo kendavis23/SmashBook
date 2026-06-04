@@ -8,10 +8,7 @@ export const PLAYER_TABS: { id: PlayerTab; label: string }[] = [
     { id: "value", label: "Top by Lifetime Spend" },
 ];
 
-/** Backend page size for the player-value endpoint. */
-export const TABLE_LIMIT = 50 as const;
-
-/** Visible rows per table page. */
+/** Rows per page — sent as both `limit` and visible page size. */
 export const TABLE_PAGE_SIZE = 10 as const;
 
 export const PLAYER_SORT_OPTIONS: { value: PlayerSort; label: string }[] = [

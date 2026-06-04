@@ -40,7 +40,6 @@ export function PlayerDetailTable({
     totalItems,
     onPageChange,
 }: Props): JSX.Element {
-    const pageRows = rows.slice(0, TABLE_PAGE_SIZE);
     const rowOffset = page * TABLE_PAGE_SIZE;
 
     if (rows.length === 0) {
@@ -79,7 +78,7 @@ export function PlayerDetailTable({
                         </tr>
                     </thead>
                     <tbody>
-                        {pageRows.map((row, idx) => {
+                        {rows.map((row, idx) => {
                             return (
                                 <tr
                                     key={row.user_id}
