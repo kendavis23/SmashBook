@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 16:05 UTC_
+_Last updated: 2026-06-04 00:00 UTC_
 
 # Report Catalog
 
@@ -194,6 +194,27 @@ Each report has:
   derivable from `mv_player_value.played_last_30d/90d`; this report adds the
   sign-up flow and the active **trend over time**.
 
+### Report exports (CSV / XLSX)
+- Owner: `staff`+ (all staff roles)
+- Scope: club-scoped (tenant-isolated; the club is validated against the caller's
+  tenant on the request path before the job is enqueued).
+- Refresh: **asynchronous** (analytics/CLAUDE.md rule 5). `POST
+  /api/v1/analytics/exports` validates and publishes `analytics.export_requested`
+  to `analytics-events`, returning `202`. `app/analytics/workers/export_report.py`
+  builds the file off the read replica, uploads it to `GCS_BUCKET_EXPORTS` (1-hour
+  signed URL, 7-day GCS lifecycle delete), and emails the link to the caller. No
+  job-tracking table — delivery is by email, not polling.
+- Exportable report types (`REPORT_BUILDERS` registry, each reusing the serving
+  service so the file matches the on-screen report): `revenue_summary`,
+  `revenue_by_type`, `revenue_timeseries` (RevenueService), `player_value`
+  (PlayerValueService, paginated internally up to a 50k-row cap). Adding a type is
+  one builder + one enum value — no schema change.
+- Source tables (read replica): same materialized views the underlying reports
+  read (`mv_revenue_by_club_day_{service,cash}`, `mv_player_value`).
+- Endpoint: `POST /api/v1/analytics/exports`.
+- Consumer: staff portal (download buttons on the revenue and player dashboards).
+  This is the async successor to the retired synchronous `GET /reports/export`.
+
 ### Membership churn cohort
 - Owner: _TBD_
 - Scope: _TBD_
@@ -221,4 +242,17 @@ Each report has:
 
 Track here when a report is being phased out so consumers know in advance.
 
-_(none yet)_
+**Retired 2026-06-04 — the legacy `reports.py` module.** All eight `/api/v1/reports/*`
+stubs were removed in the analytics-domain migration (none were implemented). Where
+each concern now lives:
+
+| Old `/reports/*` endpoint | Replacement |
+|---|---|
+| `GET /reports/utilisation` | `GET /api/v1/analytics/utilisation/clubs/{id}/{daily,courts,heatmap}` |
+| `GET /reports/revenue` | `GET /api/v1/analytics/revenue/clubs/{id}/{by-type,timeseries,summary}` |
+| `GET /reports/dashboard` | `GET /api/v1/analytics/revenue/clubs/{id}/summary` (+ cross-club `/revenue/clubs`) |
+| `GET /reports/corporate-events` | `GET /api/v1/analytics/revenue/clubs/{id}/by-type` (`corporate_event` / `tournament` revenue types) |
+| `GET /reports/retention` | `GET /api/v1/analytics/players/clubs/{id}/{value,active,signups,inactive-members}` |
+| `GET /reports/export` | `POST /api/v1/analytics/exports` (async) |
+| `GET /reports/transactions` | `GET /api/v1/payments/transactions` (row-level, operational — not analytics) |
+| `GET /reports/stripe-payouts` | `GET /api/v1/payments/payouts` (row-level, operational — not analytics) |

@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 16:05 UTC_
+_Last updated: 2026-06-04 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -272,9 +272,17 @@ subscription starts only (`membership_plans.price > 0`).
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/active/timeseries` | Distinct active players per calendar bucket (WAP/MAP). `?granularity=day\|week\|month` (default week), optional `date_from`/`date_to` (trailing 30d; 366-day cap → 413). Calendar buckets, not a trailing window. |
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/signups` | New paid-member sign-ups over time + range total. `?granularity=day\|week\|month` (default month), optional range (366-day cap → 413). |
 
+Report **exports** are asynchronous (analytics/CLAUDE.md rule 5): the endpoint
+validates and enqueues, the worker builds the file and emails a signed link.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/analytics/exports` | Queue an async report export (`staff`+, tenant-isolated). Body: `report_type` (`revenue_summary\|revenue_by_type\|revenue_timeseries\|player_value`), `club_id`, `format` (`csv\|xlsx`, default csv), optional `date_from`/`date_to`/`basis`. Returns `202` — the worker emails a 1-hour signed GCS download URL to the caller. Replaces the retired synchronous `GET /reports/export`. |
+
 **Workers:**
 - `app/analytics/workers/snapshot_court_utilisation.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`). `analytics.snapshot_daily` snapshots each club's local yesterday; `analytics.snapshot_backfill` backfills a trailing window (default 90 days). Delete-then-insert per (court, day) → idempotent.
 - `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered views (`mv_revenue_by_club_day_service`, `…_cash`, `mv_player_value`, `mv_club_active_player_day`, `mv_club_signups_day`); logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
+- `app/analytics/workers/export_report.py` — Pub/Sub-push Cloud Run service on its own `analytics-export-events` topic, handles `analytics.export_requested` (published by `POST /analytics/exports`). Builds the report off the read replica, serialises to CSV/XLSX, uploads to `GCS_BUCKET_EXPORTS` (1h signed URL, 7-day lifecycle delete), and emails the link via SendGrid. Failures publish to `analytics-alerts`.
 
 ---
 
@@ -283,8 +291,16 @@ subscription starts only (`membership_plans.price > 0`).
 | File | Endpoints |
 |---|---|
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
-| `payments.py` | wallet (adjust), invoices (list/download), refunds, discounts, in-person payment |
+| `payments.py` | wallet (adjust), invoices (list/download), refunds, discounts, in-person payment, `GET /transactions` (transaction log), `GET /payouts` (Stripe payout reconciliation) |
 | `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
 | `players.py` | `GET /{id}` |
-| `reports.py` | Dashboard, revenue, retention, corporate events, transaction log, Stripe payouts, export. (`utilisation` is **deprecated** — superseded by `/api/v1/analytics/utilisation/...`.) |
 | `support.py` | Create/list/get ticket, respond to ticket |
+
+### Retired
+
+- `reports.py` (whole module) — removed in the analytics-domain migration. Its
+  concerns were redistributed: utilisation, revenue, dashboard, corporate-events
+  and retention → `app/analytics` (`/api/v1/analytics/{utilisation,revenue,players}`
+  + the new `POST /analytics/exports`); transaction log and Stripe payouts →
+  `payments.py` (`GET /payments/transactions`, `GET /payments/payouts`) as
+  row-level operational lists. See `app/analytics/docs/REPORT_CATALOG.md`.

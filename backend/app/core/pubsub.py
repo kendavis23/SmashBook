@@ -34,5 +34,14 @@ def publish_payment_event(event_type: str, payload: dict) -> None:
 def publish_notification_event(event_type: str, payload: dict) -> None:
     publish_event(settings.PUBSUB_TOPIC_NOTIFICATION_EVENTS, event_type, payload)
 
+def publish_analytics_export(event_type: str, payload: dict) -> None:
+    """Publish a request-triggered analytics export event.
+
+    Dedicated topic (not ``analytics-events``) so the export worker has its own
+    subscription and never receives the scheduled snapshot/refresh messages —
+    mirroring the snapshot/refresh topic split.
+    """
+    publish_event(settings.PUBSUB_TOPIC_ANALYTICS_EXPORTS, event_type, payload)
+
 def publish_analytics_alert(event_type: str, payload: dict) -> None:
     publish_event(settings.PUBSUB_TOPIC_ANALYTICS_ALERTS, event_type, payload)

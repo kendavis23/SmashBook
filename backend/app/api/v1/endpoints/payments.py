@@ -2,6 +2,8 @@ import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select as sa_select
 
+from typing import Optional
+
 from app.api.v1.dependencies.auth import get_current_user, require_admin, require_staff
 from app.core.config import get_settings
 from app.db.models.booking import Booking, BookingPlayer
@@ -264,4 +266,30 @@ async def adjust_wallet(user_id: str, current_user=Depends(require_staff), db=De
 @router.post("/process-in-person")
 async def process_in_person_payment(current_user=Depends(require_staff), db=Depends(get_db)):
     """Staff: process cash, card, or account credit payment for walk-ins."""
+    pass
+
+
+# Finance / reconciliation — relocated from the retired reports.py. These are
+# row-level operational lists (the rows themselves, not an aggregate), so they
+# live in the payments domain rather than app/analytics (which owns precomputed
+# aggregations). See docs/IMPLEMENTED_API.md.
+
+
+@router.get("/transactions")
+async def transaction_log(
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    player_id: Optional[str] = None,
+    booking_type: Optional[str] = None,
+    payment_method: Optional[str] = None,
+    current_user=Depends(require_staff),
+    db=Depends(get_read_db),
+):
+    """Staff: full transaction log with filters (row-level payment history)."""
+    pass
+
+
+@router.get("/payouts")
+async def stripe_payouts(current_user=Depends(require_staff)):
+    """Staff: Stripe payout records for bank reconciliation."""
     pass

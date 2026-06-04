@@ -23,12 +23,18 @@ class Settings(BaseSettings):
     PUBSUB_TOPIC_NOTIFICATION_EVENTS: str = "notification-events"
     # Cloud Scheduler publishes here to trigger analytics snapshot/rollup workers.
     PUBSUB_TOPIC_ANALYTICS_EVENTS: str = "analytics-events"
+    # Request-triggered async report exports (one topic per worker, mirroring the
+    # snapshot/refresh split so the export worker never receives snapshot messages).
+    PUBSUB_TOPIC_ANALYTICS_EXPORTS: str = "analytics-export-events"
     # Materialized-view refresh failures publish here for alerting.
     PUBSUB_TOPIC_ANALYTICS_ALERTS: str = "analytics-alerts"
 
     # Cloud Storage
     GCS_BUCKET_VIDEOS: str = ""
     GCS_BUCKET_INVOICES: str = ""
+    # Async analytics report exports (CSV/XLSX). Objects are signed for 1h reads
+    # and auto-deleted by a GCS lifecycle rule after 7 days (see storage_service).
+    GCS_BUCKET_EXPORTS: str = ""
     GCS_PROJECT_ID: str = ""
 
     # Stripe — two-account model. Today STRIPE_BILLING_SECRET_KEY may point at
