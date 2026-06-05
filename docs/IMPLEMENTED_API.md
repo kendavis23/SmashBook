@@ -107,7 +107,7 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | `PATCH` | `/api/v1/players/me` | Update current player's profile details |
 | `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time. Each item includes `club_name` and `court_name` for display. |
 | `GET` | `/api/v1/players/me/match-history` | Get current player's completed matches, most recent first. Each item includes `club_name` and `court_name` for display. |
-| `PATCH` | `/api/v1/players/{player_id}/skill-level` | Staff only: assign or update a player's skill level (1.0–7.0); writes an immutable `skill_level_history` audit entry |
+| `PATCH` | `/api/v1/players/{player_id}/skill-level` | Staff only: assign or update a player's skill level (1.0–7.0); writes an immutable `skill_level_history` audit entry. Requires `club_id` query param — the club the assessment is scoped to — supplied explicitly so owners/admins (who span multiple clubs and hold no `staff_profiles` row) can act on the selected club |
 | `GET` | `/api/v1/players/{player_id}/skill-history` | Staff only: list all skill level changes for a player, most recent first |
 
 ---

@@ -11,7 +11,6 @@ from sqlalchemy.orm import selectinload
 
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus
 from app.db.models.skill import SkillLevelHistory, SkillChangeSource
-from app.db.models.staff import StaffProfile
 from app.db.models.user import User, TenantUserRole
 from app.schemas.user import PlayerBookingItem, PlayerSearchResult, SkillLevelHistoryItem, SkillLevelUpdateResponse
 
@@ -46,6 +45,7 @@ class PlayerService:
     async def update_skill_level(
         self,
         user_id: uuid.UUID,
+        club_id: uuid.UUID,
         new_level: float,
         assigned_by_staff_id: uuid.UUID,
         reason: str = None,
@@ -55,23 +55,9 @@ class PlayerService:
         if player is None:
             return None
 
-        # skill_level_history is club-scoped (G6). The club is the one whose staff
-        # made the assessment — resolved from the assigning staff member's profile.
-        club_result = await self.db.execute(
-            select(StaffProfile.club_id)
-            .where(
-                StaffProfile.user_id == assigned_by_staff_id,
-                StaffProfile.is_active.is_(True),
-            )
-            .order_by(StaffProfile.created_at)
-            .limit(1)
-        )
-        club_id = club_result.scalar_one_or_none()
-        if club_id is None:
-            raise ValueError(
-                "Assigning staff has no active club profile; cannot scope skill change"
-            )
-
+        # skill_level_history is club-scoped (G6). The club is the one the assessment
+        # is recorded against, supplied by the caller — owners/admins act across
+        # multiple clubs and hold no staff_profiles row to infer it from.
         now = datetime.now(tz=timezone.utc)
         entry = SkillLevelHistory(
             user_id=player.id,
