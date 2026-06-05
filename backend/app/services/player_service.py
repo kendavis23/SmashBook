@@ -137,7 +137,8 @@ class PlayerService:
             .where(BookingPlayer.user_id == user_id)
             .join(Booking, BookingPlayer.booking_id == Booking.id)
             .options(
-                selectinload(BookingPlayer.booking).selectinload(Booking.court)
+                selectinload(BookingPlayer.booking).selectinload(Booking.court),
+                selectinload(BookingPlayer.booking).selectinload(Booking.club),
             )
         )
 
@@ -162,6 +163,7 @@ class PlayerService:
             items.append(PlayerBookingItem(
                 booking_id=b.id,
                 club_id=b.club_id,
+                club_name=b.club.name,
                 court_id=b.court_id,
                 court_name=b.court.name,
                 booking_type=b.booking_type,

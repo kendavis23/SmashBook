@@ -1,4 +1,4 @@
-_Last updated: 2026-06-04 00:00 UTC_
+_Last updated: 2026-06-05 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -105,8 +105,8 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | `POST` | `/api/v1/players/invite` | Staff only: invite a player to a club in the current tenant by `{email, full_name, club_id}`. Creates an unverified player with a placeholder password and a wallet, then publishes a `player_invite` event → SendGrid email with a signed 7-day link to `/complete-invitation`. Returns 404 if the club is not in the staff's tenant, 409 if the email is already registered. |
 | `GET` | `/api/v1/players/me` | Get current player's profile |
 | `PATCH` | `/api/v1/players/me` | Update current player's profile details |
-| `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time |
-| `GET` | `/api/v1/players/me/match-history` | Get current player's completed matches, most recent first |
+| `GET` | `/api/v1/players/me/bookings` | Get current player's upcoming and past bookings; returns `{ upcoming: [...], past: [...] }` sorted by start time. Each item includes `club_name` and `court_name` for display. |
+| `GET` | `/api/v1/players/me/match-history` | Get current player's completed matches, most recent first. Each item includes `club_name` and `court_name` for display. |
 | `PATCH` | `/api/v1/players/{player_id}/skill-level` | Staff only: assign or update a player's skill level (1.0–7.0); writes an immutable `skill_level_history` audit entry |
 | `GET` | `/api/v1/players/{player_id}/skill-history` | Staff only: list all skill level changes for a player, most recent first |
 
