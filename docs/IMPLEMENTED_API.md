@@ -1,4 +1,4 @@
-_Last updated: 2026-06-05 00:00 UTC_
+_Last updated: 2026-06-05 18:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -79,8 +79,8 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | `PATCH` | `/api/v1/clubs/{club_id}/settings` | Update booking rules, cancellation policy, skill config (admin+) |
 | `GET` | `/api/v1/clubs/{club_id}/operating-hours` | Get operating hours for each day of the week |
 | `PUT` | `/api/v1/clubs/{club_id}/operating-hours` | Replace all operating hours for the club (admin+) |
-| `GET` | `/api/v1/clubs/{club_id}/pricing-rules` | Get all peak/off-peak pricing windows |
-| `PUT` | `/api/v1/clubs/{club_id}/pricing-rules` | Replace all pricing rules for the club (admin+) |
+| `GET` | `/api/v1/clubs/{club_id}/pricing-rules` | Get all pricing windows (per `session_type` × tier) |
+| `PUT` | `/api/v1/clubs/{club_id}/pricing-rules` | Replace all pricing rules for the club; each rule carries a `session_type` (admin+) |
 | `POST` | `/api/v1/clubs/{club_id}/stripe/connect` | Initiate Stripe Connect Express onboarding; returns one-time URL (admin+) |
 | `GET` | `/api/v1/clubs/{club_id}/availability` | Chronological list of bookable slots + joinable open matches. Query params: `start_date` (required), `end_date`, `surface`, `from_time`, `to_time`. Joinable matches are filtered to the authenticated requestor's own skill level (looked up server-side, not passed in), and open games the requestor is already an active player in are excluded. When `end_date` is omitted, returns up to 40 slot rows + `next_cursor` for FE paging |
 

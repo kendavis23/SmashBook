@@ -274,7 +274,7 @@ async def get_pricing_rules(club_id: uuid.UUID, db: AsyncSession = Depends(get_r
     result = await db.execute(
         select(PricingRule)
         .where(PricingRule.club_id == club_id)
-        .order_by(PricingRule.day_of_week, PricingRule.start_time)
+        .order_by(PricingRule.day_of_week, PricingRule.start_time, PricingRule.session_type)
     )
     return result.scalars().all()
 
@@ -294,6 +294,7 @@ async def update_pricing_rules(
     new_rules = [
         PricingRule(
             club_id=club_id,
+            session_type=rule.session_type,
             label=rule.label,
             day_of_week=rule.day_of_week,
             start_time=rule.start_time,

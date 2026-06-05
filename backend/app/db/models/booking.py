@@ -9,6 +9,7 @@ class BookingType(str, enum.Enum):
     regular = "regular"
     lesson_individual = "lesson_individual"
     lesson_group = "lesson_group"
+    train_and_play = "train_and_play"
     corporate_event = "corporate_event"
     tournament = "tournament"
 

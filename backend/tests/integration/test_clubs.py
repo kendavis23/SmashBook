@@ -395,6 +395,45 @@ class TestPricingRules:
         assert "peak" in labels
         assert "off_peak" in labels
 
+    async def test_session_type_defaults_to_regular(self, client, admin_headers, club):
+        """A rule submitted without session_type backfills to 'regular'."""
+        resp = await client.put(
+            f"/api/v1/clubs/{club.id}/pricing-rules",
+            json=[PEAK_RULE],  # no session_type key
+            headers=admin_headers,
+        )
+        assert resp.status_code == 200
+        assert resp.json()[0]["session_type"] == "regular"
+
+    async def test_per_session_type_rules_round_trip(
+        self, client, admin_headers, player_headers, club
+    ):
+        """Same time window can carry distinct prices per session type."""
+        regular = {**PEAK_RULE, "session_type": "regular", "price_per_slot": "25.00"}
+        individual = {**PEAK_RULE, "session_type": "lesson_individual", "price_per_slot": "60.00"}
+        group = {**PEAK_RULE, "session_type": "lesson_group", "price_per_slot": "48.00"}
+        train = {**PEAK_RULE, "session_type": "train_and_play", "price_per_slot": "35.00"}
+
+        put_resp = await client.put(
+            f"/api/v1/clubs/{club.id}/pricing-rules",
+            json=[regular, individual, group, train],
+            headers=admin_headers,
+        )
+        assert put_resp.status_code == 200
+        assert len(put_resp.json()) == 4
+
+        get_resp = await client.get(
+            f"/api/v1/clubs/{club.id}/pricing-rules",
+            headers=player_headers,
+        )
+        priced = {r["session_type"]: r["price_per_slot"] for r in get_resp.json()}
+        assert priced == {
+            "regular": "25.00",
+            "lesson_individual": "60.00",
+            "lesson_group": "48.00",
+            "train_and_play": "35.00",
+        }
+
     async def test_replace_replaces_all_previous_rules(
         self, client, admin_headers, club
     ):
