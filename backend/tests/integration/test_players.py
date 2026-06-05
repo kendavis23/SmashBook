@@ -775,10 +775,11 @@ class TestGetMatchHistory:
 
 
 class TestUpdateSkillLevel:
-    async def test_success(self, client, player, staff, staff_headers, staff_club_profile):
+    async def test_success(self, client, player, staff, staff_headers, club):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "3.5"},
         )
         assert resp.status_code == 200
@@ -789,10 +790,11 @@ class TestUpdateSkillLevel:
         assert "skill_assigned_at" in body
         assert "history_entry" in body
 
-    async def test_history_entry_shape(self, client, player, staff, staff_headers, staff_club_profile):
+    async def test_history_entry_shape(self, client, player, staff, staff_headers, club):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "4.0", "reason": "Tournament win"},
         )
         assert resp.status_code == 200
@@ -804,17 +806,50 @@ class TestUpdateSkillLevel:
         assert "id" in h
         assert "created_at" in h
 
+    async def test_owner_with_no_staff_profile_can_update(
+        self, client, player, owner, owner_headers, club
+    ):
+        """Regression: owners/admins hold no staff_profiles row but operate across
+        clubs; supplying club_id explicitly must let them assign a skill level."""
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=owner_headers,
+            params={"club_id": str(club.id)},
+            json={"new_level": "3.5"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["skill_assigned_by"] == str(owner.id)
+
+    async def test_unknown_club_returns_404(self, client, player, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            params={"club_id": str(uuid.uuid4())},
+            json={"new_level": "3.5"},
+        )
+        assert resp.status_code == 404
+
+    async def test_missing_club_id_returns_422(self, client, player, staff_headers):
+        resp = await client.patch(
+            f"/api/v1/players/{player.id}/skill-level",
+            headers=staff_headers,
+            json={"new_level": "3.5"},
+        )
+        assert resp.status_code == 422
+
     async def test_subsequent_assignment_captures_previous_level(
-        self, client, player, staff, staff_headers, staff_club_profile
+        self, client, player, staff, staff_headers, club
     ):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "3.0"},
         )
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "4.0"},
         )
         assert resp.status_code == 200
@@ -822,54 +857,60 @@ class TestUpdateSkillLevel:
         assert float(h["previous_level"]) == 3.0
         assert float(h["new_level"]) == 4.0
 
-    async def test_player_not_found_returns_404(self, client, staff_headers):
+    async def test_player_not_found_returns_404(self, client, staff_headers, club):
         resp = await client.patch(
             f"/api/v1/players/{uuid.uuid4()}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "3.5"},
         )
         assert resp.status_code == 404
 
-    async def test_player_role_cannot_update_skill_level(self, client, player, player_headers):
+    async def test_player_role_cannot_update_skill_level(self, client, player, player_headers, club):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=player_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "3.5"},
         )
         assert resp.status_code == 403
 
-    async def test_unauthenticated_returns_403(self, client, player):
+    async def test_unauthenticated_returns_403(self, client, player, club):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
+            params={"club_id": str(club.id)},
             json={"new_level": "3.5"},
         )
         assert resp.status_code == 403
 
-    async def test_skill_level_below_minimum_returns_422(self, client, player, staff_headers):
+    async def test_skill_level_below_minimum_returns_422(self, client, player, staff_headers, club):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "0.5"},
         )
         assert resp.status_code == 422
 
-    async def test_skill_level_above_maximum_returns_422(self, client, player, staff_headers):
+    async def test_skill_level_above_maximum_returns_422(self, client, player, staff_headers, club):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "7.5"},
         )
         assert resp.status_code == 422
 
-    async def test_missing_new_level_returns_422(self, client, player, staff_headers):
+    async def test_missing_new_level_returns_422(self, client, player, staff_headers, club):
         resp = await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"reason": "no level provided"},
         )
         assert resp.status_code == 422
 
-    async def test_wrong_tenant_returns_401(self, client, player, staff, tenant, plan, test_session_factory):
+    async def test_wrong_tenant_returns_401(self, client, player, staff, tenant, plan, club, test_session_factory):
         from app.db.models.tenant import Tenant as TenantModel
 
         subdomain_b = f"other-{uuid.uuid4().hex[:8]}"
@@ -884,6 +925,7 @@ class TestUpdateSkillLevel:
             resp = await client.patch(
                 f"/api/v1/players/{player.id}/skill-level",
                 headers={"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2.id)},
+                params={"club_id": str(club.id)},
                 json={"new_level": "3.5"},
             )
             assert resp.status_code == 401

@@ -328,6 +328,7 @@ async def get_calendar_view(
 
     oh_by_dow = {oh.day_of_week: oh for oh in club.operating_hours}
     slot_duration = timedelta(minutes=club.booking_duration_minutes)
+    now = datetime.now(tz=timezone.utc)
 
     # Group booking items by date then court
     by_date_court: dict = defaultdict(lambda: defaultdict(list))
@@ -355,17 +356,6 @@ async def get_calendar_view(
             return []
         slot_start = datetime.combine(day, oh.open_time, tzinfo=timezone.utc)
         day_end = datetime.combine(day, oh.close_time, tzinfo=timezone.utc)
-        if day < date.today():
-            result = []
-            while slot_start + slot_duration <= day_end:
-                slot_end = slot_start + slot_duration
-                result.append(CalendarTimeSlot(
-                    start_datetime=slot_start,
-                    end_datetime=slot_end,
-                    status="past",
-                ))
-                slot_start = slot_end
-            return result
         court_bookings = bookings_by_court.get(court_id, [])
         court_reservations = (
             reservations_by_court.get(court_id, [])
@@ -374,6 +364,14 @@ async def get_calendar_view(
         result = []
         while slot_start + slot_duration <= day_end:
             slot_end = slot_start + slot_duration
+            if slot_start < now:
+                result.append(CalendarTimeSlot(
+                    start_datetime=slot_start,
+                    end_datetime=slot_end,
+                    status="past",
+                ))
+                slot_start = slot_end
+                continue
             booking_match = next(
                 (b for b in court_bookings if b.start_datetime < slot_end and b.end_datetime > slot_start),
                 None,

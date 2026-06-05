@@ -23,7 +23,7 @@ import pytest_asyncio
 from sqlalchemy import delete as sql_delete, select
 
 from app.core.security import create_access_token
-from app.db.models.booking import Booking, BookingPlayer, InviteStatus, PaymentStatus, PlayerRole
+from app.db.models.booking import Booking, BookingPlayer, BookingStatus, BookingType, InviteStatus, PaymentStatus, PlayerRole
 from app.db.models.club import OperatingHours, PricingRule
 from app.db.models.membership import BillingPeriod, MembershipPlan, MembershipStatus, MembershipSubscription
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
@@ -84,7 +84,7 @@ async def court_with_hours(club, test_session_factory):
 
         rule = PricingRule(
             club_id=club.id,
-            label="Standard",
+            label="standard",
             day_of_week=_future().weekday(),
             start_time=time(0, 0),
             end_time=time(23, 59),
@@ -448,6 +448,43 @@ class TestCreateBooking:
             headers=player_headers,
         )
         assert resp.status_code == 422
+
+    async def test_staff_cannot_create_booking_in_the_past(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """Staff bypass the notice window, but a booking can never start in the past."""
+        # Yesterday at 10:30 UTC — on the 90-min grid, inside operating hours
+        past_start = (datetime.now(tz=timezone.utc) - timedelta(days=1)).replace(
+            hour=10, minute=30, second=0, microsecond=0
+        )
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, past_start),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422, resp.text
+        assert "past" in resp.json()["detail"].lower()
+
+    async def test_staff_cannot_create_earlier_today_booking(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """The reported bug: an elapsed slot earlier *today* must also be rejected."""
+        now = datetime.now(tz=timezone.utc)
+        # Largest 90-min grid slot (from open_time 06:00) that already started today.
+        open_dt = now.replace(hour=6, minute=0, second=0, microsecond=0)
+        if now <= open_dt + timedelta(minutes=DURATION):
+            pytest.skip("Test run too early in the UTC day for an elapsed in-hours slot")
+        elapsed_slots = (now - open_dt) // timedelta(minutes=DURATION)
+        earlier = open_dt + elapsed_slots * timedelta(minutes=DURATION)
+        if earlier >= now:  # boundary case — step back one slot
+            earlier -= timedelta(minutes=DURATION)
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, earlier),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422, resp.text
+        assert "past" in resp.json()["detail"].lower()
 
     async def test_unknown_court_returns_404(self, client, player_headers, club):
         start = _future()
@@ -1429,19 +1466,27 @@ class TestBugFixes:
 
     # Fix #3 — list_open_games excludes past bookings
     async def test_list_open_games_excludes_past_bookings(
-        self, client, staff_headers, club, court_with_hours, tenant, test_session_factory
+        self, client, staff, club, court_with_hours, tenant, test_session_factory
     ):
-        """Staff creates a past open game; it must not appear in the open-games list."""
-        # Use yesterday at 10:30 UTC — on the 90-min grid, within operating hours
+        """A past open game must not appear in the open-games list."""
+        # Use yesterday at 10:30 UTC — on the 90-min grid, within operating hours.
+        # The API now refuses to create bookings in the past, so seed it directly.
         past_start = (datetime.now(tz=timezone.utc) - timedelta(days=1)).replace(
             hour=10, minute=30, second=0, microsecond=0
         )
-        # Staff bypass allows booking in the past
-        await client.post(
-            "/api/v1/bookings",
-            json=_booking_payload(club.id, court_with_hours.id, past_start, is_open_game=True),
-            headers=staff_headers,
-        )
+        async with test_session_factory() as session:
+            session.add(Booking(
+                club_id=club.id,
+                court_id=court_with_hours.id,
+                booking_type=BookingType.regular,
+                status=BookingStatus.pending,
+                start_datetime=past_start,
+                end_datetime=past_start + timedelta(minutes=DURATION),
+                created_by_user_id=staff.id,
+                max_players=4,
+                is_open_game=True,
+            ))
+            await session.commit()
 
         resp = await client.get(
             f"/api/v1/bookings/open-games?club_id={club.id}",
@@ -2120,6 +2165,27 @@ class TestCalendarView:
             for slot in court_col["time_slots"]:
                 assert slot["status"] != "past", f"Unexpected 'past' status on future date {anchor}"
 
+    async def test_today_elapsed_slots_marked_past(
+        self, client, staff_headers, club, court_with_hours
+    ):
+        """For today, slots whose start is already elapsed must be 'past', and
+        slots starting at/after now must not be — time-independent invariant."""
+        from datetime import date
+        today = date.today()
+        resp = await client.get(
+            f"/api/v1/bookings/calendar?club_id={club.id}&view=day&anchor_date={today.isoformat()}",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        now = datetime.now(tz=timezone.utc)
+        for court_col in resp.json()["days"][0]["courts"]:
+            for slot in court_col["time_slots"]:
+                slot_start = datetime.fromisoformat(slot["start_datetime"].replace("Z", "+00:00"))
+                if slot_start < now:
+                    assert slot["status"] == "past", f"Elapsed slot {slot_start} should be 'past'"
+                else:
+                    assert slot["status"] != "past", f"Upcoming slot {slot_start} should not be 'past'"
+
 
 # ---------------------------------------------------------------------------
 # POST /api/v1/bookings — on_behalf_of_user_id (staff creates for a player)
@@ -2339,6 +2405,32 @@ class TestUpdateBooking:
             headers=staff_headers,
         )
         assert resp.status_code == 409
+
+        await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
+
+    async def test_cannot_reschedule_into_the_past(
+        self, client, staff_headers, player_headers, club, court_with_hours, test_session_factory
+    ):
+        """Staff cannot reschedule a booking to a start time in the past."""
+        start = _future()
+        r = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court_with_hours.id, start),
+            headers=player_headers,
+        )
+        assert r.status_code == 201
+        booking_id = r.json()["id"]
+
+        past_start = (datetime.now(tz=timezone.utc) - timedelta(days=1)).replace(
+            hour=10, minute=30, second=0, microsecond=0
+        )
+        resp = await client.patch(
+            f"/api/v1/bookings/{booking_id}?club_id={club.id}",
+            json={"start_datetime": past_start.isoformat()},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 422, resp.text
+        assert "past" in resp.json()["detail"].lower()
 
         await _delete_bookings_for_court(court_with_hours.id, test_session_factory)
 

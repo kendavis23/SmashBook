@@ -13,6 +13,7 @@ from app.core.pubsub import publish_notification_event
 from app.core.security import create_invite_token, get_password_hash
 from app.db.session import get_db, get_read_db
 from app.api.v1.dependencies.auth import get_current_user, require_staff
+from app.api.v1.dependencies.tenant import get_tenant
 from app.db.models.club import Club
 from app.db.models.tenant import Tenant
 from app.db.models.user import User, TenantUserRole
@@ -238,13 +239,28 @@ async def get_skill_history(
 async def update_skill_level(
     player_id: uuid.UUID,
     body: SkillLevelUpdate,
+    club_id: uuid.UUID = Query(...),
     current_user: User = Depends(require_staff),
+    tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_db),
 ):
-    """Staff only: assign or update a player's skill level."""
+    """Staff only: assign or update a player's skill level.
+
+    ``club_id`` is the club the assessment is recorded against (the skill-level
+    history is club-scoped). It is passed explicitly — like every other staff
+    endpoint — so owners/admins, who operate across multiple clubs and hold no
+    per-club ``staff_profiles`` row, can act on whichever club they select.
+    """
+    club_result = await db.execute(
+        select(Club).where(Club.id == club_id, Club.tenant_id == tenant.id)
+    )
+    if club_result.scalar_one_or_none() is None:
+        raise HTTPException(status_code=404, detail="Club not found")
+
     svc = PlayerService(db)
     result = await svc.update_skill_level(
         user_id=player_id,
+        club_id=club_id,
         new_level=body.new_level,
         assigned_by_staff_id=current_user.id,
         reason=body.reason,

@@ -347,7 +347,7 @@ class TestOperatingHours:
 
 
 PEAK_RULE = {
-    "label": "Peak",
+    "label": "peak",
     "day_of_week": 0,
     "start_time": "17:00:00",
     "end_time": "20:00:00",
@@ -356,7 +356,7 @@ PEAK_RULE = {
 }
 
 OFF_PEAK_RULE = {
-    "label": "Off Peak",
+    "label": "off_peak",
     "day_of_week": 0,
     "start_time": "08:00:00",
     "end_time": "17:00:00",
@@ -365,7 +365,7 @@ OFF_PEAK_RULE = {
 }
 
 SURGE_RULE = {
-    "label": "Surge",
+    "label": "standard",
     "day_of_week": 1,
     "start_time": "18:00:00",
     "end_time": "21:00:00",
@@ -392,8 +392,8 @@ class TestPricingRules:
         )
         assert get_resp.status_code == 200
         labels = [r["label"] for r in get_resp.json()]
-        assert "Peak" in labels
-        assert "Off Peak" in labels
+        assert "peak" in labels
+        assert "off_peak" in labels
 
     async def test_replace_replaces_all_previous_rules(
         self, client, admin_headers, club
@@ -410,7 +410,7 @@ class TestPricingRules:
         )
         assert resp.status_code == 200
         assert len(resp.json()) == 1
-        assert resp.json()[0]["label"] == "Surge"
+        assert resp.json()[0]["label"] == "standard"
 
     async def test_surge_pricing_fields_saved(self, client, admin_headers, club):
         resp = await client.put(

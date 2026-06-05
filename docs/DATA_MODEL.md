@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 15:25 UTC_
+_Last updated: 2026-06-05 14:05 UTC_
 
 # SmashBook Data Model
 
@@ -201,7 +201,7 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 |---|---|---|
 | `id` | UUID | PK |
 | `club_id` | UUID | FK → `clubs` |
-| `label` | VARCHAR(50) | e.g. "Peak", "Off-Peak" |
+| `label` | `pricinglabel` enum | Pricing tier: `peak`, `off_peak`, `standard`. Fixed set — extend via enum `ALTER` + model |
 | `day_of_week` | SMALLINT | 0 = Monday … 6 = Sunday |
 | `start_time` | TIME | |
 | `end_time` | TIME | |
@@ -877,6 +877,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `520ea227119a` | G7 (Analytics) — new table `analytics_refresh_log` (`refreshstatus` enum) recording every materialized-view refresh run by `app/analytics/workers/refresh_views.py`; index `ix_analytics_refresh_log_view_started (view_name, started_at)` |
 | `fd3c5c3192ab` | G7 (Analytics) — player-value report (workstream B): new materialized view `mv_player_value`, grain `(club_id, user_id)`, `UNIQUE(club_id, user_id)` for `REFRESH … CONCURRENTLY`. Hand-written DDL (views aren't ORM models). Stitches activity (`booking_players` ⋈ `bookings`), net spend (`payments` by `user_id`), and paid-membership flag (`membership_subscriptions` ⋈ `membership_plans`) per player. Backs `/api/v1/analytics/players/...` (LTV, most-active, inactive-members) |
 | `4d439313634d` | G7 (Analytics) — club player-flow report (workstream A): new materialized views `mv_club_active_player_day` (presence, grain `(club_id, activity_date, user_id)`, `UNIQUE(club_id, activity_date, user_id)`) and `mv_club_signups_day` (flow, grain `(club_id, signup_date)`, `UNIQUE(club_id, signup_date)`), both for `REFRESH … CONCURRENTLY`. Hand-written DDL. Active = distinct on-court players (`booking_players` ⋈ `bookings`); signups = new paid subscription starts (`membership_subscriptions` ⋈ `membership_plans`, price > 0). Backs `/api/v1/analytics/players/clubs/{id}/{active,active/timeseries,signups}` |
+| `da94effd108c` | `pricing_rules.label` tightened from free-text `VARCHAR(50)` to new `pricinglabel` enum (`peak`, `off_peak`, `standard`). Legacy values remapped in-migration by time-of-day semantics before the cast: `off_peak` ← `Off-Peak`, `Wknd AM`; `peak` ← `Peak`, `Evening`, `Weekend`, `Wknd PM`, `Wknd Eve`; `standard` ← catch-all. Extend the tier set by `ALTER TYPE pricinglabel ADD VALUE` + a model member |
 
 To run migrations:
 ```bash

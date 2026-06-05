@@ -133,6 +133,7 @@ class UserProfileUpdate(BaseModel):
 class PlayerBookingItem(BaseModel):
     booking_id: uuid.UUID
     club_id: uuid.UUID
+    club_name: str
     court_id: uuid.UUID
     court_name: str
     booking_type: BookingType
