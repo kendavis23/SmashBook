@@ -20,7 +20,6 @@ export default function Sidebar({
     collapsed = false,
     onToggleCollapse = () => {},
 }: SidebarProps): JSX.Element {
-    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
     const [openSubgroups, setOpenSubgroups] = useState<Record<string, boolean>>({});
     const [isHovered, setIsHovered] = useState(false);
 
@@ -51,7 +50,6 @@ export default function Sidebar({
             if (!item.children) continue;
             const activeChild = item.children.find((c) => isPathActive(c.path));
             if (!activeChild) continue;
-            setOpenMenus((prev) => (prev[item.label] ? prev : { ...prev, [item.label]: true }));
             const sg = activeChild.subgroup;
             if (sg) {
                 const subKey = `${item.label}::${sg}`;
@@ -129,14 +127,12 @@ export default function Sidebar({
 
         /* ── Collapsible section (has children) ──────────────────────────── */
         if (item.children) {
-            const isOpen = openMenus[item.label] ?? false;
             const visibleChildren = item.children.filter((child) =>
                 canAccess(child.roles, role ?? undefined)
             );
             const isChildActive = visibleChildren.some((child) => isPathActive(child.path));
-            /* Open state is explicit only (seeded for the active route by the
-               effect above) so opening/closing one section never affects others. */
-            const isExpanded = isOpen;
+            /* Groups are always expanded — no open/close toggle. */
+            const isExpanded = true;
             if (visibleChildren.length === 0) return null;
 
             /* Collapsed (rail, not hover-expanded): show icon only, clicking navigates to first child */
@@ -186,34 +182,19 @@ export default function Sidebar({
 
             return (
                 <div key={item.key}>
-                    <button
-                        onClick={() => setOpenMenus((prev) => ({ ...prev, [item.label]: !isOpen }))}
-                        className={`group flex w-full items-center justify-between rounded-md
-                            px-2.5 py-[5px] text-sm transition-all duration-150
-                            ${
-                                isChildActive
-                                    ? "bg-[var(--sidebar-active-bg)] font-semibold text-cta"
-                                    : "text-foreground/80 hover:bg-accent hover:text-foreground"
-                            }`}
+                    <div
+                        className={`flex w-full items-center gap-2 rounded-md
+                            px-2.5 py-[5px] text-sm
+                            ${isChildActive ? "font-semibold text-cta" : "text-foreground/80"}`}
                     >
-                        <div className="flex items-center gap-2">
-                            <Icon
-                                size={14}
-                                className={`flex-shrink-0 transition-colors ${
-                                    isChildActive
-                                        ? "text-cta"
-                                        : "text-foreground/55 group-hover:text-foreground/85"
-                                }`}
-                            />
-                            <span className="text-[13px] font-medium">{item.label}</span>
-                        </div>
-                        <ChevronDown
-                            size={12}
-                            className={`flex-shrink-0 transition-transform duration-200 ${
-                                isExpanded ? "rotate-180" : ""
-                            } ${isChildActive ? "text-cta" : "text-foreground/45"}`}
+                        <Icon
+                            size={14}
+                            className={`flex-shrink-0 ${
+                                isChildActive ? "text-cta" : "text-foreground/55"
+                            }`}
                         />
-                    </button>
+                        <span className="text-[13px] font-medium">{item.label}</span>
+                    </div>
 
                     {/* Children */}
                     <div
@@ -302,7 +283,7 @@ export default function Sidebar({
                             </div>
                         ) : (
                             /* Flat list with a single left rail (e.g. Settings) */
-                            <div className="ml-[1.0625rem] border-l border-border/60 pl-2.5 pb-0.5">
+                            <div className="ml-1 border-l border-border/60 pl-1.5 pb-0.5">
                                 {subgroups.map((sg) => (
                                     <div
                                         key={sg.label || "_flat"}
@@ -479,19 +460,8 @@ export default function Sidebar({
                 {/* ── Navigation ─────────────────────────────────────────── */}
                 <nav className="flex-1 overflow-y-auto px-1.5 py-2">
                     {groupedRoutes.map(({ group, items }, idx) => {
-                        /* A section made up entirely of collapsible parents already
-                           renders its own label inside the trigger — don't repeat it
-                           as a standalone heading. Only flat-leaf groups (e.g. Overview)
-                           get a standalone section heading. */
-                        const hasOnlyCollapsible = items.every((i) => i.children);
-                        const showHeading = group && expanded && !hasOnlyCollapsible;
                         return (
                             <div key={group} className={idx > 0 ? "mt-2" : ""}>
-                                {showHeading && (
-                                    <p className="mb-0.5 px-2 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-foreground/45">
-                                        {group}
-                                    </p>
-                                )}
                                 {/* Divider between groups when collapsed (rail) */}
                                 {group && !expanded && idx > 0 && (
                                     <div className="my-1.5 border-t border-border/50" />

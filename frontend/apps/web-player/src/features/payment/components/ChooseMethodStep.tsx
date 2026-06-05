@@ -1,4 +1,4 @@
-import { type JSX, useState } from "react";
+import { type JSX, useEffect, useState } from "react";
 import { Check, CreditCard, Plus, Wallet } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import { useGetWallet } from "@repo/player-domain/hooks";
@@ -32,6 +32,12 @@ export function ChooseMethodStep({
             ? Number.parseFloat(wallet.balance)
             : (wallet?.balance ?? 0);
     const hasEnoughBalance = walletBalance >= amountDue;
+
+    useEffect(() => {
+        if (!walletLoading && !hasEnoughBalance && selectedMethod === "wallet") {
+            setSelectedMethod("card");
+        }
+    }, [walletLoading, hasEnoughBalance]);
 
     function handleConfirm() {
         if (selectedMethod === "wallet") {

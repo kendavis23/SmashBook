@@ -3,6 +3,26 @@ import { describe, expect, it, vi } from "vitest";
 import BookingsView from "./BookingsView";
 import type { Booking, BookingsListFilters } from "../../types";
 
+vi.mock("../../components/PlayerAutocomplete", () => ({
+    PlayerAutocomplete: ({
+        value,
+        onChange,
+        placeholder,
+    }: {
+        value: string;
+        onChange: (v: string) => void;
+        placeholder?: string;
+    }) => (
+        <input
+            type="text"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder ?? "Search player"}
+            aria-label="Search by player name"
+        />
+    ),
+}));
+
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
         <nav>
@@ -132,8 +152,10 @@ function renderView(overrides: Partial<Parameters<typeof BookingsView>[0]> = {})
         filters: defaultFilters,
         courts: [],
         courtNameMap: {},
+        clubId: "club-1",
         onFiltersChange: vi.fn(),
         onSearch: vi.fn(),
+        onClearFilters: vi.fn(),
         onRefresh: vi.fn(),
         onCreateClick: vi.fn(),
         onManageClick: vi.fn(),
@@ -244,8 +266,10 @@ describe("BookingsView — booking list", () => {
                 filters={defaultFilters}
                 courts={[]}
                 courtNameMap={{}}
+                clubId="club-1"
                 onFiltersChange={vi.fn()}
                 onSearch={vi.fn()}
+                onClearFilters={vi.fn()}
                 onRefresh={vi.fn()}
                 onCreateClick={vi.fn()}
                 onManageClick={vi.fn()}

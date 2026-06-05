@@ -256,25 +256,32 @@ describe("Sidebar — group headers", () => {
         expect(screen.queryByText("Settings")).not.toBeInTheDocument();
     });
 
-    it("keeps sibling sections open when another section is toggled", () => {
+    it("renders group headers as non-interactive divs (always expanded, no toggle)", () => {
         render(<Sidebar />);
+        // Groups are always expanded — they are divs, not buttons
+        expect(screen.queryByRole("button", { name: /^operations$/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^analytics$/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^settings$/i })).not.toBeInTheDocument();
+        // The labels still appear in the DOM
+        expect(screen.getByText("Operations")).toBeInTheDocument();
+        expect(screen.getByText("Analytics")).toBeInTheDocument();
+        expect(screen.getByText("Settings")).toBeInTheDocument();
+    });
 
-        const operationsButton = screen.getByRole("button", { name: /operations/i });
-        const analyticsButton = screen.getByRole("button", { name: /analytics/i });
-
-        fireEvent.click(operationsButton);
-        expect(operationsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
-
-        fireEvent.click(analyticsButton);
-        expect(operationsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
-        expect(analyticsButton.nextElementSibling).toHaveClass("max-h-[40rem]");
+    it("children of groups are always visible without clicking the group header", () => {
+        render(<Sidebar />);
+        // Operations children visible immediately
+        expect(screen.getByText("Calendar")).toBeInTheDocument();
+        // Analytics children visible immediately
+        expect(screen.getByText("Club Utilisation")).toBeInTheDocument();
+        // Settings children visible immediately
+        expect(screen.getByText("My Plan")).toBeInTheDocument();
     });
 
     it("keeps sibling subgroups open when another subgroup is toggled", () => {
         render(<Sidebar />);
 
-        fireEvent.click(screen.getByRole("button", { name: /operations/i }));
-
+        // Groups are always expanded — no need to click the group header first
         const bookingButton = screen.getByRole("button", { name: /^booking$/i });
         const peopleButton = screen.getByRole("button", { name: /^people$/i });
 
