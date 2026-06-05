@@ -13,6 +13,7 @@ vi.mock("../../hooks", () => ({
     useListBookings: vi.fn(() => ({ data: [], isLoading: false, error: null, refetch: vi.fn() })),
     useCancelBooking: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
     useListCourts: vi.fn(() => ({ data: [] })),
+    useSearchPlayers: vi.fn(() => ({ data: [], isFetching: false, isError: false })),
 }));
 
 vi.mock("../../store", () => ({

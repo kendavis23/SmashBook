@@ -100,16 +100,12 @@ export function PlayerAutocomplete({
     const handleSelect = (player: PlayerSearchResult): void => {
         setIsOpen(false);
         setActiveIndex(-1);
+        setSelectedPlayer(player);
+        setInputValue(player.full_name);
         if (onSelect) {
-            setSelectedPlayer(null);
-            setInputValue("");
             onSelect(player);
-            onChange(player.id);
-        } else {
-            setSelectedPlayer(player);
-            setInputValue(player.full_name);
-            onChange(player.id);
         }
+        onChange(player.id);
     };
 
     const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {

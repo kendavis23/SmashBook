@@ -120,6 +120,24 @@ export default function BookingsContainer(): JSX.Element {
         });
     }, [filters, navigate]);
 
+    const handleClearFilters = useCallback((): void => {
+        const cleared: BookingsListFilters = {
+            dateFrom: todayIso(),
+            dateTo: "",
+            bookingType: "",
+            bookingStatus: "",
+            courtId: "",
+            playerSearch: "",
+        };
+        setFilters(cleared);
+        setAppliedFilters(cleared);
+        void navigate({
+            to: "/bookings",
+            search: buildBookingsSearch(cleared),
+            replace: true,
+        });
+    }, [navigate]);
+
     const handleRefresh = useCallback((): void => {
         void refetch();
     }, [refetch]);
@@ -159,8 +177,10 @@ export default function BookingsContainer(): JSX.Element {
                 filters={filters}
                 courts={courts as { id: string; name: string }[]}
                 courtNameMap={courtNameMap}
+                clubId={clubId ?? null}
                 onFiltersChange={setFilters}
                 onSearch={handleSearch}
+                onClearFilters={handleClearFilters}
                 onRefresh={handleRefresh}
                 onCreateClick={handleCreateClick}
                 onManageClick={handleManageClick}

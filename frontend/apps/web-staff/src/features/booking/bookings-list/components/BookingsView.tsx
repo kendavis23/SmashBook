@@ -9,6 +9,7 @@ import {
     Pagination,
     SelectInput,
 } from "@repo/ui";
+import { PlayerAutocomplete } from "../../components/PlayerAutocomplete";
 import {
     ArrowDown,
     ArrowUp,
@@ -18,7 +19,7 @@ import {
     RefreshCw,
     Search,
     Settings2,
-    User,
+    X,
 } from "lucide-react";
 import type { Booking, BookingsListFilters } from "../../types";
 import {
@@ -37,8 +38,10 @@ type Props = {
     filters: BookingsListFilters;
     courts: { id: string; name: string }[];
     courtNameMap: Record<string, string>;
+    clubId: string | null;
     onFiltersChange: (filters: BookingsListFilters) => void;
     onSearch: () => void;
+    onClearFilters: () => void;
     onRefresh: () => void;
     onCreateClick: () => void;
     onManageClick: (bookingId: string) => void;
@@ -101,8 +104,10 @@ export default function BookingsView({
     filters,
     courts,
     courtNameMap,
+    clubId,
     onFiltersChange,
     onSearch,
+    onClearFilters,
     onRefresh,
     onCreateClick,
     onManageClick,
@@ -274,22 +279,16 @@ export default function BookingsView({
                             <span className="text-[11px] font-medium text-muted-foreground">
                                 Player
                             </span>
-                            <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 shadow-xs transition focus-within:border-cta focus-within:ring-2 focus-within:ring-cta-ring/30">
-                                <User size={13} className="shrink-0 text-muted-foreground" />
-                                <input
-                                    type="text"
-                                    value={filters.playerSearch}
-                                    onChange={(e) =>
-                                        onFiltersChange({
-                                            ...filters,
-                                            playerSearch: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Name or email…"
-                                    className="w-full bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                                    aria-label="Search by player name or email"
-                                />
-                            </div>
+                            <PlayerAutocomplete
+                                value={filters.playerSearch}
+                                onChange={() => {}}
+                                onSelect={(player) =>
+                                    onFiltersChange({ ...filters, playerSearch: player.full_name })
+                                }
+                                clubId={clubId}
+                                label="Search by player name"
+                                placeholder="Name…"
+                            />
                         </div>
 
                         {/* col 4, row 1 — intentionally empty */}
@@ -341,14 +340,21 @@ export default function BookingsView({
                             />
                         </div>
 
-                        {/* Search button — col 4, row 2 */}
-                        <div className="flex flex-col justify-end">
+                        {/* Search + Clear buttons — col 4, row 2 */}
+                        <div className="flex items-end gap-1.5">
                             <button
                                 onClick={handleSearchClick}
-                                className="btn-cta h-[38px] w-full whitespace-nowrap px-2"
+                                className="btn-cta h-[38px] flex-1 whitespace-nowrap px-3"
                                 aria-label="Apply filters"
                             >
                                 <Search size={14} /> Search
+                            </button>
+                            <button
+                                onClick={onClearFilters}
+                                className="btn-outline h-[38px] whitespace-nowrap px-3"
+                                aria-label="Clear filters"
+                            >
+                                <X size={14} /> Clear
                             </button>
                         </div>
                     </div>
