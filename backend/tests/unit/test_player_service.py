@@ -49,11 +49,16 @@ def _make_booking_player(
     court.id = COURT_ID
     court.name = "Court 1"
 
+    club = MagicMock()
+    club.id = CLUB_ID
+    club.name = "Smash Club"
+
     booking = MagicMock()
     booking.id = uuid.uuid4()
     booking.club_id = CLUB_ID
     booking.court_id = COURT_ID
     booking.court = court
+    booking.club = club
     booking.booking_type = BookingType.regular
     booking.status = status
     booking.start_datetime = start
@@ -187,6 +192,7 @@ class TestGetBookingHistoryMapping:
         assert item.club_id == CLUB_ID
         assert item.court_id == COURT_ID
         assert item.court_name == "Court 1"
+        assert item.club_name == "Smash Club"
         assert item.booking_type == BookingType.regular
         assert item.status == BookingStatus.confirmed
         assert item.start_datetime == bp.booking.start_datetime
