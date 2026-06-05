@@ -1,6 +1,7 @@
 import type { PricingRule } from "../../types";
 import { Pencil, Tag, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 import type { JSX } from "react";
+import { formatPlainTime } from "@repo/ui";
 import { DAY_NAMES, formatPrice } from "./pricingRulesConstants";
 
 export function RuleCard({
@@ -54,7 +55,7 @@ export function RuleCard({
                 <p className="space-x-1.5">
                     <span className="text-xs text-muted-foreground">Time</span>
                     <span className="font-medium text-foreground">
-                        {rule.start_time} – {rule.end_time}
+                        {formatPlainTime(rule.start_time)} – {formatPlainTime(rule.end_time)}
                     </span>
                 </p>
                 <p className="space-x-1.5">

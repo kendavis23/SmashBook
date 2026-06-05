@@ -1,9 +1,19 @@
 ---
 name: commit
-description: Commit code directly with a proper message, skipping format/lint/test/build checks.
+description: Generate a ready-to-run git commit command with a proper message. Does NOT commit — outputs the command for the user to run.
 ---
 
-Skip format, lint, test, and build checks entirely. Proceed directly to create the git commit using the standard commit workflow (stage relevant files, write a concise commit message, commit).
+Do NOT run `git commit`. Instead, derive the correct commit message from the staged diff and output a ready-to-run command the user can copy and execute themselves.
+
+## Output format
+
+Output exactly one code block containing the git commit command:
+
+```
+git commit -m "<type>(<scope>): <short description>"
+```
+
+Nothing else — no explanation, no preamble, no trailing summary.
 
 ## Commit message format
 
@@ -18,10 +28,10 @@ Skip format, lint, test, and build checks entirely. Proceed directly to create t
 Examples:
 
 ```
-feat(calendar): improve calendar CSS and layout for day/week timeline boards
-feat(booking,reservation,calendar): add modal pattern for new and manage flows
-fix(auth): include staging env in X-Tenant-Subdomain header injection
-test(reservations): fix ReservationsView test mock for ConfirmDeleteModal
+git commit -m "feat(calendar): improve calendar CSS and layout for day/week timeline boards"
+git commit -m "feat(booking,reservation,calendar): add modal pattern for new and manage flows"
+git commit -m "fix(auth): include staging env in X-Tenant-Subdomain header injection"
+git commit -m "test(reservations): fix ReservationsView test mock for ConfirmDeleteModal"
 ```
 
-If the user passed a commit message as an argument (`$ARGUMENTS`), use it verbatim. Otherwise derive a single-line message in this format from the staged diff.
+If the user passed a commit message as an argument (`$ARGUMENTS`), use it verbatim as the message. Otherwise derive a single-line message from the staged diff.
