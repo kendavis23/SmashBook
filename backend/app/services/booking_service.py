@@ -352,6 +352,14 @@ class BookingService:
         if booking_type in _GRID_ENFORCED_TYPES:
             self._validate_grid_alignment(start_datetime, oh, club.booking_duration_minutes)
 
+        # 5b. Past guard — a booking can never start in the past (applies to all
+        # roles; the notice-window check below is staff-bypassed and would not catch it).
+        if start_datetime < datetime.now(tz=timezone.utc):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Bookings cannot be created in the past",
+            )
+
         # 6. Notice window (bypass for staff)
         if not is_staff:
             notice_cutoff = datetime.now(tz=timezone.utc) + timedelta(hours=club.min_booking_notice_hours)
@@ -1145,6 +1153,13 @@ class BookingService:
             # Fetch club for duration
             club = await self.db.get(Club, club_id)
             new_end = new_start + timedelta(minutes=club.booking_duration_minutes)
+
+            # A booking can never be rescheduled to start in the past.
+            if start_datetime is not None and new_start < datetime.now(tz=timezone.utc):
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Bookings cannot be rescheduled into the past",
+                )
 
             # Operating hours and grid alignment
             oh = await self._get_operating_hours(club_id, new_start.date())
