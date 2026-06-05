@@ -5,6 +5,8 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator, model_validator
 
+from app.db.models.club import PricingLabel
+
 
 class ClubCreate(BaseModel):
     name: str
@@ -105,7 +107,7 @@ class PricingRuleEntry(BaseModel):
     """A single peak/off-peak pricing window."""
 
     # Window definition
-    label: str
+    label: PricingLabel
     day_of_week: int
     start_time: time
     end_time: time

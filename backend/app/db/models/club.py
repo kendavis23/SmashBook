@@ -1,7 +1,18 @@
-from sqlalchemy import Column, String, Boolean, Date, DateTime, ForeignKey, Integer, Numeric, Text, SmallInteger, Time
+import enum
+
+from sqlalchemy import Column, String, Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, Text, SmallInteger, Time
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin, TenantScopedMixin
+
+
+class PricingLabel(str, enum.Enum):
+    """Pricing-window tier. Fixed set; extend by adding members here plus a
+    migration that ALTERs the `pricinglabel` Postgres enum type."""
+
+    peak = "peak"
+    off_peak = "off_peak"
+    standard = "standard"
 
 
 class Club(Base, UUIDMixin, TimestampMixin, TenantScopedMixin):
@@ -64,7 +75,7 @@ class PricingRule(Base, UUIDMixin, TimestampMixin):
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
 
     # Window definition
-    label = Column(String(50), nullable=False)
+    label = Column(Enum(PricingLabel, name="pricinglabel"), nullable=False)
     day_of_week = Column(SmallInteger, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)

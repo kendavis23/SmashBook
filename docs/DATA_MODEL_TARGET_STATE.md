@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 (player analytics A/B/C)_
+_Last updated: 2026-06-05 (pricing_rules.label enum)_
 
 # SmashBook — Data Model Target State
 
@@ -320,7 +320,7 @@ No changes from current state.
 |---|---|---|
 | `id` | UUID | PK |
 | `club_id` | UUID | FK → `clubs` |
-| `label` | VARCHAR(50) | |
+| `label` | `pricinglabel` enum | Pricing tier: `peak`, `off_peak`, `standard`. Fixed set — extend via enum `ALTER` + model member |
 | `day_of_week` | SMALLINT | 0 = Monday … 6 = Sunday |
 | `start_time` | TIME | |
 | `end_time` | TIME | |

@@ -82,7 +82,7 @@ async def court_hours(club, test_session_factory):
                 open_time=time(6, 0), close_time=time(23, 0),
             ))
         session.add(PricingRule(
-            club_id=club.id, label="Standard", day_of_week=_future().weekday(),
+            club_id=club.id, label="standard", day_of_week=_future().weekday(),
             start_time=time(0, 0), end_time=time(23, 59),
             is_active=True, price_per_slot=Decimal("20.00"),
         ))

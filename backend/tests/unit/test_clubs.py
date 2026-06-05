@@ -334,7 +334,7 @@ def _make_pricing_db():
 
 def _pricing_rule(**kwargs) -> PricingRuleEntry:
     defaults = dict(
-        label="Peak",
+        label="peak",
         day_of_week=0,
         start_time=time(18, 0),
         end_time=time(21, 0),
@@ -347,10 +347,10 @@ def _pricing_rule(**kwargs) -> PricingRuleEntry:
 @pytest.mark.asyncio
 async def test_pricing_rule_persists_base_fields():
     db = _make_pricing_db()
-    rule = _pricing_rule(label="Peak", day_of_week=1, price_per_slot=Decimal("25.00"))
+    rule = _pricing_rule(label="peak", day_of_week=1, price_per_slot=Decimal("25.00"))
     await update_pricing_rules(uuid.uuid4(), [rule], CURRENT_USER, db)
     added = db._added[0]
-    assert added.label == "Peak"
+    assert added.label == "peak"
     assert added.day_of_week == 1
     assert added.price_per_slot == Decimal("25.00")
     assert added.start_time == time(18, 0)
@@ -440,13 +440,13 @@ async def test_pricing_rule_all_optional_fields_none_by_default():
 async def test_pricing_rule_persists_multiple_rules():
     db = _make_pricing_db()
     rules = [
-        _pricing_rule(label="Peak", day_of_week=0, price_per_slot=Decimal("25.00")),
-        _pricing_rule(label="Off-Peak", day_of_week=0, start_time=time(8, 0), end_time=time(17, 0), price_per_slot=Decimal("15.00")),
+        _pricing_rule(label="peak", day_of_week=0, price_per_slot=Decimal("25.00")),
+        _pricing_rule(label="off_peak", day_of_week=0, start_time=time(8, 0), end_time=time(17, 0), price_per_slot=Decimal("15.00")),
     ]
     await update_pricing_rules(uuid.uuid4(), rules, CURRENT_USER, db)
     assert len(db._added) == 2
-    assert db._added[0].label == "Peak"
-    assert db._added[1].label == "Off-Peak"
+    assert db._added[0].label == "peak"
+    assert db._added[1].label == "off_peak"
 
 
 @pytest.mark.asyncio

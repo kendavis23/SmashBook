@@ -83,7 +83,7 @@ async def _set_club_booking_window(club_id, session_factory,
 
 async def _seed_pricing_rule(club_id, session_factory, day_of_week,
                               start_time="07:00", end_time="22:00",
-                              label="Off-Peak", price="18.00"):
+                              label="off_peak", price="18.00"):
     from app.db.models.club import PricingRule
     h_s, m_s = map(int, start_time.split(":"))
     h_e, m_e = map(int, end_time.split(":"))
@@ -262,7 +262,7 @@ class TestAvailabilityShape:
                                           open_time="09:00", close_time="12:00")
         rule = await _seed_pricing_rule(club.id, test_session_factory, 0,
                                          start_time="09:00", end_time="12:00",
-                                         label="Off-Peak", price="18.00")
+                                         label="off_peak", price="18.00")
         try:
             resp = await client.get(
                 f"/api/v1/clubs/{club.id}/availability",
@@ -281,7 +281,7 @@ class TestAvailabilityShape:
                 assert slot["available_count"] == 2
                 assert {c["court_id"] for c in slot["available_courts"]} == {c1, c2}
                 assert all(c["price"] == "18.00" for c in slot["available_courts"])
-                assert all(c["price_label"] == "Off-Peak" for c in slot["available_courts"])
+                assert all(c["price_label"] == "off_peak" for c in slot["available_courts"])
                 assert slot["existing_matches"] == []
             assert body["next_cursor"] is None
         finally:

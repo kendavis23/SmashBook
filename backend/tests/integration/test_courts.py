@@ -617,7 +617,7 @@ class TestCourtAvailability:
         async with test_session_factory() as session:
             rule = PricingRule(
                 club_id=club.id,
-                label="Peak",
+                label="peak",
                 day_of_week=0,
                 start_time=t(9, 0),
                 end_time=t(12, 0),
@@ -636,7 +636,7 @@ class TestCourtAvailability:
             assert resp.status_code == 200
             slots = resp.json()["slots"]
             assert all(s["price"] == "30.00" for s in slots)
-            assert all(s["price_label"] == "Peak" for s in slots)
+            assert all(s["price_label"] == "peak" for s in slots)
         finally:
             async with test_session_factory() as session:
                 await session.execute(sql_delete(PricingRule).where(PricingRule.id == rule.id))

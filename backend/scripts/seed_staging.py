@@ -773,12 +773,12 @@ async def seed():
         await _create_operating_hours(db, north.id, open_t=time(7, 0), close_t=time(22, 0))
 
         weekday_pricing = [
-            *[dict(label="Off-Peak", day_of_week=d, start_time=time(7, 0),  end_time=time(17, 0), price_per_slot=Decimal("18.00")) for d in range(5)],
-            *[dict(label="Peak",     day_of_week=d, start_time=time(17, 0), end_time=time(21, 0), price_per_slot=Decimal("28.00")) for d in range(5)],
-            *[dict(label="Evening",  day_of_week=d, start_time=time(21, 0), end_time=time(22, 0), price_per_slot=Decimal("22.00")) for d in range(5)],
-            *[dict(label="Wknd AM",  day_of_week=d, start_time=time(7, 0),  end_time=time(12, 0), price_per_slot=Decimal("22.00")) for d in [5, 6]],
-            *[dict(label="Wknd PM",  day_of_week=d, start_time=time(12, 0), end_time=time(18, 0), price_per_slot=Decimal("26.00")) for d in [5, 6]],
-            *[dict(label="Wknd Eve", day_of_week=d, start_time=time(18, 0), end_time=time(22, 0), price_per_slot=Decimal("24.00")) for d in [5, 6]],
+            *[dict(label="off_peak", day_of_week=d, start_time=time(7, 0),  end_time=time(17, 0), price_per_slot=Decimal("18.00")) for d in range(5)],
+            *[dict(label="peak",     day_of_week=d, start_time=time(17, 0), end_time=time(21, 0), price_per_slot=Decimal("28.00")) for d in range(5)],
+            *[dict(label="peak",  day_of_week=d, start_time=time(21, 0), end_time=time(22, 0), price_per_slot=Decimal("22.00")) for d in range(5)],
+            *[dict(label="off_peak",  day_of_week=d, start_time=time(7, 0),  end_time=time(12, 0), price_per_slot=Decimal("22.00")) for d in [5, 6]],
+            *[dict(label="peak",  day_of_week=d, start_time=time(12, 0), end_time=time(18, 0), price_per_slot=Decimal("26.00")) for d in [5, 6]],
+            *[dict(label="peak", day_of_week=d, start_time=time(18, 0), end_time=time(22, 0), price_per_slot=Decimal("24.00")) for d in [5, 6]],
         ]
         await _create_pricing_rules(db, north.id, weekday_pricing)
         print(f"  Pricing rules: {len(weekday_pricing)}")
@@ -1035,9 +1035,9 @@ async def seed():
 
         await _create_operating_hours(db, south.id, open_t=time(8, 0), close_t=time(21, 0))
         south_pricing = [
-            *[dict(label="Off-Peak", day_of_week=d, start_time=time(8, 0),  end_time=time(17, 0), price_per_slot=Decimal("18.00")) for d in range(5)],
-            *[dict(label="Peak",     day_of_week=d, start_time=time(17, 0), end_time=time(21, 0), price_per_slot=Decimal("26.00")) for d in range(5)],
-            *[dict(label="Weekend",  day_of_week=d, start_time=time(8, 0),  end_time=time(21, 0), price_per_slot=Decimal("24.00")) for d in [5, 6]],
+            *[dict(label="off_peak", day_of_week=d, start_time=time(8, 0),  end_time=time(17, 0), price_per_slot=Decimal("18.00")) for d in range(5)],
+            *[dict(label="peak",     day_of_week=d, start_time=time(17, 0), end_time=time(21, 0), price_per_slot=Decimal("26.00")) for d in range(5)],
+            *[dict(label="peak",  day_of_week=d, start_time=time(8, 0),  end_time=time(21, 0), price_per_slot=Decimal("24.00")) for d in [5, 6]],
         ]
         await _create_pricing_rules(db, south.id, south_pricing)
 
@@ -1145,9 +1145,9 @@ async def seed():
 
         await _create_operating_hours(db, rally_club.id, open_t=time(8, 0), close_t=time(21, 0))
         rally_pricing = [
-            *[dict(label="Off-Peak", day_of_week=d, start_time=time(8, 0),  end_time=time(17, 0), price_per_slot=Decimal("16.00")) for d in range(5)],
-            *[dict(label="Peak",     day_of_week=d, start_time=time(17, 0), end_time=time(21, 0), price_per_slot=Decimal("24.00")) for d in range(5)],
-            *[dict(label="Weekend",  day_of_week=d, start_time=time(8, 0),  end_time=time(21, 0), price_per_slot=Decimal("20.00")) for d in [5, 6]],
+            *[dict(label="off_peak", day_of_week=d, start_time=time(8, 0),  end_time=time(17, 0), price_per_slot=Decimal("16.00")) for d in range(5)],
+            *[dict(label="peak",     day_of_week=d, start_time=time(17, 0), end_time=time(21, 0), price_per_slot=Decimal("24.00")) for d in range(5)],
+            *[dict(label="peak",  day_of_week=d, start_time=time(8, 0),  end_time=time(21, 0), price_per_slot=Decimal("20.00")) for d in [5, 6]],
         ]
         await _create_pricing_rules(db, rally_club.id, rally_pricing)
 
