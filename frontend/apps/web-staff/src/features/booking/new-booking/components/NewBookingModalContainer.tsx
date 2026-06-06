@@ -79,16 +79,14 @@ export default function NewBookingModalContainer({
     const selectedSlot = slots.find((s) => s.start_time === form.startTime);
 
     const startDatetimeForQuote =
-        form.bookingDate && form.startTime
-            ? `${form.bookingDate}T${form.startTime}:00`
-            : "";
+        form.bookingDate && form.startTime ? `${form.bookingDate}T${form.startTime}:00` : "";
     const { data: priceQuote } = useGetPriceQuote({
         club_id: clubId ?? "",
         start_datetime: startDatetimeForQuote,
         booking_type: form.bookingType as BookingType,
         max_players: parseInt(resolveMaxPlayers(form.bookingType, form.maxPlayers), 10) || 4,
+        for_user_id: form.onBehalfOf.trim() || undefined,
     });
-    const selectedPrice = priceQuote?.base_price ?? null;
 
     // Auto-select first available slot when availability data arrives and no slot is pre-selected
     useEffect(() => {
@@ -277,7 +275,7 @@ export default function NewBookingModalContainer({
             onClose={onClose}
             onDismissError={() => activeMutation.reset()}
             onRefreshSlots={() => void refetchSlots()}
-            selectedPrice={selectedPrice}
+            priceQuote={priceQuote}
             clubId={clubId}
         />
     );

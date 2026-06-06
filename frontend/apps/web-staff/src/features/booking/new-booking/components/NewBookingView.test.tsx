@@ -198,7 +198,22 @@ const defaultProps = {
     onCancel: vi.fn(),
     onDismissError: vi.fn(),
     onRefreshSlots: vi.fn(),
-    selectedPrice: 20,
+    priceQuote: {
+        club_id: "club-1",
+        booking_type: "regular" as const,
+        start_datetime: "2026-05-20T10:00:00",
+        max_players: 4,
+        pricing_available: true,
+        base_price: 20,
+        unit_price: 20,
+        total_price: 20,
+        per_player_price: 20,
+        discount_amount: null,
+        discount_source: null,
+        amount_due: 20,
+        membership_subscription_id: null,
+        credit_applies: false,
+    },
 };
 
 describe("NewBookingView", () => {
@@ -388,14 +403,24 @@ describe("NewBookingView", () => {
     });
 
     it("shows price field with amount when start time is selected", () => {
-        render(<NewBookingView {...defaultProps} selectedPrice={18} />);
+        render(
+            <NewBookingView
+                {...defaultProps}
+                priceQuote={{ ...defaultProps.priceQuote, base_price: 18, amount_due: 18 }}
+            />
+        );
 
         expect(screen.getByText("Price")).toBeInTheDocument();
         expect(screen.getAllByText("£18.00").length).toBeGreaterThan(0);
     });
 
     it("shows actual selected price in the page header total", () => {
-        render(<NewBookingView {...defaultProps} selectedPrice={18} />);
+        render(
+            <NewBookingView
+                {...defaultProps}
+                priceQuote={{ ...defaultProps.priceQuote, base_price: 18, amount_due: 18 }}
+            />
+        );
 
         expect(screen.getByText("Total price")).toBeInTheDocument();
         expect(screen.getAllByText("£18.00").length).toBeGreaterThan(1);
@@ -407,7 +432,7 @@ describe("NewBookingView", () => {
             <NewBookingView
                 {...defaultProps}
                 form={{ ...defaultForm, startTime: "" }}
-                selectedPrice={null}
+                priceQuote={null}
             />
         );
 
@@ -416,7 +441,7 @@ describe("NewBookingView", () => {
     });
 
     it("shows dash when selected price is null", () => {
-        render(<NewBookingView {...defaultProps} selectedPrice={null} />);
+        render(<NewBookingView {...defaultProps} priceQuote={null} />);
 
         expect(screen.getByText("Price")).toBeInTheDocument();
         expect(screen.getAllByText("—").length).toBeGreaterThan(0);

@@ -124,7 +124,22 @@ const defaultProps = {
     onBehalfOfError: "",
     staffProfileError: "",
     isPending: false,
-    selectedPrice: 20,
+    priceQuote: {
+        club_id: "club-1",
+        booking_type: "regular" as const,
+        start_datetime: "2026-05-20T10:00:00",
+        max_players: 4,
+        pricing_available: true,
+        base_price: 20,
+        unit_price: 20,
+        total_price: 20,
+        per_player_price: 20,
+        discount_amount: null,
+        discount_source: null,
+        amount_due: 20,
+        membership_subscription_id: null,
+        credit_applies: false,
+    },
     onFormChange: vi.fn(),
     onSubmit: vi.fn((e: React.FormEvent) => e.preventDefault()),
     onCancel: vi.fn(),
@@ -411,8 +426,13 @@ describe("NewBookingModalView", () => {
         expect(screen.getByPlaceholderText(/Internal notes/i)).toHaveValue("Existing note");
     });
 
-    it("shows formatted price when selectedPrice is provided", () => {
-        render(<NewBookingModalView {...defaultProps} selectedPrice={18} />);
+    it("shows formatted price when priceQuote is provided", () => {
+        render(
+            <NewBookingModalView
+                {...defaultProps}
+                priceQuote={{ ...defaultProps.priceQuote, base_price: 18, amount_due: 18 }}
+            />
+        );
 
         expect(screen.getByText("£18.00")).toBeInTheDocument();
     });
@@ -422,7 +442,7 @@ describe("NewBookingModalView", () => {
             <NewBookingModalView
                 {...defaultProps}
                 form={{ ...defaultForm, startTime: "" }}
-                selectedPrice={null}
+                priceQuote={null}
             />
         );
 

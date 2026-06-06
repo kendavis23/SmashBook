@@ -2,6 +2,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import { CalendarDays, Clock, MapPin, Users, X } from "lucide-react";
 import { AlertToast, NumberInput, SelectInput, formatCurrency, formatUTCDate } from "@repo/ui";
+import type { PriceQuoteResponse } from "@repo/api-client/modules/share";
 import type { BookingType } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -22,6 +23,67 @@ const typeOptions = BOOKING_TYPE_OPTIONS.filter(
 
 type Trainer = TrainerOptionSource;
 
+const DISCOUNT_SOURCE_LABELS: Record<string, string> = {
+    membership: "Membership",
+    campaign: "Campaign",
+    promo_code: "Promo Code",
+    staff_manual: "Staff Discount",
+    ai_gap_offer: "Special Offer",
+};
+
+function ModalPriceBreakdown({
+    priceQuote,
+    hasTime,
+    formattedAmountDue,
+}: {
+    priceQuote: PriceQuoteResponse | null;
+    hasTime: boolean;
+    formattedAmountDue: string;
+}) {
+    if (
+        !hasTime ||
+        !priceQuote ||
+        priceQuote.discount_amount == null ||
+        priceQuote.discount_amount <= 0 ||
+        priceQuote.discount_source == null
+    ) {
+        return null;
+    }
+
+    const originalPrice = priceQuote.per_player_price ?? priceQuote.base_price;
+    const discountLabel =
+        DISCOUNT_SOURCE_LABELS[priceQuote.discount_source] ?? priceQuote.discount_source;
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-border/70 bg-background/85 shadow-sm">
+            <div className="grid grid-cols-3 divide-x divide-border/60">
+                <div className="px-3 py-2.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Original price
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground line-through decoration-muted-foreground/60">
+                        {formatCurrency(originalPrice)}
+                    </p>
+                </div>
+                <div className="px-3 py-2.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {discountLabel}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        -{formatCurrency(priceQuote.discount_amount)}
+                    </p>
+                </div>
+                <div className="bg-cta/5 px-3 py-2.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-cta/70">
+                        Your share
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-cta">{formattedAmountDue}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 type Props = {
     courtName: string;
     trainers: Trainer[];
@@ -31,7 +93,7 @@ type Props = {
     staffError: string;
     apiError: string;
     isPending: boolean;
-    selectedPrice: number | string | null;
+    priceQuote: PriceQuoteResponse | null;
     endTime?: string;
     clubId?: string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
@@ -50,7 +112,7 @@ export function NewBookingModalView({
     staffError,
     apiError,
     isPending,
-    selectedPrice,
+    priceQuote,
     endTime,
     clubId,
     onFormChange,
@@ -75,7 +137,10 @@ export function NewBookingModalView({
             ? `${formatSlotTime(form.startTime)} – ${formatSlotTime(endTime)}`
             : formatSlotTime(form.startTime)
         : "—";
-    const formattedPrice = form.startTime ? (formatCurrency(selectedPrice) ?? "—") : "—";
+    const amountDue = priceQuote?.amount_due ?? priceQuote?.base_price ?? null;
+    const courtPrice = priceQuote?.base_price ?? null;
+    const formattedPrice = form.startTime ? (formatCurrency(courtPrice) ?? "—") : "—";
+    const formattedAmountDue = form.startTime ? (formatCurrency(amountDue) ?? "—") : "—";
 
     return (
         <form
@@ -152,6 +217,11 @@ export function NewBookingModalView({
                             </div>
                         ))}
                     </div>
+                    <ModalPriceBreakdown
+                        priceQuote={priceQuote}
+                        hasTime={Boolean(form.startTime)}
+                        formattedAmountDue={formattedAmountDue}
+                    />
                 </div>
 
                 {/* Booking Settings */}

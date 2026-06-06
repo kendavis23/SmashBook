@@ -40,7 +40,10 @@ export function cancelBookingEndpoint(bookingId: string, clubId: string): Promis
 }
 
 export function getPriceQuoteEndpoint(params: PriceQuoteParams): Promise<PriceQuoteResponse> {
-    const query = new URLSearchParams({ club_id: params.club_id, start_datetime: params.start_datetime });
+    const query = new URLSearchParams({
+        club_id: params.club_id,
+        start_datetime: params.start_datetime,
+    });
     if (params.booking_type) query.set("booking_type", params.booking_type);
     if (params.max_players !== undefined) query.set("max_players", String(params.max_players));
     if (params.for_user_id) query.set("for_user_id", params.for_user_id);

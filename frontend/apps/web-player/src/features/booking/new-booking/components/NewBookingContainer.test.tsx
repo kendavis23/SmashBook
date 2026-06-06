@@ -102,7 +102,7 @@ vi.mock("./NewBookingView", () => ({
         onCancel,
         onDismissError,
         onRefreshSlots,
-        selectedPrice,
+        priceQuote,
     }: {
         form: {
             courtId: string;
@@ -121,7 +121,7 @@ vi.mock("./NewBookingView", () => ({
         onCancel: () => void;
         onDismissError: () => void;
         onRefreshSlots: () => void;
-        selectedPrice: number | string | null;
+        priceQuote: { base_price?: number | null } | null | undefined;
     }) => (
         <div>
             <span>court:{form.courtId}</span>
@@ -129,7 +129,7 @@ vi.mock("./NewBookingView", () => ({
             <span>time:{form.startTime}</span>
             <span>type:{form.bookingType}</span>
             <span>players:{form.playerUserIds.join(",")}</span>
-            <span>price:{selectedPrice}</span>
+            <span>price:{priceQuote?.base_price ?? null}</span>
             <span>pending:{String(isPending)}</span>
             {courtError ? <span>{courtError}</span> : null}
             {startError ? <span>{startError}</span> : null}

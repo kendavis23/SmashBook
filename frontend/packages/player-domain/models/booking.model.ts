@@ -122,7 +122,12 @@ export interface EquipmentRental {
     charge: number;
 }
 
-export type DiscountSource = "membership" | "campaign" | "promo_code" | "staff_manual" | "ai_gap_offer";
+export type DiscountSource =
+    | "membership"
+    | "campaign"
+    | "promo_code"
+    | "staff_manual"
+    | "ai_gap_offer";
 
 export interface PriceQuoteFilters {
     club_id: UUID;

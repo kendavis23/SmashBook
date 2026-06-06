@@ -124,16 +124,13 @@ export default function NewBookingContainer(): JSX.Element {
     const selectedSlot = slots.find((s) => s.start_time === form.startTime);
 
     const startDatetimeForQuote =
-        form.bookingDate && form.startTime
-            ? `${form.bookingDate}T${form.startTime}:00`
-            : "";
+        form.bookingDate && form.startTime ? `${form.bookingDate}T${form.startTime}:00` : "";
     const { data: priceQuote } = useGetPriceQuote({
         club_id: clubId ?? "",
         start_datetime: startDatetimeForQuote,
         booking_type: form.bookingType as BookingType,
         max_players: parseInt(form.maxPlayers, 10) || 4,
     });
-    const selectedPrice = priceQuote?.base_price ?? null;
 
     // Auto-select the first available slot whenever availability data arrives (fresh)
     useEffect(() => {
@@ -323,7 +320,7 @@ export default function NewBookingContainer(): JSX.Element {
                 onCancel={handleCancel}
                 onDismissError={handleDismissError}
                 onRefreshSlots={() => void refetchSlots()}
-                selectedPrice={selectedPrice}
+                priceQuote={priceQuote}
                 clubId={clubId}
             />
             {payingBooking ? (
