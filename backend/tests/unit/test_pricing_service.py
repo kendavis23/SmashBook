@@ -20,6 +20,9 @@ from app.db.models.booking import BookingType, DiscountSource
 from app.services.pricing_service import PricingService
 
 NOW = datetime.now(tz=timezone.utc)
+# "UTC" leaves START's 10:00 wall-clock unchanged when calculate() converts the
+# UTC instant to club-local for rule matching, so the assertions below are tz-agnostic.
+CLUB_TZ = "UTC"
 CLUB_ID = uuid.uuid4()
 USER_ID = uuid.uuid4()
 BOOKING_ID = uuid.uuid4()
@@ -111,7 +114,7 @@ class TestNoPricingRule:
     @pytest.mark.asyncio
     async def test_returns_none_when_no_rule(self):
         svc = PricingService(_db_no_rule())
-        result = await svc.calculate(CLUB_ID, START, max_players=4)
+        result = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4)
         assert result is None
 
 
@@ -125,7 +128,7 @@ class TestBasePriceNoUser:
     async def test_returns_price_per_slot(self):
         rule = _rule(price_per_slot="20.00")
         svc = PricingService(_db_rule_only(rule))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4)
         assert bd.base_price == Decimal("20.00")
         assert bd.unit_price == Decimal("20.00")
         assert bd.discount_amount == Decimal("0.00")
@@ -138,7 +141,7 @@ class TestBasePriceNoUser:
     async def test_active_incentive_overrides_base_price(self):
         rule = _rule(price_per_slot="20.00", incentive_price="12.00", incentive_expires_at=NOW + timedelta(hours=1))
         svc = PricingService(_db_rule_only(rule))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4)
         assert bd.base_price == Decimal("20.00")
         assert bd.unit_price == Decimal("12.00")
         assert bd.total_price == Decimal("12.00")
@@ -148,21 +151,21 @@ class TestBasePriceNoUser:
     async def test_expired_incentive_falls_back_to_base_price(self):
         rule = _rule(price_per_slot="20.00", incentive_price="12.00", incentive_expires_at=NOW - timedelta(hours=1))
         svc = PricingService(_db_rule_only(rule))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4)
         assert bd.unit_price == Decimal("20.00")
 
     @pytest.mark.asyncio
     async def test_incentive_with_no_expiry_is_active(self):
         rule = _rule(price_per_slot="20.00", incentive_price="15.00", incentive_expires_at=None)
         svc = PricingService(_db_rule_only(rule))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4)
         assert bd.unit_price == Decimal("15.00")
 
     @pytest.mark.asyncio
     async def test_amount_due_splits_correctly_for_different_max_players(self):
         rule = _rule(price_per_slot="30.00")
         svc = PricingService(_db_rule_only(rule))
-        bd = await svc.calculate(CLUB_ID, START, max_players=2)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=2)
         assert bd.amount_due == Decimal("15.00")
 
 
@@ -176,7 +179,7 @@ class TestNoActiveSubscription:
     async def test_no_subscription_returns_base_price(self):
         rule = _rule(price_per_slot="20.00")
         svc = PricingService(_db_rule_no_sub(rule))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4, user_id=USER_ID)
         assert bd.unit_price == Decimal("20.00")
         assert bd.discount_amount == Decimal("0.00")
         assert bd.discount_source is None
@@ -194,7 +197,7 @@ class TestMembershipCredit:
         rule = _rule(price_per_slot="20.00")
         sub = _sub(_plan(booking_credits_per_period=5), credits_remaining=3)
         svc = PricingService(_db_rule_and_sub(rule, sub))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4, user_id=USER_ID)
         assert bd.credit_consumed is True
         assert bd.amount_due == Decimal("0.00")
         assert bd.total_price == Decimal("20.00")   # full court cost unchanged
@@ -206,7 +209,7 @@ class TestMembershipCredit:
         rule = _rule(price_per_slot="20.00")
         sub = _sub(_plan(booking_credits_per_period=5, discount_pct="10.00"), credits_remaining=0)
         svc = PricingService(_db_rule_and_sub(rule, sub))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4, user_id=USER_ID)
         assert bd.credit_consumed is False
         assert bd.discount_source == DiscountSource.membership
         assert bd.discount_amount == Decimal("0.50")   # 10% of 5.00 per-player
@@ -217,7 +220,7 @@ class TestMembershipCredit:
         rule = _rule(price_per_slot="20.00")
         sub = _sub(_plan(booking_credits_per_period=5, discount_pct="10.00"), credits_remaining=2)
         svc = PricingService(_db_rule_and_sub(rule, sub))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4, user_id=USER_ID)
         assert bd.credit_consumed is True
         assert bd.amount_due == Decimal("0.00")
 
@@ -233,7 +236,7 @@ class TestMembershipDiscountPct:
         rule = _rule(price_per_slot="20.00")
         sub = _sub(_plan(booking_credits_per_period=5, discount_pct="25.00"), credits_remaining=0)
         svc = PricingService(_db_rule_and_sub(rule, sub))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4, user_id=USER_ID)
         assert bd.discount_amount == Decimal("1.25")   # 25% of 5.00 per-player
         assert bd.total_price == Decimal("20.00")      # full court cost unchanged
         assert bd.amount_due == Decimal("3.75")        # 5.00 - 1.25
@@ -244,7 +247,7 @@ class TestMembershipDiscountPct:
         rule = _rule(price_per_slot="20.00", incentive_price="12.00")
         sub = _sub(_plan(booking_credits_per_period=5, discount_pct="50.00"), credits_remaining=0)
         svc = PricingService(_db_rule_and_sub(rule, sub))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4, user_id=USER_ID)
         assert bd.unit_price == Decimal("12.00")
         assert bd.discount_amount == Decimal("1.50")   # 50% of 3.00 per-player (12/4)
         assert bd.total_price == Decimal("12.00")      # full court cost unchanged
@@ -254,7 +257,7 @@ class TestMembershipDiscountPct:
         rule = _rule(price_per_slot="20.00")
         sub = _sub(_plan(booking_credits_per_period=5, discount_pct=None), credits_remaining=0)
         svc = PricingService(_db_rule_and_sub(rule, sub))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4, user_id=USER_ID)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4, user_id=USER_ID)
         assert bd.discount_amount == Decimal("0.00")
         assert bd.discount_source is None
         assert bd.membership_subscription_id is None
@@ -274,7 +277,7 @@ class TestSessionType:
         db = _db_rule_only(rule)
         svc = PricingService(db)
         bd = await svc.calculate(
-            CLUB_ID, START, max_players=1, booking_type=BookingType.lesson_individual
+            CLUB_ID, START, CLUB_TZ, max_players=1, booking_type=BookingType.lesson_individual
         )
         assert bd.unit_price == Decimal("60.00")
         # The lookup query was issued (filter construction exercised).
@@ -285,7 +288,7 @@ class TestSessionType:
         rule = _rule(price_per_slot="60.00", session_type=BookingType.lesson_individual)
         svc = PricingService(_db_rule_only(rule))
         bd = await svc.calculate(
-            CLUB_ID, START, max_players=1, booking_type=BookingType.lesson_individual
+            CLUB_ID, START, CLUB_TZ, max_players=1, booking_type=BookingType.lesson_individual
         )
         assert bd.amount_due == Decimal("60.00")   # 60 / 1
 
@@ -294,7 +297,7 @@ class TestSessionType:
         rule = _rule(price_per_slot="48.00", session_type=BookingType.lesson_group)
         svc = PricingService(_db_rule_only(rule))
         bd = await svc.calculate(
-            CLUB_ID, START, max_players=4, booking_type=BookingType.lesson_group
+            CLUB_ID, START, CLUB_TZ, max_players=4, booking_type=BookingType.lesson_group
         )
         assert bd.amount_due == Decimal("12.00")   # 48 / 4
 
@@ -302,7 +305,7 @@ class TestSessionType:
     async def test_defaults_to_regular_when_booking_type_omitted(self):
         rule = _rule(price_per_slot="20.00")
         svc = PricingService(_db_rule_only(rule))
-        bd = await svc.calculate(CLUB_ID, START, max_players=4)
+        bd = await svc.calculate(CLUB_ID, START, CLUB_TZ, max_players=4)
         assert bd.unit_price == Decimal("20.00")
 
 

@@ -27,7 +27,7 @@ import uuid
 from fastapi import HTTPException, status
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import contains_eager, selectinload
 
 from app.core.timezones import club_tz, ensure_utc, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import (
@@ -339,7 +339,7 @@ class BookingService:
             pricing_user_id = None
 
         breakdown = await PricingService(self.db).calculate(
-            club_id, start_utc, max_players, pricing_user_id, booking_type
+            club_id, start_utc, club.timezone, max_players, pricing_user_id, booking_type
         )
         return club, start_utc, breakdown
 
@@ -501,7 +501,7 @@ class BookingService:
         # 14. Price
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
-            club_id, start_datetime, max_players, organiser_user.id, booking_type
+            club_id, start_datetime, club.timezone, max_players, organiser_user.id, booking_type
         )
         total_price = breakdown.total_price if breakdown else None
         amount_due = breakdown.amount_due if breakdown else Decimal("0.00")
@@ -889,13 +889,13 @@ class BookingService:
             Decimal(str(booking.max_skill_level)) if booking.max_skill_level is not None else None,
         )
 
-        # Fetch club (needed for max_players context)
-        club = await self.db.get(Club, club_id)  # noqa: F841 — kept for future use
+        # Fetch club for its timezone (pricing rules match on club-local wall-clock).
+        club = await self.db.get(Club, club_id)
 
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
-            club_id, booking.start_datetime, booking.max_players, requesting_user.id,
-            booking.booking_type,
+            club_id, booking.start_datetime, club.timezone, booking.max_players,
+            requesting_user.id, booking.booking_type,
         )
         if breakdown:
             amount_due = breakdown.amount_due
@@ -971,6 +971,9 @@ class BookingService:
             select(Booking)
             .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
             .options(selectinload(Booking.court))
+            # contains_eager populates booking.club from the Club already joined for
+            # the tenant filter (no extra round-trip) — its timezone drives pricing.
+            .options(contains_eager(Booking.club))
             .join(Club, Booking.club_id == Club.id)
             .where(Booking.id == booking_id, Booking.club_id == club_id, Club.tenant_id == tenant_id)
         )
@@ -1007,8 +1010,8 @@ class BookingService:
         # Skill check bypassed for organiser and staff invites
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
-            club_id, booking.start_datetime, booking.max_players, invited_user.id,
-            booking.booking_type,
+            club_id, booking.start_datetime, booking.club.timezone, booking.max_players,
+            invited_user.id, booking.booking_type,
         )
         if breakdown:
             amount_due = breakdown.amount_due
@@ -1064,6 +1067,9 @@ class BookingService:
             select(Booking)
             .options(selectinload(Booking.players).selectinload(BookingPlayer.user))
             .options(selectinload(Booking.court))
+            # contains_eager populates booking.club from the Club already joined for
+            # the tenant filter (no extra round-trip) — its timezone drives pricing.
+            .options(contains_eager(Booking.club))
             .join(Club, Booking.club_id == Club.id)
             .where(Booking.id == booking_id, Booking.club_id == club_id, Club.tenant_id == tenant_id)
         )
@@ -1093,8 +1099,8 @@ class BookingService:
         if action == InviteStatus.accepted:
             # Recalculate pricing at accept time so the player's current membership is applied.
             breakdown = await pricing_svc.calculate(
-                club_id, booking.start_datetime, booking.max_players, requesting_user.id,
-                booking.booking_type,
+                club_id, booking.start_datetime, booking.club.timezone, booking.max_players,
+                requesting_user.id, booking.booking_type,
             )
             if breakdown:
                 bp.amount_due = breakdown.amount_due

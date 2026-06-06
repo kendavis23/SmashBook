@@ -120,11 +120,11 @@ class CourtService:
         return result.scalar_one_or_none() is not None
 
     async def _get_price(
-        self, club_id: uuid.UUID, start: datetime, booking_type: BookingType
+        self, club_id: uuid.UUID, start: datetime, booking_type: BookingType, club_timezone: str
     ) -> Optional[Decimal]:
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
-            club_id, start, max_players=1, user_id=None, booking_type=booking_type
+            club_id, start, club_timezone, max_players=1, user_id=None, booking_type=booking_type
         )
         return breakdown.unit_price if breakdown else None
 
@@ -259,7 +259,7 @@ class CourtService:
                     detail=f"Court is under maintenance at {occurrence_start.isoformat()}",
                 )
 
-            total_price = await self._get_price(club_id, occurrence_start, booking_type)
+            total_price = await self._get_price(club_id, occurrence_start, booking_type, club.timezone)
             amount_due = (total_price / max_players) if total_price else Decimal("0.00")
 
             booking = Booking(

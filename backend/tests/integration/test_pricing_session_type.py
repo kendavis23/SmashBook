@@ -51,7 +51,7 @@ async def test_exact_session_type_match_is_preferred(test_session_factory, club)
     async with test_session_factory() as session:
         svc = PricingService(session)
         bd = await svc.calculate(
-            club.id, SLOT, max_players=1, booking_type=BookingType.lesson_individual
+            club.id, SLOT, club.timezone, max_players=1, booking_type=BookingType.lesson_individual
         )
     assert bd.unit_price == Decimal("60.00")
 
@@ -65,7 +65,7 @@ async def test_regular_resolves_to_its_own_rule(test_session_factory, club):
     async with test_session_factory() as session:
         svc = PricingService(session)
         bd = await svc.calculate(
-            club.id, SLOT, max_players=4, booking_type=BookingType.regular
+            club.id, SLOT, club.timezone, max_players=4, booking_type=BookingType.regular
         )
     assert bd.unit_price == Decimal("25.00")
 
@@ -78,7 +78,7 @@ async def test_falls_back_to_regular_when_session_type_unconfigured(
     async with test_session_factory() as session:
         svc = PricingService(session)
         bd = await svc.calculate(
-            club.id, SLOT, max_players=4, booking_type=BookingType.lesson_group
+            club.id, SLOT, club.timezone, max_players=4, booking_type=BookingType.lesson_group
         )
     assert bd is not None
     assert bd.unit_price == Decimal("25.00")
@@ -91,6 +91,6 @@ async def test_returns_none_when_even_regular_absent(test_session_factory, club)
     async with test_session_factory() as session:
         svc = PricingService(session)
         bd = await svc.calculate(
-            club.id, SLOT, max_players=4, booking_type=BookingType.regular
+            club.id, SLOT, club.timezone, max_players=4, booking_type=BookingType.regular
         )
     assert bd is None

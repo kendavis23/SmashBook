@@ -2,12 +2,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
+from zoneinfo import ZoneInfo
 import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.timezones import utc_to_local
 from app.db.models.booking import BookingType, DiscountSource
 from app.db.models.club import PricingRule
 from app.db.models.membership import MembershipCreditLog, MembershipStatus, MembershipSubscription, CreditType
@@ -33,12 +35,18 @@ class PricingService:
         self,
         club_id: uuid.UUID,
         start_datetime: datetime,
+        club_timezone: str,
         max_players: int,
         user_id: Optional[uuid.UUID] = None,
         booking_type: BookingType = BookingType.regular,
     ) -> Optional[PriceBreakdown]:
         """
         Return a PriceBreakdown for one court slot, or None if no pricing rule matches.
+
+        `start_datetime` is a true-UTC instant; `club_timezone` is the club's IANA
+        zone (`clubs.timezone`), used to convert it back to club-local wall-clock so
+        it can be matched against the club-local pricing-rule windows. Callers pass
+        their already-loaded `club.timezone` — this method never loads the club.
 
         Session-type resolution:
           The matching rule is the one whose window contains the slot AND whose
@@ -55,8 +63,17 @@ class PricingService:
         consume_credit() so callers control when the side effect is committed.
         """
         now = datetime.now(tz=timezone.utc)
-        day_of_week = start_datetime.weekday()
-        slot_time = start_datetime.time()
+
+        # PricingRule.day_of_week/start_time/end_time are stored as club-local
+        # wall-clock values. `start_datetime` arrives as a true-UTC instant, so
+        # convert it back to the club's local zone (`club_timezone`, the caller's
+        # already-loaded clubs.timezone) before deriving the weekday and
+        # time-of-day to match against. Comparing the UTC wall-clock directly
+        # silently misses rules for clubs offset from UTC (e.g. a Madrid 07:00
+        # slot is 05:00Z and would fall outside a 06:00-local rule window).
+        start_local = utc_to_local(start_datetime, ZoneInfo(club_timezone))
+        day_of_week = start_local.weekday()
+        slot_time = start_local.time()
 
         result = await self.db.execute(
             select(PricingRule)
