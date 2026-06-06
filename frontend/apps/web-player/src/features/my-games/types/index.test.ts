@@ -6,6 +6,7 @@ describe("my-games feature types", () => {
         const game: PlayerBookingItem = {
             booking_id: "booking-1",
             club_id: "club-1",
+            club_name: "Club One",
             court_id: "court-1",
             court_name: "Court One",
             booking_type: "regular",

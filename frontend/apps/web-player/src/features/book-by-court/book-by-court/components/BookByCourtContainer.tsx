@@ -171,6 +171,7 @@ export default function BookByCourtContainer(): JSX.Element {
                     const item: PlayerBookingItem = {
                         booking_id: booking.id,
                         club_id: booking.club_id,
+                        club_name: booking.club_name ?? "",
                         court_id: booking.court_id,
                         court_name: booking.court_name,
                         booking_type: booking.booking_type,

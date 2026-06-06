@@ -310,6 +310,7 @@ export default function PlayerBookingList({
                 <table className="w-full min-w-[700px] border-collapse">
                     <thead>
                         <tr className="border-b border-border bg-muted/30">
+                            <th className={thCls}>Club</th>
                             <th className={thCls}>Court</th>
                             <th className={thCls}>Date</th>
                             <th className={thCls}>Time</th>
@@ -336,6 +337,11 @@ export default function PlayerBookingList({
                                     key={booking.booking_id}
                                     className="transition hover:bg-muted/20"
                                 >
+                                    <td className={tdCls}>
+                                        <span className="font-medium text-foreground">
+                                            {booking.club_name}
+                                        </span>
+                                    </td>
                                     <td className={tdCls}>
                                         <span className="font-medium text-foreground">
                                             {booking.court_name}

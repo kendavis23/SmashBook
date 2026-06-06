@@ -41,6 +41,7 @@ vi.mock("@repo/ui", () => ({
 const makeBooking = (overrides: Partial<PlayerBookingItem> = {}): PlayerBookingItem => ({
     booking_id: "booking-1",
     club_id: "club-1",
+    club_name: "Club One",
     court_id: "court-1",
     court_name: "Court Alpha",
     booking_type: "regular",

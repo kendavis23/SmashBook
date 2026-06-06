@@ -38,6 +38,7 @@ export interface UserProfileUpdateInput {
 export interface PlayerBookingItem {
     booking_id: UUID;
     club_id: UUID;
+    club_name: string;
     court_id: UUID;
     court_name: string;
     booking_type: BookingType;
