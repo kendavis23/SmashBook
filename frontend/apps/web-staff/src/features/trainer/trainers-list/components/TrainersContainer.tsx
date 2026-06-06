@@ -2,7 +2,7 @@ import type { JSX } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { AlertToast } from "@repo/ui";
-import { useGetTrainerAvailability, useListTrainers } from "../../hooks";
+import { useGetTrainerBookings, useListTrainers } from "../../hooks";
 import { useClubAccess, canManageTrainers } from "../../store";
 import type { Trainer } from "../../types";
 import TrainersView from "./TrainersView";
@@ -21,11 +21,11 @@ export default function TrainersContainer(): JSX.Element {
     const { data: trainers = [], isLoading, error, refetch } = useListTrainers(clubId ?? "");
     const [selectedTrainer, setSelectedTrainer] = useState<Trainer | null>(null);
     const {
-        data: availability = [],
-        isLoading: availabilityLoading,
-        error: availabilityError,
-        refetch: refetchAvailability,
-    } = useGetTrainerAvailability(selectedTrainer?.id ?? "");
+        data: bookings = [],
+        isLoading: bookingsLoading,
+        error: bookingsError,
+        refetch: refetchBookings,
+    } = useGetTrainerBookings(selectedTrainer?.id ?? "", true);
 
     useEffect(() => {
         if (search.created || search.updated) {
@@ -57,9 +57,9 @@ export default function TrainersContainer(): JSX.Element {
         void refetch();
     }, [refetch]);
 
-    const handleRefreshAvailability = useCallback((): void => {
-        void refetchAvailability();
-    }, [refetchAvailability]);
+    const handleRefreshBookings = useCallback((): void => {
+        void refetchBookings();
+    }, [refetchBookings]);
 
     const handleViewTrainer = useCallback(
         (trainer: Trainer): void => {
@@ -76,11 +76,11 @@ export default function TrainersContainer(): JSX.Element {
                 error={error as Error | null}
                 canManage={canManage}
                 selectedTrainer={selectedTrainer}
-                availability={availability}
-                availabilityLoading={availabilityLoading}
-                availabilityError={availabilityError as Error | null}
+                bookings={bookings}
+                bookingsLoading={bookingsLoading}
+                bookingsError={bookingsError as Error | null}
                 onRefresh={handleRefresh}
-                onRefreshAvailability={handleRefreshAvailability}
+                onRefreshBookings={handleRefreshBookings}
                 onSelectTrainer={setSelectedTrainer}
                 onViewTrainer={handleViewTrainer}
             />

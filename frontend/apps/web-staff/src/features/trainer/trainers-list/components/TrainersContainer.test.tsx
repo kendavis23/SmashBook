@@ -4,7 +4,7 @@ import TrainersContainer from "./TrainersContainer";
 
 const mockNavigate = vi.fn();
 const mockRefetch = vi.fn();
-const mockRefetchAvailability = vi.fn();
+const mockRefetchBookings = vi.fn();
 let mockSearchResult: Record<string, unknown> = {};
 
 vi.mock("@tanstack/react-router", () => ({
@@ -14,7 +14,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("../../hooks", () => ({
     useListTrainers: vi.fn(),
-    useGetTrainerAvailability: vi.fn(),
+    useGetTrainerBookings: vi.fn(),
 }));
 
 vi.mock("../../store", () => ({
@@ -71,11 +71,11 @@ vi.mock("@repo/ui", () => ({
 }));
 
 import { useListTrainers } from "../../hooks";
-import { useGetTrainerAvailability } from "../../hooks";
+import { useGetTrainerBookings } from "../../hooks";
 import { useClubAccess, canManageTrainers } from "../../store";
 
 const mockUseListTrainers = useListTrainers as ReturnType<typeof vi.fn>;
-const mockUseGetTrainerAvailability = useGetTrainerAvailability as ReturnType<typeof vi.fn>;
+const mockUseGetTrainerBookings = useGetTrainerBookings as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 const mockCanManageTrainers = canManageTrainers as ReturnType<typeof vi.fn>;
 
@@ -103,11 +103,11 @@ function setupMocks(overrides: Record<string, unknown> = {}) {
     });
     mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
     mockCanManageTrainers.mockReturnValue(true);
-    mockUseGetTrainerAvailability.mockReturnValue({
+    mockUseGetTrainerBookings.mockReturnValue({
         data: [],
         isLoading: false,
         error: null,
-        refetch: mockRefetchAvailability,
+        refetch: mockRefetchBookings,
     });
 }
 
@@ -121,11 +121,11 @@ describe("TrainersContainer — loading state", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);
-        mockUseGetTrainerAvailability.mockReturnValue({
+        mockUseGetTrainerBookings.mockReturnValue({
             data: [],
             isLoading: false,
             error: null,
-            refetch: mockRefetchAvailability,
+            refetch: mockRefetchBookings,
         });
         render(<TrainersContainer />);
         expect(screen.getByText("Loading trainers…")).toBeInTheDocument();
@@ -142,11 +142,11 @@ describe("TrainersContainer — error state", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);
-        mockUseGetTrainerAvailability.mockReturnValue({
+        mockUseGetTrainerBookings.mockReturnValue({
             data: [],
             isLoading: false,
             error: null,
-            refetch: mockRefetchAvailability,
+            refetch: mockRefetchBookings,
         });
         render(<TrainersContainer />);
         expect(screen.getByText("Network error")).toBeInTheDocument();
@@ -169,7 +169,7 @@ describe("TrainersContainer — navigation", () => {
     it("navigates to trainer detail when View is clicked", () => {
         setupMocks();
         render(<TrainersContainer />);
-        fireEvent.click(screen.getByRole("button", { name: "View" }));
+        fireEvent.click(screen.getByRole("button", { name: "View profile for Aarav Shah" }));
         expect(mockNavigate).toHaveBeenCalledWith({
             to: "/trainers/$trainerId",
             params: { trainerId: "trainer-001-abcd" },
@@ -198,11 +198,11 @@ describe("TrainersContainer — success toast", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "owner" });
         mockCanManageTrainers.mockReturnValue(true);
-        mockUseGetTrainerAvailability.mockReturnValue({
+        mockUseGetTrainerBookings.mockReturnValue({
             data: [],
             isLoading: false,
             error: null,
-            refetch: mockRefetchAvailability,
+            refetch: mockRefetchBookings,
         });
 
         render(<TrainersContainer />);
@@ -230,11 +230,11 @@ describe("TrainersContainer — role access", () => {
         });
         mockUseClubAccess.mockReturnValue({ clubId: "club-1", role: "staff" });
         mockCanManageTrainers.mockReturnValue(false);
-        mockUseGetTrainerAvailability.mockReturnValue({
+        mockUseGetTrainerBookings.mockReturnValue({
             data: [],
             isLoading: false,
             error: null,
-            refetch: mockRefetchAvailability,
+            refetch: mockRefetchBookings,
         });
         render(<TrainersContainer />);
         expect(

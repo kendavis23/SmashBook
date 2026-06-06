@@ -4,18 +4,20 @@ import {
     ArrowDown,
     ArrowUp,
     ArrowUpDown,
+    CalendarClock,
     CheckCircle,
-    Clock,
+    ChevronRight,
+    Eye,
+    MapPin,
     RefreshCw,
     Settings2,
     User,
     Users,
     XCircle,
 } from "lucide-react";
-import { AlertToast, Breadcrumb, Pagination, formatUTCDate } from "@repo/ui";
-import type { Trainer, TrainerAvailability } from "../../types";
-import { DAY_LABELS } from "../../types";
-import { formatTime } from "../../utils";
+import { AlertToast, Breadcrumb, Pagination, formatUTCDateTime } from "@repo/ui";
+import type { Trainer, TrainerBookingItem } from "../../types";
+import { BOOKING_STATUS_LABELS, BOOKING_TYPE_LABELS } from "../../types";
 
 type Props = {
     trainers: Trainer[];
@@ -23,16 +25,37 @@ type Props = {
     error: Error | null;
     canManage: boolean;
     selectedTrainer: Trainer | null;
-    availability: TrainerAvailability[];
-    availabilityLoading: boolean;
-    availabilityError: Error | null;
+    bookings: TrainerBookingItem[];
+    bookingsLoading: boolean;
+    bookingsError: Error | null;
     onRefresh: () => void;
-    onRefreshAvailability: () => void;
+    onRefreshBookings: () => void;
     onSelectTrainer: (trainer: Trainer) => void;
     onViewTrainer: (trainer: Trainer) => void;
 };
 
 const PAGE_SIZE = 10;
+const UPCOMING_LIMIT = 10;
+
+function initials(name: string): string {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "?";
+    const first = parts[0]?.[0] ?? "";
+    const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+    return (first + last).toUpperCase();
+}
+
+function TrainerAvatar({ name, size = "md" }: { name: string; size?: "sm" | "md" }): JSX.Element {
+    const dim = size === "sm" ? "h-7 w-7 text-[10px]" : "h-9 w-9 text-xs";
+    return (
+        <div
+            className={`flex ${dim} shrink-0 items-center justify-center rounded-full bg-secondary font-semibold text-secondary-foreground`}
+            aria-hidden="true"
+        >
+            {initials(name)}
+        </div>
+    );
+}
 
 type SortKey = "name" | "status";
 type SortDirection = "asc" | "desc";
@@ -90,36 +113,47 @@ function SortButton({
     );
 }
 
-function groupAvailabilityByDay(availability: TrainerAvailability[]): TrainerAvailability[][] {
-    const grouped = Array.from({ length: 7 }, () => [] as TrainerAvailability[]);
+function filterUpcomingBookings(bookings: TrainerBookingItem[]): TrainerBookingItem[] {
+    const now = Date.now();
 
-    availability.forEach((slot) => {
-        if (slot.day_of_week >= 0 && slot.day_of_week <= 6) {
-            grouped[slot.day_of_week]?.push(slot);
-        }
-    });
-
-    return grouped.map((slots) =>
-        [...slots].sort((a, b) => compareText(a.effective_from, b.effective_from))
-    );
+    return bookings
+        .filter((booking) => {
+            const start = new Date(booking.start_datetime).getTime();
+            return !Number.isNaN(start) && start >= now;
+        })
+        .sort((a, b) => new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime())
+        .slice(0, UPCOMING_LIMIT);
 }
 
-function TrainerProfilePanel({
+function bookingStatusClasses(status: string): string {
+    switch (status) {
+        case "confirmed":
+            return "bg-success/15 text-success";
+        case "cancelled":
+            return "bg-destructive/10 text-destructive";
+        case "completed":
+            return "bg-muted text-muted-foreground";
+        default:
+            return "bg-cta/10 text-cta";
+    }
+}
+
+function TrainerBookingsPanel({
     trainer,
-    availability,
-    availabilityLoading,
-    availabilityError,
-    onRefreshAvailability,
+    bookings,
+    bookingsLoading,
+    bookingsError,
+    onRefreshBookings,
     onViewTrainer,
 }: {
     trainer: Trainer | null;
-    availability: TrainerAvailability[];
-    availabilityLoading: boolean;
-    availabilityError: Error | null;
-    onRefreshAvailability: () => void;
+    bookings: TrainerBookingItem[];
+    bookingsLoading: boolean;
+    bookingsError: Error | null;
+    onRefreshBookings: () => void;
     onViewTrainer: (trainer: Trainer) => void;
 }): JSX.Element {
-    const groupedAvailability = useMemo(() => groupAvailabilityByDay(availability), [availability]);
+    const upcomingBookings = useMemo(() => filterUpcomingBookings(bookings), [bookings]);
 
     if (trainer == null) {
         return (
@@ -130,8 +164,7 @@ function TrainerProfilePanel({
                     </div>
                     <h2 className="mt-4 text-sm font-semibold text-foreground">Select a trainer</h2>
                     <p className="mt-1.5 text-sm text-muted-foreground">
-                        Choose a trainer from the list to view their profile and weekly
-                        availability.
+                        Choose a trainer from the list to view their upcoming bookings.
                     </p>
                 </div>
             </aside>
@@ -143,9 +176,7 @@ function TrainerProfilePanel({
             {/* Trainer header */}
             <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-2 sm:px-5">
                 <div className="flex min-w-0 items-center gap-2">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                        <User size={13} />
-                    </div>
+                    <TrainerAvatar name={trainer.full_name} size="sm" />
                     <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                             <h2 className="text-xs font-semibold text-foreground">
@@ -168,88 +199,84 @@ function TrainerProfilePanel({
                 </button>
             </div>
 
-            {/* Availability header */}
+            {/* Bookings header */}
             <div className="flex items-center justify-between border-b border-border px-4 py-1.5 sm:px-5">
                 <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Availability
+                    Upcoming bookings · next {UPCOMING_LIMIT}
                 </h3>
                 <button
-                    onClick={onRefreshAvailability}
+                    onClick={onRefreshBookings}
                     className="rounded p-0.5 text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                    aria-label="Refresh availability"
+                    aria-label="Refresh bookings"
                 >
                     <RefreshCw size={11} />
                 </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-3 py-2 sm:px-4">
-                {availabilityError ? (
-                    <AlertToast
-                        title={availabilityError.message ?? "Failed to load availability."}
-                        variant="error"
-                        onClose={onRefreshAvailability}
-                    />
+            <div className="flex-1 overflow-y-auto">
+                {bookingsError ? (
+                    <div className="px-3 py-2 sm:px-4">
+                        <AlertToast
+                            title={bookingsError.message ?? "Failed to load bookings."}
+                            variant="error"
+                            onClose={onRefreshBookings}
+                        />
+                    </div>
                 ) : null}
 
-                {availabilityLoading ? (
-                    <div className="flex items-center gap-2 py-4">
+                {bookingsLoading ? (
+                    <div className="flex items-center gap-2 px-4 py-4">
                         <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-border border-t-cta" />
                         <span className="text-[11px] text-muted-foreground">Loading…</span>
                     </div>
-                ) : availability.length === 0 ? (
-                    <div className="flex items-center gap-1.5 py-4 text-[11px] text-muted-foreground">
-                        <Clock size={12} />
-                        No availability configured.
+                ) : upcomingBookings.length === 0 ? (
+                    <div className="flex items-center gap-1.5 px-4 py-6 text-[11px] text-muted-foreground">
+                        <CalendarClock size={12} />
+                        No upcoming bookings.
                     </div>
                 ) : (
-                    <div className="space-y-1.5">
-                        {groupedAvailability.map((slots, dayIndex) => {
-                            if (slots.length === 0) return null;
-                            return (
-                                <div
-                                    key={dayIndex}
-                                    className="overflow-hidden rounded-lg border border-border"
+                    <table className="w-full text-left text-xs">
+                        <thead>
+                            <tr className="border-b border-border bg-muted/20 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                <th className="px-4 py-2 font-medium">Date &amp; time</th>
+                                <th className="px-3 py-2 font-medium">Court</th>
+                                <th className="px-3 py-2 font-medium">Type</th>
+                                <th className="px-3 py-2 text-right font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                            {upcomingBookings.map((booking) => (
+                                <tr
+                                    key={booking.booking_id}
+                                    className="transition-colors hover:bg-muted/20"
                                 >
-                                    {/* Day header */}
-                                    <div className="flex items-center justify-between border-b border-border bg-muted/20 px-2.5 py-1.5">
-                                        <span className="text-xs text-foreground bg-muted/80">
-                                            {DAY_LABELS[dayIndex]}
+                                    <td className="px-4 py-2.5 font-medium text-foreground tabular-nums">
+                                        {formatUTCDateTime(booking.start_datetime)}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-muted-foreground">
+                                        <span className="flex min-w-0 items-center gap-1">
+                                            <MapPin size={11} className="shrink-0" />
+                                            <span className="truncate">{booking.court_name}</span>
                                         </span>
-                                        <span className="text-[11px] text-muted-foreground">
-                                            {slots.length} {slots.length === 1 ? "slot" : "slots"}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-muted-foreground">
+                                        {BOOKING_TYPE_LABELS[booking.booking_type] ??
+                                            booking.booking_type}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-right">
+                                        <span
+                                            className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${bookingStatusClasses(
+                                                booking.status
+                                            )}`}
+                                        >
+                                            {BOOKING_STATUS_LABELS[booking.status] ??
+                                                booking.status}
                                         </span>
-                                    </div>
-                                    {/* Slot rows */}
-                                    <div className="divide-y divide-border/50">
-                                        {slots.map((slot) => (
-                                            <div
-                                                key={slot.id}
-                                                className="flex items-center justify-between gap-2 px-2.5 py-1.5"
-                                            >
-                                                <div className="flex min-w-0 items-center gap-2">
-                                                    <span className="text-[11px] font-medium text-foreground tabular-nums">
-                                                        {formatTime(slot.start_time)} -{" "}
-                                                        {formatTime(slot.end_time)}
-                                                    </span>
-                                                    {slot.notes ? (
-                                                        <span className="truncate text-[10px] text-muted-foreground">
-                                                            {slot.notes}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
-                                                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                                                    {formatUTCDate(slot.effective_from)}
-                                                    {slot.effective_until
-                                                        ? ` – ${formatUTCDate(slot.effective_until)}`
-                                                        : null}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 )}
             </div>
         </aside>
@@ -262,11 +289,11 @@ export default function TrainersView({
     error,
     canManage,
     selectedTrainer = null,
-    availability = [],
-    availabilityLoading = false,
-    availabilityError = null,
+    bookings = [],
+    bookingsLoading = false,
+    bookingsError = null,
     onRefresh,
-    onRefreshAvailability = () => undefined,
+    onRefreshBookings = () => undefined,
     onSelectTrainer = () => undefined,
     onViewTrainer,
 }: Props): JSX.Element {
@@ -401,114 +428,107 @@ export default function TrainersView({
                     </div>
                 ) : !error ? (
                     <>
-                        <div className="grid min-w-0 xl:grid-cols-[minmax(0,0.95fr)_minmax(500px,1.05fr)]">
+                        <div className="grid min-w-0 xl:grid-cols-[minmax(280px,340px)_minmax(560px,1fr)]">
                             <div className="min-w-0 border-b border-border xl:border-b-0 xl:border-r xl:border-border">
-                                <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-                                    <div>
+                                <div className="space-y-2.5 border-b border-border px-4 py-3 sm:px-5">
+                                    <div className="flex items-center justify-between gap-2">
                                         <h2 className="text-sm font-semibold text-foreground">
                                             Trainer list
                                         </h2>
-                                    </div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <input
-                                            type="search"
-                                            value={search}
-                                            onChange={(e) => {
-                                                setSearch(e.target.value);
-                                                setPage(0);
-                                            }}
-                                            placeholder="Search trainers…"
-                                            className="h-8 rounded-lg border border-border bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta"
-                                        />
                                         <SortButton
-                                            label="Trainer"
+                                            label="Sort"
                                             sortKey="name"
                                             activeSortKey={sortKey}
                                             direction={sortDirection}
                                             onSort={handleSort}
                                         />
                                     </div>
+                                    <input
+                                        type="search"
+                                        value={search}
+                                        onChange={(e) => {
+                                            setSearch(e.target.value);
+                                            setPage(0);
+                                        }}
+                                        placeholder="Search trainers…"
+                                        className="h-9 w-full rounded-lg border border-border bg-card px-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-cta"
+                                    />
                                 </div>
 
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead>
-                                            <tr className="border-b border-border bg-muted/20 text-left text-xs font-medium text-muted-foreground">
-                                                <th className="px-4 py-2 sm:px-6">Name</th>
-                                                <th className="px-2 py-2">Status</th>
-                                                <th className="px-2 py-2 text-right">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
-                                            {pageTrainers.map((trainer) => {
-                                                const isSelected =
-                                                    selectedTrainer?.id === trainer.id;
+                                <div className="space-y-1 p-2 sm:p-3">
+                                    {pageTrainers.map((trainer) => {
+                                        const isSelected = selectedTrainer?.id === trainer.id;
 
-                                                return (
-                                                    <tr
-                                                        key={trainer.id}
-                                                        role="button"
-                                                        tabIndex={0}
-                                                        aria-label={`Select trainer ${trainer.full_name}`}
-                                                        className={`cursor-pointer transition-colors ${
-                                                            isSelected
-                                                                ? "bg-cta/5"
-                                                                : "hover:bg-muted/30"
-                                                        }`}
-                                                        onClick={() => onSelectTrainer(trainer)}
+                                        return (
+                                            <div
+                                                key={trainer.id}
+                                                role="button"
+                                                tabIndex={0}
+                                                aria-label={`Select trainer ${trainer.full_name}`}
+                                                onClick={() => onSelectTrainer(trainer)}
+                                                onKeyDown={(event) => {
+                                                    if (
+                                                        event.key === "Enter" ||
+                                                        event.key === " "
+                                                    ) {
+                                                        event.preventDefault();
+                                                        onSelectTrainer(trainer);
+                                                    }
+                                                }}
+                                                className={`group flex cursor-pointer items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors ${
+                                                    isSelected
+                                                        ? "border-cta bg-cta/5 ring-1 ring-cta/30"
+                                                        : "border-transparent hover:border-border hover:bg-muted/40"
+                                                }`}
+                                            >
+                                                <TrainerAvatar name={trainer.full_name} size="sm" />
+                                                <div className="flex min-w-0 flex-1 items-center gap-2">
+                                                    <span
+                                                        className={`truncate text-sm font-medium ${isSelected ? "text-cta" : "text-foreground"}`}
                                                     >
-                                                        <td className="px-4 py-2.5 sm:px-6">
-                                                            <div className="flex items-center gap-2">
-                                                                <div className="min-w-0">
-                                                                    <span
-                                                                        className={`block truncate font-medium ${isSelected ? "text-cta" : "text-foreground"}`}
-                                                                    >
-                                                                        {trainer.full_name}
-                                                                    </span>
-                                                                    {trainer.bio ? (
-                                                                        <span className="block truncate text-xs text-muted-foreground">
-                                                                            {trainer.bio}
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="block truncate text-xs text-muted-foreground">
-                                                                            No bio provided
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-2 py-2.5">
-                                                            <StatusBadge
-                                                                isActive={trainer.is_active}
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2.5 text-right">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(event) => {
-                                                                    event.stopPropagation();
-                                                                    onViewTrainer(trainer);
-                                                                }}
-                                                                className="inline-flex items-center justify-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs text-foreground transition hover:bg-muted"
-                                                            >
-                                                                <Settings2 size={13} />
-                                                                View
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                                        {trainer.full_name}
+                                                    </span>
+                                                    <span
+                                                        className={`h-1.5 w-1.5 shrink-0 rounded-full ${trainer.is_active ? "bg-success" : "bg-destructive"}`}
+                                                        title={
+                                                            trainer.is_active
+                                                                ? "Active"
+                                                                : "Inactive"
+                                                        }
+                                                        aria-label={
+                                                            trainer.is_active
+                                                                ? "Active"
+                                                                : "Inactive"
+                                                        }
+                                                    />
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        onViewTrainer(trainer);
+                                                    }}
+                                                    className="shrink-0 rounded-md p-1 text-muted-foreground transition hover:bg-muted hover:text-cta"
+                                                    aria-label={`View profile for ${trainer.full_name}`}
+                                                >
+                                                    <Eye size={15} />
+                                                </button>
+                                                <ChevronRight
+                                                    size={15}
+                                                    className={`shrink-0 transition ${isSelected ? "text-cta" : "text-muted-foreground/40"}`}
+                                                />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
-                            <TrainerProfilePanel
+                            <TrainerBookingsPanel
                                 trainer={selectedTrainer}
-                                availability={availability}
-                                availabilityLoading={availabilityLoading}
-                                availabilityError={availabilityError}
-                                onRefreshAvailability={onRefreshAvailability}
+                                bookings={bookings}
+                                bookingsLoading={bookingsLoading}
+                                bookingsError={bookingsError}
+                                onRefreshBookings={onRefreshBookings}
                                 onViewTrainer={onViewTrainer}
                             />
                         </div>

@@ -30,7 +30,8 @@ const trainerKeys = {
     all: (clubId: string) => ["trainers", clubId] as const,
     detail: (trainerId: string) => ["trainers", "detail", trainerId] as const,
     availability: (trainerId: string) => ["trainers", trainerId, "availability"] as const,
-    bookings: (trainerId: string) => ["trainers", trainerId, "bookings"] as const,
+    bookings: (trainerId: string, upcomingOnly?: boolean) =>
+        ["trainers", trainerId, "bookings", upcomingOnly ?? null] as const,
     available: (params: ListAvailableTrainersParams) =>
         [
             "trainers",
@@ -132,7 +133,7 @@ export function useDeleteTrainerAvailability(trainerId: string) {
 
 export function useGetTrainerBookings(trainerId: string, upcomingOnly?: boolean) {
     return useQuery({
-        queryKey: trainerKeys.bookings(trainerId),
+        queryKey: trainerKeys.bookings(trainerId, upcomingOnly),
         queryFn: (): Promise<TrainerBookingItem[]> =>
             getTrainerBookingsEndpoint(trainerId, upcomingOnly),
         enabled: Boolean(trainerId),
