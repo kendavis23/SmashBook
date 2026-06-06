@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { RuleForm } from "./PricingRuleForm";
 import { EMPTY_RULE } from "./pricingRulesConstants";
 import type { FormState } from "./pricingRulesConstants";
+import type { OperatingHours, PricingRule } from "../../types";
 
 vi.mock("@repo/ui", () => ({
     FormField: ({ label, children }: { label: string; children: ReactNode }) => (
@@ -44,6 +45,10 @@ vi.mock("@repo/ui", () => ({
 }));
 
 const baseForm: FormState = { ...EMPTY_RULE, label: "peak" };
+const noOpProps = {
+    existingRules: [] as PricingRule[],
+    hours: [] as OperatingHours[],
+};
 
 describe("RuleForm — new rule", () => {
     it("renders 'New rule' heading when no _editIndex", () => {
@@ -52,6 +57,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -66,6 +72,7 @@ describe("RuleForm — new rule", () => {
                 form={{ ...baseForm, _editIndex: 0 }}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -80,6 +87,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -94,6 +102,7 @@ describe("RuleForm — new rule", () => {
                 form={{ ...baseForm, _editIndex: 2 }}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -108,6 +117,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={true}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -123,6 +133,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={handleCancel}
@@ -139,6 +150,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={handleChange}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -157,6 +169,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={handleChange}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -173,6 +186,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="EUR"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -188,6 +202,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={handleSubmit}
                 onCancel={vi.fn()}
@@ -203,6 +218,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -217,6 +233,7 @@ describe("RuleForm — new rule", () => {
                 form={baseForm}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}
@@ -231,6 +248,7 @@ describe("RuleForm — new rule", () => {
                 form={{ ...baseForm, is_active: true }}
                 currency="GBP"
                 saving={false}
+                {...noOpProps}
                 onChange={vi.fn()}
                 onSubmit={vi.fn()}
                 onCancel={vi.fn()}

@@ -101,6 +101,8 @@ export default function PricingRulesTable({
                     form={form}
                     currency={currency}
                     saving={saving}
+                    existingRules={rules}
+                    hours={hours}
                     onChange={handleFormChange}
                     onSubmit={handleFormSubmit}
                     onCancel={closeForm}
