@@ -136,11 +136,11 @@ async def get_club(club_id: uuid.UUID, db: AsyncSession = Depends(get_read_db)):
 @router.get("/{club_id}/availability", response_model=ClubAvailabilityResponse)
 async def get_club_availability(
     club_id: uuid.UUID,
-    start_date: DateType = Query(..., description="First date to search (YYYY-MM-DD, UTC)"),
-    end_date: Optional[DateType] = Query(default=None, description="Last date to search (inclusive). If omitted, scan forward up to 40 slot rows and return next_cursor."),
+    start_date: DateType = Query(..., description="First date to search (YYYY-MM-DD, club-local calendar date)"),
+    end_date: Optional[DateType] = Query(default=None, description="Last date to search (inclusive, club-local calendar date). If omitted, scan forward up to 40 slot rows and return next_cursor."),
     surface: Optional[SurfaceType] = Query(default=None, description="Filter empty-court availability by surface type"),
-    from_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to start at HH:MM UTC"),
-    to_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to end at HH:MM UTC"),
+    from_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to start at HH:MM club-local time"),
+    to_time: Optional[str] = Query(default=None, pattern=r"^\d{2}:\d{2}$", description="Clamp each day's window to end at HH:MM club-local time"),
     current_user: User = Depends(get_current_user),
     tenant: Tenant = Depends(get_tenant),
     db: AsyncSession = Depends(get_read_db),
