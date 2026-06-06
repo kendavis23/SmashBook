@@ -50,6 +50,7 @@ def _make_booking_player(
     club = MagicMock()
     club.id = CLUB_ID
     club.name = "Smash Club"
+    club.timezone = "Europe/Madrid"
 
     booking = MagicMock()
     booking.id = uuid.uuid4()

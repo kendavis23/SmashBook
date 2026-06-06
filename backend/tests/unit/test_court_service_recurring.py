@@ -31,6 +31,7 @@ _CLUB = SimpleNamespace(
     id=CLUB_ID,
     tenant_id=TENANT_ID,
     booking_duration_minutes=90,
+    timezone="Europe/Madrid",
 )
 _COURT = SimpleNamespace(id=COURT_ID, club_id=CLUB_ID, is_active=True)
 _STAFF_USER = SimpleNamespace(id=STAFF_ID, tenant_id=TENANT_ID)
