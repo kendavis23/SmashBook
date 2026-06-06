@@ -10,6 +10,7 @@ import {
     RecurrencePicker,
     formatCurrency,
 } from "@repo/ui";
+import type { PriceQuoteResponse } from "@repo/api-client/modules/share";
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -50,6 +51,61 @@ const sectionHeaderCls =
     "mb-4 flex items-start justify-between gap-3 border-b border-border/60 pb-3";
 
 const sectionKickerCls = "text-[11px] font-semibold uppercase tracking-wide text-cta";
+
+const DISCOUNT_SOURCE_LABELS: Record<string, string> = {
+    membership: "Membership",
+    campaign: "Campaign",
+    promo_code: "Promo Code",
+    staff_manual: "Staff Discount",
+    ai_gap_offer: "Special Offer",
+};
+
+function PriceBreakdownBar({ priceQuote }: { priceQuote: PriceQuoteResponse | null | undefined }) {
+    if (
+        !priceQuote ||
+        priceQuote.discount_amount == null ||
+        priceQuote.discount_amount <= 0 ||
+        priceQuote.discount_source == null
+    ) {
+        return null;
+    }
+
+    const originalPrice = priceQuote.per_player_price ?? priceQuote.base_price;
+    const discountLabel =
+        DISCOUNT_SOURCE_LABELS[priceQuote.discount_source] ?? priceQuote.discount_source;
+    const amountDue = priceQuote.amount_due ?? priceQuote.base_price;
+
+    return (
+        <div className="mt-4 overflow-hidden rounded-xl border border-border/70 bg-background/85 shadow-sm">
+            <div className="grid grid-cols-3 divide-x divide-border/60">
+                <div className="px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Original price
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground line-through decoration-muted-foreground/60">
+                        {formatCurrency(originalPrice)}
+                    </p>
+                </div>
+                <div className="px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {discountLabel}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        -{formatCurrency(priceQuote.discount_amount)}
+                    </p>
+                </div>
+                <div className="bg-cta/5 px-4 py-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-cta/70">
+                        Your share
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-cta">
+                        {formatCurrency(amountDue)}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export type NewBookingFormState = {
     courtId: string;
@@ -95,7 +151,7 @@ type Props = {
     onCancel: () => void;
     onDismissError: () => void;
     onRefreshSlots: () => void;
-    selectedPrice: number | string | null;
+    priceQuote?: PriceQuoteResponse | null;
     clubId?: string | null;
     mode?: NewBookingMode;
     courtName?: string;
@@ -123,7 +179,7 @@ export default function NewBookingView({
     onCancel,
     onDismissError,
     onRefreshSlots,
-    selectedPrice,
+    priceQuote,
     clubId,
     mode = "page",
     courtName,
@@ -290,10 +346,12 @@ export default function NewBookingView({
                 <div>
                     <label className={labelCls}>Price</label>
                     <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                        {form.startTime ? formatCurrency(selectedPrice) : "—"}
+                        {form.startTime ? formatCurrency(priceQuote?.base_price ?? null) : "—"}
                     </div>
                 </div>
             </div>
+
+            <PriceBreakdownBar priceQuote={priceQuote} />
 
             {showParticipantAssignmentSection ? (
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -570,7 +628,7 @@ export default function NewBookingView({
                 onBehalfOfError={onBehalfOfError}
                 staffProfileError={staffProfileError}
                 isPending={isPending}
-                selectedPrice={selectedPrice}
+                priceQuote={priceQuote}
                 clubId={clubId}
                 onFormChange={onFormChange}
                 onSubmit={onSubmit}
@@ -615,7 +673,13 @@ export default function NewBookingView({
                                     Total price
                                 </p>
                                 <p className="mt-1 text-sm font-semibold text-cta">
-                                    {form.startTime ? formatCurrency(selectedPrice) : "Pending"}
+                                    {form.startTime
+                                        ? formatCurrency(
+                                              priceQuote?.amount_due ??
+                                                  priceQuote?.base_price ??
+                                                  null
+                                          )
+                                        : "Pending"}
                                 </p>
                             </div>
                         </div>

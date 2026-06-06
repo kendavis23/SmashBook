@@ -136,7 +136,22 @@ const defaultProps = {
     onCancel: vi.fn(),
     onDismissError: vi.fn(),
     onRefreshSlots: vi.fn(),
-    selectedPrice: 24,
+    priceQuote: {
+        club_id: "club-1",
+        booking_type: "regular" as const,
+        start_datetime: "2026-05-20T10:00:00",
+        max_players: 4,
+        pricing_available: true,
+        base_price: 24,
+        unit_price: 24,
+        total_price: 24,
+        per_player_price: 24,
+        discount_amount: null,
+        discount_source: null,
+        amount_due: 24,
+        membership_subscription_id: null,
+        credit_applies: false,
+    },
     clubId: "club-1",
 };
 

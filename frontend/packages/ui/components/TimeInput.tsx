@@ -1,6 +1,12 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Clock } from "lucide-react";
-import React, { useRef, useState, type ChangeEvent, type InputHTMLAttributes, type Ref } from "react";
+import React, {
+    useRef,
+    useState,
+    type ChangeEvent,
+    type InputHTMLAttributes,
+    type Ref,
+} from "react";
 
 export type TimeInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
     ref?: Ref<HTMLInputElement>;

@@ -9,6 +9,7 @@ import {
     formatCurrency,
     formatUTCDate,
 } from "@repo/ui";
+import type { PriceQuoteResponse } from "@repo/api-client/modules/share";
 import type { BookingType } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -42,6 +43,64 @@ const dividerCls = "border-t-2 border-border/20 pt-3";
 const sectionCls = `space-y-2 ${dividerCls}`;
 
 const typeOptions = BOOKING_TYPE_OPTIONS.filter((o) => o.value !== "");
+
+const DISCOUNT_SOURCE_LABELS: Record<string, string> = {
+    membership: "Membership",
+    campaign: "Campaign",
+    promo_code: "Promo Code",
+    staff_manual: "Staff Discount",
+    ai_gap_offer: "Special Offer",
+};
+
+function PriceBreakdownBar({
+    priceQuote,
+    formattedAmountDue,
+}: {
+    priceQuote: PriceQuoteResponse | null | undefined;
+    formattedAmountDue: string;
+}) {
+    if (
+        !priceQuote ||
+        priceQuote.discount_amount == null ||
+        priceQuote.discount_amount <= 0 ||
+        priceQuote.discount_source == null
+    ) {
+        return null;
+    }
+
+    const originalPrice = priceQuote.per_player_price ?? priceQuote.base_price;
+    const discountLabel =
+        DISCOUNT_SOURCE_LABELS[priceQuote.discount_source] ?? priceQuote.discount_source;
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-border/70 bg-background/85 shadow-sm">
+            <div className="grid grid-cols-3 divide-x divide-border/60">
+                <div className="px-3 py-2.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Original price
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground line-through decoration-muted-foreground/60">
+                        {formatCurrency(originalPrice)}
+                    </p>
+                </div>
+                <div className="px-3 py-2.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {discountLabel}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        -{formatCurrency(priceQuote.discount_amount)}
+                    </p>
+                </div>
+                <div className="bg-cta/5 px-3 py-2.5">
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-cta/70">
+                        Staff share
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-cta">{formattedAmountDue}</p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function DetailItem({
     icon,
@@ -89,7 +148,7 @@ type Props = {
     onBehalfOfError: string;
     staffProfileError: string;
     isPending: boolean;
-    selectedPrice: number | string | null;
+    priceQuote?: PriceQuoteResponse | null;
     clubId?: string | null;
     onFormChange: (patch: Partial<NewBookingFormState>) => void;
     onSubmit: (e: FormEvent) => void;
@@ -108,7 +167,7 @@ export function NewBookingModalView({
     onBehalfOfError,
     staffProfileError,
     isPending,
-    selectedPrice,
+    priceQuote,
     clubId,
     onFormChange,
     onSubmit,
@@ -131,7 +190,12 @@ export function NewBookingModalView({
     const formattedDate = form.bookingDate ? formatUTCDate(form.bookingDate + "T00:00:00Z") : "—";
 
     const formattedTime = form.startTime ? formatSlotTime(form.startTime) : "—";
-    const formattedPrice = form.startTime ? (formatCurrency(selectedPrice) ?? "—") : "—";
+    const formattedPrice = form.startTime
+        ? (formatCurrency(priceQuote?.base_price ?? null) ?? "—")
+        : "—";
+    const formattedAmountDue = form.startTime
+        ? (formatCurrency(priceQuote?.amount_due ?? priceQuote?.base_price ?? null) ?? "—")
+        : "—";
 
     return (
         <form
@@ -194,6 +258,10 @@ export function NewBookingModalView({
                         ring="ring-border"
                     />
                 </div>
+                <PriceBreakdownBar
+                    priceQuote={priceQuote}
+                    formattedAmountDue={formattedAmountDue}
+                />
 
                 <section className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${dividerCls}`}>
                     <div>

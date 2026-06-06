@@ -102,7 +102,12 @@ export interface OpenGameSummary {
     players: OpenGamePlayer[];
 }
 
-export type DiscountSource = "membership" | "campaign" | "promo_code" | "staff_manual" | "ai_gap_offer";
+export type DiscountSource =
+    | "membership"
+    | "campaign"
+    | "promo_code"
+    | "staff_manual"
+    | "ai_gap_offer";
 
 export interface PriceQuoteParams {
     club_id: UUID;

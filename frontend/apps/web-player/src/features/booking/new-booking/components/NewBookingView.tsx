@@ -9,6 +9,7 @@ import {
     SelectInput,
     formatCurrency,
 } from "@repo/ui";
+import type { PriceQuoteResponse } from "@repo/api-client/modules/share";
 import type { BookingType, TimeSlot } from "../../types";
 import { BOOKING_TYPE_OPTIONS } from "../../types";
 import { formatSlotTime } from "../../utils/slotTime";
@@ -32,6 +33,72 @@ const sectionHeaderCls =
     "mb-4 flex items-start justify-between gap-3 border-b border-border/60 pb-3";
 
 const sectionKickerCls = "text-[11px] font-semibold uppercase tracking-wide text-cta";
+
+const DISCOUNT_SOURCE_LABELS: Record<string, string> = {
+    membership: "Membership",
+    campaign: "Campaign",
+    promo_code: "Promo Code",
+    staff_manual: "Staff Discount",
+    ai_gap_offer: "Special Offer",
+};
+
+function PriceBreakdownBar({ priceQuote }: { priceQuote: PriceQuoteResponse | null }) {
+    const hasDiscount =
+        priceQuote &&
+        priceQuote.discount_amount != null &&
+        priceQuote.discount_amount > 0 &&
+        priceQuote.discount_source != null;
+
+    if (!priceQuote) return null;
+
+    const originalPrice = priceQuote.per_player_price ?? priceQuote.base_price;
+    const discountLabel = hasDiscount
+        ? (DISCOUNT_SOURCE_LABELS[priceQuote.discount_source!] ?? priceQuote.discount_source)
+        : null;
+    const amountDue = priceQuote.amount_due ?? priceQuote.base_price;
+
+    if (!hasDiscount) {
+        return (
+            <div className="flex items-center justify-between rounded-lg border border-cta/20 bg-cta/5 px-3 py-2.5 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Your share
+                </p>
+                <p className="text-sm font-semibold text-cta">{formatCurrency(amountDue)}</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="overflow-hidden rounded-lg border border-border/70 bg-background/85 shadow-sm">
+            <div className="grid grid-cols-3 divide-x divide-border/60">
+                <div className="px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Original price
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-foreground line-through decoration-muted-foreground/60">
+                        {formatCurrency(originalPrice)}
+                    </p>
+                </div>
+                <div className="px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        {discountLabel}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400">
+                        -{formatCurrency(priceQuote.discount_amount)}
+                    </p>
+                </div>
+                <div className="bg-cta/5 px-3 py-2.5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-cta/70">
+                        Your share
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold text-cta">
+                        {formatCurrency(amountDue)}
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export type NewBookingFormState = {
     courtId: string;
@@ -71,7 +138,7 @@ type Props = {
     onCancel: () => void;
     onDismissError: () => void;
     onRefreshSlots: () => void;
-    selectedPrice: number | string | null;
+    priceQuote?: PriceQuoteResponse | null;
     clubId?: string | null;
     mode?: NewBookingMode;
     courtName?: string;
@@ -100,7 +167,7 @@ export default function NewBookingView({
     onCancel,
     onDismissError,
     onRefreshSlots,
-    selectedPrice,
+    priceQuote,
     clubId,
     mode = "page",
     courtName,
@@ -256,7 +323,11 @@ export default function NewBookingView({
                 <div>
                     <label className={labelCls}>Price</label>
                     <div className={`${fieldCls} cursor-default select-none opacity-80`}>
-                        {form.startTime ? formatCurrency(selectedPrice) : "—"}
+                        {form.startTime
+                            ? formatCurrency(
+                                  priceQuote?.amount_due ?? priceQuote?.base_price ?? null
+                              )
+                            : "—"}
                     </div>
                 </div>
             </div>
@@ -410,7 +481,7 @@ export default function NewBookingView({
                 staffError={staffError}
                 apiError={apiError}
                 isPending={isPending}
-                selectedPrice={selectedPrice}
+                priceQuote={priceQuote ?? null}
                 endTime={selectedSlot?.end_time ?? ""}
                 clubId={clubId}
                 onFormChange={onFormChange}
@@ -441,7 +512,7 @@ export default function NewBookingView({
                                 New Booking
                             </h1>
                         </div>
-                        <div className="grid w-full grid-cols-2 gap-2 sm:max-w-sm lg:w-auto lg:flex-none">
+                        <div className="flex w-full flex-col gap-2 sm:max-w-sm lg:w-auto lg:flex-none">
                             <div className="rounded-lg border border-border/70 bg-background/85 px-3 py-2.5 shadow-sm">
                                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                     Court
@@ -451,14 +522,16 @@ export default function NewBookingView({
                                         "Not selected"}
                                 </p>
                             </div>
-                            <div className="rounded-lg border border-cta/20 bg-cta/5 px-3 py-2.5 shadow-sm">
-                                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Total price
-                                </p>
-                                <p className="mt-1 text-sm font-semibold text-cta">
-                                    {form.startTime ? formatCurrency(selectedPrice) : "Pending"}
-                                </p>
-                            </div>
+                            {form.startTime ? (
+                                <PriceBreakdownBar priceQuote={priceQuote ?? null} />
+                            ) : (
+                                <div className="rounded-lg border border-cta/20 bg-cta/5 px-3 py-2.5 shadow-sm">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                        Total price
+                                    </p>
+                                    <p className="mt-1 text-sm font-semibold text-cta">Pending</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

@@ -88,7 +88,7 @@ vi.mock("./NewBookingView", () => ({
         onClose,
         onDismissError,
         onRefreshSlots,
-        selectedPrice,
+        priceQuote,
         mode,
         courtName,
     }: {
@@ -105,7 +105,7 @@ vi.mock("./NewBookingView", () => ({
         onClose?: () => void;
         onDismissError: () => void;
         onRefreshSlots: () => void;
-        selectedPrice: number | string | null;
+        priceQuote: { base_price?: number | null } | null | undefined;
         mode?: string;
         courtName?: string;
     }) => (
@@ -116,7 +116,7 @@ vi.mock("./NewBookingView", () => ({
             <span>date:{form.bookingDate}</span>
             <span>time:{form.startTime}</span>
             <span>type:{form.bookingType}</span>
-            <span>price:{selectedPrice}</span>
+            <span>price:{priceQuote?.base_price ?? null}</span>
             {staffError ? <span>{staffError}</span> : null}
             <button
                 onClick={() =>
