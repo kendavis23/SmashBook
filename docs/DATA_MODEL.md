@@ -1,4 +1,4 @@
-_Last updated: 2026-06-05 14:05 UTC_
+_Last updated: 2026-06-05 18:00 UTC_
 
 # SmashBook Data Model
 
@@ -201,6 +201,7 @@ Club settings are stored directly on this table (no separate `club_settings` tab
 |---|---|---|
 | `id` | UUID | PK |
 | `club_id` | UUID | FK → `clubs` |
+| `session_type` | `bookingtype` enum | Activity this price applies to: `regular`, `lesson_individual`, `lesson_group`, `train_and_play`, `corporate_event`, `tournament`. Reuses the `bookingtype` enum (shared with `bookings.booking_type`). Default `regular`. Orthogonal to `label` — a club may price each session type within the same time window |
 | `label` | `pricinglabel` enum | Pricing tier: `peak`, `off_peak`, `standard`. Fixed set — extend via enum `ALTER` + model |
 | `day_of_week` | SMALLINT | 0 = Monday … 6 = Sunday |
 | `start_time` | TIME | |
@@ -800,7 +801,7 @@ Back the club-level "Active players & member sign-ups" report (G7, workstream A)
 | `Gender` | `male`, `female`, `other`, `prefer_not_to_say` — `users.gender` |
 | `StaffRole` | `trainer`, `ops_lead`, `admin`, `front_desk` |
 | `SurfaceType` | `indoor`, `outdoor`, `crystal`, `artificial_grass` |
-| `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `corporate_event`, `tournament` |
+| `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `train_and_play`, `corporate_event`, `tournament` |
 | `BookingStatus` | `pending`, `confirmed`, `cancelled`, `completed` |
 | `PlayerRole` | `organiser`, `player` |
 | `PaymentStatus` | `pending`, `paid`, `refunded` |
@@ -878,6 +879,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `fd3c5c3192ab` | G7 (Analytics) — player-value report (workstream B): new materialized view `mv_player_value`, grain `(club_id, user_id)`, `UNIQUE(club_id, user_id)` for `REFRESH … CONCURRENTLY`. Hand-written DDL (views aren't ORM models). Stitches activity (`booking_players` ⋈ `bookings`), net spend (`payments` by `user_id`), and paid-membership flag (`membership_subscriptions` ⋈ `membership_plans`) per player. Backs `/api/v1/analytics/players/...` (LTV, most-active, inactive-members) |
 | `4d439313634d` | G7 (Analytics) — club player-flow report (workstream A): new materialized views `mv_club_active_player_day` (presence, grain `(club_id, activity_date, user_id)`, `UNIQUE(club_id, activity_date, user_id)`) and `mv_club_signups_day` (flow, grain `(club_id, signup_date)`, `UNIQUE(club_id, signup_date)`), both for `REFRESH … CONCURRENTLY`. Hand-written DDL. Active = distinct on-court players (`booking_players` ⋈ `bookings`); signups = new paid subscription starts (`membership_subscriptions` ⋈ `membership_plans`, price > 0). Backs `/api/v1/analytics/players/clubs/{id}/{active,active/timeseries,signups}` |
 | `da94effd108c` | `pricing_rules.label` tightened from free-text `VARCHAR(50)` to new `pricinglabel` enum (`peak`, `off_peak`, `standard`). Legacy values remapped in-migration by time-of-day semantics before the cast: `off_peak` ← `Off-Peak`, `Wknd AM`; `peak` ← `Peak`, `Evening`, `Weekend`, `Wknd PM`, `Wknd Eve`; `standard` ← catch-all. Extend the tier set by `ALTER TYPE pricinglabel ADD VALUE` + a model member |
+| `360c29cd9c05` | Per-activity pricing: new `pricing_rules.session_type` column (`bookingtype` enum, default `regular`, `NOT NULL`), letting a club price each session type within the same time window. Adds `train_and_play` to the existing `bookingtype` enum via `ALTER TYPE … ADD VALUE` inside an `autocommit_block()` (committed before the column references it); column added with `create_type=False` since `bookingtype` already exists. Existing rows backfill to `regular` via `server_default`. Downgrade drops the column but leaves `train_and_play` on the enum (Postgres cannot drop an enum value) |
 
 To run migrations:
 ```bash

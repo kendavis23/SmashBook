@@ -1,4 +1,4 @@
-_Last updated: 2026-06-05 (pricing_rules.label enum)_
+_Last updated: 2026-06-05 (pricing_rules.session_type — per-activity pricing)_
 
 # SmashBook — Data Model Target State
 
@@ -314,12 +314,12 @@ Update the **Status** column when a migration has been applied and verified. The
 ---
 
 ### `pricing_rules`
-No changes from current state.
 
 | Column | Type | Notes |
 |---|---|---|
 | `id` | UUID | PK |
 | `club_id` | UUID | FK → `clubs` |
+| `session_type` | `bookingtype` enum | Activity this price applies to. Reuses the `bookingtype` enum; default `regular`. Orthogonal to `label` — one rule per (session type × window). Resolution falls back to the `regular` rule when a session type is unconfigured. Extend the activity set by `ALTER TYPE bookingtype ADD VALUE` + a model member |
 | `label` | `pricinglabel` enum | Pricing tier: `peak`, `off_peak`, `standard`. Fixed set — extend via enum `ALTER` + model member |
 | `day_of_week` | SMALLINT | 0 = Monday … 6 = Sunday |
 | `start_time` | TIME | |
@@ -365,7 +365,7 @@ No changes from current state.
 | `id` | UUID | PK |
 | `club_id` | UUID | FK → `clubs` |
 | `court_id` | UUID | FK → `courts` |
-| `booking_type` | ENUM | `regular`, `lesson_individual`, `lesson_group`, `corporate_event`, `tournament`, `open_game` — **NEW: `open_game`** |
+| `booking_type` | ENUM | `regular`, `lesson_individual`, `lesson_group`, `train_and_play`, `corporate_event`, `tournament`, `open_game` — **NEW: `open_game`** |
 | `status` | ENUM | `pending`, `confirmed`, `cancelled`, `completed` |
 | `start_datetime` | TIMESTAMPTZ | |
 | `end_datetime` | TIMESTAMPTZ | |
@@ -1326,7 +1326,7 @@ All new enums must be created in Alembic migrations **before** the columns that 
 | `TenantUserRole` | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` | existing |
 | `StaffRole` | `trainer`, `ops_lead`, `admin`, `front_desk` | existing |
 | `SurfaceType` | `indoor`, `outdoor`, `crystal`, `artificial_grass` | existing |
-| `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `corporate_event`, `tournament`, **`open_game`** | G3 — add `open_game` |
+| `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `train_and_play`, `corporate_event`, `tournament`, **`open_game`** | `train_and_play` added (per-activity pricing); G3 — add `open_game` |
 | `BookingStatus` | `pending`, `confirmed`, `cancelled`, `completed` | existing |
 | `PlayerRole` | `organiser`, `player` | existing |
 | `PaymentStatus` | `pending`, `paid`, `refunded` | existing |

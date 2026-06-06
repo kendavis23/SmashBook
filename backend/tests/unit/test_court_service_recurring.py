@@ -59,6 +59,9 @@ def _make_db(conflict=False, blackout=False, price=None):
         m = MagicMock()
         m.scalar_one_or_none.return_value = value
         m.scalar_one.return_value = value
+        # PricingService resolves the rule via .scalars().first(); wire it too.
+        m.scalars.return_value.first.return_value = value
+        m.scalars.return_value.all.return_value = [value] if value is not None else []
         return m
 
     conflict_result = _scalar_returning(SimpleNamespace(id=uuid.uuid4()) if conflict else None)
@@ -315,6 +318,9 @@ class TestConflictBehaviour:
             m = MagicMock()
             m.scalar_one_or_none.return_value = value
             m.scalar_one.return_value = value
+            # PricingService resolves the rule via .scalars().first(); wire it too.
+            m.scalars.return_value.first.return_value = value
+            m.scalars.return_value.all.return_value = [value] if value is not None else []
             return m
 
         conflict_hit = MagicMock()

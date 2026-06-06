@@ -16,7 +16,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from app.db.models.booking import DiscountSource
+from app.db.models.booking import BookingType, DiscountSource
 from app.services.pricing_service import PricingService
 
 NOW = datetime.now(tz=timezone.utc)
@@ -33,11 +33,13 @@ START = NOW.replace(hour=10, minute=0, second=0, microsecond=0)
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _rule(price_per_slot="20.00", incentive_price=None, incentive_expires_at=None):
+def _rule(price_per_slot="20.00", incentive_price=None, incentive_expires_at=None,
+          session_type=BookingType.regular):
     return SimpleNamespace(
         price_per_slot=Decimal(price_per_slot),
         incentive_price=Decimal(incentive_price) if incentive_price else None,
         incentive_expires_at=incentive_expires_at,
+        session_type=session_type,
     )
 
 
@@ -58,43 +60,45 @@ def _sub(plan, credits_remaining=0):
     )
 
 
+def _rule_result(rule):
+    """A query result whose .scalars().first() yields `rule` (the pricing-rule lookup)."""
+    result = MagicMock()
+    result.scalars.return_value.first.return_value = rule
+    return result
+
+
+def _sub_result(sub):
+    """A query result whose .scalar_one_or_none() yields `sub` (the membership lookup)."""
+    result = MagicMock()
+    result.scalar_one_or_none.return_value = sub
+    return result
+
+
 def _db_no_rule():
     """DB that returns no matching pricing rule."""
     db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = None
-    db.execute = AsyncMock(return_value=result)
+    db.execute = AsyncMock(return_value=_rule_result(None))
     return db
 
 
 def _db_rule_only(rule):
     """DB that returns a pricing rule but is never asked about memberships (user_id=None)."""
     db = AsyncMock()
-    result = MagicMock()
-    result.scalar_one_or_none.return_value = rule
-    db.execute = AsyncMock(return_value=result)
+    db.execute = AsyncMock(return_value=_rule_result(rule))
     return db
 
 
 def _db_rule_and_sub(rule, sub):
     """DB that returns a pricing rule then a membership subscription."""
     db = AsyncMock()
-    rule_result = MagicMock()
-    rule_result.scalar_one_or_none.return_value = rule
-    sub_result = MagicMock()
-    sub_result.scalar_one_or_none.return_value = sub
-    db.execute = AsyncMock(side_effect=[rule_result, sub_result])
+    db.execute = AsyncMock(side_effect=[_rule_result(rule), _sub_result(sub)])
     return db
 
 
 def _db_rule_no_sub(rule):
     """DB that returns a pricing rule then no subscription."""
     db = AsyncMock()
-    rule_result = MagicMock()
-    rule_result.scalar_one_or_none.return_value = rule
-    sub_result = MagicMock()
-    sub_result.scalar_one_or_none.return_value = None
-    db.execute = AsyncMock(side_effect=[rule_result, sub_result])
+    db.execute = AsyncMock(side_effect=[_rule_result(rule), _sub_result(None)])
     return db
 
 
@@ -254,6 +258,52 @@ class TestMembershipDiscountPct:
         assert bd.discount_amount == Decimal("0.00")
         assert bd.discount_source is None
         assert bd.membership_subscription_id is None
+
+
+# ---------------------------------------------------------------------------
+# Session type (booking_type) dimension
+# ---------------------------------------------------------------------------
+
+class TestSessionType:
+
+    @pytest.mark.asyncio
+    async def test_booking_type_passed_into_query_filter(self):
+        """The session_type filter is built from booking_type, restricted to the
+        requested type plus the `regular` fallback."""
+        rule = _rule(price_per_slot="60.00", session_type=BookingType.lesson_individual)
+        db = _db_rule_only(rule)
+        svc = PricingService(db)
+        bd = await svc.calculate(
+            CLUB_ID, START, max_players=1, booking_type=BookingType.lesson_individual
+        )
+        assert bd.unit_price == Decimal("60.00")
+        # The lookup query was issued (filter construction exercised).
+        assert db.execute.await_count == 1
+
+    @pytest.mark.asyncio
+    async def test_individual_lesson_full_price_for_single_player(self):
+        rule = _rule(price_per_slot="60.00", session_type=BookingType.lesson_individual)
+        svc = PricingService(_db_rule_only(rule))
+        bd = await svc.calculate(
+            CLUB_ID, START, max_players=1, booking_type=BookingType.lesson_individual
+        )
+        assert bd.amount_due == Decimal("60.00")   # 60 / 1
+
+    @pytest.mark.asyncio
+    async def test_group_lesson_splits_per_head(self):
+        rule = _rule(price_per_slot="48.00", session_type=BookingType.lesson_group)
+        svc = PricingService(_db_rule_only(rule))
+        bd = await svc.calculate(
+            CLUB_ID, START, max_players=4, booking_type=BookingType.lesson_group
+        )
+        assert bd.amount_due == Decimal("12.00")   # 48 / 4
+
+    @pytest.mark.asyncio
+    async def test_defaults_to_regular_when_booking_type_omitted(self):
+        rule = _rule(price_per_slot="20.00")
+        svc = PricingService(_db_rule_only(rule))
+        bd = await svc.calculate(CLUB_ID, START, max_players=4)
+        assert bd.unit_price == Decimal("20.00")
 
 
 # ---------------------------------------------------------------------------

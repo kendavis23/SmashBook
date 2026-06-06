@@ -5,6 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator, model_validator
 
+from app.db.models.booking import BookingType
 from app.db.models.club import PricingLabel
 
 
@@ -104,7 +105,15 @@ class OperatingHoursEntry(BaseModel):
 
 
 class PricingRuleEntry(BaseModel):
-    """A single peak/off-peak pricing window."""
+    """A single pricing window for one session type.
+
+    A club submits one entry per (session_type x time window). session_type
+    defaults to `regular` so existing payloads (which only price regular
+    matches) remain valid unchanged.
+    """
+
+    # Activity dimension — which session type this price applies to.
+    session_type: BookingType = BookingType.regular
 
     # Window definition
     label: PricingLabel

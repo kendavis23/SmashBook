@@ -951,10 +951,11 @@ class TestGetSkillHistory:
         assert resp.status_code == 200
         assert resp.json() == []
 
-    async def test_returns_history_after_assignment(self, client, player, staff, staff_headers, staff_club_profile):
+    async def test_returns_history_after_assignment(self, client, player, staff, staff_headers, club):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "3.5", "reason": "First assessment"},
         )
         resp = await client.get(
@@ -970,15 +971,17 @@ class TestGetSkillHistory:
         assert item["assigned_by"] == str(staff.id)
         assert item["reason"] == "First assessment"
 
-    async def test_multiple_assignments_all_in_history(self, client, player, staff, staff_headers, staff_club_profile):
+    async def test_multiple_assignments_all_in_history(self, client, player, staff, staff_headers, club):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "3.0"},
         )
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "4.0"},
         )
         resp = await client.get(
@@ -988,10 +991,11 @@ class TestGetSkillHistory:
         assert resp.status_code == 200
         assert len(resp.json()) == 2
 
-    async def test_history_contains_required_fields(self, client, player, staff, staff_headers, staff_club_profile):
+    async def test_history_contains_required_fields(self, client, player, staff, staff_headers, club):
         await client.patch(
             f"/api/v1/players/{player.id}/skill-level",
             headers=staff_headers,
+            params={"club_id": str(club.id)},
             json={"new_level": "3.5"},
         )
         resp = await client.get(

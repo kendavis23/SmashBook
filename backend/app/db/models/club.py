@@ -4,6 +4,7 @@ from sqlalchemy import Column, String, Boolean, Date, DateTime, Enum, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .base import Base, UUIDMixin, TimestampMixin, TenantScopedMixin
+from .booking import BookingType
 
 
 class PricingLabel(str, enum.Enum):
@@ -73,6 +74,16 @@ class PricingRule(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "pricing_rules"
 
     club_id = Column(UUID(as_uuid=True), ForeignKey("clubs.id"), nullable=False)
+
+    # Activity dimension — which kind of session this price applies to.
+    # Orthogonal to `label` (the time-of-day tier). Reuses BookingType so the
+    # booking flow's booking_type keys the lookup directly. Existing rows
+    # backfill to `regular` via server_default, preserving prior behaviour.
+    session_type = Column(
+        Enum(BookingType, name="bookingtype"),
+        nullable=False,
+        server_default=BookingType.regular.value,
+    )
 
     # Window definition
     label = Column(Enum(PricingLabel, name="pricinglabel"), nullable=False)

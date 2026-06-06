@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.db.models.booking import DiscountSource
+from app.db.models.booking import BookingType, DiscountSource
 from app.db.models.club import PricingRule
 from app.db.models.membership import MembershipCreditLog, MembershipStatus, MembershipSubscription, CreditType
 
@@ -35,11 +35,18 @@ class PricingService:
         start_datetime: datetime,
         max_players: int,
         user_id: Optional[uuid.UUID] = None,
+        booking_type: BookingType = BookingType.regular,
     ) -> Optional[PriceBreakdown]:
         """
         Return a PriceBreakdown for one court slot, or None if no pricing rule matches.
 
-        Priority order:
+        Session-type resolution:
+          The matching rule is the one whose window contains the slot AND whose
+          session_type equals `booking_type`. If the club has not configured a
+          rule for this session type, we fall back to the `regular` rule for the
+          same window. Only when even `regular` is unconfigured do we return None.
+
+        Priority order (price overrides):
           1. incentive_price (flat promotional override on the pricing rule)
           2. Membership booking credit (free for this player — amount_due = 0)
           3. Membership discount_pct (percentage off the per-player price)
@@ -52,15 +59,19 @@ class PricingService:
         slot_time = start_datetime.time()
 
         result = await self.db.execute(
-            select(PricingRule).where(
+            select(PricingRule)
+            .where(
                 PricingRule.club_id == club_id,
                 PricingRule.day_of_week == day_of_week,
                 PricingRule.is_active.is_(True),
                 PricingRule.start_time <= slot_time,
                 PricingRule.end_time > slot_time,
+                PricingRule.session_type.in_([booking_type, BookingType.regular]),
             )
+            # Exact session_type match wins; the regular rule is the fallback.
+            .order_by((PricingRule.session_type == booking_type).desc())
         )
-        rule = result.scalar_one_or_none()
+        rule = result.scalars().first()
         if not rule:
             return None
 

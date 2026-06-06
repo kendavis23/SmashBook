@@ -430,7 +430,7 @@ class BookingService:
         # 14. Price
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
-            club_id, start_datetime, max_players, organiser_user.id
+            club_id, start_datetime, max_players, organiser_user.id, booking_type
         )
         total_price = breakdown.total_price if breakdown else None
         amount_due = breakdown.amount_due if breakdown else Decimal("0.00")
@@ -815,7 +815,8 @@ class BookingService:
 
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
-            club_id, booking.start_datetime, booking.max_players, requesting_user.id
+            club_id, booking.start_datetime, booking.max_players, requesting_user.id,
+            booking.booking_type,
         )
         if breakdown:
             amount_due = breakdown.amount_due
@@ -927,7 +928,8 @@ class BookingService:
         # Skill check bypassed for organiser and staff invites
         pricing_svc = PricingService(self.db)
         breakdown = await pricing_svc.calculate(
-            club_id, booking.start_datetime, booking.max_players, invited_user.id
+            club_id, booking.start_datetime, booking.max_players, invited_user.id,
+            booking.booking_type,
         )
         if breakdown:
             amount_due = breakdown.amount_due
@@ -1012,7 +1014,8 @@ class BookingService:
         if action == InviteStatus.accepted:
             # Recalculate pricing at accept time so the player's current membership is applied.
             breakdown = await pricing_svc.calculate(
-                club_id, booking.start_datetime, booking.max_players, requesting_user.id
+                club_id, booking.start_datetime, booking.max_players, requesting_user.id,
+                booking.booking_type,
             )
             if breakdown:
                 bp.amount_due = breakdown.amount_due
