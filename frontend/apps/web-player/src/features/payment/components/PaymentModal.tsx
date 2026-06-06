@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef, type JSX } from "react";
 import { Elements } from "@stripe/react-stripe-js";
 import { AlertCircle, Check, CreditCard, LockKeyhole, X } from "lucide-react";
-import { formatCurrency } from "@repo/ui";
+import { formatCurrency, formatUTCDate, formatUTCTime } from "@repo/ui";
 import {
     useListPaymentMethods,
     useCreatePaymentIntent,
@@ -558,29 +558,11 @@ export function PaymentModal({
                             </p>
                             <div className="flex items-center justify-between">
                                 <p className="text-xs text-muted-foreground">
-                                    {new Date(bookingInfo.startDatetime).toLocaleDateString(
-                                        "en-GB",
-                                        {
-                                            day: "numeric",
-                                            month: "short",
-                                            timeZone: "UTC",
-                                        }
-                                    )}
+                                    {formatUTCDate(bookingInfo.startDatetime)}
                                     {" · "}
-                                    {new Date(bookingInfo.startDatetime).toLocaleTimeString(
-                                        "en-GB",
-                                        {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                            timeZone: "UTC",
-                                        }
-                                    )}
+                                    {formatUTCTime(bookingInfo.startDatetime)}
                                     {" – "}
-                                    {new Date(bookingInfo.endDatetime).toLocaleTimeString("en-GB", {
-                                        hour: "2-digit",
-                                        minute: "2-digit",
-                                        timeZone: "UTC",
-                                    })}
+                                    {formatUTCTime(bookingInfo.endDatetime)}
                                 </p>
                                 <p className="text-sm font-bold text-cta">
                                     {formatCurrency(bookingInfo.amountDue)}

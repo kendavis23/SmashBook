@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SURFACE_OPTIONS } from "../types";
 import { useThemeColors } from "../../../theme";
+import { isoDateParts, isoDateToWeekdayShort } from "../../../lib/datetime";
 
 type Props = {
     date: string;
@@ -41,10 +42,10 @@ type DateOption = {
 };
 
 function buildDateOption(offset: number): DateOption {
-    const d = new Date();
-    d.setUTCDate(d.getUTCDate() + offset);
-    const iso = d.toISOString().slice(0, 10);
-    const weekday = d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+    const ms = Date.now() + offset * 86_400_000;
+    const iso = new Date(ms).toISOString().slice(0, 10);
+    const weekday = isoDateToWeekdayShort(iso);
+    const { day } = isoDateParts(iso);
 
     const topLabel =
         offset === 0 ? "TOD" : offset === 1 ? "TOM" : weekday.toUpperCase().slice(0, 3);
@@ -53,19 +54,19 @@ function buildDateOption(offset: number): DateOption {
     return {
         iso,
         topLabel,
-        shortLabel: String(d.getUTCDate()),
+        shortLabel: String(day),
         bottomLabel,
     };
 }
 
 function buildDateOptionFromIso(iso: string): DateOption {
-    const d = new Date(`${iso}T00:00:00.000Z`);
-    const weekday = d.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+    const weekday = isoDateToWeekdayShort(iso);
+    const { day } = isoDateParts(iso);
 
     return {
         iso,
         topLabel: weekday.toUpperCase().slice(0, 3),
-        shortLabel: String(d.getUTCDate()),
+        shortLabel: String(day),
         bottomLabel: weekday.charAt(0).toUpperCase() + weekday.slice(1),
     };
 }

@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { PlayerBookingItem } from "../types";
 import { GameCard } from "../components/GameCard";
 import { useThemeColors } from "../../../theme";
+import { isoDateParts, isoDateToWeekdayShort } from "../../../lib/datetime";
 
 type Props = {
     games: PlayerBookingItem[];
@@ -19,21 +20,19 @@ interface DateChip {
     bottomLabel: string;
 }
 
-function toLocalDateStr(iso: string): string {
-    const d = new Date(iso);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function isoToDateStr(iso: string): string {
+    return iso.split("T")[0] ?? iso.slice(0, 10);
 }
 
 function getTodayStr(): string {
-    const today = new Date();
-    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    return new Date().toISOString().slice(0, 10);
 }
 
 function buildChipsFromGames(items: PlayerBookingItem[]): DateChip[] {
     const seen = new Set<string>();
     const allDates: string[] = [];
     for (const item of items) {
-        const dateStr = toLocalDateStr(item.start_datetime);
+        const dateStr = isoToDateStr(item.start_datetime);
         if (!seen.has(dateStr)) {
             seen.add(dateStr);
             allDates.push(dateStr);
@@ -41,16 +40,15 @@ function buildChipsFromGames(items: PlayerBookingItem[]): DateChip[] {
     }
 
     const todayStr = getTodayStr();
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const tomorrowStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
+    const todayMs = new Date(todayStr + "T00:00:00Z").getTime();
+    const tomorrowStr = new Date(todayMs + 86_400_000).toISOString().slice(0, 10);
 
     const visibleDates = allDates.slice(0, 10);
     const hasMore = allDates.length > 10;
 
     const chips: DateChip[] = visibleDates.map((dateStr) => {
-        const d = new Date(dateStr + "T00:00:00");
-        const weekday = d.toLocaleDateString("en-GB", { weekday: "short" });
+        const weekday = isoDateToWeekdayShort(dateStr);
+        const { day } = isoDateParts(dateStr);
         const topLabel =
             dateStr === todayStr
                 ? "TOD"
@@ -60,7 +58,7 @@ function buildChipsFromGames(items: PlayerBookingItem[]): DateChip[] {
         return {
             iso: dateStr,
             topLabel,
-            shortLabel: String(d.getDate()),
+            shortLabel: String(day),
             bottomLabel: weekday.charAt(0).toUpperCase() + weekday.slice(1),
         };
     });
@@ -219,8 +217,8 @@ export function MyGamesView({ games, isLoading, error, onRefresh }: Props): JSX.
         selectedDate === null
             ? games
             : selectedDate === "__later__"
-              ? games.filter((g) => !visibleDates.has(toLocalDateStr(g.start_datetime)))
-              : games.filter((g) => toLocalDateStr(g.start_datetime) === selectedDate);
+              ? games.filter((g) => !visibleDates.has(isoToDateStr(g.start_datetime)))
+              : games.filter((g) => isoToDateStr(g.start_datetime) === selectedDate);
 
     if (isLoading) {
         return (

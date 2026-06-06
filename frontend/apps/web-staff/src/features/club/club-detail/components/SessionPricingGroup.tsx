@@ -2,7 +2,7 @@ import type { PricingRule } from "../../types";
 import type { BookingType } from "../../types";
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import type { JSX } from "react";
-import { formatPlainTime } from "@repo/ui";
+import { formatPlainTime, isoDateParts } from "@repo/ui";
 import { PRICING_LABEL_NAMES, SESSION_TYPE_LABELS, formatPrice } from "./pricingRulesConstants";
 
 type IndexedRule = { rule: PricingRule; globalIndex: number };
@@ -217,13 +217,14 @@ export function SessionPricingGroup({
     );
 }
 
-/** Shows "YYYY-MM-DD HH:mm" from a datetime-local or ISO string. */
+/** Shows "YYYY-MM-DD HH:mm" from a datetime-local or ISO string without timezone conversion. */
 function formatIncentiveExpiry(value: string): string {
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return value;
-    const date = d.toISOString().slice(0, 10);
-    const time = d.toISOString().slice(11, 16);
-    return `${date} ${time}`;
+    const stripped = value.replace("Z", "").replace(/[+-]\d{2}:\d{2}$/, "");
+    const { year, month, day } = isoDateParts(stripped);
+    const timePart = stripped.split("T")[1]?.slice(0, 5) ?? "00:00";
+    const mm = String(month).padStart(2, "0");
+    const dd = String(day).padStart(2, "0");
+    return `${year}-${mm}-${dd} ${timePart}`;
 }
 
 function Trash2Icon(): JSX.Element {

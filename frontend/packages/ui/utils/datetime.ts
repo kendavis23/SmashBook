@@ -78,3 +78,35 @@ export function datetimeLocalToUTC(value: string): string {
     const base = stripped.length === 16 ? stripped : stripped.slice(0, 16);
     return `${base}:00Z`;
 }
+
+/**
+ * Extracts { year, month, day } from any ISO date/datetime string without using
+ * `new Date()`. Safe to call with "YYYY-MM-DD", "YYYY-MM-DDTHH:mm:ssZ", etc.
+ */
+export function isoDateParts(iso: string): { year: number; month: number; day: number } {
+    const datePart = iso.split("T")[0] ?? iso.slice(0, 10);
+    const [y = "1970", m = "1", d = "1"] = datePart.split("-");
+    return { year: parseInt(y, 10), month: parseInt(m, 10), day: parseInt(d, 10) };
+}
+
+/**
+ * Returns a short weekday name ("Sun"–"Sat") for a "YYYY-MM-DD" date string without
+ * using `new Date()` (which would apply the browser's local timezone offset).
+ * Uses Tomohiko Sakamoto's day-of-week algorithm (no Date constructor).
+ */
+export function isoDateToWeekdayShort(iso: string): string {
+    const { year: y, month: m, day: d } = isoDateParts(iso);
+    // Sakamoto: treat Jan/Feb as months 13/14 of the previous year
+    const adjY = m < 3 ? y - 1 : y;
+    const adjM = m < 3 ? m + 10 : m - 2;
+    const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+    const dow =
+        (adjY +
+            Math.floor(adjY / 4) -
+            Math.floor(adjY / 100) +
+            Math.floor(adjY / 400) +
+            (t[adjM - 1] ?? 0) +
+            d) %
+        7;
+    return WEEKDAYS_SHORT[dow] ?? "Sun";
+}
