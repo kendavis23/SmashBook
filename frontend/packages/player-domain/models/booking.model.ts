@@ -4,6 +4,7 @@ export type BookingType =
     | "regular"
     | "lesson_individual"
     | "lesson_group"
+    | "train_and_play"
     | "corporate_event"
     | "tournament";
 
@@ -66,6 +67,7 @@ export interface BookingPlayer {
 export interface Booking {
     id: UUID;
     club_id: UUID;
+    club_name?: string;
     court_id: UUID;
     court_name: string;
     booking_type: BookingType;

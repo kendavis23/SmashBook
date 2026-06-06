@@ -76,8 +76,14 @@ export interface OperatingHoursEntry {
     valid_until?: string;
 }
 
+import type { BookingType } from "../../share/booking/booking.types";
+export type { BookingType };
+
+export type PricingLabel = "peak" | "off_peak" | "standard";
+
 export interface PricingRuleEntry {
-    label: string;
+    session_type?: BookingType;
+    label: PricingLabel;
     day_of_week: number;
     start_time: string;
     end_time: string;

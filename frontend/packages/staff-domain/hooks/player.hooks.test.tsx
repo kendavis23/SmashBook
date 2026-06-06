@@ -33,6 +33,7 @@ function makeWrapper() {
 }
 
 const PLAYER_ID = "player-1";
+const CLUB_ID = "club-1";
 
 const mockHistoryItem = {
     id: "hist-1",
@@ -100,10 +101,12 @@ describe("useUpdateSkillLevel", () => {
         vi.mocked(staffApi.updateSkillLevelEndpoint).mockResolvedValue(mockSkillResult);
         const { Wrapper, client } = makeWrapper();
         const invalidate = vi.spyOn(client, "invalidateQueries");
-        const { result } = renderHook(() => useUpdateSkillLevel(PLAYER_ID), { wrapper: Wrapper });
+        const { result } = renderHook(() => useUpdateSkillLevel(PLAYER_ID, CLUB_ID), {
+            wrapper: Wrapper,
+        });
         result.current.mutate({ new_level: 3.0, reason: "Improved serve" });
         await waitFor(() => expect(result.current.isSuccess).toBe(true));
-        expect(staffApi.updateSkillLevelEndpoint).toHaveBeenCalledWith(PLAYER_ID, {
+        expect(staffApi.updateSkillLevelEndpoint).toHaveBeenCalledWith(PLAYER_ID, CLUB_ID, {
             new_level: 3.0,
             reason: "Improved serve",
         });

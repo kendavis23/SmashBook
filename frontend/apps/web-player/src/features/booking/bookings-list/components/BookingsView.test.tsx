@@ -58,6 +58,7 @@ vi.mock("@repo/ui", () => ({
 const makeBooking = (overrides: Partial<PlayerBookingItem> = {}): PlayerBookingItem => ({
     booking_id: "b1",
     club_id: "c1",
+    club_name: "Club One",
     court_id: "ct1",
     court_name: "Court Alpha",
     booking_type: "regular",
@@ -123,10 +124,36 @@ describe("BookingsView — empty state", () => {
 });
 
 describe("BookingsView — data state", () => {
+    it("renders booking row with club name", () => {
+        const upcoming = [makeBooking({ club_name: "Club One" })];
+        render(<BookingsView {...defaultProps} upcoming={upcoming} />);
+        expect(screen.getAllByText("Club One")).not.toHaveLength(0);
+    });
+
     it("renders booking row with court name", () => {
         const upcoming = [makeBooking({ court_name: "Court Alpha" })];
         render(<BookingsView {...defaultProps} upcoming={upcoming} />);
         expect(screen.getAllByText("Court Alpha")).not.toHaveLength(0);
+    });
+
+    it("filters upcoming bookings by court name", () => {
+        const upcoming = [
+            makeBooking({ booking_id: "b1", court_name: "Court Alpha", club_name: "Club One" }),
+            makeBooking({ booking_id: "b2", court_name: "Court Beta", club_name: "Club One" }),
+        ];
+        render(<BookingsView {...defaultProps} upcoming={upcoming} upcomingSearch="Alpha" />);
+        expect(screen.getAllByText("Court Alpha")).not.toHaveLength(0);
+        expect(screen.queryByText("Court Beta")).not.toBeInTheDocument();
+    });
+
+    it("filters upcoming bookings by club name", () => {
+        const upcoming = [
+            makeBooking({ booking_id: "b1", court_name: "Court Alpha", club_name: "Club One" }),
+            makeBooking({ booking_id: "b2", court_name: "Court Beta", club_name: "Club Two" }),
+        ];
+        render(<BookingsView {...defaultProps} upcoming={upcoming} upcomingSearch="Club Two" />);
+        expect(screen.getAllByText("Court Beta")).not.toHaveLength(0);
+        expect(screen.queryByText("Court Alpha")).not.toBeInTheDocument();
     });
 
     it("renders formatted amount", () => {
@@ -184,10 +211,9 @@ describe("BookingsView — header", () => {
         expect(screen.queryByRole("button", { name: /new booking/i })).not.toBeInTheDocument();
     });
 
-    it("shows total count badge when bookings exist", () => {
-        const upcoming = [makeBooking()];
-        render(<BookingsView {...defaultProps} upcoming={upcoming} />);
-        expect(screen.getByText("1 total")).toBeInTheDocument();
+    it("renders the My Bookings heading", () => {
+        render(<BookingsView {...defaultProps} />);
+        expect(screen.getByRole("heading", { name: /my bookings/i })).toBeInTheDocument();
     });
 });
 

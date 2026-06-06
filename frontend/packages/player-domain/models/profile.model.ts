@@ -1,21 +1,15 @@
+import type {
+    BookingType,
+    BookingStatus,
+    PlayerRole,
+    InviteStatus,
+    PaymentStatus,
+} from "./booking.model";
+export type { BookingType, BookingStatus, PlayerRole, InviteStatus, PaymentStatus };
+
 export type UUID = string;
 
 export type NotificationChannel = "push" | "email" | "sms" | "in_app";
-
-export type BookingType =
-    | "regular"
-    | "lesson_individual"
-    | "lesson_group"
-    | "corporate_event"
-    | "tournament";
-
-export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
-
-export type PlayerRole = "organiser" | "player";
-
-export type InviteStatus = "pending" | "accepted" | "declined";
-
-export type PaymentStatus = "pending" | "paid" | "refunded";
 
 export interface UserProfile {
     id: UUID;
@@ -38,6 +32,7 @@ export interface UserProfileUpdateInput {
 export interface PlayerBookingItem {
     booking_id: UUID;
     club_id: UUID;
+    club_name: string;
     court_id: UUID;
     court_name: string;
     booking_type: BookingType;

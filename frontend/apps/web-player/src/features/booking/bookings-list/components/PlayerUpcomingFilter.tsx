@@ -32,11 +32,11 @@ export default function PlayerUpcomingFilter({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_1fr_auto]">
                 <div>
-                    <label className={labelCls}>Search court</label>
+                    <label className={labelCls}>Search</label>
                     <input
                         type="text"
                         className="input-base w-full"
-                        placeholder="Court name…"
+                        placeholder="Club or court name…"
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
                     />

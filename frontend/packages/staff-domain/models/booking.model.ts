@@ -8,6 +8,7 @@ export type BookingType =
     | "regular"
     | "lesson_individual"
     | "lesson_group"
+    | "train_and_play"
     | "corporate_event"
     | "tournament";
 

@@ -1,10 +1,10 @@
-import { useGetPricingRules, useSetPricingRules } from "../../hooks";
-import type { PricingRule } from "../../types";
+import { useGetOperatingHours, useGetPricingRules, useSetPricingRules } from "../../hooks";
+import type { BookingType, PricingRule } from "../../types";
 import { AlertToast } from "@repo/ui";
 import { type FormEvent, type JSX, useEffect, useState } from "react";
 import { RuleForm } from "./PricingRuleForm";
 import PricingRulesView from "./PricingRulesView";
-import { EMPTY_RULE, PAGE_SIZE, type FormState } from "./pricingRulesConstants";
+import { EMPTY_RULE, type FormState } from "./pricingRulesConstants";
 
 export default function PricingRulesTable({
     clubId,
@@ -16,11 +16,11 @@ export default function PricingRulesTable({
     const [showForm, setShowForm] = useState(false);
     const [form, setForm] = useState<FormState>({ ...EMPTY_RULE });
     const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
-    const [currentPage, setCurrentPage] = useState(0);
     const [toastDismissed, setToastDismissed] = useState(false);
     const [selectedDay, setSelectedDay] = useState(0);
 
     const { data: rules = [], isLoading, error } = useGetPricingRules(clubId);
+    const { data: hours = [] } = useGetOperatingHours(clubId);
 
     const {
         mutate: saveRules,
@@ -33,8 +33,8 @@ export default function PricingRulesTable({
         setToastDismissed(false);
     }, [error, saveError, success]);
 
-    function openAddForm(): void {
-        setForm({ ...EMPTY_RULE });
+    function openAddForm(sessionType: BookingType = "regular"): void {
+        setForm({ ...EMPTY_RULE, session_type: sessionType, day_of_week: selectedDay });
         setShowForm(true);
     }
 
@@ -74,8 +74,6 @@ export default function PricingRulesTable({
         setDeleteIndex(null);
     }
 
-    const totalPages = Math.ceil(rules.length / PAGE_SIZE);
-    const pagedRules = rules.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
     const finalError = error || saveError;
 
     if (isLoading) {
@@ -114,21 +112,18 @@ export default function PricingRulesTable({
     return (
         <PricingRulesView
             rules={rules}
-            pagedRules={pagedRules}
+            hours={hours}
             currency={currency}
             saving={saving}
             success={success}
             finalError={finalError as Error | null}
             toastDismissed={toastDismissed}
-            currentPage={currentPage}
-            totalPages={totalPages}
             deleteIndex={deleteIndex}
             selectedDay={selectedDay}
             onToastDismiss={() => setToastDismissed(true)}
             onAddRule={openAddForm}
             onEditRule={openEditForm}
             onDeleteRule={setDeleteIndex}
-            onPageChange={setCurrentPage}
             onDayChange={setSelectedDay}
             onDeleteConfirmed={handleDeleteConfirmed}
             onDeleteCancel={() => setDeleteIndex(null)}

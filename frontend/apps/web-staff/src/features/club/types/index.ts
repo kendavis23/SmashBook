@@ -1,4 +1,5 @@
 export type {
+    BookingType,
     Club,
     ClubSettingsInput,
     OperatingHours,

@@ -136,7 +136,7 @@ describe("setPricingRulesEndpoint", () => {
     it("calls PUT /api/v1/clubs/:id/pricing-rules with body", async () => {
         const rules = [
             {
-                label: "Peak",
+                label: "peak" as const,
                 day_of_week: 1,
                 start_time: "18:00",
                 end_time: "21:00",

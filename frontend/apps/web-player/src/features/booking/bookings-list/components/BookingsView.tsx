@@ -61,11 +61,14 @@ export default function BookingsView({
     const filteredUpcoming = useMemo(() => {
         const term = upcomingSearch.trim().toLowerCase();
         return upcoming.filter((item) => {
-            const matchesCourt = term === "" || item.court_name.toLowerCase().includes(term);
+            const matchesText =
+                term === "" ||
+                item.court_name.toLowerCase().includes(term) ||
+                item.club_name.toLowerCase().includes(term);
             const matchesDate =
                 upcomingFilterDate === "" ||
                 item.start_datetime.slice(0, 10) === upcomingFilterDate;
-            return matchesCourt && matchesDate;
+            return matchesText && matchesDate;
         });
     }, [upcoming, upcomingSearch, upcomingFilterDate]);
 
@@ -89,11 +92,6 @@ export default function BookingsView({
                                     <h1 className="text-lg font-semibold tracking-tight text-foreground">
                                         My Bookings
                                     </h1>
-                                    {upcoming.length + past.length > 0 ? (
-                                        <span className="rounded-full border border-border bg-background px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground shadow-xs">
-                                            {upcoming.length + past.length} total
-                                        </span>
-                                    ) : null}
                                 </div>
                                 <p className="mt-0.5 text-sm text-muted-foreground">
                                     View your upcoming and past court bookings

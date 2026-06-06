@@ -15,6 +15,7 @@ const mockGetRules = vi.hoisted(() =>
 
 vi.mock("../../hooks", () => ({
     useGetPricingRules: () => mockGetRules(),
+    useGetOperatingHours: () => ({ data: [], isLoading: false, error: null }),
     useSetPricingRules: () => ({
         mutate: mockSaveRules,
         isPending: false,
@@ -121,7 +122,7 @@ describe("PricingRulesTable — empty state", () => {
 describe("PricingRulesTable — with rules", () => {
     const twoRules: PricingRule[] = [
         {
-            label: "Peak",
+            label: "peak",
             day_of_week: 0,
             start_time: "08:00",
             end_time: "22:00",
@@ -129,7 +130,7 @@ describe("PricingRulesTable — with rules", () => {
             price_per_slot: 20,
         },
         {
-            label: "Off-Peak",
+            label: "off_peak",
             day_of_week: 6,
             start_time: "08:00",
             end_time: "22:00",
@@ -148,7 +149,7 @@ describe("PricingRulesTable — with rules", () => {
         mockGetRules.mockReturnValueOnce({ data: twoRules, isLoading: false, error: null });
         render(<PricingRulesTable clubId="club-1" />);
         fireEvent.click(screen.getByText("Edit 0"));
-        expect(screen.getByText("Form: Peak")).toBeInTheDocument();
+        expect(screen.getByText("Form: peak")).toBeInTheDocument();
     });
 
     it("calls saveRules without deleted rule when Confirm Delete is clicked", () => {
