@@ -23,7 +23,7 @@ vi.mock("../../store", () => ({
 }));
 
 vi.mock("@repo/ui", () => ({
-    datetimeLocalToUTC: (v: string) => v + ":00Z",
+    datetimeLocalToApi: (v: string) => v + ":00",
     formatUTCDate: (value: string) =>
         new Date(value).toLocaleDateString("en-US", {
             month: "long",
@@ -179,8 +179,8 @@ describe("NewReservationModalContainer", () => {
                 expect.objectContaining({
                     club_id: "club-1",
                     title: "Morning Training",
-                    start_datetime: "2026-05-10T09:00:00Z",
-                    end_datetime: "2026-05-10T10:00:00Z",
+                    start_datetime: "2026-05-10T09:00:00",
+                    end_datetime: "2026-05-10T10:00:00",
                 }),
                 expect.any(Object)
             );

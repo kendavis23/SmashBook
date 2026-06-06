@@ -1,4 +1,4 @@
-import { formatUTCDate, formatUTCTime, formatCurrency, datetimeLocalToUTC } from "../../../lib";
+import { formatUTCDate, formatUTCTime, formatCurrency, datetimeLocalToApi } from "../../../lib";
 
 export function formatBookingDate(iso: string): string {
     return formatUTCDate(iso);
@@ -52,5 +52,5 @@ export function getInitials(name: string): string {
  * without shifting by the device's local timezone.
  */
 export function buildBookingDatetime(date: string, time: string): string {
-    return datetimeLocalToUTC(`${date}T${time}`);
+    return datetimeLocalToApi(`${date}T${time}`);
 }

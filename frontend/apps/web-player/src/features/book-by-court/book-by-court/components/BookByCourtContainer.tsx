@@ -73,6 +73,9 @@ export default function BookByCourtContainer(): JSX.Element {
         timeFrom: "",
         timeTo: "",
     });
+    // Committed time values — only update the API query on popover close, not on each selection
+    const [committedTimeFrom, setCommittedTimeFrom] = useState("");
+    const [committedTimeTo, setCommittedTimeTo] = useState("");
     const [availabilityCourtId, setAvailabilityCourtId] = useState("");
     const [bookingModal, setBookingModal] = useState<BookingModalState>(null);
     const [joinBookingId, setJoinBookingId] = useState("");
@@ -107,10 +110,10 @@ export default function BookByCourtContainer(): JSX.Element {
         () => ({
             date: bookFilters.date || undefined,
             surfaceType: bookFilters.surfaceType || undefined,
-            timeFrom: bookFilters.timeFrom || undefined,
-            timeTo: bookFilters.timeTo || undefined,
+            timeFrom: committedTimeFrom || undefined,
+            timeTo: committedTimeTo || undefined,
         }),
-        [bookFilters.date, bookFilters.surfaceType, bookFilters.timeFrom, bookFilters.timeTo]
+        [bookFilters.date, bookFilters.surfaceType, committedTimeFrom, committedTimeTo]
     );
 
     const {
@@ -275,10 +278,16 @@ export default function BookByCourtContainer(): JSX.Element {
             },
             onFilterTimeFromChange: (timeFrom: string) => {
                 setBookFilters((prev) => ({ ...prev, timeFrom }));
+            },
+            onFilterTimeFromCommit: (timeFrom: string) => {
+                setCommittedTimeFrom(timeFrom);
                 setAvailabilityCourtId("");
             },
             onFilterTimeToChange: (timeTo: string) => {
                 setBookFilters((prev) => ({ ...prev, timeTo }));
+            },
+            onFilterTimeToCommit: (timeTo: string) => {
+                setCommittedTimeTo(timeTo);
                 setAvailabilityCourtId("");
             },
             onRefresh: () => void refetchCourts(),

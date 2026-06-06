@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { FormEvent, JSX } from "react";
-import { datetimeLocalToUTC } from "@repo/ui";
+import { datetimeLocalToApi } from "@repo/ui";
 import { useMyProfile } from "@repo/player-domain/hooks";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearch } from "@tanstack/react-router";
@@ -227,7 +227,7 @@ export default function NewBookingContainer(): JSX.Element {
             e.preventDefault();
             if (!validate()) return;
 
-            const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
+            const startDatetime = datetimeLocalToApi(`${form.bookingDate}T${form.startTime}`);
 
             const invitedPlayerIds =
                 form.bookingType === "lesson_individual"

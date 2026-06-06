@@ -1,6 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
-import { datetimeLocalToUTC } from "@repo/ui";
+import { datetimeLocalToApi } from "@repo/ui";
 
 import { usePlatformKeyStore } from "../../plan/store/platformKey";
 import { useListPlans, useOnboardTenant } from "../hooks";
@@ -21,7 +21,7 @@ function buildPayload(form: OnboardTenantFormState): TenantOnboardInput {
         staff_subdomain: form.staff_subdomain.trim(),
         plan_id: form.plan_id.trim(),
         subscription_start_date: form.subscription_start_date
-            ? datetimeLocalToUTC(form.subscription_start_date)
+            ? datetimeLocalToApi(form.subscription_start_date)
             : null,
         clubs: form.clubs.map((club) => ({
             name: club.name.trim(),

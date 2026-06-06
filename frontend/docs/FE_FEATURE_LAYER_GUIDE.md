@@ -1,4 +1,4 @@
-_Last updated: 2026-06-01 00:00 UTC_
+_Last updated: 2026-06-06 00:00 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -265,7 +265,7 @@ Always use the helpers from `@repo/ui` to display dates and times. Never use `ne
 | `formatUTCDateTime`  | `Apr 17, 2026, 10:00 AM` | Full date + time display                                               |
 | `formatUTCDate`      | `Apr 17, 2026`           | Date-only display                                                      |
 | `formatUTCTime`      | `10:00 AM`               | Time-only display                                                      |
-| `datetimeLocalToUTC` | `2026-04-17T10:00:00Z`   | Converting `<input type="datetime-local">` value before sending to API |
+| `datetimeLocalToApi` | `2026-04-17T10:00:00`    | Converting `<input type="datetime-local">` value before sending to API |
 
 ```tsx
 import { formatUTCDateTime, formatUTCDate, formatUTCTime } from "@repo/ui";

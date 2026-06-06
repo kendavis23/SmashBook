@@ -29,7 +29,7 @@ vi.mock("@repo/ui", () => ({
     formatUTCDateTime: (iso: string) => iso,
     formatUTCDate: (iso: string) => iso,
     formatUTCTime: (iso: string) => iso,
-    datetimeLocalToUTC: (v: string) => v,
+    datetimeLocalToApi: (v: string) => v,
     DateTimePicker: ({
         value,
         onChange,

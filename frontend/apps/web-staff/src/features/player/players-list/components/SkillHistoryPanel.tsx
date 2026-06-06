@@ -1,7 +1,7 @@
 import { CalendarDays, TrendingUp, RefreshCw, ArrowRight } from "lucide-react";
 import type { JSX } from "react";
 import { useEffect, useState } from "react";
-import { formatUTCDate, Pagination, SkillLineChart } from "@repo/ui";
+import { formatUTCDate, isoDateParts, MONTHS_SHORT, Pagination, SkillLineChart } from "@repo/ui";
 import type { SkillDataPoint } from "@repo/ui";
 import { useGetSkillHistory } from "@repo/staff-domain/hooks";
 import type { PlayerSearchResult } from "../../hooks";
@@ -57,13 +57,10 @@ function ChangeCell({ previous, next }: { previous: number | null; next: number 
 }
 
 function formatChartDate(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return formatUTCDate(value);
-    return new Intl.DateTimeFormat("en", {
-        day: "2-digit",
-        month: "short",
-        timeZone: "UTC",
-    }).format(date);
+    const { month, day } = isoDateParts(value);
+    const monthName = MONTHS_SHORT[month - 1];
+    if (!monthName) return formatUTCDate(value);
+    return `${String(day).padStart(2, "0")} ${monthName}`;
 }
 
 function formatDelta(value: number): string {

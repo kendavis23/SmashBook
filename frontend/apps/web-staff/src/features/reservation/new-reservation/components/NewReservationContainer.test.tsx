@@ -108,7 +108,7 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
-    datetimeLocalToUTC: (value: string) => value,
+    datetimeLocalToApi: (value: string) => value,
     formatUTCDate: (value: string) =>
         new Date(value).toLocaleDateString("en-US", {
             month: "long",

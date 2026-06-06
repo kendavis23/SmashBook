@@ -67,7 +67,9 @@ export type BookSectionProps = {
     onFilterDateChange: (date: string) => void;
     onFilterSurfaceChange: (surface: "" | SurfaceType) => void;
     onFilterTimeFromChange: (value: string) => void;
+    onFilterTimeFromCommit: (value: string) => void;
     onFilterTimeToChange: (value: string) => void;
+    onFilterTimeToCommit: (value: string) => void;
     onRefresh: () => void;
     onCheckAvailability: (courtId: string) => void;
 };
@@ -461,6 +463,9 @@ export default function BookByCourtView({
                                 onChange={(event) =>
                                     bookSection.onFilterTimeFromChange(event.target.value)
                                 }
+                                onBlur={(event) =>
+                                    bookSection.onFilterTimeFromCommit(event.target.value)
+                                }
                                 className={fieldCls}
                             />
                         </label>
@@ -470,6 +475,9 @@ export default function BookByCourtView({
                                 value={bookSection.filterTimeTo}
                                 onChange={(event) =>
                                     bookSection.onFilterTimeToChange(event.target.value)
+                                }
+                                onBlur={(event) =>
+                                    bookSection.onFilterTimeToCommit(event.target.value)
                                 }
                                 className={fieldCls}
                             />

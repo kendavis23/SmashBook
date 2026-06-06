@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
-import { datetimeLocalToUTC } from "@repo/ui";
+import { datetimeLocalToApi } from "@repo/ui";
 import {
     useGetCalendarReservation,
     useUpdateCalendarReservation,
@@ -96,9 +96,9 @@ export default function ManageReservationModalContainer({
                 reservation_type: form.reservationType as CalendarReservationType,
                 court_id: form.courtId || null,
                 start_datetime: startDatetimeLocal
-                    ? datetimeLocalToUTC(startDatetimeLocal)
+                    ? datetimeLocalToApi(startDatetimeLocal)
                     : undefined,
-                end_datetime: endDatetimeLocal ? datetimeLocalToUTC(endDatetimeLocal) : undefined,
+                end_datetime: endDatetimeLocal ? datetimeLocalToApi(endDatetimeLocal) : undefined,
                 allowed_booking_types: form.allowedBookingTypes.length
                     ? form.allowedBookingTypes
                     : null,

@@ -56,12 +56,41 @@ export function formatUTCTime(iso: string): string {
 }
 
 /**
- * Converts a datetime-local value ("YYYY-MM-DDTHH:mm") to a UTC ISO string
- * ("YYYY-MM-DDTHH:mm:00Z") without any timezone conversion.
+ * Converts a datetime-local value ("YYYY-MM-DDTHH:mm") to the wall-clock datetime
+ * string the API expects ("YYYY-MM-DDTHH:mm:00") — no timezone marker. The backend
+ * applies its own timezone handling, so we send the time as-is and never append "Z".
  * Use this instead of `new Date(value).toISOString()` which shifts by local offset.
  */
-export function datetimeLocalToUTC(value: string): string {
+export function datetimeLocalToApi(value: string): string {
     const stripped = value.replace("Z", "").replace(/[+-]\d{2}:\d{2}$/, "");
     const base = stripped.length === 16 ? stripped : stripped.slice(0, 16);
-    return `${base}:00Z`;
+    return `${base}:00`;
+}
+
+/** Extracts { year, month, day } from any ISO date/datetime string without using new Date(). */
+export function isoDateParts(iso: string): { year: number; month: number; day: number } {
+    const datePart = iso.split("T")[0] ?? iso.slice(0, 10);
+    const [y = "1970", m = "1", d = "1"] = datePart.split("-");
+    return { year: parseInt(y, 10), month: parseInt(m, 10), day: parseInt(d, 10) };
+}
+
+/**
+ * Returns a short weekday name ("Sun"–"Sat") for a "YYYY-MM-DD" string without new Date().
+ * Uses Tomohiko Sakamoto's algorithm.
+ */
+export function isoDateToWeekdayShort(iso: string): string {
+    const { year: y, month: m, day: d } = isoDateParts(iso);
+    const adjY = m < 3 ? y - 1 : y;
+    const adjM = m < 3 ? m + 10 : m - 2;
+    const t = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
+    const dow =
+        (adjY +
+            Math.floor(adjY / 4) -
+            Math.floor(adjY / 100) +
+            Math.floor(adjY / 400) +
+            (t[adjM - 1] ?? 0) +
+            d) %
+        7;
+    const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+    return WEEKDAYS[dow] ?? "Sun";
 }

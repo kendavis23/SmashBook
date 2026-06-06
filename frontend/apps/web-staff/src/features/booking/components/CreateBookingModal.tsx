@@ -2,7 +2,7 @@ import type { FormEvent, JSX } from "react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { AlertToast, datetimeLocalToUTC } from "@repo/ui";
+import { AlertToast, datetimeLocalToApi } from "@repo/ui";
 import { useCreateBooking } from "../hooks";
 import type { BookingInput, BookingType } from "../types";
 import { BOOKING_TYPE_OPTIONS } from "../types";
@@ -78,7 +78,7 @@ export default function CreateBookingModal({
             club_id: clubId,
             court_id: courtId,
             booking_type: bookingType,
-            start_datetime: datetimeLocalToUTC(startDatetime),
+            start_datetime: datetimeLocalToApi(startDatetime),
             is_open_game: isOpenGame,
             max_players: parseOptionalNumber(maxPlayers) ?? undefined,
             notes: notes.trim() || null,

@@ -112,6 +112,12 @@ Always use container/view separation:
 - Auth state → `packages/auth/store/` (via `useAuth()`)
 - UI-only state (modals, tabs) → component `useState` — never Zustand
 
+### Datetime & Currency
+
+- **Datetime:** always use `formatUTCDateTime`, `formatUTCDate`, `formatUTCTime`, `formatPlainTime` from `@repo/ui` — never `new Date(apiString)`, `.toLocaleString()`, `.toLocaleDateString()`, or `.toLocaleTimeString()`
+- **Currency:** always use `formatCurrency(amount, currency)` from `@repo/ui` — never hardcode `"GBP"`, `"£"`, or use `.toFixed()` / inline `Intl.NumberFormat` in feature code
+- Full standard: [`docs/FE_DATETIME_CURRENCY_STANDARD.md`](docs/FE_DATETIME_CURRENCY_STANDARD.md)
+
 ### Styling
 
 - Tailwind utility classes only — no custom CSS files

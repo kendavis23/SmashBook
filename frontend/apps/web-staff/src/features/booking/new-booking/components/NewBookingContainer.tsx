@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { FormEvent, JSX } from "react";
-import { datetimeLocalToUTC } from "@repo/ui";
+import { datetimeLocalToApi } from "@repo/ui";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
     useCreateBooking,
@@ -194,7 +194,7 @@ export default function NewBookingContainer(): JSX.Element {
             e.preventDefault();
             if (!validate()) return;
 
-            const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
+            const startDatetime = datetimeLocalToApi(`${form.bookingDate}T${form.startTime}`);
 
             if (form.isRecurring) {
                 const maxPlayers = parseOptionalNumber(

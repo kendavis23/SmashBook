@@ -1,4 +1,4 @@
-import type { PricingRule } from "../../types";
+import type { OperatingHours, PricingRule } from "../../types";
 import { type FormEvent, type JSX } from "react";
 import {
     FormField,
@@ -14,13 +14,165 @@ import {
     SESSION_TYPE_OPTIONS,
     fieldCls,
     labelCls,
+    timeToMinutes,
+    computeCoverage,
+    sessionTypeOf,
     type FormState,
+    type Interval,
 } from "./pricingRulesConstants";
+
+// ---------------------------------------------------------------------------
+// Coverage bar — shows which time slots already have rules for this
+// session type / day so the user doesn't accidentally overlap or leave gaps.
+// ---------------------------------------------------------------------------
+
+function formatShortTime(minutes: number): string {
+    const h = Math.floor(minutes / 60);
+    const suffix = h < 12 ? "A" : "P";
+    const display = h % 12 === 0 ? 12 : h % 12;
+    return `${display}${suffix}`;
+}
+
+function RuleCoverageBar({
+    existingRules,
+    hours,
+    sessionType,
+    dayOfWeek,
+    editIndex,
+    editStartTime,
+    editEndTime,
+}: {
+    existingRules: PricingRule[];
+    hours: OperatingHours[];
+    sessionType: string;
+    dayOfWeek: number;
+    editIndex: number | undefined;
+    editStartTime: string;
+    editEndTime: string;
+}): JSX.Element | null {
+    const dayHours = hours.find((h) => h.day_of_week === dayOfWeek);
+    if (!dayHours) return null;
+
+    const openWindow: Interval = {
+        start: timeToMinutes(dayHours.open_time),
+        end: timeToMinutes(dayHours.close_time),
+    };
+    const rangeMinutes = openWindow.end - openWindow.start;
+    if (rangeMinutes <= 0) return null;
+
+    // Other rules for this session type on this day (exclude the one being edited).
+    const sessionRules = existingRules.filter(
+        (r, i) => r.day_of_week === dayOfWeek && sessionTypeOf(r) === sessionType && i !== editIndex
+    );
+
+    const activeRanges: Interval[] = sessionRules
+        .filter((r) => r.is_active)
+        .map((r) => ({ start: timeToMinutes(r.start_time), end: timeToMinutes(r.end_time) }));
+
+    const { gaps } = computeCoverage(activeRanges, openWindow);
+
+    function pct(m: number): number {
+        return ((m - openWindow.start) / rangeMinutes) * 100;
+    }
+
+    // One tick per 2 hours.
+    const ticks: number[] = [];
+    for (let t = openWindow.start + 120; t < openWindow.end; t += 120) ticks.push(t);
+
+    // Current rule segment (edit mode) — shown in green.
+    const editS = Math.max(timeToMinutes(editStartTime), openWindow.start);
+    const editE = Math.min(timeToMinutes(editEndTime), openWindow.end);
+    const showEditSegment = editIndex !== undefined && editE > editS;
+
+    return (
+        <div className="mb-5 rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground">
+                Coverage for this session type
+            </p>
+
+            {/* Bar */}
+            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted/60">
+                {/* Other covered segments — blue */}
+                {sessionRules
+                    .filter((r) => r.is_active)
+                    .map((r, i) => {
+                        const s = Math.max(timeToMinutes(r.start_time), openWindow.start);
+                        const e = Math.min(timeToMinutes(r.end_time), openWindow.end);
+                        if (e <= s) return null;
+                        return (
+                            <div
+                                key={i}
+                                className="absolute inset-y-0 bg-blue-500/75"
+                                style={{ left: `${pct(s)}%`, width: `${pct(e) - pct(s)}%` }}
+                                title={`Rule: ${r.start_time} – ${r.end_time}`}
+                            />
+                        );
+                    })}
+                {/* Gap segments — red */}
+                {gaps.map((g, i) => {
+                    const s = Math.max(g.start, openWindow.start);
+                    const e = Math.min(g.end, openWindow.end);
+                    if (e <= s) return null;
+                    return (
+                        <div
+                            key={`gap-${i}`}
+                            className="absolute inset-y-0 bg-destructive/30"
+                            style={{ left: `${pct(s)}%`, width: `${pct(e) - pct(s)}%` }}
+                            title="No pricing for this period"
+                        />
+                    );
+                })}
+                {/* Current rule segment (edit mode) — green, rendered on top */}
+                {showEditSegment ? (
+                    <div
+                        className="absolute inset-y-0 bg-success/70"
+                        style={{
+                            left: `${pct(editS)}%`,
+                            width: `${pct(editE) - pct(editS)}%`,
+                        }}
+                        title={`Editing: ${editStartTime} – ${editEndTime}`}
+                    />
+                ) : null}
+                {/* Hour ticks */}
+                {ticks.map((t) => (
+                    <div
+                        key={t}
+                        className="absolute inset-y-0 w-px bg-background/50"
+                        style={{ left: `${pct(t)}%` }}
+                    />
+                ))}
+            </div>
+
+            {/* Time labels */}
+            <div className="relative mt-1 h-3.5">
+                <span className="absolute left-0 text-[9px] tabular-nums text-muted-foreground/70">
+                    {formatShortTime(openWindow.start)}
+                </span>
+                {ticks
+                    .filter((t) => pct(t) > 8 && pct(t) < 92)
+                    .map((t) => (
+                        <span
+                            key={t}
+                            className="absolute text-[9px] tabular-nums text-muted-foreground/70"
+                            style={{ left: `${pct(t)}%`, transform: "translateX(-50%)" }}
+                        >
+                            {formatShortTime(t)}
+                        </span>
+                    ))}
+                <span className="absolute right-0 text-[9px] tabular-nums text-muted-foreground/70">
+                    {formatShortTime(openWindow.end)}
+                </span>
+            </div>
+        </div>
+    );
+}
 
 export function RuleForm({
     form,
     currency,
     saving,
+    existingRules,
+    hours,
     onChange,
     onSubmit,
     onCancel,
@@ -28,6 +180,8 @@ export function RuleForm({
     form: FormState;
     currency: string;
     saving: boolean;
+    existingRules: PricingRule[];
+    hours: OperatingHours[];
     onChange: (field: keyof PricingRule, value: unknown) => void;
     onSubmit: (e: FormEvent) => void;
     onCancel: () => void;
@@ -37,6 +191,16 @@ export function RuleForm({
             <h4 className="mb-4 text-base font-semibold text-foreground">
                 {form._editIndex !== undefined ? "Edit rule" : "New rule"}
             </h4>
+
+            <RuleCoverageBar
+                existingRules={existingRules}
+                hours={hours}
+                sessionType={form.session_type ?? "regular"}
+                dayOfWeek={form.day_of_week}
+                editIndex={form._editIndex}
+                editStartTime={form.start_time}
+                editEndTime={form.end_time}
+            />
 
             <form onSubmit={onSubmit}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
