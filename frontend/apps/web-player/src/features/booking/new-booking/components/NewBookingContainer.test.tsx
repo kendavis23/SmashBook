@@ -26,7 +26,7 @@ const availabilityFixture = {
 const trainersFixture = [{ staff_profile_id: "staff-1", full_name: "Alex Trainer" }];
 
 vi.mock("@repo/ui", () => ({
-    datetimeLocalToUTC: (value: string) => `UTC:${value}`,
+    datetimeLocalToApi: (value: string) => `API:${value}`,
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -267,7 +267,7 @@ describe("NewBookingContainer", () => {
                 club_id: "club-1",
                 court_id: "court-1",
                 booking_type: "regular",
-                start_datetime: "UTC:2026-05-20T10:00",
+                start_datetime: "API:2026-05-20T10:00",
                 max_players: 6,
                 anchor_skill_level: 3.5,
                 skill_level_override_min: 2,

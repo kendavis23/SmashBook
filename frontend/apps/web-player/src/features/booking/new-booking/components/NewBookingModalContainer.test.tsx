@@ -10,7 +10,7 @@ let mockProfile: { id?: string } = { id: "user-1" };
 let mockProfileError = false;
 
 vi.mock("@repo/ui", () => ({
-    datetimeLocalToUTC: (value: string) => `UTC:${value}`,
+    datetimeLocalToApi: (value: string) => `API:${value}`,
 }));
 
 vi.mock("@tanstack/react-query", () => ({
@@ -229,7 +229,7 @@ describe("NewBookingModalContainer", () => {
             expect.objectContaining({
                 club_id: "club-1",
                 court_id: "court-1",
-                start_datetime: "UTC:2026-05-20T10:00",
+                start_datetime: "API:2026-05-20T10:00",
                 max_players: 6,
                 event_name: "Club match",
                 is_open_game: true,

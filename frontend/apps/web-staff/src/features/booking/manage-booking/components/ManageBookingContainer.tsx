@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { FormEvent, JSX } from "react";
-import { datetimeLocalToUTC } from "@repo/ui";
+import { datetimeLocalToApi } from "@repo/ui";
 import { useParams, useNavigate, useSearch } from "@tanstack/react-router";
 import {
     useGetBooking,
@@ -169,7 +169,7 @@ export default function ManageBookingContainer(): JSX.Element {
             const payload = {
                 court_id: form.courtId || undefined,
                 start_datetime: startDatetimeLocal
-                    ? datetimeLocalToUTC(startDatetimeLocal)
+                    ? datetimeLocalToApi(startDatetimeLocal)
                     : undefined,
                 notes: form.notes.trim() || null,
                 event_name: form.eventName.trim() || null,

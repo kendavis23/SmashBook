@@ -69,14 +69,16 @@ export function formatPlainTime(t: string): string {
 }
 
 /**
- * Converts a datetime-local input value ("YYYY-MM-DDTHH:mm") to a UTC ISO string
- * ("YYYY-MM-DDTHH:mm:00Z") without any timezone conversion.
- * Use this instead of `new Date(value).toISOString()` which would shift by local offset.
+ * Converts a datetime-local input value ("YYYY-MM-DDTHH:mm") to the wall-clock
+ * datetime string the API expects ("YYYY-MM-DDTHH:mm:00") — no timezone marker.
+ * The backend applies its own timezone handling, so we send the time as-is and
+ * never append a "Z". Use this instead of `new Date(value).toISOString()`, which
+ * would shift by the local offset and append "Z".
  */
-export function datetimeLocalToUTC(value: string): string {
+export function datetimeLocalToApi(value: string): string {
     const stripped = value.replace("Z", "").replace(/[+-]\d{2}:\d{2}$/, "");
     const base = stripped.length === 16 ? stripped : stripped.slice(0, 16);
-    return `${base}:00Z`;
+    return `${base}:00`;
 }
 
 /**

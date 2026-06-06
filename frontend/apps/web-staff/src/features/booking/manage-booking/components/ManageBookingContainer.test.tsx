@@ -112,7 +112,7 @@ vi.mock("@repo/ui", () => ({
     formatUTCDate: (value: string) => value,
     formatUTCTime: (value: string) => value,
     formatUTCDateTime: (value: string) => value,
-    datetimeLocalToUTC: (value: string) => value,
+    datetimeLocalToApi: (value: string) => value,
     formatCurrency: (amount: number | null) => (amount == null ? "—" : `£${amount.toFixed(2)}`),
 }));
 
@@ -238,7 +238,7 @@ describe("ManageBookingContainer", () => {
                 contact_email: "staff@example.com",
                 notes: "Updated note",
             }),
-            // datetimeLocalToUTC is mocked as identity
+            // datetimeLocalToApi is mocked as identity
             expect.objectContaining({
                 onSuccess: expect.any(Function),
                 onError: expect.any(Function),

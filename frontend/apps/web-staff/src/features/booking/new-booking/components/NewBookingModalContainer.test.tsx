@@ -112,7 +112,7 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
-    datetimeLocalToUTC: (value: string) => value,
+    datetimeLocalToApi: (value: string) => value,
     RecurrencePicker: ({
         value,
         onChange,

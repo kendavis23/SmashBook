@@ -131,7 +131,7 @@ vi.mock("@repo/ui", () => ({
     formatUTCDate: (value: string) => value,
     formatUTCTime: (value: string) => value,
     formatUTCDateTime: (value: string) => value,
-    datetimeLocalToUTC: (value: string) => value,
+    datetimeLocalToApi: (value: string) => value,
 }));
 
 import {

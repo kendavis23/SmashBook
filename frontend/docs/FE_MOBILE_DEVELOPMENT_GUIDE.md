@@ -1,4 +1,4 @@
-_Last updated: 2026-06-01 00:00 UTC_
+_Last updated: 2026-06-06 00:00 UTC_
 
 # Mobile Player Development Guide
 
@@ -296,13 +296,13 @@ import { formatUTCDate, formatUTCTime, formatUTCDateTime } from "../../lib"; // 
 <Text>{formatUTCDateTime(booking.start_datetime)}</Text>
 ```
 
-**Building a datetime for the API** — when composing a `start_datetime` from a date picker (`"YYYY-MM-DD"`) and a time picker (`"HH:MM"`), never use `new Date(...).toISOString()` — it converts local time to UTC. Use `datetimeLocalToUTC` from `@repo/ui` instead:
+**Building a datetime for the API** — when composing a `start_datetime` from a date picker (`"YYYY-MM-DD"`) and a time picker (`"HH:MM"`), never use `new Date(...).toISOString()` — it shifts local time and appends a `Z`. Use `datetimeLocalToApi` from `@repo/ui` instead:
 
 ```tsx
-import { datetimeLocalToUTC } from "../../lib"; // adjust depth
+import { datetimeLocalToApi } from "../../lib"; // adjust depth
 
-// Correct — treats the picker value as UTC, appends Z without shifting
-const startDatetime = datetimeLocalToUTC(`${form.bookingDate}T${form.startTime}`);
+// Correct — sends the picker value as-is ("...:00", no Z); backend handles the timezone
+const startDatetime = datetimeLocalToApi(`${form.bookingDate}T${form.startTime}`);
 
 // Wrong — shifts the local time to UTC (adds 5:30 offset on an IST device)
 const startDatetime = new Date(`${form.bookingDate}T${form.startTime}:00`).toISOString();

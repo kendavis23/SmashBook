@@ -6,7 +6,7 @@ import type {
     Court,
 } from "../../types";
 import { RESERVATION_TYPE_OPTIONS } from "../../types";
-import { AlertToast, DatePicker, DateTimePicker, datetimeLocalToUTC, SelectInput } from "@repo/ui";
+import { AlertToast, DatePicker, DateTimePicker, datetimeLocalToApi, SelectInput } from "@repo/ui";
 import { X } from "lucide-react";
 import type { FormEvent, JSX } from "react";
 import { useState } from "react";
@@ -112,8 +112,8 @@ export default function ReservationModal({
                     court_id: courtId || null,
                     reservation_type: reservationType,
                     title: title.trim(),
-                    start_datetime: datetimeLocalToUTC(startDatetime),
-                    end_datetime: datetimeLocalToUTC(endDatetime),
+                    start_datetime: datetimeLocalToApi(startDatetime),
+                    end_datetime: datetimeLocalToApi(endDatetime),
                     allowed_booking_types: allowedBookingTypes?.length ? allowedBookingTypes : null,
                     is_recurring: isRecurring,
                     recurrence_rule: recurrenceRule || null,
@@ -132,8 +132,8 @@ export default function ReservationModal({
                 court_id: courtId || null,
                 reservation_type: reservationType,
                 title: title.trim(),
-                start_datetime: datetimeLocalToUTC(startDatetime),
-                end_datetime: datetimeLocalToUTC(endDatetime),
+                start_datetime: datetimeLocalToApi(startDatetime),
+                end_datetime: datetimeLocalToApi(endDatetime),
                 allowed_booking_types: allowedBookingTypes?.length ? allowedBookingTypes : null,
                 is_recurring: isRecurring,
                 recurrence_rule: recurrenceRule || null,

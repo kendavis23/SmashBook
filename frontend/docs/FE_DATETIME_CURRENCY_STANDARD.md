@@ -56,7 +56,7 @@ import {
     formatUTCDate,
     formatUTCTime,
     formatPlainTime,
-    datetimeLocalToUTC,
+    datetimeLocalToApi,
 } from "@repo/ui";
 ```
 
@@ -66,7 +66,7 @@ import {
 | `formatUTCDate`      | ISO string           | `"Apr 17, 2026"`           | Date-only display (booking list rows, filters)                                      |
 | `formatUTCTime`      | ISO string           | `"10:00 AM"`               | Time-only display (calendar slots, booking start/end)                               |
 | `formatPlainTime`    | `"HH:MM"` string     | `"10:00 AM"`               | Operating hours, pricing rule times — these are already plain time strings, not ISO |
-| `datetimeLocalToUTC` | `"YYYY-MM-DDTHH:mm"` | `"2026-04-17T10:00:00Z"`   | Converts `<input type="datetime-local">` value before sending to API                |
+| `datetimeLocalToApi` | `"YYYY-MM-DDTHH:mm"` | `"2026-04-17T10:00:00"`    | Converts `<input type="datetime-local">` value before sending to API                |
 
 ### 1.4 Input handling
 
@@ -75,14 +75,14 @@ When the user enters a date or time in a form:
 - Use `DatePicker`, `TimeInput`, or `DateTimePicker` from `@repo/ui` — never bare `<input type="date">`, `<input type="time">`, or `<input type="datetime-local">`.
 - `DatePicker` yields a `"YYYY-MM-DD"` string — send it as-is to the API.
 - `TimeInput` yields a `"HH:MM"` string — send it as-is to the API.
-- `DateTimePicker` yields a `"YYYY-MM-DDTHH:mm"` string. Before sending to the API, convert it with `datetimeLocalToUTC(value)` to produce `"YYYY-MM-DDTHH:mm:00Z"`.
+- `DateTimePicker` yields a `"YYYY-MM-DDTHH:mm"` string. Before sending to the API, convert it with `datetimeLocalToApi(value)` to produce `"YYYY-MM-DDTHH:mm:00"`. No `Z` is appended — the backend applies its own timezone handling, so the wall-clock time is sent as-is.
 
 ```tsx
-// ✅ CORRECT — convert datetime-local to UTC string for API payload
-import { datetimeLocalToUTC } from "@repo/ui";
+// ✅ CORRECT — convert datetime-local to the API datetime string (no Z)
+import { datetimeLocalToApi } from "@repo/ui";
 
 const payload = {
-    start_datetime: datetimeLocalToUTC(form.start_datetime), // "2026-04-17T10:00:00Z"
+    start_datetime: datetimeLocalToApi(form.start_datetime), // "2026-04-17T10:00:00"
 };
 
 // ❌ WRONG — shifts by the browser's local TZ offset
@@ -114,7 +114,7 @@ function toDatetimeLocal(iso: string): string {
 | Display time only from API             | `formatUTCTime(booking.start_datetime)`         |
 | Display `open_time` / `close_time`     | `formatPlainTime(hours.open_time)`              |
 | Pre-fill `DateTimePicker` from API ISO | Strip offset in mapper → `toDatetimeLocal(iso)` |
-| Send `DateTimePicker` value to API     | `datetimeLocalToUTC(form.start_datetime)`       |
+| Send `DateTimePicker` value to API     | `datetimeLocalToApi(form.start_datetime)`       |
 | Send `DatePicker` value to API         | Send as-is (`"YYYY-MM-DD"`)                     |
 | Send `TimeInput` value to API          | Send as-is (`"HH:MM"`)                          |
 
@@ -126,7 +126,7 @@ function toDatetimeLocal(iso: string): string {
 - Use `formatUTCDateTime`, `formatUTCDate`, `formatUTCTime` for every ISO string display
 - Use `formatPlainTime` for `"HH:MM"` operating hours and pricing rule time fields
 - Strip timezone offset in the mapper layer before pre-filling a `DateTimePicker`
-- Use `datetimeLocalToUTC` before sending a `DateTimePicker` value to the API
+- Use `datetimeLocalToApi` before sending a `DateTimePicker` value to the API
 
 **Don't:**
 
@@ -334,7 +334,7 @@ SmashBook is a multi-club SaaS platform. Clubs in different countries will have 
 
 - [ ] All ISO datetime displays use `formatUTCDateTime`, `formatUTCDate`, or `formatUTCTime` from `@repo/ui`
 - [ ] All `"HH:MM"` time-only displays use `formatPlainTime` from `@repo/ui`
-- [ ] `DateTimePicker` values are converted with `datetimeLocalToUTC` before sending to the API
+- [ ] `DateTimePicker` values are converted with `datetimeLocalToApi` before sending to the API
 - [ ] ISO → datetime-local conversion for form pre-fill lives in the domain mapper, not the component
 - [ ] No `new Date(isoString)` calls in feature components
 - [ ] No `.toLocaleString()`, `.toLocaleDateString()`, `.toLocaleTimeString()` calls anywhere

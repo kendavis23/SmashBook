@@ -76,7 +76,7 @@ vi.mock("@repo/ui", () => ({
             ))}
         </select>
     ),
-    datetimeLocalToUTC: (value: string) => value,
+    datetimeLocalToApi: (value: string) => value,
 }));
 
 vi.mock("react-dom", async () => {
