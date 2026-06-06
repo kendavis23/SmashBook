@@ -1,35 +1,34 @@
-import type { PricingRule } from "../../types";
+import type { OperatingHours, PricingRule } from "../../types";
+import type { BookingType } from "../../types";
 import { AlertToast } from "@repo/ui";
 import { Plus } from "lucide-react";
-import type { JSX } from "react";
+import { type JSX, useState } from "react";
 import { DeleteModal } from "./DeleteModal";
-import { RuleCard } from "./PricingRuleCard";
-import { DAY_NAMES } from "./pricingRulesConstants";
+import { SessionPricingGroup } from "./SessionPricingGroup";
+import { DAY_NAMES, DAY_NAMES_SHORT, SESSION_TYPES, sessionTypeOf } from "./pricingRulesConstants";
 
 type Props = {
     rules: PricingRule[];
-    pagedRules: PricingRule[];
+    hours: OperatingHours[];
     currency: string;
     saving: boolean;
     success: boolean;
     finalError: Error | null;
     toastDismissed: boolean;
-    currentPage: number;
-    totalPages: number;
     deleteIndex: number | null;
     selectedDay: number;
     onToastDismiss: () => void;
     onDayChange: (day: number) => void;
-    onAddRule: () => void;
+    onAddRule: (sessionType: BookingType) => void;
     onEditRule: (index: number) => void;
     onDeleteRule: (index: number) => void;
-    onPageChange: (page: number) => void;
     onDeleteConfirmed: () => void;
     onDeleteCancel: () => void;
 };
 
 export default function PricingRulesView({
     rules,
+    hours,
     currency,
     saving,
     success,
@@ -45,9 +44,28 @@ export default function PricingRulesView({
     onDeleteConfirmed,
     onDeleteCancel,
 }: Props): JSX.Element {
+    // Collapsed/expanded state per session-type group. All expanded by default.
+    const [collapsed, setCollapsed] = useState<Set<BookingType>>(new Set(SESSION_TYPES));
+
     const dayRules = rules
         .map((rule, i) => ({ rule, globalIndex: i }))
         .filter(({ rule }) => rule.day_of_week === selectedDay);
+
+    const dayHours = hours.find((h) => h.day_of_week === selectedDay);
+
+    // Only show session groups that have rules, but keep a stable global order.
+    const sessionsWithRules = SESSION_TYPES.filter((st) =>
+        dayRules.some(({ rule }) => sessionTypeOf(rule) === st)
+    );
+
+    function toggleSession(st: BookingType): void {
+        setCollapsed((prev) => {
+            const next = new Set(prev);
+            if (next.has(st)) next.delete(st);
+            else next.add(st);
+            return next;
+        });
+    }
 
     return (
         <div className="space-y-4">
@@ -62,76 +80,106 @@ export default function PricingRulesView({
                 <section className="rounded-xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
                     <h3 className="text-lg font-semibold text-foreground">No pricing set yet</h3>
                     <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                        Create your first pricing rule to set a base rate for a day and time range.
-                        You can always add surge or quiet-hour adjustments later.
+                        Create your first pricing rule to set a base rate for a session type, day,
+                        and time range. Set pricing for every open hour so no slot is left unpriced.
                     </p>
                     <button
-                        onClick={onAddRule}
+                        onClick={() => onAddRule("regular")}
                         className="btn-cta mt-6 inline-flex items-center gap-2"
                     >
                         <Plus size={14} />
                         Add rule
                     </button>
                 </section>
-            ) : null}
-
-            {rules.length > 0 ? (
-                <div className="flex gap-0 rounded-xl border border-border bg-card overflow-hidden">
+            ) : (
+                <div className="flex gap-0 overflow-hidden rounded-xl border border-border bg-card">
                     {/* Day nav */}
-                    <div className="w-44 shrink-0 border-r border-border bg-muted/20">
+                    <div className="w-32 shrink-0 border-r border-border bg-muted/20 sm:w-40">
                         <p className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                             Days
                         </p>
-                        {DAY_NAMES.map((name, idx) => (
-                            <button
-                                key={name}
-                                onClick={() => onDayChange(idx)}
-                                className={`w-full px-4 py-3 text-left text-sm transition ${
-                                    selectedDay === idx
-                                        ? "border-l-2 border-cta bg-background font-semibold text-foreground"
-                                        : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                                }`}
-                            >
-                                {name}
-                            </button>
-                        ))}
+                        {DAY_NAMES.map((name, idx) => {
+                            const hasHours = hours.some((h) => h.day_of_week === idx);
+                            return (
+                                <button
+                                    key={name}
+                                    onClick={() => onDayChange(idx)}
+                                    className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-sm transition ${
+                                        selectedDay === idx
+                                            ? "border-l-2 border-cta bg-background font-semibold text-foreground"
+                                            : "border-l-2 border-transparent text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                                    }`}
+                                >
+                                    <span>
+                                        <span className="hidden sm:inline">{name}</span>
+                                        <span className="sm:hidden">{DAY_NAMES_SHORT[idx]}</span>
+                                    </span>
+                                    {!hasHours ? (
+                                        <span className="text-[9px] uppercase text-muted-foreground/50">
+                                            closed
+                                        </span>
+                                    ) : null}
+                                </button>
+                            );
+                        })}
                     </div>
 
-                    {/* Rules panel */}
-                    <div className="min-w-0 flex-1 px-5 py-4">
-                        <div className="mb-4 flex items-center justify-between gap-2">
-                            <h3 className="text-sm font-semibold text-foreground">
-                                {DAY_NAMES[selectedDay]} Pricing Rules
-                            </h3>
+                    {/* Rules panel — session-type groups */}
+                    <div className="min-w-0 flex-1 px-4 py-4">
+                        <div className="mb-3 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                                <h3 className="text-sm font-semibold text-foreground">
+                                    {DAY_NAMES[selectedDay]} Pricing
+                                </h3>
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                    {dayHours
+                                        ? "Set a rule for each session type across all open hours."
+                                        : "No operating hours set for this day."}
+                                </p>
+                            </div>
                             <button
-                                onClick={onAddRule}
-                                className="btn-cta-sm inline-flex items-center gap-1.5"
+                                onClick={() => onAddRule("regular")}
+                                className="btn-cta-sm inline-flex shrink-0 items-center gap-1.5"
                             >
                                 <Plus size={13} />
                                 Add rule
                             </button>
                         </div>
 
-                        {dayRules.length === 0 ? (
-                            <p className="py-8 text-center text-sm text-muted-foreground">
-                                No rules for {DAY_NAMES[selectedDay]}.
-                            </p>
+                        {sessionsWithRules.length === 0 ? (
+                            <div className="rounded-lg border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
+                                <p className="text-sm text-muted-foreground">
+                                    No rules for {DAY_NAMES[selectedDay]}.
+                                </p>
+                                <button
+                                    onClick={() => onAddRule("regular")}
+                                    className="btn-cta-sm mt-3 inline-flex items-center gap-1.5"
+                                >
+                                    <Plus size={13} />
+                                    Add rule
+                                </button>
+                            </div>
                         ) : (
                             <div className="space-y-3">
-                                {dayRules.map(({ rule, globalIndex }) => (
-                                    <RuleCard
-                                        key={`${rule.label}-${rule.day_of_week}-${rule.start_time}-${globalIndex}`}
-                                        rule={rule}
+                                {sessionsWithRules.map((st) => (
+                                    <SessionPricingGroup
+                                        key={st}
+                                        sessionType={st}
+                                        rules={dayRules.filter(
+                                            ({ rule }) => sessionTypeOf(rule) === st
+                                        )}
                                         currency={currency}
-                                        onEdit={() => onEditRule(globalIndex)}
-                                        onDelete={() => onDeleteRule(globalIndex)}
+                                        isOpen={!collapsed.has(st)}
+                                        onToggle={() => toggleSession(st)}
+                                        onEditRule={onEditRule}
+                                        onDeleteRule={onDeleteRule}
                                     />
                                 ))}
                             </div>
                         )}
                     </div>
                 </div>
-            ) : null}
+            )}
 
             {deleteIndex !== null ? (
                 <DeleteModal

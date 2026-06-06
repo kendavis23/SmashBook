@@ -82,8 +82,14 @@ export interface OperatingHours {
     valid_until?: string; // ISO date
 }
 
+import type { BookingType } from "./booking.model";
+export type { BookingType };
+
+export type PricingLabel = "peak" | "off_peak" | "standard";
+
 export interface PricingRule {
-    label: string;
+    session_type?: BookingType;
+    label: PricingLabel;
     day_of_week: number;
     start_time: string;
     end_time: string;

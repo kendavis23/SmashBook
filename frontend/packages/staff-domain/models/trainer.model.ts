@@ -1,13 +1,6 @@
+import type { BookingStatus, BookingType } from "./booking.model";
+
 export type UUID = string;
-
-export type BookingType =
-    | "regular"
-    | "lesson_individual"
-    | "lesson_group"
-    | "corporate_event"
-    | "tournament";
-
-export type BookingStatus = "pending" | "confirmed" | "cancelled" | "completed";
 
 export interface TrainerAvailability {
     id: UUID;

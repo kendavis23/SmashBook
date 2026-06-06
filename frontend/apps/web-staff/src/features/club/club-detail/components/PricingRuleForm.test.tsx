@@ -43,7 +43,7 @@ vi.mock("@repo/ui", () => ({
     ),
 }));
 
-const baseForm: FormState = { ...EMPTY_RULE, label: "Peak" };
+const baseForm: FormState = { ...EMPTY_RULE, label: "peak" };
 
 describe("RuleForm — new rule", () => {
     it("renders 'New rule' heading when no _editIndex", () => {
@@ -132,7 +132,7 @@ describe("RuleForm — new rule", () => {
         expect(handleCancel).toHaveBeenCalled();
     });
 
-    it("calls onChange when label input changes", () => {
+    it("calls onChange when label dropdown changes", () => {
         const handleChange = vi.fn();
         render(
             <RuleForm
@@ -144,9 +144,27 @@ describe("RuleForm — new rule", () => {
                 onCancel={vi.fn()}
             />
         );
-        const labelInput = screen.getByDisplayValue("Peak");
-        fireEvent.change(labelInput, { target: { value: "Off-Peak" } });
-        expect(handleChange).toHaveBeenCalledWith("label", "Off-Peak");
+        // Label is now a fixed-enum dropdown; selecting "Peak" shows it as the value.
+        const labelSelect = screen.getByDisplayValue("Peak");
+        fireEvent.change(labelSelect, { target: { value: "off_peak" } });
+        expect(handleChange).toHaveBeenCalledWith("label", "off_peak");
+    });
+
+    it("renders the session type dropdown defaulting to Regular Play", () => {
+        const handleChange = vi.fn();
+        render(
+            <RuleForm
+                form={baseForm}
+                currency="GBP"
+                saving={false}
+                onChange={handleChange}
+                onSubmit={vi.fn()}
+                onCancel={vi.fn()}
+            />
+        );
+        const sessionSelect = screen.getByDisplayValue("Regular Play");
+        fireEvent.change(sessionSelect, { target: { value: "lesson_group" } });
+        expect(handleChange).toHaveBeenCalledWith("session_type", "lesson_group");
     });
 
     it("includes currency in base price label", () => {

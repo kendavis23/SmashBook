@@ -1,5 +1,16 @@
 import type { Club, OperatingHours, PricingRule } from "../../types";
+import type { BookingType } from "../../types";
+import { ChevronDown, ChevronRight, CircleCheck, TriangleAlert } from "lucide-react";
 import { type JSX, useState } from "react";
+import {
+    PRICING_LABEL_NAMES,
+    SESSION_TYPES,
+    SESSION_TYPE_LABELS,
+    computeCoverage,
+    sessionTypeOf,
+    timeToMinutes,
+    type Interval,
+} from "./pricingRulesConstants";
 
 const DAY_NAMES_SHORT = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAY_NAMES_FULL = [
@@ -70,7 +81,6 @@ export default function ClubDetailView({
     onRulesPageChange: _onRulesPageChange,
 }: Props): JSX.Element {
     const [selectedDay, setSelectedDay] = useState(0);
-    const dayRules = rules.filter((r) => r.day_of_week === selectedDay);
 
     return (
         <div className="space-y-5">
@@ -131,7 +141,7 @@ export default function ClubDetailView({
                     <p className="text-xs text-muted-foreground/60">Loading…</p>
                 ) : (
                     <div className="space-y-3">
-                        {/* Day cards — act as tabs */}
+                        {/* Day tabs */}
                         <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
                             {DAY_NAMES_FULL.map((_, i) => {
                                 const entry = hours.find((h) => h.day_of_week === i);
@@ -170,102 +180,311 @@ export default function ClubDetailView({
                             })}
                         </div>
 
-                        {/* Selected day detail panel */}
-                        <div className="rounded-xl border border-border bg-card overflow-hidden">
-                            {/* Day header */}
-                            {(() => {
-                                const entry = hours.find((h) => h.day_of_week === selectedDay);
-                                return (
-                                    <div className="flex items-center gap-3 border-b border-border px-4 py-3 bg-muted/20">
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-semibold text-foreground">
-                                                    {DAY_NAMES_FULL[selectedDay]}
-                                                </span>
-                                                {entry ? (
-                                                    <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
-                                                        Open
-                                                    </span>
-                                                ) : (
-                                                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                                                        Closed
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="mt-0.5 text-xs text-muted-foreground">
-                                                {entry
-                                                    ? `${formatTime(entry.open_time)} – ${formatTime(entry.close_time)}`
-                                                    : "No operating hours set"}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Pricing rules table */}
-                            {dayRules.length === 0 ? (
-                                <div className="px-4 py-8 text-center">
-                                    <p className="text-xs text-muted-foreground/60">
-                                        No pricing rules for {DAY_NAMES_FULL[selectedDay]}.
-                                    </p>
-                                </div>
-                            ) : (
-                                <table className="w-full text-xs">
-                                    <thead>
-                                        <tr className="border-b border-border bg-muted/30">
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                Label
-                                            </th>
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                Day
-                                            </th>
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                Time
-                                            </th>
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                Price
-                                            </th>
-                                            <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                                Status
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {dayRules.map((r, i) => (
-                                            <tr
-                                                key={i}
-                                                className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
-                                            >
-                                                <td className="px-4 py-3 font-medium text-foreground">
-                                                    {r.label}
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">
-                                                    {DAY_NAMES_FULL[r.day_of_week]}
-                                                </td>
-                                                <td className="px-4 py-3 text-muted-foreground">
-                                                    {formatTime(r.start_time)} –{" "}
-                                                    {formatTime(r.end_time)}
-                                                </td>
-                                                <td className="px-4 py-3 font-semibold text-foreground">
-                                                    {club.currency}{" "}
-                                                    {Number(r.price_per_slot).toFixed(2)}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <span
-                                                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${r.is_active ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
-                                                    >
-                                                        {r.is_active ? "Active" : "Inactive"}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
+                        {/* Session-type groups for the selected day */}
+                        <ReadOnlyDayPanel
+                            selectedDay={selectedDay}
+                            rules={rules}
+                            hours={hours}
+                            currency={club.currency}
+                        />
                     </div>
                 )}
             </section>
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Read-only day panel — session-type groups with collapse/expand
+// ---------------------------------------------------------------------------
+
+function ReadOnlyDayPanel({
+    selectedDay,
+    rules,
+    hours,
+    currency,
+}: {
+    selectedDay: number;
+    rules: PricingRule[];
+    hours: OperatingHours[];
+    currency: string;
+}): JSX.Element {
+    const dayHours = hours.find((h) => h.day_of_week === selectedDay);
+    const openWindow: Interval | null = dayHours
+        ? { start: timeToMinutes(dayHours.open_time), end: timeToMinutes(dayHours.close_time) }
+        : null;
+
+    const dayRules = rules.filter((r) => r.day_of_week === selectedDay);
+    const sessionsWithRules = SESSION_TYPES.filter((st) =>
+        dayRules.some((r) => sessionTypeOf(r) === st)
+    );
+
+    // Read-only panel: all groups open by default.
+    const [collapsed, setCollapsed] = useState<Set<BookingType>>(new Set());
+
+    function toggle(st: BookingType): void {
+        setCollapsed((prev) => {
+            const next = new Set(prev);
+            if (next.has(st)) next.delete(st);
+            else next.add(st);
+            return next;
+        });
+    }
+
+    if (sessionsWithRules.length === 0) {
+        return (
+            <div className="rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
+                <p className="text-xs text-muted-foreground/60">
+                    No pricing rules for {DAY_NAMES_FULL[selectedDay]}.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-3">
+            {sessionsWithRules.map((st) => {
+                const stRules = dayRules.filter((r) => sessionTypeOf(r) === st);
+                const activeRanges: Interval[] = stRules
+                    .filter((r) => r.is_active)
+                    .map((r) => ({
+                        start: timeToMinutes(r.start_time),
+                        end: timeToMinutes(r.end_time),
+                    }));
+                const coverage = computeCoverage(activeRanges, openWindow);
+                const isOpen = !collapsed.has(st);
+
+                return (
+                    <section
+                        key={st}
+                        className="overflow-hidden rounded-xl border border-border bg-card"
+                    >
+                        {/* Header */}
+                        <div className="flex flex-col gap-3 border-b border-border bg-muted/10 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                            <button
+                                onClick={() => toggle(st)}
+                                aria-expanded={isOpen}
+                                className="flex min-w-0 items-center gap-2 text-left"
+                            >
+                                {isOpen ? (
+                                    <ChevronDown
+                                        size={15}
+                                        className="shrink-0 text-muted-foreground"
+                                    />
+                                ) : (
+                                    <ChevronRight
+                                        size={15}
+                                        className="shrink-0 text-muted-foreground"
+                                    />
+                                )}
+                                <span className="truncate text-sm font-semibold text-foreground">
+                                    {SESSION_TYPE_LABELS[st]}
+                                </span>
+                                <span className="shrink-0 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                    {stRules.length} {stRules.length === 1 ? "rule" : "rules"}
+                                </span>
+                                <ReadOnlyCoverageBadge
+                                    noOpenHours={coverage.noOpenHours}
+                                    fullyCovered={coverage.fullyCovered}
+                                    hasRules={stRules.length > 0}
+                                />
+                            </button>
+
+                            {stRules.length > 0 && openWindow ? (
+                                <ReadOnlyTimeline
+                                    rules={stRules}
+                                    openWindow={openWindow}
+                                    gaps={coverage.gaps}
+                                />
+                            ) : null}
+                        </div>
+
+                        {/* Rows */}
+                        {isOpen ? (
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b border-border bg-muted/30">
+                                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Time
+                                        </th>
+                                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Label
+                                        </th>
+                                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Price
+                                        </th>
+                                        <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                            Status
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {stRules.map((r, i) => (
+                                        <tr
+                                            key={i}
+                                            className="border-b border-border/40 last:border-0 hover:bg-muted/20 transition-colors"
+                                        >
+                                            <td className="px-4 py-2.5">
+                                                <span className="font-medium text-foreground whitespace-nowrap">
+                                                    {formatTime(r.start_time)} –{" "}
+                                                    {formatTime(r.end_time)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-2.5">
+                                                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">
+                                                    {PRICING_LABEL_NAMES[r.label] ?? r.label}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-2.5 font-semibold text-foreground whitespace-nowrap">
+                                                {currency} {Number(r.price_per_slot).toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-2.5">
+                                                <span
+                                                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${r.is_active ? "bg-success/15 text-success" : "bg-muted text-muted-foreground"}`}
+                                                >
+                                                    {r.is_active ? "Active" : "Inactive"}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        ) : null}
+                    </section>
+                );
+            })}
+        </div>
+    );
+}
+
+function ReadOnlyCoverageBadge({
+    noOpenHours,
+    fullyCovered,
+    hasRules,
+}: {
+    noOpenHours: boolean;
+    fullyCovered: boolean;
+    hasRules: boolean;
+}): JSX.Element | null {
+    if (noOpenHours || !hasRules) return null;
+    return fullyCovered ? (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold text-success">
+            <CircleCheck size={11} />
+            All open hours covered
+        </span>
+    ) : (
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-semibold text-warning">
+            <TriangleAlert size={11} />
+            Gaps in coverage
+        </span>
+    );
+}
+
+// Timeline scoped to open_time–close_time with 2-hour tick marks.
+function ReadOnlyTimeline({
+    rules,
+    openWindow,
+    gaps,
+}: {
+    rules: PricingRule[];
+    openWindow: Interval;
+    gaps: Interval[];
+}): JSX.Element {
+    const rangeMinutes = openWindow.end - openWindow.start;
+
+    // One vertical tick per hour across the full range.
+    const hourTicks: number[] = [];
+    for (let t = openWindow.start + 60; t < openWindow.end; t += 60) {
+        hourTicks.push(t);
+    }
+
+    // Single interior label at noon (12P) if it has enough clearance from edges.
+    const edgeGuard = rangeMinutes * 0.1;
+    const noon = 720; // 12:00 in minutes
+    const labelTicks: number[] =
+        noon > openWindow.start &&
+        noon < openWindow.end &&
+        noon - openWindow.start >= edgeGuard &&
+        openWindow.end - noon >= edgeGuard
+            ? [noon]
+            : [];
+
+    function pct(minutes: number): number {
+        return ((minutes - openWindow.start) / rangeMinutes) * 100;
+    }
+
+    // "7A", "10A", "1P", "10P"
+    function toShortLabel(m: number): string {
+        const totalH = Math.floor(m / 60);
+        const h = totalH % 12 === 0 ? 12 : totalH % 12;
+        const suffix = totalH < 12 ? "A" : "P";
+        return `${h}${suffix}`;
+    }
+
+    return (
+        <div className="hidden w-96 shrink-0 md:block">
+            {/* Bar */}
+            <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/60">
+                {/* Covered segments — single professional blue */}
+                {rules
+                    .filter((r) => r.is_active)
+                    .map((r, i) => {
+                        const start = Math.max(timeToMinutes(r.start_time), openWindow.start);
+                        const end = Math.min(timeToMinutes(r.end_time), openWindow.end);
+                        if (end <= start) return null;
+                        return (
+                            <div
+                                key={i}
+                                className="absolute inset-y-0 bg-blue-500/80"
+                                style={{
+                                    left: `${pct(start)}%`,
+                                    width: `${pct(end) - pct(start)}%`,
+                                }}
+                                title={`${formatTime(r.start_time)} – ${formatTime(r.end_time)}`}
+                            />
+                        );
+                    })}
+                {/* Gaps — subtle red */}
+                {gaps.map((g, i) => {
+                    const start = Math.max(g.start, openWindow.start);
+                    const end = Math.min(g.end, openWindow.end);
+                    if (end <= start) return null;
+                    return (
+                        <div
+                            key={`gap-${i}`}
+                            className="absolute inset-y-0 bg-destructive/35"
+                            style={{ left: `${pct(start)}%`, width: `${pct(end) - pct(start)}%` }}
+                            title="No pricing for this period"
+                        />
+                    );
+                })}
+                {/* One thin tick per hour */}
+                {hourTicks.map((t) => (
+                    <div
+                        key={t}
+                        className="absolute inset-y-0 w-px bg-background/40"
+                        style={{ left: `${pct(t)}%` }}
+                    />
+                ))}
+            </div>
+            {/* Labels: start, every-3h interior, end */}
+            <div className="relative mt-1 h-3">
+                <span className="absolute left-0 text-[9px] tabular-nums text-muted-foreground/70">
+                    {toShortLabel(openWindow.start)}
+                </span>
+                {labelTicks.map((t) => (
+                    <span
+                        key={t}
+                        className="absolute text-[9px] tabular-nums text-muted-foreground/70"
+                        style={{ left: `${pct(t)}%`, transform: "translateX(-50%)" }}
+                    >
+                        {toShortLabel(t)}
+                    </span>
+                ))}
+                <span className="absolute right-0 text-[9px] tabular-nums text-muted-foreground/70">
+                    {toShortLabel(openWindow.end)}
+                </span>
+            </div>
         </div>
     );
 }

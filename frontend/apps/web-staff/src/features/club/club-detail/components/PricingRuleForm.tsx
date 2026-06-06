@@ -8,7 +8,14 @@ import {
     DatePicker,
     DateTimePicker,
 } from "@repo/ui";
-import { DAY_NAMES, fieldCls, labelCls, type FormState } from "./pricingRulesConstants";
+import {
+    DAY_NAMES,
+    PRICING_LABEL_OPTIONS,
+    SESSION_TYPE_OPTIONS,
+    fieldCls,
+    labelCls,
+    type FormState,
+} from "./pricingRulesConstants";
 
 export function RuleForm({
     form,
@@ -33,13 +40,19 @@ export function RuleForm({
 
             <form onSubmit={onSubmit}>
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <FormField labelClassName={labelCls} label="Session type *">
+                        <SelectInput
+                            value={form.session_type ?? "regular"}
+                            onValueChange={(v) => onChange("session_type", v)}
+                            options={SESSION_TYPE_OPTIONS}
+                        />
+                    </FormField>
+
                     <FormField labelClassName={labelCls} label="Label *">
-                        <input
-                            required
-                            className={fieldCls}
+                        <SelectInput
                             value={form.label}
-                            onChange={(e) => onChange("label", e.target.value)}
-                            placeholder="e.g. Peak, Off-Peak, Happy Hour"
+                            onValueChange={(v) => onChange("label", v)}
+                            options={PRICING_LABEL_OPTIONS}
                         />
                     </FormField>
 

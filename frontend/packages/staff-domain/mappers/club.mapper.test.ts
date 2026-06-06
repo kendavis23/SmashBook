@@ -3,7 +3,7 @@ import { toPricingRule } from "./club.mapper";
 import type { PricingRule } from "../models";
 
 const BASE_RULE: PricingRule = {
-    label: "Peak",
+    label: "peak",
     day_of_week: 1,
     start_time: "18:00",
     end_time: "21:00",
@@ -37,7 +37,7 @@ describe("toPricingRule", () => {
             incentive_expires_at: "2026-04-08T14:30:00Z",
         };
         const result = toPricingRule(rule);
-        expect(result.label).toBe("Peak");
+        expect(result.label).toBe("peak");
         expect(result.price_per_slot).toBe(20);
         expect(result.is_active).toBe(true);
         expect(result.surge_trigger_pct).toBe(80);

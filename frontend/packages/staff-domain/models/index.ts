@@ -6,6 +6,7 @@ export type {
     ClubUpdateInput,
     ClubSettingsInput,
     OperatingHours,
+    PricingLabel,
     PricingRule,
     StripeConnectInput,
     StripeConnectResult,

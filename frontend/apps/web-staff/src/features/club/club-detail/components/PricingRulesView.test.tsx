@@ -1,10 +1,11 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import PricingRulesView from "./PricingRulesView";
-import type { PricingRule } from "../../types";
+import type { OperatingHours, PricingRule } from "../../types";
 
 const baseRule: PricingRule = {
-    label: "Peak",
+    session_type: "regular",
+    label: "peak",
     day_of_week: 0,
     start_time: "08:00",
     end_time: "22:00",
@@ -12,12 +13,15 @@ const baseRule: PricingRule = {
     price_per_slot: 20,
 };
 
+const hours: OperatingHours[] = [{ day_of_week: 0, open_time: "08:00", close_time: "22:00" }];
+
 vi.mock("@repo/ui", () => ({
     AlertToast: ({ title, variant }: { title: string; variant: string }) => (
         <div role="alert" data-variant={variant}>
             {title}
         </div>
     ),
+    formatPlainTime: (t: string) => t,
 }));
 
 vi.mock("./DeleteModal", () => ({
@@ -36,35 +40,14 @@ vi.mock("./DeleteModal", () => ({
     ),
 }));
 
-vi.mock("./PricingRuleCard", () => ({
-    RuleCard: ({
-        rule,
-        onEdit,
-        onDelete,
-    }: {
-        rule: PricingRule;
-        currency: string;
-        onEdit: () => void;
-        onDelete: () => void;
-    }) => (
-        <div>
-            <span>{rule.label}</span>
-            <button onClick={onEdit}>Edit</button>
-            <button onClick={onDelete}>Delete</button>
-        </div>
-    ),
-}));
-
 const defaultProps = {
-    rules: [],
-    pagedRules: [],
+    rules: [] as PricingRule[],
+    hours,
     currency: "GBP",
     saving: false,
     success: false,
     finalError: null,
     toastDismissed: false,
-    currentPage: 0,
-    totalPages: 1,
     deleteIndex: null,
     selectedDay: 0,
     onToastDismiss: vi.fn(),
@@ -72,10 +55,13 @@ const defaultProps = {
     onAddRule: vi.fn(),
     onEditRule: vi.fn(),
     onDeleteRule: vi.fn(),
-    onPageChange: vi.fn(),
     onDeleteConfirmed: vi.fn(),
     onDeleteCancel: vi.fn(),
 };
+
+function expandRegularPlay(): void {
+    fireEvent.click(screen.getByRole("button", { name: /Regular Play/ }));
+}
 
 describe("PricingRulesView — empty state", () => {
     it("shows empty state message when no rules", () => {
@@ -92,62 +78,38 @@ describe("PricingRulesView — empty state", () => {
 });
 
 describe("PricingRulesView — with rules", () => {
-    const twoRules = [baseRule, { ...baseRule, label: "Off-Peak", day_of_week: 0 }];
+    const twoRules = [baseRule, { ...baseRule, label: "off_peak" as const, day_of_week: 0 }];
 
     it("renders selected day heading", () => {
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={twoRules}
-                pagedRules={twoRules}
-                totalPages={1}
-            />
-        );
-        expect(screen.getByText("Monday Pricing Rules")).toBeInTheDocument();
+        render(<PricingRulesView {...defaultProps} rules={twoRules} />);
+        expect(screen.getByText("Monday Pricing")).toBeInTheDocument();
     });
 
-    it("renders each rule card", () => {
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={twoRules}
-                pagedRules={twoRules}
-                totalPages={1}
-            />
-        );
+    it("groups rules under their session type", () => {
+        render(<PricingRulesView {...defaultProps} rules={twoRules} />);
+        expect(screen.getByText("Regular Play")).toBeInTheDocument();
+    });
+
+    it("renders rule label badges and times", () => {
+        render(<PricingRulesView {...defaultProps} rules={twoRules} />);
+        expandRegularPlay();
         expect(screen.getByText("Peak")).toBeInTheDocument();
         expect(screen.getByText("Off-Peak")).toBeInTheDocument();
     });
 
     it("calls onEditRule with correct index when Edit is clicked", () => {
         const handleEdit = vi.fn();
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={twoRules}
-                pagedRules={twoRules}
-                totalPages={1}
-                onEditRule={handleEdit}
-            />
-        );
-        // getAllByText guaranteed to return elements matching the mock render
-        fireEvent.click(screen.getAllByText("Edit")[0]!);
+        render(<PricingRulesView {...defaultProps} rules={twoRules} onEditRule={handleEdit} />);
+        expandRegularPlay();
+        fireEvent.click(screen.getAllByLabelText("Edit rule")[0]!);
         expect(handleEdit).toHaveBeenCalledWith(0);
     });
 
     it("calls onDeleteRule with correct index when Delete is clicked", () => {
         const handleDelete = vi.fn();
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={twoRules}
-                pagedRules={twoRules}
-                totalPages={1}
-                onDeleteRule={handleDelete}
-            />
-        );
-        // getAllByText guaranteed to return elements matching the mock render
-        fireEvent.click(screen.getAllByText("Delete")[0]!);
+        render(<PricingRulesView {...defaultProps} rules={twoRules} onDeleteRule={handleDelete} />);
+        expandRegularPlay();
+        fireEvent.click(screen.getAllByLabelText("Delete rule")[0]!);
         expect(handleDelete).toHaveBeenCalledWith(0);
     });
 
@@ -155,26 +117,19 @@ describe("PricingRulesView — with rules", () => {
         render(
             <PricingRulesView
                 {...defaultProps}
-                rules={[baseRule, { ...baseRule, label: "Saturday Peak", day_of_week: 5 }]}
-                pagedRules={[baseRule, { ...baseRule, label: "Saturday Peak", day_of_week: 5 }]}
-                totalPages={1}
+                rules={[baseRule, { ...baseRule, day_of_week: 5 }]}
             />
         );
-        expect(screen.getByText("Peak")).toBeInTheDocument();
-        expect(screen.queryByText("Saturday Peak")).not.toBeInTheDocument();
+        // Only the Monday rule's group is shown; Saturday rule is filtered out.
+        expect(screen.getByText("Regular Play")).toBeInTheDocument();
+        expandRegularPlay();
+        expect(screen.getAllByText("Peak")).toHaveLength(1);
     });
 });
 
 describe("PricingRulesView — day tabs", () => {
     it("renders all day tabs", () => {
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={[baseRule]}
-                pagedRules={[baseRule]}
-                totalPages={1}
-            />
-        );
+        render(<PricingRulesView {...defaultProps} rules={[baseRule]} />);
         expect(screen.getByText("Monday")).toBeInTheDocument();
         expect(screen.getByText("Sunday")).toBeInTheDocument();
     });
@@ -182,29 +137,22 @@ describe("PricingRulesView — day tabs", () => {
     it("calls onDayChange when a day is clicked", () => {
         const handleDayChange = vi.fn();
         render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={[baseRule]}
-                pagedRules={[baseRule]}
-                totalPages={1}
-                onDayChange={handleDayChange}
-            />
+            <PricingRulesView {...defaultProps} rules={[baseRule]} onDayChange={handleDayChange} />
         );
         fireEvent.click(screen.getByText("Sunday"));
         expect(handleDayChange).toHaveBeenCalledWith(6);
     });
 
     it("shows an empty message for the selected day when it has no rules", () => {
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={[baseRule]}
-                pagedRules={[baseRule]}
-                selectedDay={6}
-                totalPages={1}
-            />
-        );
+        render(<PricingRulesView {...defaultProps} rules={[baseRule]} selectedDay={6} />);
         expect(screen.getByText("No rules for Sunday.")).toBeInTheDocument();
+    });
+});
+
+describe("PricingRulesView — coverage", () => {
+    it("renders timeline when rules are present", () => {
+        render(<PricingRulesView {...defaultProps} rules={[baseRule]} />);
+        expect(screen.getByText("Regular Play")).toBeInTheDocument();
     });
 });
 
@@ -227,15 +175,7 @@ describe("PricingRulesView — toasts", () => {
 
 describe("PricingRulesView — delete modal", () => {
     it("renders delete modal when deleteIndex is set", () => {
-        render(
-            <PricingRulesView
-                {...defaultProps}
-                rules={[baseRule]}
-                pagedRules={[baseRule]}
-                totalPages={1}
-                deleteIndex={0}
-            />
-        );
+        render(<PricingRulesView {...defaultProps} rules={[baseRule]} deleteIndex={0} />);
         expect(screen.getByRole("dialog")).toBeInTheDocument();
     });
 
@@ -245,8 +185,6 @@ describe("PricingRulesView — delete modal", () => {
             <PricingRulesView
                 {...defaultProps}
                 rules={[baseRule]}
-                pagedRules={[baseRule]}
-                totalPages={1}
                 deleteIndex={0}
                 onDeleteConfirmed={handleConfirm}
             />
@@ -261,8 +199,6 @@ describe("PricingRulesView — delete modal", () => {
             <PricingRulesView
                 {...defaultProps}
                 rules={[baseRule]}
-                pagedRules={[baseRule]}
-                totalPages={1}
                 deleteIndex={0}
                 onDeleteCancel={handleCancel}
             />
