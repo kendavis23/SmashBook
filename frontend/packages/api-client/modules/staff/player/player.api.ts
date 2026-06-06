@@ -19,13 +19,17 @@ export function invitePlayerEndpoint(data: PlayerInviteRequest): Promise<PlayerI
 
 export function updateSkillLevelEndpoint(
     playerId: string,
+    clubId: string,
     data: SkillLevelUpdate
 ): Promise<SkillLevelUpdateResponse> {
-    return fetcher<SkillLevelUpdateResponse>(`/api/v1/players/${playerId}/skill-level`, {
-        method: "PATCH",
-        headers: JSON_HEADERS,
-        body: JSON.stringify(data),
-    });
+    return fetcher<SkillLevelUpdateResponse>(
+        `/api/v1/players/${playerId}/skill-level?club_id=${clubId}`,
+        {
+            method: "PATCH",
+            headers: JSON_HEADERS,
+            body: JSON.stringify(data),
+        }
+    );
 }
 
 export function getSkillHistoryEndpoint(playerId: string): Promise<SkillLevelHistoryItem[]> {

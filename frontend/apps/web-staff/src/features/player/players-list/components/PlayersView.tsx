@@ -14,11 +14,13 @@ type Props = {
 
 function UpdateSkillDialog({
     playerId,
+    clubId,
     playerName,
     onUpdated,
     onClose,
 }: {
     playerId: string;
+    clubId: string;
     playerName: string;
     onUpdated: (skillLevel: number) => void;
     onClose: () => void;
@@ -26,7 +28,7 @@ function UpdateSkillDialog({
     const [newLevel, setNewLevel] = useState("");
     const [reason, setReason] = useState("");
     const [levelError, setLevelError] = useState("");
-    const updateSkill = useUpdateSkillLevel(playerId);
+    const updateSkill = useUpdateSkillLevel(playerId, clubId);
 
     const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
@@ -190,6 +192,7 @@ export default function PlayersView({ clubId }: Props): JSX.Element {
             {updatePlayer ? (
                 <UpdateSkillDialog
                     playerId={updatePlayer.id}
+                    clubId={clubId ?? ""}
                     playerName={updatePlayer.full_name}
                     onUpdated={(skillLevel) => {
                         setSelectedPlayer((player) =>

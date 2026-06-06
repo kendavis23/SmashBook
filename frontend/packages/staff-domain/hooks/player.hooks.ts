@@ -31,10 +31,11 @@ export function useInviteNewPlayer() {
     });
 }
 
-export function useUpdateSkillLevel(playerId: string) {
+export function useUpdateSkillLevel(playerId: string, clubId: string) {
     const queryClient = useQueryClient();
     return useMutation<SkillLevelUpdateResult, Error, SkillLevelUpdateInput>({
-        mutationFn: (data: SkillLevelUpdateInput) => updateSkillLevelEndpoint(playerId, data),
+        mutationFn: (data: SkillLevelUpdateInput) =>
+            updateSkillLevelEndpoint(playerId, clubId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: playerKeys.skillHistory(playerId) });
             queryClient.invalidateQueries({ queryKey: ["players", "search"] });
