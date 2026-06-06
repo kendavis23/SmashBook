@@ -9,4 +9,5 @@ export {
     useListTrainers,
     useListAvailableTrainers,
     useSearchPlayers,
+    useGetPriceQuote,
 } from "@repo/player-domain/hooks";

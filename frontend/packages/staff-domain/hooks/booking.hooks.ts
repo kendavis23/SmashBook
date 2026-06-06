@@ -12,6 +12,7 @@ import {
     getBookingEndpoint,
     cancelBookingEndpoint,
     invitePlayerEndpoint,
+    getPriceQuoteEndpoint,
 } from "@repo/api-client/modules/share";
 import type {
     Booking,
@@ -25,6 +26,8 @@ import type {
     InvitePlayerInput,
     RecurringBookingInput,
     RecurringBookingResult,
+    PriceQuoteFilters,
+    PriceQuote,
 } from "../models";
 
 // ---------------------------------------------------------------------------
@@ -40,6 +43,7 @@ const bookingKeys = {
         ["bookings-calendar", clubId, filters] as const,
     openGames: (clubId: string, filters: OpenGameFilters) =>
         ["open-games", clubId, filters] as const,
+    priceQuote: (filters: PriceQuoteFilters) => ["booking-price-quote", filters] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -157,6 +161,19 @@ export function useCancelBooking(clubId: string) {
             queryClient.invalidateQueries({ queryKey: bookingKeys.detail(bookingId) });
             queryClient.invalidateQueries({ queryKey: bookingKeys.all(clubId) });
         },
+    });
+}
+
+// ---------------------------------------------------------------------------
+// useGetPriceQuote — GET /api/v1/bookings/price-quote
+// ---------------------------------------------------------------------------
+
+export function useGetPriceQuote(filters: PriceQuoteFilters) {
+    return useQuery({
+        queryKey: bookingKeys.priceQuote(filters),
+        queryFn: (): Promise<PriceQuote> => getPriceQuoteEndpoint(filters),
+        enabled: Boolean(filters.club_id) && Boolean(filters.start_datetime),
+        staleTime: Infinity,
     });
 }
 

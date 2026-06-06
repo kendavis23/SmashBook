@@ -119,6 +119,9 @@ export type {
     RecurringBookingInput,
     RecurringBookingSkipped,
     RecurringBookingResult,
+    DiscountSource,
+    PriceQuoteFilters,
+    PriceQuote,
 } from "./booking.model";
 export type {
     PlayerSort,

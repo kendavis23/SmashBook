@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NewBookingContainer from "./NewBookingContainer";
 
 const mockNavigate = vi.fn();
@@ -56,6 +56,9 @@ vi.mock("../../hooks", () => ({
         data: availabilityFixture,
         isLoading: false,
         refetch: mockRefetchSlots,
+    })),
+    useGetPriceQuote: vi.fn(() => ({
+        data: { base_price: 24 },
     })),
     useListAvailableTrainers: vi.fn(() => ({
         data: trainersFixture,
@@ -205,6 +208,8 @@ const bookingFixture = {
     created_at: "2026-05-19T10:00:00Z",
     players: [],
 };
+
+afterEach(cleanup);
 
 describe("NewBookingContainer", () => {
     beforeEach(() => {

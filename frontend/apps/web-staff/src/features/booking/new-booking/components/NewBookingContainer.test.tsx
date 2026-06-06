@@ -1,6 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NewBookingContainer from "./NewBookingContainer";
 
 const mockNavigate = vi.fn();
@@ -66,6 +66,7 @@ vi.mock("../../hooks", () => ({
     useCreateRecurringBooking: vi.fn(),
     useListCourts: vi.fn(),
     useGetCourtAvailability: vi.fn(),
+    useGetPriceQuote: vi.fn(),
     useListAvailableTrainers: vi.fn(),
 }));
 
@@ -170,6 +171,7 @@ import {
     useCreateBooking,
     useCreateRecurringBooking,
     useGetCourtAvailability,
+    useGetPriceQuote,
     useListCourts,
     useListAvailableTrainers,
 } from "../../hooks";
@@ -179,6 +181,7 @@ const mockUseCreateBooking = useCreateBooking as ReturnType<typeof vi.fn>;
 const mockUseCreateRecurringBooking = useCreateRecurringBooking as ReturnType<typeof vi.fn>;
 const mockUseListCourts = useListCourts as ReturnType<typeof vi.fn>;
 const mockUseGetCourtAvailability = useGetCourtAvailability as ReturnType<typeof vi.fn>;
+const mockUseGetPriceQuote = useGetPriceQuote as ReturnType<typeof vi.fn>;
 const mockUseListAvailableTrainers = useListAvailableTrainers as ReturnType<typeof vi.fn>;
 const mockUseClubAccess = useClubAccess as ReturnType<typeof vi.fn>;
 
@@ -203,6 +206,9 @@ function setupMocks(overrides?: {
         },
         isLoading: false,
     });
+    mockUseGetPriceQuote.mockReturnValue({
+        data: { base_price: 20 },
+    });
     mockUseCreateBooking.mockReturnValue({
         mutate: mockMutate,
         reset: mockReset,
@@ -216,6 +222,8 @@ function setupMocks(overrides?: {
         error: overrides?.recurringError ?? null,
     });
 }
+
+afterEach(cleanup);
 
 describe("NewBookingContainer", () => {
     beforeEach(() => {

@@ -13,4 +13,5 @@ export {
     useGetCourtAvailability,
     useListTrainers,
     useListAvailableTrainers,
+    useGetPriceQuote,
 } from "@repo/staff-domain/hooks";
