@@ -725,6 +725,29 @@ class TestFilters:
         finally:
             await _cleanup_operating_hours([oh.id], test_session_factory)
 
+    async def test_from_time_filters_without_reanchoring_grid(
+        self, client, staff_headers, player_headers, club, test_session_factory
+    ):
+        # Regression: a from_time that falls *between* grid slots must not shift
+        # the slot grid. The grid stays anchored at open_time (07:00, 90 min →
+        # 07:00, 08:30, 10:00); from_time="08:00" should drop the 07:00 slot and
+        # surface the next aligned slot (08:30), NOT re-anchor the grid to 08:00.
+        await _make_court(client, staff_headers, club, name="C1")
+        await _set_club_booking_window(club.id, test_session_factory)
+        oh = await _seed_operating_hours(club.id, test_session_factory, 0,
+                                          open_time="07:00", close_time="11:30")
+        try:
+            resp = await client.get(
+                f"/api/v1/clubs/{club.id}/availability",
+                params={"start_date": MON, "end_date": MON, "from_time": "08:00"},
+                headers=player_headers,
+            )
+            assert resp.status_code == 200
+            slots = resp.json()["days"][0]["slots"]
+            assert [s["start_time"] for s in slots] == ["08:30", "10:00"]
+        finally:
+            await _cleanup_operating_hours([oh.id], test_session_factory)
+
     async def test_surface_filter_restricts_courts(
         self, client, staff_headers, player_headers, club, test_session_factory
     ):

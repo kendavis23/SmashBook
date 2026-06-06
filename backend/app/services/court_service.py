@@ -7,6 +7,7 @@ Responsibilities:
   - Set operating hours and pricing rules
   - Recurring booking creation (leagues, coaching sessions)
 """
+import math
 import uuid
 from datetime import date as DateType, datetime, time as TimeType, timedelta, timezone
 from decimal import Decimal
@@ -525,10 +526,15 @@ class CourtService:
             # booking/reservation instants and notice/advance cutoffs.
             window_open = local_walltime_to_utc(current, oh.open_time, tz)
             window_close = local_walltime_to_utc(current, oh.close_time, tz)
+            # `from_time` is a filter, not a new grid anchor: the slot grid stays
+            # aligned to the club's open_time so slot boundaries don't shift with
+            # the search start. We advance to the first grid-aligned slot at or
+            # after `from_time` below, rather than re-anchoring the grid here.
+            earliest_start = window_open
             if from_time is not None:
                 clamp_open = local_walltime_to_utc(current, from_time, tz)
-                if clamp_open > window_open:
-                    window_open = clamp_open
+                if clamp_open > earliest_start:
+                    earliest_start = clamp_open
             if to_time is not None:
                 clamp_close = local_walltime_to_utc(current, to_time, tz)
                 if clamp_close < window_close:
@@ -540,7 +546,12 @@ class CourtService:
             day_rules = pricing_by_dow.get(dow, [])
             day_slots: list[dict] = []
 
+            # Grid is anchored at window_open; skip ahead to the first aligned
+            # slot whose start is at or after `from_time`.
             slot_start = window_open
+            if earliest_start > slot_start:
+                steps = math.ceil((earliest_start - slot_start) / slot_duration)
+                slot_start = slot_start + steps * slot_duration
             while slot_start + slot_duration <= window_close and not cursor_set:
                 slot_end = slot_start + slot_duration
 
