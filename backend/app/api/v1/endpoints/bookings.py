@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
-from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
+from app.core.timezones import club_tz, ensure_utc, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import Booking, BookingPlayer, InviteStatus
 from app.db.models.club import Club
 from app.db.models.court import CalendarReservation
@@ -37,7 +37,7 @@ from app.schemas.booking import (
     RecurringBookingResponse,
     RecurringBookingSkipped,
 )
-from app.schemas.common import UtcDatetime
+from app.schemas.common import ClubLocalDatetime
 from app.schemas.equipment import EquipmentRentalRequest, EquipmentRentalResponse
 from app.services.booking_service import BookingService
 from app.services.court_service import CourtService
@@ -179,13 +179,16 @@ async def create_booking(
     - Private booking (is_open_game=False, player_user_ids): reserved court; invite-only for remaining slots
     """
     svc = BookingService(db)
+    # Resolve the club tz up front: a naive (offset-less) start_datetime is
+    # interpreted as club-local wall-clock, then normalized to UTC for storage.
+    tz = await _resolve_club_tz(db, body.club_id)
     booking = await svc.create_booking(
         tenant_id=tenant.id,
         requesting_user=current_user,
         club_id=body.club_id,
         court_id=body.court_id,
         booking_type=body.booking_type,
-        start_datetime=body.start_datetime,
+        start_datetime=ensure_utc(body.start_datetime, tz),
         is_open_game=body.is_open_game,
         max_players=body.max_players,
         player_user_ids=body.player_user_ids,
@@ -200,7 +203,6 @@ async def create_booking(
         staff_profile_id=body.staff_profile_id,
         on_behalf_of_user_id=body.on_behalf_of_user_id,
     )
-    tz = await _resolve_club_tz(db, body.club_id)
     return _build_booking_response(booking, tz)
 
 
@@ -223,12 +225,15 @@ async def create_recurring_booking(
     - skip_conflicts=true silently skips conflicted slots instead of returning 409.
     """
     svc = CourtService(db)
+    # Resolve the club tz up front: a naive first_start is interpreted as
+    # club-local wall-clock, then normalized to UTC for storage.
+    tz = await _resolve_club_tz(db, body.club_id)
     result = await svc.create_recurring_booking(
         tenant_id=tenant.id,
         club_id=body.club_id,
         court_id=body.court_id,
         booking_type=body.booking_type,
-        first_start=body.first_start,
+        first_start=ensure_utc(body.first_start, tz),
         recurrence_rule=body.recurrence_rule,
         recurrence_end_date=body.recurrence_end_date,
         created_by_user=current_user,
@@ -243,7 +248,6 @@ async def create_recurring_booking(
         skip_conflicts=body.skip_conflicts,
     )
 
-    tz = await _resolve_club_tz(db, body.club_id)
     created_responses = [
         _build_booking_response(b, tz) for b in result["created"]
     ]
@@ -257,8 +261,8 @@ async def create_recurring_booking(
 @router.get("", response_model=list[BookingResponse])
 async def list_bookings(
     club_id: uuid.UUID = Query(...),
-    date_from: Optional[UtcDatetime] = None,
-    date_to: Optional[UtcDatetime] = None,
+    date_from: Optional[ClubLocalDatetime] = None,
+    date_to: Optional[ClubLocalDatetime] = None,
     booking_type: Optional[str] = None,
     booking_status: Optional[str] = None,
     court_id: Optional[uuid.UUID] = None,
@@ -269,18 +273,19 @@ async def list_bookings(
 ):
     """List bookings. Staff see all for the club; players see only their own."""
     svc = BookingService(db)
+    # Naive filter bounds are club-local wall-clock → normalize to UTC.
+    tz = await _resolve_club_tz(db, club_id)
     bookings = await svc.list_bookings(
         club_id=club_id,
         tenant_id=tenant.id,
         requesting_user=current_user,
-        date_from=date_from,
-        date_to=date_to,
+        date_from=ensure_utc(date_from, tz) if date_from else None,
+        date_to=ensure_utc(date_to, tz) if date_to else None,
         booking_type=booking_type,
         booking_status=booking_status,
         court_id=court_id,
         player_search=player_search,
     )
-    tz = await _resolve_club_tz(db, club_id)
     return [_build_booking_response(b, tz) for b in bookings]
 
 
@@ -611,19 +616,20 @@ async def update_booking(
     Cannot edit cancelled or completed bookings.
     """
     svc = BookingService(db)
+    # Naive start_datetime is club-local wall-clock → normalize to UTC.
+    tz = await _resolve_club_tz(db, club_id)
     booking = await svc.update_booking(
         booking_id=booking_id,
         club_id=club_id,
         tenant_id=tenant.id,
         court_id=body.court_id,
-        start_datetime=body.start_datetime,
+        start_datetime=ensure_utc(body.start_datetime, tz) if body.start_datetime else None,
         notes=body.notes,
         event_name=body.event_name,
         contact_name=body.contact_name,
         contact_email=body.contact_email,
         contact_phone=body.contact_phone,
     )
-    tz = await _resolve_club_tz(db, club_id)
     return _build_booking_response(booking, tz)
 
 

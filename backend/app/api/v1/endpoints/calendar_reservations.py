@@ -8,14 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies.auth import require_staff
 from app.api.v1.dependencies.tenant import get_tenant
-from app.core.timezones import club_tz, utc_to_local
+from app.core.timezones import club_tz, ensure_utc, utc_to_local
 from app.db.models.booking import Booking, BookingStatus
 from app.db.models.club import Club
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.db.session import get_db, get_read_db
-from app.schemas.common import UtcDatetime
+from app.schemas.common import ClubLocalDatetime
 from app.schemas.court import (
     CalendarReservationCreate,
     CalendarReservationResponse,
@@ -124,6 +124,10 @@ async def create_reservation(
 ):
     """Staff: create a calendar reservation (maintenance block, skill filter, training block, etc)."""
     club = await _get_club(db, body.club_id, tenant)
+    tz = club_tz(club)
+    # Naive (offset-less) bounds are club-local wall-clock → normalize to UTC.
+    start_utc = ensure_utc(body.start_datetime, tz)
+    end_utc = ensure_utc(body.end_datetime, tz)
 
     if body.court_id is not None:
         court_result = await db.execute(
@@ -131,16 +135,16 @@ async def create_reservation(
         )
         if not court_result.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Court not found in this club")
-        await _check_no_reservation_conflict(db, body.court_id, body.start_datetime, body.end_datetime)
-        await _check_no_booking_conflict(db, body.court_id, body.start_datetime, body.end_datetime)
+        await _check_no_reservation_conflict(db, body.court_id, start_utc, end_utc)
+        await _check_no_booking_conflict(db, body.court_id, start_utc, end_utc)
 
     reservation = CalendarReservation(
         club_id=body.club_id,
         court_id=body.court_id,
         reservation_type=body.reservation_type,
         title=body.title,
-        start_datetime=body.start_datetime,
-        end_datetime=body.end_datetime,
+        start_datetime=start_utc,
+        end_datetime=end_utc,
         allowed_booking_types=body.allowed_booking_types,
         is_recurring=body.is_recurring,
         recurrence_rule=body.recurrence_rule,
@@ -149,7 +153,7 @@ async def create_reservation(
     )
     db.add(reservation)
     await db.flush()
-    return _to_response(reservation, club_tz(club))
+    return _to_response(reservation, tz)
 
 
 @router.get("", response_model=list[CalendarReservationResponse])
@@ -157,13 +161,14 @@ async def list_reservations(
     club_id: uuid.UUID = Query(...),
     reservation_type: Optional[CalendarReservationType] = None,
     court_id: Optional[uuid.UUID] = None,
-    from_dt: Optional[UtcDatetime] = None,
-    to_dt: Optional[UtcDatetime] = None,
+    from_dt: Optional[ClubLocalDatetime] = None,
+    to_dt: Optional[ClubLocalDatetime] = None,
     tenant: Tenant = Depends(get_tenant),
     db=Depends(get_read_db),
 ):
     """Staff: list calendar reservations for a club, with optional filters."""
     club = await _get_club(db, club_id, tenant)
+    tz = club_tz(club)
 
     stmt = select(CalendarReservation).where(CalendarReservation.club_id == club_id)
 
@@ -171,14 +176,14 @@ async def list_reservations(
         stmt = stmt.where(CalendarReservation.reservation_type == reservation_type)
     if court_id is not None:
         stmt = stmt.where(CalendarReservation.court_id == court_id)
+    # Naive filter bounds are club-local wall-clock → normalize to UTC.
     if from_dt is not None:
-        stmt = stmt.where(CalendarReservation.end_datetime > from_dt)
+        stmt = stmt.where(CalendarReservation.end_datetime > ensure_utc(from_dt, tz))
     if to_dt is not None:
-        stmt = stmt.where(CalendarReservation.start_datetime < to_dt)
+        stmt = stmt.where(CalendarReservation.start_datetime < ensure_utc(to_dt, tz))
 
     stmt = stmt.order_by(CalendarReservation.start_datetime)
     result = await db.execute(stmt)
-    tz = club_tz(club)
     return [_to_response(r, tz) for r in result.scalars().all()]
 
 
@@ -204,8 +209,16 @@ async def update_reservation(
 ):
     """Staff: update a calendar reservation."""
     reservation = await _get_reservation(db, reservation_id, tenant)
+    club = await _get_club(db, reservation.club_id, tenant)
+    tz = club_tz(club)
 
     updates = body.model_dump(exclude_none=True)
+
+    # Naive (offset-less) bounds are club-local wall-clock → normalize to UTC
+    # so they compare correctly against the stored UTC instants below.
+    for _bound in ("start_datetime", "end_datetime"):
+        if _bound in updates:
+            updates[_bound] = ensure_utc(updates[_bound], tz)
 
     if "court_id" in updates:
         court_result = await db.execute(
@@ -241,8 +254,7 @@ async def update_reservation(
 
     await db.flush()
     await db.refresh(reservation)
-    club = await _get_club(db, reservation.club_id, tenant)
-    return _to_response(reservation, club_tz(club))
+    return _to_response(reservation, tz)
 
 
 @router.delete("/{reservation_id}", status_code=status.HTTP_204_NO_CONTENT)

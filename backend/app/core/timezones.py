@@ -32,3 +32,21 @@ def local_walltime_to_utc(d: DateType, t: TimeType, tz: ZoneInfo) -> datetime:
 def utc_to_local(dt: datetime, tz: ZoneInfo) -> datetime:
     """Convert a true-UTC (tz-aware) datetime into club-local time."""
     return dt.astimezone(tz)
+
+
+def ensure_utc(dt: datetime, tz: ZoneInfo) -> datetime:
+    """Normalize an incoming datetime to a true-UTC instant.
+
+    Naive (offset-less) values are interpreted as club-local wall-clock in
+    ``tz``; offset-aware values are converted from their own offset. This is
+    the parse-in counterpart to :func:`utc_to_local` for club-scoped inputs —
+    it lets the frontend send a plain wall-clock time and have the backend
+    resolve it in the club's zone.
+
+    DST-correct: ``replace(tzinfo=tz)`` lets ``ZoneInfo`` compute the right
+    offset for that wall-clock date (e.g. 09:00 Madrid is 08:00Z in winter,
+    07:00Z in summer).
+    """
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=tz)
+    return dt.astimezone(timezone.utc)

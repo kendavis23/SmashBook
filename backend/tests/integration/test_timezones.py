@@ -9,7 +9,9 @@ club is pinned to UTC in conftest), proving:
   instants are stored as true UTC,
 - the slot grid + operating-hours validation are anchored to club-local time
   and DST-correct,
-- naive (offset-less) datetimes are rejected at the schema layer (422).
+- naive (offset-less) datetimes are accepted and interpreted as club-local
+  wall-clock (DST-correct), while offset-bearing values are still honored,
+- non-club-scoped inputs (billing anchors) coerce naive values to UTC.
 """
 
 from datetime import date, datetime, time, timedelta, timezone
@@ -219,18 +221,72 @@ class TestAvailabilityTimezone:
 
 
 class TestBookingCreateTimezone:
-    async def test_naive_datetime_rejected(
+    async def _stored_start(self, court_id, session_factory):
+        async with session_factory() as session:
+            return (
+                await session.execute(
+                    select(Booking.start_datetime).where(Booking.court_id == court_id)
+                )
+            ).scalar_one()
+
+    async def test_naive_datetime_interpreted_as_club_local_winter(
         self, client, player_headers, club, test_session_factory
     ):
-        """A start_datetime without an offset must be rejected at the schema
-        layer (422), not silently treated as UTC."""
+        """A naive start_datetime is interpreted as club-local wall-clock, not
+        rejected: 09:00 at a Madrid club in winter (CET) stores 08:00Z."""
+        await _configure_club(club.id, test_session_factory, MADRID)
         court = await _seed_court(club.id, test_session_factory)
+        await _seed_oh(club.id, test_session_factory, WINTER_DATE.weekday(), time(9, 0), time(21, 0))
+        await _seed_all_day_pricing(club.id, test_session_factory, WINTER_DATE.weekday())
+
         resp = await client.post(
             "/api/v1/bookings",
             json=_booking_payload(club.id, court.id, "2030-01-07T09:00:00"),  # naive
             headers=player_headers,
         )
-        assert resp.status_code == 422, resp.text
+        assert resp.status_code == 201, resp.text
+        stored = await self._stored_start(court.id, test_session_factory)
+        assert stored.astimezone(timezone.utc) == datetime(2030, 1, 7, 8, 0, tzinfo=timezone.utc)
+
+    async def test_naive_datetime_interpreted_as_club_local_summer(
+        self, client, player_headers, club, test_session_factory
+    ):
+        """DST-correct: a naive 09:00 at a Madrid club in summer (CEST) stores
+        07:00Z, proving the offset is resolved from the wall-clock date."""
+        await _configure_club(club.id, test_session_factory, MADRID)
+        court = await _seed_court(club.id, test_session_factory)
+        await _seed_oh(club.id, test_session_factory, SUMMER_DATE.weekday(), time(9, 0), time(21, 0))
+        await _seed_all_day_pricing(club.id, test_session_factory, SUMMER_DATE.weekday())
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court.id, "2030-07-01T09:00:00"),  # naive
+            headers=player_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        stored = await self._stored_start(court.id, test_session_factory)
+        assert stored.astimezone(timezone.utc) == datetime(2030, 7, 1, 7, 0, tzinfo=timezone.utc)
+
+    async def test_offset_bearing_datetime_honored_not_relocalized(
+        self, client, player_headers, club, test_session_factory
+    ):
+        """Hybrid: an explicit offset is honored as-is (converted from its own
+        offset), never reinterpreted in the club's zone. 09:30+09:00 == 00:30Z
+        (01:30 Madrid CET), regardless of the club being Madrid."""
+        await _configure_club(club.id, test_session_factory, MADRID)
+        court = await _seed_court(club.id, test_session_factory)
+        # Open from 00:00 local so 01:30 Madrid is on a 90-min slot boundary.
+        await _seed_oh(club.id, test_session_factory, WINTER_DATE.weekday(), time(0, 0), time(23, 59))
+        await _seed_all_day_pricing(club.id, test_session_factory, WINTER_DATE.weekday())
+
+        resp = await client.post(
+            "/api/v1/bookings",
+            json=_booking_payload(club.id, court.id, "2030-01-07T09:30:00+09:00"),
+            headers=player_headers,
+        )
+        assert resp.status_code == 201, resp.text
+        stored = await self._stored_start(court.id, test_session_factory)
+        assert stored.astimezone(timezone.utc) == datetime(2030, 1, 7, 0, 30, tzinfo=timezone.utc)
 
     async def test_within_local_hours_succeeds(
         self, client, player_headers, club, test_session_factory
@@ -367,3 +423,26 @@ class TestBookingResponseTimezone:
         )
         assert detail_resp.status_code == 200, detail_resp.text
         assert datetime.fromisoformat(detail_resp.json()["start_datetime"]).hour == 8
+
+
+# ---------------------------------------------------------------------------
+# Non-club-scoped parse-in: billing anchors coerce naive -> UTC (no club zone)
+# ---------------------------------------------------------------------------
+
+
+class TestNonClubScopedParseIn:
+    """`subscription_start_date` has no single club zone, so naive values are
+    treated as UTC (UtcCoercedDatetime) rather than rejected or localized."""
+
+    def test_naive_subscription_start_date_stamped_utc(self):
+        from app.schemas.admin import TenantUpdate
+
+        parsed = TenantUpdate(subscription_start_date="2026-06-01T00:00:00")
+        assert parsed.subscription_start_date == datetime(2026, 6, 1, 0, 0, tzinfo=timezone.utc)
+
+    def test_offset_subscription_start_date_converted_to_utc(self):
+        from app.schemas.admin import TenantUpdate
+
+        # +02:00 → 22:00Z the previous day; offset honored, then normalized.
+        parsed = TenantUpdate(subscription_start_date="2026-06-01T00:00:00+02:00")
+        assert parsed.subscription_start_date == datetime(2026, 5, 31, 22, 0, tzinfo=timezone.utc)

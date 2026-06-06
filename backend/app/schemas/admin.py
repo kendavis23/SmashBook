@@ -13,6 +13,7 @@ from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 
 from app.db.models.tenant import SubscriptionStatus
+from app.schemas.common import UtcCoercedDatetime
 from app.schemas.onboarding import _validate_subdomain
 
 
@@ -132,7 +133,7 @@ class TenantUpdate(BaseModel):
     staff_subdomain: Optional[str] = None
     custom_domain: Optional[str] = None
     is_active: Optional[bool] = None
-    subscription_start_date: Optional[datetime] = None
+    subscription_start_date: Optional[UtcCoercedDatetime] = None
     owner_email: Optional[EmailStr] = None
     owner_full_name: Optional[str] = None
 

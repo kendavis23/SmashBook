@@ -1,9 +1,10 @@
 import re
 import uuid
-from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
+
+from app.schemas.common import UtcCoercedDatetime
 
 
 _SUBDOMAIN_RE = re.compile(r"^[a-z0-9]([a-z0-9\-]{0,98}[a-z0-9])?$")
@@ -38,7 +39,7 @@ class TenantOnboardRequest(BaseModel):
     # Hosts the staff portal: <staff_subdomain>.smashbook.app
     staff_subdomain: str
     plan_id: uuid.UUID
-    subscription_start_date: Optional[datetime] = None
+    subscription_start_date: Optional[UtcCoercedDatetime] = None
     clubs: List[ClubCreate]
     owner: OwnerCreate
 
