@@ -12,6 +12,7 @@ from app.db.models.booking import Booking, BookingStatus
 from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.tenant import SubscriptionPlan, Tenant
+from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
 from app.db.session import get_db, get_read_db
 from app.schemas.court import (
     CourtAvailabilityResponse,
@@ -25,12 +26,18 @@ router = APIRouter(prefix="/courts", tags=["courts"])
 
 
 def _generate_slots(
-    open_time, close_time, duration_minutes: int, query_date: DateType
+    open_time, close_time, duration_minutes: int, query_date: DateType, tz
 ) -> list[tuple[datetime, datetime]]:
+    """Build UTC slot pairs from club-local operating hours.
+
+    ``open_time``/``close_time`` are club-local wall-clock; they are interpreted
+    in the club's zone (``tz``) and converted to true UTC so the returned pairs
+    compare directly against stored booking instants.
+    """
     slots = []
     delta = timedelta(minutes=duration_minutes)
-    current = datetime.combine(query_date, open_time, tzinfo=timezone.utc)
-    day_end = datetime.combine(query_date, close_time, tzinfo=timezone.utc)
+    current = local_walltime_to_utc(query_date, open_time, tz)
+    day_end = local_walltime_to_utc(query_date, close_time, tz)
     while current + delta <= day_end:
         slots.append((current, current + delta))
         current += delta
@@ -69,8 +76,9 @@ async def list_courts(
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 detail="Invalid date or time format. Use YYYY-MM-DD and HH:MM")
 
-        window_start = datetime.combine(parsed_date, parsed_from, tzinfo=timezone.utc)
-        window_end = datetime.combine(parsed_date, parsed_to, tzinfo=timezone.utc)
+        tz = club_tz(club)
+        window_start = local_walltime_to_utc(parsed_date, parsed_from, tz)
+        window_end = local_walltime_to_utc(parsed_date, parsed_to, tz)
 
         booked = await db.execute(
             select(Booking.court_id)
@@ -141,7 +149,8 @@ async def get_court_availability(
     # Prefer seasonal (non-null valid_from) over catch-all
     oh = next((h for h in oh_records if h.valid_from is not None), oh_records[0])
 
-    slot_pairs = _generate_slots(oh.open_time, oh.close_time, club.booking_duration_minutes, query_date)
+    tz = club_tz(club)
+    slot_pairs = _generate_slots(oh.open_time, oh.close_time, club.booking_duration_minutes, query_date, tz)
     if not slot_pairs:
         return CourtAvailabilityResponse(court_id=court.id, date=date, slots=[])
 
@@ -198,7 +207,11 @@ async def get_court_availability(
                 bl.start_datetime < slot_end and bl.end_datetime > slot_start for bl in reservation_blocks
             )
 
-        slot_time = slot_start.time()
+        # Render and price in club-local time: slot_start is true UTC, while the
+        # displayed time and pricing-rule windows are club-local wall-clock.
+        local_start = utc_to_local(slot_start, tz)
+        local_end = utc_to_local(slot_end, tz)
+        slot_time = local_start.time()
         price = None
         price_label = None
         for rule in pricing_rules:
@@ -214,8 +227,8 @@ async def get_court_availability(
                 break
 
         slots.append(TimeSlot(
-            start_time=slot_start.strftime("%H:%M"),
-            end_time=slot_end.strftime("%H:%M"),
+            start_time=local_start.strftime("%H:%M"),
+            end_time=local_end.strftime("%H:%M"),
             is_available=is_available,
             price=price,
             price_label=price_label,

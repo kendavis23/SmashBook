@@ -6,6 +6,7 @@ from typing import Optional
 from pydantic import BaseModel, model_validator
 
 from app.db.models.court import CalendarReservationType, SurfaceType
+from app.schemas.common import UtcDatetime
 
 
 class CourtCreate(BaseModel):
@@ -111,8 +112,8 @@ class CalendarReservationCreate(BaseModel):
     court_id: Optional[uuid.UUID] = None
     reservation_type: CalendarReservationType
     title: str
-    start_datetime: datetime
-    end_datetime: datetime
+    start_datetime: UtcDatetime
+    end_datetime: UtcDatetime
     allowed_booking_types: Optional[list[str]] = None
     is_recurring: bool = False
     recurrence_rule: Optional[str] = None
@@ -131,8 +132,8 @@ class CalendarReservationUpdate(BaseModel):
     court_id: Optional[uuid.UUID] = None
     reservation_type: Optional[CalendarReservationType] = None
     title: Optional[str] = None
-    start_datetime: Optional[datetime] = None
-    end_datetime: Optional[datetime] = None
+    start_datetime: Optional[UtcDatetime] = None
+    end_datetime: Optional[UtcDatetime] = None
     allowed_booking_types: Optional[list[str]] = None
     is_recurring: Optional[bool] = None
     recurrence_rule: Optional[str] = None

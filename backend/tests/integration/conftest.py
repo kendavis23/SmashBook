@@ -624,6 +624,11 @@ async def club(tenant, test_session_factory):
             name="Test Club HQ",
             address="1 Test Street",
             currency="GBP",
+            # Pin to UTC so tests that send fixed UTC datetimes against the club's
+            # operating-hours grid are deterministic year-round (local == UTC).
+            # Timezone-specific behaviour is covered explicitly in test_timezones.py
+            # with non-UTC clubs.
+            timezone="UTC",
         )
         session.add(c)
         await session.commit()

@@ -1,4 +1,4 @@
-_Last updated: 2026-05-23 00:00 UTC_
+_Last updated: 2026-06-06 12:00 UTC_
 
 # Analytics Query Patterns
 
@@ -55,6 +55,8 @@ GROUP BY b.club_id;
 
 Operational timestamps are stored in UTC. Reports group by the *club's* local day/week/month. The pattern:
 
+> This is now the **repo-wide** convention, not an analytics-only quirk: the operational booking/availability path also stores true UTC and resolves club-local time via `clubs.timezone` (through `app/core/timezones.py`). See the "Datetime & Timezone Convention" section in the root `CLAUDE.md`. Because both layers share the same assumption, analytics rollups and live availability agree on each booking's local day/hour.
+
 ```sql
 SELECT
   date_trunc('day', b.starts_at AT TIME ZONE c.timezone) AS local_day,
@@ -65,7 +67,7 @@ WHERE c.tenant_id = :tenant_id
 GROUP BY local_day;
 ```
 
-Tenant-wide reports that aggregate across clubs with different timezones either pick a canonical TZ (the tenant's HQ timezone, recorded on `tenants.timezone`) or report per-club rather than blending.
+Tenant-wide reports that aggregate across clubs with different timezones either pick a canonical TZ or report per-club rather than blending. Note: there is **no** `tenants.timezone` column yet — until one is added, prefer per-club reporting (or pick an explicit canonical zone in the query) for cross-club rollups.
 
 ## 5. Prefer rollups for cross-period comparisons
 

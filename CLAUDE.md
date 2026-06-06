@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-06-04_
+_Last updated: 2026-06-06_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -190,6 +190,19 @@ Dynamic pricing is the only **synchronous** AI call (blocks the booking request)
 ### Auth
 
 JWT dual-token pattern (access token 60 min, refresh token 30 days). Tokens carry `user_id`, `club_id`, `role`, and `tenant_id` claims. Role enforcement via `require_role()` FastAPI dependencies. Roles: `player`, `viewer`, `staff`, `trainer`, `ops_lead`, `admin`, `owner`.
+
+### Datetime & Timezone Convention
+
+**UTC everywhere on the wire and in storage; club-local is only ever a parse-in / render-out concern.** Follow this without exception — the two halves of the codebase used to disagree on what a stored `start_datetime` meant, and the operational booking/availability path silently treated club-local wall-clock time as UTC.
+
+- **Storage:** every datetime column is `DateTime(timezone=True)` → Postgres `timestamptz`, holding a **true UTC instant**. Never store a wall-clock time stamped as UTC.
+- **Wire / API:** datetimes are exchanged as UTC ISO-8601 with offset. Naive (offset-less) datetimes are **rejected at the schema layer** (`422`), not silently coerced.
+- **Server-generated `now()`:** always `datetime.now(tz=timezone.utc)` (never naive `datetime.utcnow()`).
+- **Conversion:** the *only* sanctioned local↔UTC conversion path is `app/core/timezones.py` (`club_tz`, `local_walltime_to_utc`, `utc_to_local`), resolving local time via the `clubs.timezone` IANA column. **Never** write `datetime.combine(d, t, tzinfo=timezone.utc)` for a club-local wall-clock value — build it in the club's zone and convert.
+- **Operating hours / availability:** `OperatingHours.open_time`/`close_time` and any user-supplied `HH:MM` are club-local wall-clock. Combine them with `club_tz(club)` and convert to UTC before comparing against stored booking instants.
+- **Canonical example:** `app/analytics/services/court_utilisation_service.py` already does this correctly (`b.start_datetime.astimezone(ZoneInfo(club.timezone))`). New code should match that pattern; the operational path was brought in line with it.
+
+`tenants.timezone` does **not** exist yet — only `clubs.timezone`. Don't reference a tenant-level zone until that column is added.
 
 ---
 

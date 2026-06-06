@@ -1,4 +1,4 @@
-_Last updated: 2026-06-04 11:48 UTC_
+_Last updated: 2026-06-06 12:00 UTC_
 
 # SmashBook — Architecture
 
@@ -296,6 +296,10 @@ Client → FastAPI route → dependency injection (auth, db session)
 ```
 
 AI features are triggered either synchronously (e.g. pricing lookup at booking time) or asynchronously via Pub/Sub events (e.g. post-match skill rating update).
+
+### Datetimes & timezones (UTC everywhere)
+
+All datetimes are stored as true UTC (`timestamptz`) and exchanged on the wire as UTC ISO-8601 with offset; naive datetimes are rejected at the schema layer. Club-local time (operating hours, user-supplied `HH:MM`, availability grids) is purely a parse-in / render-out concern, resolved against the `clubs.timezone` IANA column. The single sanctioned conversion point is `app/core/timezones.py` (`club_tz`, `local_walltime_to_utc`, `utc_to_local`); code must never stamp a wall-clock value as UTC. The analytics read path and the operational booking/availability path share this assumption, so rollups and live availability agree. See the "Datetime & Timezone Convention" section in `CLAUDE.md` for the full rule.
 
 ---
 

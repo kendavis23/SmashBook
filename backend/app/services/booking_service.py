@@ -29,6 +29,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.timezones import club_tz, local_walltime_to_utc
 from app.db.models.booking import (
     Booking,
     BookingPlayer,
@@ -136,9 +137,14 @@ class BookingService:
             detail="Club has no operating hours configured for this day",
         )
 
-    def _validate_grid_alignment(self, start: datetime, oh: OperatingHours, duration_minutes: int) -> None:
-        """Validate that start time falls on a slot boundary."""
-        open_dt = datetime.combine(start.date(), oh.open_time, tzinfo=timezone.utc)
+    def _validate_grid_alignment(self, start: datetime, oh: OperatingHours, duration_minutes: int, tz) -> None:
+        """Validate that start time falls on a slot boundary.
+
+        ``start`` is a true-UTC instant; ``oh.open_time`` is club-local wall-clock.
+        The opening anchor is built in the club's zone (``tz``) and converted to
+        UTC so the delta matches the contiguous UTC slot grid used for availability.
+        """
+        open_dt = local_walltime_to_utc(start.date(), oh.open_time, tz)
         delta_minutes = int((start - open_dt).total_seconds() // 60)
         if delta_minutes < 0 or delta_minutes % duration_minutes != 0:
             raise HTTPException(
@@ -146,9 +152,11 @@ class BookingService:
                 detail=f"Start time must align to a {duration_minutes}-minute slot boundary from the club's opening time",
             )
 
-    def _validate_window_in_hours(self, start: datetime, end: datetime, oh: OperatingHours, query_date) -> None:
-        open_dt = datetime.combine(query_date, oh.open_time, tzinfo=timezone.utc)
-        close_dt = datetime.combine(query_date, oh.close_time, tzinfo=timezone.utc)
+    def _validate_window_in_hours(self, start: datetime, end: datetime, oh: OperatingHours, query_date, tz) -> None:
+        # open/close are club-local wall-clock; convert to UTC to compare against
+        # the true-UTC booking instants.
+        open_dt = local_walltime_to_utc(query_date, oh.open_time, tz)
+        close_dt = local_walltime_to_utc(query_date, oh.close_time, tz)
         if start < open_dt or end > close_dt:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -346,11 +354,12 @@ class BookingService:
         oh = await self._get_operating_hours(club_id, start_datetime.date())
 
         # 4. Booking window within operating hours
-        self._validate_window_in_hours(start_datetime, end_datetime, oh, start_datetime.date())
+        tz = club_tz(club)
+        self._validate_window_in_hours(start_datetime, end_datetime, oh, start_datetime.date(), tz)
 
         # 5. Grid alignment (regular bookings only)
         if booking_type in _GRID_ENFORCED_TYPES:
-            self._validate_grid_alignment(start_datetime, oh, club.booking_duration_minutes)
+            self._validate_grid_alignment(start_datetime, oh, club.booking_duration_minutes, tz)
 
         # 5b. Past guard — a booking can never start in the past (applies to all
         # roles; the notice-window check below is staff-bypassed and would not catch it).
@@ -1166,9 +1175,10 @@ class BookingService:
 
             # Operating hours and grid alignment
             oh = await self._get_operating_hours(club_id, new_start.date())
-            self._validate_window_in_hours(new_start, new_end, oh, new_start.date())
+            tz = club_tz(club)
+            self._validate_window_in_hours(new_start, new_end, oh, new_start.date(), tz)
             if booking.booking_type in _GRID_ENFORCED_TYPES:
-                self._validate_grid_alignment(new_start, oh, club.booking_duration_minutes)
+                self._validate_grid_alignment(new_start, oh, club.booking_duration_minutes, tz)
 
             # Conflict and blackout (exclude the booking being edited)
             await self._check_no_conflict(new_court_id, new_start, new_end, exclude_booking_id=booking_id)

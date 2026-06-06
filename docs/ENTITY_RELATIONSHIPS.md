@@ -1,4 +1,4 @@
-_Last updated: 2026-06-05 18:00 UTC_
+_Last updated: 2026-06-06 12:00 UTC_
 
 # Entity Relationships — Gotchas & Cross-Entity Rules
 
@@ -98,5 +98,5 @@ Membership perks: live as columns on `membership_plans` (`discount_pct`, `bookin
 Invoice fields on `payments`; club settings on `clubs`; user role on `users` — there are **no** `invoices`, `club_settings`, or `tenant_users` tables | reason: May-2026 simplification merged these into their parent rows.
 `membership_plans.is_default`: exactly one per club (partial unique index `WHERE is_default = TRUE`); auto-attached to a player on email verification | reason: the free basic plan every verified player lands on.
 `equipment_inventory.reorder_threshold`: present in the DB but **intentionally unused** | reason: the AI purchase-order feature was descoped 2026-05-29; the column was retained rather than dropped — don't build logic on it.
-`clubs.timezone`: kept for analytics hour/day bucketing — **not** weather | reason: all weather features (incl. `clubs.latitude`/`longitude`) were descoped 2026-05-29; player catchment coordinates live on `users`, not `clubs`.
+`clubs.timezone`: the IANA zone (e.g. `Europe/London`) governing **both** analytics hour/day bucketing **and** the operational booking/availability path — **not** weather | reason: all datetimes are stored as true UTC `timestamptz`; club-local wall-clock (operating hours, user-supplied `HH:MM`, slot grids) is resolved against `clubs.timezone` via `app/core/timezones.py` and converted to UTC before comparison. Never stamp wall-clock as UTC. All weather features (incl. `clubs.latitude`/`longitude`) were descoped 2026-05-29; player catchment coordinates live on `users`, not `clubs`. `tenants.timezone` does not exist — there is no tenant-level zone.
 `pricing_rules.session_type` resolution: `PricingService.calculate(booking_type=…)` matches the rule whose window contains the slot **and** whose `session_type` equals the booking's type; if none exists it **falls back to the `regular` rule** for that window, and returns `None` only when even `regular` is unconfigured | reason: clubs shouldn't have to configure every session type before they can take a booking — `regular` is the implicit baseline. `session_type` reuses the `bookingtype` enum (it is **not** `pricinglabel`); `label` (peak/off_peak/standard) is the orthogonal time-of-day tier, so a window can hold one rule per session type.

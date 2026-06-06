@@ -6,13 +6,14 @@ from typing import Annotated, Literal, Optional, Union
 from pydantic import BaseModel, Field, model_validator
 
 from app.db.models.booking import BookingStatus, BookingType, DiscountSource, InviteStatus, PaymentStatus, PlayerRole
+from app.schemas.common import UtcDatetime
 
 
 class BookingCreate(BaseModel):
     club_id: uuid.UUID
     court_id: uuid.UUID
     booking_type: BookingType = BookingType.regular
-    start_datetime: datetime
+    start_datetime: UtcDatetime
     is_open_game: bool = False
     max_players: int = Field(default=4, ge=1, le=20)
     notes: Optional[str] = None
@@ -95,7 +96,7 @@ class InviteRespondRequest(BaseModel):
 class BookingUpdate(BaseModel):
     """Staff-only PATCH payload. Only provided fields are updated."""
     court_id: Optional[uuid.UUID] = None
-    start_datetime: Optional[datetime] = None
+    start_datetime: Optional[UtcDatetime] = None
     notes: Optional[str] = None
     event_name: Optional[str] = None
     contact_name: Optional[str] = None
