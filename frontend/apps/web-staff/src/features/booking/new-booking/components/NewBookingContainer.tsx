@@ -8,6 +8,7 @@ import {
     useListCourts,
     useGetCourtAvailability,
     useListAvailableTrainers,
+    useGetPriceQuote,
 } from "../../hooks";
 import { useClubAccess } from "../../store";
 import type { BookingInput, BookingType, RecurringBookingInput } from "../../types";
@@ -95,7 +96,18 @@ export default function NewBookingContainer(): JSX.Element {
     } = useGetCourtAvailability(form.courtId, form.bookingDate);
     const slots = availabilityData?.slots ?? [];
     const selectedSlot = slots.find((s) => s.start_time === form.startTime);
-    const selectedPrice = selectedSlot?.price ?? null;
+
+    const startDatetimeForQuote =
+        form.bookingDate && form.startTime
+            ? `${form.bookingDate}T${form.startTime}:00`
+            : "";
+    const { data: priceQuote } = useGetPriceQuote({
+        club_id: clubId ?? "",
+        start_datetime: startDatetimeForQuote,
+        booking_type: form.bookingType as BookingType,
+        max_players: parseInt(resolveMaxPlayers(form.bookingType, form.maxPlayers), 10) || 4,
+    });
+    const selectedPrice = priceQuote?.base_price ?? null;
 
     // Auto-select the first available slot whenever availability data arrives (fresh)
     useEffect(() => {

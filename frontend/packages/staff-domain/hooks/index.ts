@@ -76,6 +76,7 @@ export {
     useUpdateBooking,
     useCancelBooking,
     useInvitePlayer,
+    useGetPriceQuote,
 } from "./booking.hooks";
 export {
     usePlayerValueLeaderboard,

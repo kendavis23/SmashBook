@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import NewBookingModalContainer from "./NewBookingModalContainer";
 
 const mockInvalidateQueries = vi.fn();
@@ -45,6 +45,9 @@ vi.mock("../../hooks", () => ({
         },
         isLoading: false,
         refetch: mockRefetchSlots,
+    })),
+    useGetPriceQuote: vi.fn(() => ({
+        data: { base_price: 24 },
     })),
     useListAvailableTrainers: vi.fn(() => ({
         data: [{ staff_profile_id: "staff-1", full_name: "Alex Trainer" }],
@@ -175,6 +178,8 @@ const bookingFixture = {
     created_at: "2026-05-19T10:00:00Z",
     players: [],
 };
+
+afterEach(cleanup);
 
 describe("NewBookingModalContainer", () => {
     beforeEach(() => {

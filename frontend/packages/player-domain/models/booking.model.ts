@@ -121,3 +121,29 @@ export interface EquipmentRental {
     quantity: number;
     charge: number;
 }
+
+export type DiscountSource = "membership" | "campaign" | "promo_code" | "staff_manual" | "ai_gap_offer";
+
+export interface PriceQuoteFilters {
+    club_id: UUID;
+    start_datetime: string;
+    booking_type?: BookingType;
+    max_players?: number;
+}
+
+export interface PriceQuote {
+    club_id: UUID;
+    booking_type: BookingType;
+    start_datetime: string;
+    max_players: number;
+    pricing_available: boolean;
+    base_price: number | null;
+    unit_price: number | null;
+    total_price: number | null;
+    per_player_price: number | null;
+    discount_amount: number | null;
+    discount_source: DiscountSource | null;
+    amount_due: number | null;
+    membership_subscription_id: UUID | null;
+    credit_applies: boolean;
+}

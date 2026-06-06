@@ -40,6 +40,9 @@ export type {
     OpenGame,
     EquipmentRentalInput,
     EquipmentRental,
+    DiscountSource,
+    PriceQuoteFilters,
+    PriceQuote,
 } from "./booking.model";
 export type {
     SetupIntent,

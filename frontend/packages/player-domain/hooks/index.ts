@@ -16,6 +16,7 @@ export {
     useJoinBooking,
     useRespondInvite,
     useAddEquipmentRental,
+    useGetPriceQuote,
 } from "./booking.hooks";
 export { useListTrainers, useListAvailableTrainers } from "./trainer.hooks";
 export { useListEquipment } from "./equipment.hooks";
