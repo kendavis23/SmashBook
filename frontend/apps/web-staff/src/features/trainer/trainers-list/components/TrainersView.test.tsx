@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import TrainersView from "./TrainersView";
-import type { Trainer } from "../../types";
+import type { Trainer, TrainerBookingItem } from "../../types";
 
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string }[] }) => (
@@ -49,7 +49,7 @@ vi.mock("@repo/ui", () => ({
                 </button>
             </nav>
         ) : null,
-    formatUTCDate: (value: string) => value,
+    formatUTCDateTime: (value: string) => value,
 }));
 
 const mockTrainers: Trainer[] = [
@@ -87,17 +87,34 @@ function makeTrainer(index: number): Trainer {
     };
 }
 
+function makeBooking(overrides: Partial<TrainerBookingItem> = {}): TrainerBookingItem {
+    const start = new Date(Date.now() + 24 * 60 * 60 * 1000); // +1 day
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    return {
+        booking_id: "booking-1",
+        club_id: "club-1",
+        court_id: "court-1",
+        court_name: "Court 1",
+        booking_type: "lesson_individual",
+        status: "confirmed",
+        start_datetime: start.toISOString(),
+        end_datetime: end.toISOString(),
+        participants: [],
+        ...overrides,
+    };
+}
+
 const defaultProps = {
     trainers: [],
     isLoading: false,
     error: null,
     canManage: true,
     selectedTrainer: null,
-    availability: [],
-    availabilityLoading: false,
-    availabilityError: null,
+    bookings: [],
+    bookingsLoading: false,
+    bookingsError: null,
     onRefresh: vi.fn(),
-    onRefreshAvailability: vi.fn(),
+    onRefreshBookings: vi.fn(),
     onSelectTrainer: vi.fn(),
     onViewTrainer: vi.fn(),
 };
@@ -192,95 +209,82 @@ describe("TrainersView — trainers list", () => {
         expect(screen.getByText("Mira Kapoor")).toBeInTheDocument();
     });
 
-    it("renders trainer bio when present", () => {
-        render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getByText("Expert padel coach")).toBeInTheDocument();
-    });
-
-    it("shows 'No bio provided' when bio is null", () => {
-        render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getByText("No bio provided")).toBeInTheDocument();
-    });
-
     it("renders Active status badge for active trainer", () => {
-        render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getByText("Active")).toBeInTheDocument();
-    });
-
-    it("renders Inactive status badge for inactive trainer", () => {
-        render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getByText("Inactive")).toBeInTheDocument();
-    });
-
-    it("renders selected trainer availability slot count", () => {
         render(
             <TrainersView
                 {...defaultProps}
                 trainers={mockTrainers}
                 selectedTrainer={aaravTrainer}
-                availability={[
-                    {
-                        id: "avail-1",
-                        staff_profile_id: "trainer-001-abcd",
-                        day_of_week: 0,
-                        start_time: "14:00:00",
-                        end_time: "15:00:00",
-                        set_by_user_id: "user-1",
-                        effective_from: "2026-04-01",
-                        effective_until: null,
-                        notes: null,
-                        created_at: "2026-04-01T00:00:00Z",
-                        updated_at: "2026-04-01T00:00:00Z",
-                    },
-                    {
-                        id: "avail-2",
-                        staff_profile_id: "trainer-001-abcd",
-                        day_of_week: 0,
-                        start_time: "16:00:00",
-                        end_time: "17:00:00",
-                        set_by_user_id: "user-1",
-                        effective_from: "2026-04-01",
-                        effective_until: null,
-                        notes: null,
-                        created_at: "2026-04-01T00:00:00Z",
-                        updated_at: "2026-04-01T00:00:00Z",
-                    },
-                ]}
             />
         );
-        expect(screen.getByText("Availability")).toBeInTheDocument();
-        expect(screen.getAllByText("2 slots").length).toBeGreaterThan(0);
+        expect(screen.getByText("Active")).toBeInTheDocument();
     });
 
-    it("uses singular 'slot' when count is 1", () => {
+    it("renders Inactive status badge for inactive trainer", () => {
         render(
             <TrainersView
                 {...defaultProps}
-                trainers={[aaravTrainer]}
-                selectedTrainer={aaravTrainer}
-                availability={[
-                    {
-                        id: "avail-1",
-                        staff_profile_id: "trainer-001-abcd",
-                        day_of_week: 0,
-                        start_time: "14:00:00",
-                        end_time: "15:00:00",
-                        set_by_user_id: "user-1",
-                        effective_from: "2026-04-01",
-                        effective_until: null,
-                        notes: null,
-                        created_at: "2026-04-01T00:00:00Z",
-                        updated_at: "2026-04-01T00:00:00Z",
-                    },
-                ]}
+                trainers={mockTrainers}
+                selectedTrainer={miraTrainer}
             />
         );
-        expect(screen.getAllByText("1 slot").length).toBeGreaterThan(0);
+        expect(screen.getByText("Inactive")).toBeInTheDocument();
+    });
+
+    it("renders upcoming bookings for the selected trainer", () => {
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={mockTrainers}
+                selectedTrainer={aaravTrainer}
+                bookings={[makeBooking({ court_name: "Center Court" })]}
+            />
+        );
+        expect(screen.getByText(/Upcoming bookings/)).toBeInTheDocument();
+        expect(screen.getByText("Center Court")).toBeInTheDocument();
+        expect(screen.getByText("Individual Lesson")).toBeInTheDocument();
+        expect(screen.getByText("Confirmed")).toBeInTheDocument();
+    });
+
+    it("shows far-future bookings and caps the list at 10", () => {
+        const bookings = Array.from({ length: 14 }, (_, index) =>
+            makeBooking({
+                booking_id: `b-${index}`,
+                court_name: `Court ${index}`,
+                start_datetime: new Date(
+                    Date.now() + (index + 1) * 24 * 60 * 60 * 1000
+                ).toISOString(),
+            })
+        );
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={mockTrainers}
+                selectedTrainer={aaravTrainer}
+                bookings={bookings}
+            />
+        );
+        // Far-future (any date) bookings render, but only the first 10.
+        expect(screen.getByText("Court 0")).toBeInTheDocument();
+        expect(screen.getByText("Court 9")).toBeInTheDocument();
+        expect(screen.queryByText("Court 10")).not.toBeInTheDocument();
+    });
+
+    it("shows empty state when there are no upcoming bookings", () => {
+        render(
+            <TrainersView
+                {...defaultProps}
+                trainers={mockTrainers}
+                selectedTrainer={aaravTrainer}
+                bookings={[]}
+            />
+        );
+        expect(screen.getByText(/No upcoming bookings/)).toBeInTheDocument();
     });
 
     it("renders View button for each trainer", () => {
         render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getAllByRole("button", { name: "View" })).toHaveLength(2);
+        expect(screen.getAllByRole("button", { name: /^View profile for / })).toHaveLength(2);
     });
 
     it("calls onViewTrainer with correct trainer when View is clicked", () => {
@@ -288,32 +292,29 @@ describe("TrainersView — trainers list", () => {
         render(
             <TrainersView {...defaultProps} trainers={mockTrainers} onViewTrainer={handleView} />
         );
-        const [viewButton] = screen.getAllByRole("button", { name: "View" });
+        const viewButton = screen.getByRole("button", {
+            name: "View profile for Aarav Shah",
+        });
 
-        if (viewButton == null) {
-            throw new Error("Expected a trainer view button");
-        }
         fireEvent.click(viewButton);
         expect(handleView).toHaveBeenCalledWith(aaravTrainer);
     });
 
     it("renders list and profile headings", () => {
         render(<TrainersView {...defaultProps} trainers={mockTrainers} />);
-        expect(screen.getByText("Trainer")).toBeInTheDocument();
         expect(screen.getByText("Trainer list")).toBeInTheDocument();
-        expect(screen.getByText("Status")).toBeInTheDocument();
         expect(screen.getByText("Select a trainer")).toBeInTheDocument();
     });
 
     it("sorts trainers by name from sortable header", () => {
         render(<TrainersView {...defaultProps} trainers={[miraTrainer, aaravTrainer]} />);
 
-        fireEvent.click(screen.getByRole("button", { name: "Sort by Trainer ascending" }));
+        fireEvent.click(screen.getByRole("button", { name: "Sort by Sort ascending" }));
         expect(
             screen.getAllByText(/Aarav Shah|Mira Kapoor/).map((node) => node.textContent)
         ).toEqual(["Aarav Shah", "Mira Kapoor"]);
 
-        fireEvent.click(screen.getByRole("button", { name: "Sort by Trainer descending" }));
+        fireEvent.click(screen.getByRole("button", { name: "Sort by Sort descending" }));
         expect(
             screen.getAllByText(/Aarav Shah|Mira Kapoor/).map((node) => node.textContent)
         ).toEqual(["Mira Kapoor", "Aarav Shah"]);
@@ -350,32 +351,30 @@ describe("TrainersView — trainers list", () => {
         expect(handleSelect).toHaveBeenCalledWith(aaravTrainer);
     });
 
-    it("groups availability by day and formats times in 12-hour display", () => {
+    it("sorts upcoming bookings chronologically", () => {
+        const day1 = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const day3 = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
         render(
             <TrainersView
                 {...defaultProps}
                 trainers={mockTrainers}
                 selectedTrainer={aaravTrainer}
-                availability={[
-                    {
-                        id: "avail-1",
-                        staff_profile_id: "trainer-001-abcd",
-                        day_of_week: 0,
-                        start_time: "14:00:00",
-                        end_time: "15:30:00",
-                        set_by_user_id: "user-1",
-                        effective_from: "2026-04-01",
-                        effective_until: null,
-                        notes: "Afternoon coaching",
-                        created_at: "2026-04-01T00:00:00Z",
-                        updated_at: "2026-04-01T00:00:00Z",
-                    },
+                bookings={[
+                    makeBooking({
+                        booking_id: "later",
+                        court_name: "Later Court",
+                        start_datetime: day3,
+                    }),
+                    makeBooking({
+                        booking_id: "sooner",
+                        court_name: "Sooner Court",
+                        start_datetime: day1,
+                    }),
                 ]}
             />
         );
 
-        expect(screen.getByText("Monday")).toBeInTheDocument();
-        expect(screen.getByText("2:00 PM - 3:30 PM")).toBeInTheDocument();
-        expect(screen.getByText("Afternoon coaching")).toBeInTheDocument();
+        const courts = screen.getAllByText(/Sooner Court|Later Court/).map((n) => n.textContent);
+        expect(courts).toEqual(["Sooner Court", "Later Court"]);
     });
 });

@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import TrainerDetailView from "./TrainerDetailView";
-import type { Trainer, TrainerAvailability, TrainerBookingItem } from "../../types";
+import type { Trainer, TrainerBookingItem } from "../../types";
 
 vi.mock("@repo/ui", () => ({
     Breadcrumb: ({ items }: { items: { label: string; href?: string }[] }) => (
@@ -32,6 +32,32 @@ vi.mock("@repo/ui", () => ({
             onChange={(event) => onChange(event.target.value)}
         />
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        clearLabel,
+        "aria-label": ariaLabel,
+    }: {
+        value: string;
+        onValueChange: (value: string) => void;
+        options: { value: string; label: string }[];
+        clearLabel?: string;
+        "aria-label"?: string;
+    }) => (
+        <select
+            aria-label={ariaLabel}
+            value={value}
+            onChange={(event) => onValueChange(event.target.value)}
+        >
+            {clearLabel !== undefined ? <option value="">{clearLabel}</option> : null}
+            {options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                </option>
+            ))}
+        </select>
+    ),
     ConfirmDeleteModal: ({
         title,
         onConfirm,
@@ -60,22 +86,6 @@ const mockTrainer: Trainer = {
     is_active: true,
     availability: [],
 };
-
-const mockAvailability: TrainerAvailability[] = [
-    {
-        id: "avail-1",
-        staff_profile_id: "trainer-001-abcd",
-        day_of_week: 1,
-        start_time: "09:00",
-        end_time: "12:00",
-        set_by_user_id: "user-1",
-        effective_from: "2026-01-01",
-        effective_until: "2026-12-31",
-        notes: "Morning slots only",
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
-    },
-];
 
 const mockBookings: TrainerBookingItem[] = [
     {
@@ -109,6 +119,8 @@ const defaultProps = {
     bookings: [],
     bookingsLoading: false,
     bookingsError: null,
+    upcomingOnly: true,
+    onUpcomingOnlyChange: vi.fn(),
     canManage: true,
     activeTab: "availability" as const,
     onTabChange: vi.fn(),
@@ -188,7 +200,7 @@ describe("TrainerDetailView — tab navigation", () => {
 describe("TrainerDetailView — availability tab", () => {
     it("shows loading spinner while loading", () => {
         render(<TrainerDetailView {...defaultProps} availabilityLoading={true} />);
-        expect(screen.getByText("Loading availability…")).toBeInTheDocument();
+        expect(screen.getByText("Loading…")).toBeInTheDocument();
     });
 
     it("shows error toast when availabilityError is set", () => {
@@ -214,51 +226,36 @@ describe("TrainerDetailView — availability tab", () => {
         expect(handleRefresh).toHaveBeenCalled();
     });
 
-    it("shows empty state when no availability", () => {
-        render(<TrainerDetailView {...defaultProps} availability={[]} />);
-        expect(screen.getByText("No availability set")).toBeInTheDocument();
-    });
-
-    it("renders availability row for each slot", () => {
-        render(<TrainerDetailView {...defaultProps} availability={mockAvailability} />);
-        expect(screen.getByText("Tue")).toBeInTheDocument();
-        expect(screen.getByText("9:00 AM – 12:00 PM")).toBeInTheDocument();
+    it("renders the week navigator for the availability calendar", () => {
+        render(<TrainerDetailView {...defaultProps} />);
+        expect(screen.getByRole("button", { name: "Previous week" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Next week" })).toBeInTheDocument();
     });
 
     it("shows Refresh button for availability", () => {
         render(<TrainerDetailView {...defaultProps} />);
-        expect(screen.getByRole("button", { name: "Refresh availability" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
     });
 
     it("calls onRefreshAvailability when Refresh is clicked", () => {
         const handleRefresh = vi.fn();
         render(<TrainerDetailView {...defaultProps} onRefreshAvailability={handleRefresh} />);
-        fireEvent.click(screen.getByRole("button", { name: "Refresh availability" }));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         expect(handleRefresh).toHaveBeenCalled();
     });
 
-    it("shows effective date details for availability slots", () => {
-        render(<TrainerDetailView {...defaultProps} availability={mockAvailability} />);
-        expect(screen.getByText("From date:2026-01-01")).toBeInTheDocument();
+    it("shows Add Slot button for managers and calls onCreateAvailability", () => {
+        const handleCreate = vi.fn();
+        render(<TrainerDetailView {...defaultProps} onCreateAvailability={handleCreate} />);
+        fireEvent.click(screen.getByRole("button", { name: "Create availability" }));
+        expect(handleCreate).toHaveBeenCalled();
     });
 
-    it("shows effective_until when set", () => {
-        render(<TrainerDetailView {...defaultProps} availability={mockAvailability} />);
-        expect(screen.getByText("Until date:2026-12-31")).toBeInTheDocument();
-    });
-
-    it("calls onDeleteAvailability after confirming delete", async () => {
-        const handleDelete = vi.fn().mockResolvedValue(undefined);
-        render(
-            <TrainerDetailView
-                {...defaultProps}
-                availability={mockAvailability}
-                onDeleteAvailability={handleDelete}
-            />
-        );
-        fireEvent.click(screen.getByRole("button", { name: "Delete availability slot" }));
-        fireEvent.click(screen.getByText("Confirm delete"));
-        await waitFor(() => expect(handleDelete).toHaveBeenCalledWith("avail-1"));
+    it("hides Add Slot button for non-managers", () => {
+        render(<TrainerDetailView {...defaultProps} canManage={false} />);
+        expect(
+            screen.queryByRole("button", { name: "Create availability" })
+        ).not.toBeInTheDocument();
     });
 });
 
@@ -359,6 +356,27 @@ describe("TrainerDetailView — bookings tab", () => {
 
         expect(screen.getByText("Court B")).toBeInTheDocument();
         expect(screen.queryByText("Court A")).not.toBeInTheDocument();
+    });
+
+    it("defaults the scope dropdown to upcoming only", () => {
+        render(<TrainerDetailView {...bookingsProps} bookings={mockBookings} />);
+        expect(screen.getByLabelText("Booking scope")).toHaveValue("upcoming");
+    });
+
+    it("commits the scope to onUpcomingOnlyChange when Search is clicked", () => {
+        const handleScopeChange = vi.fn();
+        render(
+            <TrainerDetailView
+                {...bookingsProps}
+                bookings={mockBookings}
+                onUpcomingOnlyChange={handleScopeChange}
+            />
+        );
+        fireEvent.change(screen.getByLabelText("Booking scope"), {
+            target: { value: "all" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Search bookings" }));
+        expect(handleScopeChange).toHaveBeenCalledWith(false);
     });
 
     it("shows empty search state when filters match no bookings", () => {

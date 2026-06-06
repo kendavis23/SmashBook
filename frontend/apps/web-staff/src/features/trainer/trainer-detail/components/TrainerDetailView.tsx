@@ -1,14 +1,27 @@
 import type { JSX } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { BookOpen, ChevronLeft, ChevronRight, Clock, Eye, Search, Users } from "lucide-react";
-import { AlertToast, Breadcrumb, DatePicker } from "@repo/ui";
+import { AlertToast, Breadcrumb, DatePicker, SelectInput } from "@repo/ui";
+import type { SelectOption } from "@repo/ui";
 import { formatUTCDate, formatUTCTime } from "@repo/ui";
 import type { Trainer, TrainerAvailability, TrainerBookingItem, TrainerTab } from "../../types";
 import { TRAINER_TABS, BOOKING_TYPE_LABELS, BOOKING_STATUS_LABELS } from "../../types";
-import { TrainerAvailabilityTab } from "./TrainerAvailabilityTab";
+import { TrainerAvailabilityCalendar } from "./TrainerAvailabilityCalendar";
 import { TrainerBookingDetailModal, useBookingDetailModal } from "./TrainerBookingDetailModal";
 
 const BOOKING_PAGE_SIZE = 10;
+
+const STATUS_OPTIONS: SelectOption[] = Object.entries(BOOKING_STATUS_LABELS).map(
+    ([value, label]) => ({ value, label })
+);
+
+const SCOPE_UPCOMING = "upcoming";
+const SCOPE_ALL = "all";
+
+const SCOPE_OPTIONS: SelectOption[] = [
+    { value: SCOPE_UPCOMING, label: "Upcoming only" },
+    { value: SCOPE_ALL, label: "All bookings" },
+];
 
 type Props = {
     trainer: Trainer;
@@ -18,6 +31,8 @@ type Props = {
     bookings: TrainerBookingItem[];
     bookingsLoading: boolean;
     bookingsError: Error | null;
+    upcomingOnly: boolean;
+    onUpcomingOnlyChange: (upcomingOnly: boolean) => void;
     canManage: boolean;
     activeTab: TrainerTab;
     onTabChange: (tab: TrainerTab) => void;
@@ -52,6 +67,8 @@ export default function TrainerDetailView({
     bookings,
     bookingsLoading,
     bookingsError,
+    upcomingOnly,
+    onUpcomingOnlyChange,
     canManage,
     activeTab,
     onTabChange,
@@ -63,6 +80,9 @@ export default function TrainerDetailView({
 }: Props): JSX.Element {
     const [bookingDateFilter, setBookingDateFilter] = useState("");
     const [bookingStatusFilter, setBookingStatusFilter] = useState("");
+    const [bookingScopeFilter, setBookingScopeFilter] = useState(
+        upcomingOnly ? SCOPE_UPCOMING : SCOPE_ALL
+    );
     const [appliedBookingDateFilter, setAppliedBookingDateFilter] = useState("");
     const [appliedBookingStatusFilter, setAppliedBookingStatusFilter] = useState("");
     const [bookingPage, setBookingPage] = useState(0);
@@ -97,9 +117,16 @@ export default function TrainerDetailView({
         setBookingPage(0);
     }, [appliedBookingDateFilter, appliedBookingStatusFilter, bookings]);
 
+    // Keep the scope dropdown in sync with the applied server-side scope.
+    useEffect(() => {
+        setBookingScopeFilter(upcomingOnly ? SCOPE_UPCOMING : SCOPE_ALL);
+    }, [upcomingOnly]);
+
     const handleApplyBookingFilters = (): void => {
         setAppliedBookingDateFilter(bookingDateFilter);
         setAppliedBookingStatusFilter(bookingStatusFilter);
+        // Scope is server-side: committing it re-fetches the bookings list.
+        onUpcomingOnlyChange(bookingScopeFilter === SCOPE_UPCOMING);
         setBookingPage(0);
     };
 
@@ -168,7 +195,7 @@ export default function TrainerDetailView({
                 <div className="px-5 py-5 sm:px-6">
                     {/* ── Availability Tab ── */}
                     {activeTab === "availability" ? (
-                        <TrainerAvailabilityTab
+                        <TrainerAvailabilityCalendar
                             availability={availability}
                             availabilityLoading={availabilityLoading}
                             availabilityError={availabilityError}
@@ -189,7 +216,9 @@ export default function TrainerDetailView({
                                         Assigned Bookings
                                     </h3>
                                     <p className="mt-1 text-sm text-muted-foreground">
-                                        Upcoming bookings assigned to this trainer.
+                                        {upcomingOnly
+                                            ? "Upcoming bookings assigned to this trainer."
+                                            : "All bookings assigned to this trainer."}
                                     </p>
                                 </div>
                                 <button
@@ -208,39 +237,43 @@ export default function TrainerDetailView({
                                         Search
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end">
                                     <div className="flex flex-col gap-1">
                                         <span className="text-[11px] font-medium text-muted-foreground">
                                             Date
                                         </span>
                                         <DatePicker
+                                            className="input-base"
                                             value={bookingDateFilter}
                                             onChange={setBookingDateFilter}
                                             placeholder="Booking date"
                                         />
                                     </div>
-                                    <label className="flex flex-col gap-1">
+                                    <div className="flex flex-col gap-1">
                                         <span className="text-[11px] font-medium text-muted-foreground">
                                             Status
                                         </span>
-                                        <select
+                                        <SelectInput
                                             value={bookingStatusFilter}
-                                            onChange={(event) =>
-                                                setBookingStatusFilter(event.target.value)
-                                            }
-                                            className="h-10 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition focus:border-cta focus:ring-2 focus:ring-cta/20"
+                                            onValueChange={setBookingStatusFilter}
+                                            options={STATUS_OPTIONS}
+                                            placeholder="All statuses"
+                                            clearLabel="All statuses"
                                             aria-label="Booking status"
-                                        >
-                                            <option value="">All statuses</option>
-                                            {Object.entries(BOOKING_STATUS_LABELS).map(
-                                                ([value, label]) => (
-                                                    <option key={value} value={value}>
-                                                        {label}
-                                                    </option>
-                                                )
-                                            )}
-                                        </select>
-                                    </label>
+                                        />
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        <span className="text-[11px] font-medium text-muted-foreground">
+                                            Scope
+                                        </span>
+                                        <SelectInput
+                                            value={bookingScopeFilter}
+                                            onValueChange={setBookingScopeFilter}
+                                            options={SCOPE_OPTIONS}
+                                            placeholder="Upcoming only"
+                                            aria-label="Booking scope"
+                                        />
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={handleApplyBookingFilters}
@@ -276,7 +309,9 @@ export default function TrainerDetailView({
                                         No bookings found
                                     </p>
                                     <p className="text-sm text-muted-foreground">
-                                        No upcoming bookings are assigned to this trainer.
+                                        {upcomingOnly
+                                            ? "No upcoming bookings are assigned to this trainer."
+                                            : "No bookings are assigned to this trainer."}
                                     </p>
                                 </div>
                             ) : filteredBookings.length === 0 ? (

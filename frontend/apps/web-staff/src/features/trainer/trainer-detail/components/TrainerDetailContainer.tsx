@@ -19,6 +19,8 @@ export default function TrainerDetailContainer(): JSX.Element {
 
     const [activeTab, setActiveTab] = useState<TrainerTab>("availability");
     const [showCreateAvailability, setShowCreateAvailability] = useState(false);
+    // Default to upcoming-only bookings; the user can switch to all bookings via the search scope.
+    const [upcomingOnly, setUpcomingOnly] = useState(true);
 
     const { data: trainers = [], isLoading: trainersLoading } = useListTrainers(clubId ?? "");
 
@@ -36,7 +38,7 @@ export default function TrainerDetailContainer(): JSX.Element {
         isLoading: bookingsLoading,
         error: bookingsError,
         refetch: refetchBookings,
-    } = useGetTrainerBookings(trainerId, true);
+    } = useGetTrainerBookings(trainerId, upcomingOnly);
 
     const deleteAvailability = useDeleteTrainerAvailability(trainerId);
 
@@ -90,6 +92,8 @@ export default function TrainerDetailContainer(): JSX.Element {
                 bookings={bookings}
                 bookingsLoading={bookingsLoading}
                 bookingsError={bookingsError as Error | null}
+                upcomingOnly={upcomingOnly}
+                onUpcomingOnlyChange={setUpcomingOnly}
                 canManage={canManage}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}

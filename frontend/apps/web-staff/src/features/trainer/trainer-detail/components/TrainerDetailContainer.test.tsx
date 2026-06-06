@@ -66,6 +66,32 @@ vi.mock("@repo/ui", () => ({
             onChange={(event) => onChange(event.target.value)}
         />
     ),
+    SelectInput: ({
+        value,
+        onValueChange,
+        options,
+        clearLabel,
+        "aria-label": ariaLabel,
+    }: {
+        value: string;
+        onValueChange: (value: string) => void;
+        options: { value: string; label: string }[];
+        clearLabel?: string;
+        "aria-label"?: string;
+    }) => (
+        <select
+            aria-label={ariaLabel}
+            value={value}
+            onChange={(event) => onValueChange(event.target.value)}
+        >
+            {clearLabel !== undefined ? <option value="">{clearLabel}</option> : null}
+            {options.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                </option>
+            ))}
+        </select>
+    ),
     formatUTCDate: (v: string) => `date:${v}`,
     formatUTCTime: (v: string) => `time:${v}`,
 }));
@@ -191,10 +217,10 @@ describe("TrainerDetailContainer — data state", () => {
         expect(screen.getByText("Expert padel coach")).toBeInTheDocument();
     });
 
-    it("shows availability empty state by default", () => {
+    it("shows the availability calendar by default", () => {
         setupMocks();
         render(<TrainerDetailContainer />);
-        expect(screen.getByText("No availability set")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Previous week" })).toBeInTheDocument();
     });
 });
 
@@ -211,7 +237,7 @@ describe("TrainerDetailContainer — refresh", () => {
     it("calls refetchAvailability when Refresh availability is clicked", () => {
         setupMocks();
         render(<TrainerDetailContainer />);
-        fireEvent.click(screen.getByRole("button", { name: "Refresh availability" }));
+        fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
         expect(mockRefetchAvailability).toHaveBeenCalled();
     });
 
