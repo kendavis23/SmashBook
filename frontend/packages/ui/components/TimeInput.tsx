@@ -1,6 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Clock } from "lucide-react";
-import { useRef, useState, type ChangeEvent, type InputHTMLAttributes, type Ref } from "react";
+import React, { useRef, useState, type ChangeEvent, type InputHTMLAttributes, type Ref } from "react";
 
 export type TimeInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
     ref?: Ref<HTMLInputElement>;
@@ -75,12 +75,20 @@ function TimeInput({
     disabled,
     value,
     onChange,
+    onBlur,
     placeholder,
     ref: _ref,
     ...props
 }: TimeInputProps) {
     const [open, setOpen] = useState(false);
     const hiddenRef = useRef<HTMLInputElement>(null);
+
+    function closeAndCommit() {
+        setOpen(false);
+        if (onBlur && hiddenRef.current) {
+            onBlur({ target: hiddenRef.current } as React.FocusEvent<HTMLInputElement>);
+        }
+    }
 
     // value from InputHTMLAttributes can be string | number | string[] — we only use string
     const valueStr = typeof value === "string" ? value : "";
@@ -120,7 +128,14 @@ function TimeInput({
             {/* Hidden input carries the value and fires native change events for callers */}
             <input ref={hiddenRef} type="hidden" value={valueStr} {...props} />
 
-            <PopoverPrimitive.Root open={open} onOpenChange={disabled ? undefined : setOpen}>
+            <PopoverPrimitive.Root
+                open={open}
+                onOpenChange={(next) => {
+                    if (disabled) return;
+                    if (!next) closeAndCommit();
+                    else setOpen(true);
+                }}
+            >
                 <PopoverPrimitive.Trigger
                     type="button"
                     disabled={disabled}
@@ -185,7 +200,7 @@ function TimeInput({
                                     type="button"
                                     onClick={() => {
                                         emit("");
-                                        setOpen(false);
+                                        closeAndCommit();
                                     }}
                                     className="text-xs text-muted-foreground transition hover:text-foreground"
                                 >
@@ -196,7 +211,7 @@ function TimeInput({
                             )}
                             <button
                                 type="button"
-                                onClick={() => setOpen(false)}
+                                onClick={closeAndCommit}
                                 className="rounded-md bg-cta px-4 py-1.5 text-xs font-medium text-cta-foreground transition hover:bg-cta-hover"
                             >
                                 Done

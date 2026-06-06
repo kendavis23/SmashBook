@@ -335,6 +335,7 @@ export default function BookByCourtViewMobile({
                             <TimeInput
                                 value={bookSection.filterTimeFrom}
                                 onChange={(e) => bookSection.onFilterTimeFromChange(e.target.value)}
+                                onBlur={(e) => bookSection.onFilterTimeFromCommit(e.target.value)}
                                 className={mobileFieldCls}
                             />
                         </label>
@@ -343,6 +344,7 @@ export default function BookByCourtViewMobile({
                             <TimeInput
                                 value={bookSection.filterTimeTo}
                                 onChange={(e) => bookSection.onFilterTimeToChange(e.target.value)}
+                                onBlur={(e) => bookSection.onFilterTimeToCommit(e.target.value)}
                                 className={mobileFieldCls}
                             />
                         </label>

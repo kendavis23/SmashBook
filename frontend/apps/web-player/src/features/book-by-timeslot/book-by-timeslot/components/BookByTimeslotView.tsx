@@ -42,7 +42,9 @@ type Props = {
     onDateChange: (v: string) => void;
     onSurfaceChange: (v: string) => void;
     onFromTimeChange: (v: string) => void;
+    onFromTimeCommit: (v: string) => void;
     onToTimeChange: (v: string) => void;
+    onToTimeCommit: (v: string) => void;
     onSelectSlot: (slot: ClubAvailabilitySlot) => void;
     onBook: (courtId: string, slot: ClubAvailabilitySlot) => void;
     onJoin: (bookingId: string) => void;
@@ -234,7 +236,9 @@ export default function BookByTimeslotView({
     onDateChange,
     onSurfaceChange,
     onFromTimeChange,
+    onFromTimeCommit,
     onToTimeChange,
+    onToTimeCommit,
     onSelectSlot,
     onBook,
     onJoin,
@@ -373,6 +377,7 @@ export default function BookByTimeslotView({
                                 className="input-base"
                                 value={fromTime}
                                 onChange={(e) => onFromTimeChange(e.target.value)}
+                                onBlur={(e) => onFromTimeCommit(e.target.value)}
                             />
                         </div>
 
@@ -385,6 +390,7 @@ export default function BookByTimeslotView({
                                 className="input-base"
                                 value={toTime}
                                 onChange={(e) => onToTimeChange(e.target.value)}
+                                onBlur={(e) => onToTimeCommit(e.target.value)}
                             />
                         </div>
 

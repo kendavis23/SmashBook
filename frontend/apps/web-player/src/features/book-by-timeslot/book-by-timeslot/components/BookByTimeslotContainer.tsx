@@ -33,6 +33,9 @@ export default function BookByTimeslotContainer(): JSX.Element {
     const [surface, setSurface] = useState(search.surface ?? "");
     const [fromTime, setFromTime] = useState(search.from ?? "");
     const [toTime, setToTime] = useState(search.to ?? "");
+    // Committed values — only update query params/API on blur, not on every keystroke
+    const [committedFromTime, setCommittedFromTime] = useState(search.from ?? "");
+    const [committedToTime, setCommittedToTime] = useState(search.to ?? "");
     const [selectedSlot, setSelectedSlot] = useState<ClubAvailabilitySlot | null>(null);
     const [bookingModal, setBookingModal] = useState<BookingModal>(null);
     const [joinBookingId, setJoinBookingId] = useState("");
@@ -121,18 +124,26 @@ export default function BookByTimeslotContainer(): JSX.Element {
         [syncUrl]
     );
 
-    const handleFromTimeChange = useCallback(
+    const handleFromTimeChange = useCallback((v: string) => {
+        setFromTime(v);
+    }, []);
+
+    const handleFromTimeCommit = useCallback(
         (v: string) => {
-            setFromTime(v);
+            setCommittedFromTime(v);
             setSelectedSlot(null);
             syncUrl({ from: v });
         },
         [syncUrl]
     );
 
-    const handleToTimeChange = useCallback(
+    const handleToTimeChange = useCallback((v: string) => {
+        setToTime(v);
+    }, []);
+
+    const handleToTimeCommit = useCallback(
         (v: string) => {
-            setToTime(v);
+            setCommittedToTime(v);
             setSelectedSlot(null);
             syncUrl({ to: v });
         },
@@ -143,8 +154,8 @@ export default function BookByTimeslotContainer(): JSX.Element {
         start_date: date,
         end_date: date,
         ...(surface ? { surface: surface as ClubAvailabilityParams["surface"] } : {}),
-        ...(fromTime ? { from_time: fromTime } : {}),
-        ...(toTime ? { to_time: toTime } : {}),
+        ...(committedFromTime ? { from_time: committedFromTime } : {}),
+        ...(committedToTime ? { to_time: committedToTime } : {}),
     };
 
     const {
@@ -179,6 +190,8 @@ export default function BookByTimeslotContainer(): JSX.Element {
         setSurface("");
         setFromTime("");
         setToTime("");
+        setCommittedFromTime("");
+        setCommittedToTime("");
         setSelectedSlot(null);
         void navigate({
             to: "/book-by-timeslot",
@@ -224,7 +237,9 @@ export default function BookByTimeslotContainer(): JSX.Element {
                 onDateChange={handleDateChange}
                 onSurfaceChange={handleSurfaceChange}
                 onFromTimeChange={handleFromTimeChange}
+                onFromTimeCommit={handleFromTimeCommit}
                 onToTimeChange={handleToTimeChange}
+                onToTimeCommit={handleToTimeCommit}
                 onSelectSlot={setSelectedSlot}
                 onBook={handleBook}
                 onJoin={handleJoin}
