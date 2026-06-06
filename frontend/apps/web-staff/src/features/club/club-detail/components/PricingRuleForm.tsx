@@ -33,6 +33,20 @@ function formatShortTime(minutes: number): string {
     return `${display}${suffix}`;
 }
 
+function formatTime(minutes: number): string {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    const suffix = h < 12 ? "AM" : "PM";
+    const displayH = h % 12 === 0 ? 12 : h % 12;
+    return m === 0 ? `${displayH}${suffix}` : `${displayH}:${String(m).padStart(2, "0")}${suffix}`;
+}
+
+function intersectInterval(a: Interval, b: Interval): Interval | null {
+    const s = Math.max(a.start, b.start);
+    const e = Math.min(a.end, b.end);
+    return s < e ? { start: s, end: e } : null;
+}
+
 function RuleCoverageBar({
     existingRules,
     hours,
@@ -60,14 +74,16 @@ function RuleCoverageBar({
     const rangeMinutes = openWindow.end - openWindow.start;
     if (rangeMinutes <= 0) return null;
 
-    // Other rules for this session type on this day (exclude the one being edited).
+    // Other active rules for this session type on this day (exclude the one being edited).
     const sessionRules = existingRules.filter(
         (r, i) => r.day_of_week === dayOfWeek && sessionTypeOf(r) === sessionType && i !== editIndex
     );
+    const activeRules = sessionRules.filter((r) => r.is_active);
 
-    const activeRanges: Interval[] = sessionRules
-        .filter((r) => r.is_active)
-        .map((r) => ({ start: timeToMinutes(r.start_time), end: timeToMinutes(r.end_time) }));
+    const activeRanges: Interval[] = activeRules.map((r) => ({
+        start: timeToMinutes(r.start_time),
+        end: timeToMinutes(r.end_time),
+    }));
 
     const { gaps } = computeCoverage(activeRanges, openWindow);
 
@@ -79,36 +95,71 @@ function RuleCoverageBar({
     const ticks: number[] = [];
     for (let t = openWindow.start + 120; t < openWindow.end; t += 120) ticks.push(t);
 
-    // Current rule segment (edit mode) — shown in green.
+    // Current rule segment — always shown (green for the rule being added/edited).
     const editS = Math.max(timeToMinutes(editStartTime), openWindow.start);
     const editE = Math.min(timeToMinutes(editEndTime), openWindow.end);
-    const showEditSegment = editIndex !== undefined && editE > editS;
+    const showCurrentSegment = editE > editS;
+
+    // Compute overlap between the current rule and each existing active rule.
+    const currentInterval: Interval = { start: editS, end: editE };
+    const overlapSegments: Interval[] = showCurrentSegment
+        ? activeRanges
+              .map((r) => intersectInterval(currentInterval, r))
+              .filter((x): x is Interval => x !== null)
+        : [];
+
+    const hasOverlap = overlapSegments.length > 0;
+
+    // Build a human-readable list of conflicting rule times for the tooltip.
+    const conflictingRules = showCurrentSegment
+        ? activeRules.filter((r) => {
+              const ri: Interval = {
+                  start: timeToMinutes(r.start_time),
+                  end: timeToMinutes(r.end_time),
+              };
+              return intersectInterval(currentInterval, ri) !== null;
+          })
+        : [];
 
     return (
-        <div className="mb-5 rounded-lg border border-border/60 bg-muted/30 px-4 py-3">
-            <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                Coverage for this session type
-            </p>
+        <div
+            className={`mb-5 rounded-lg border px-4 py-3 ${hasOverlap ? "border-warning/60 bg-warning/5" : "border-border/60 bg-muted/30"}`}
+        >
+            <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-semibold text-muted-foreground">
+                    Coverage for this session type
+                </p>
+                {hasOverlap && (
+                    <span className="flex items-center gap-1 text-xs font-semibold text-warning">
+                        <svg
+                            viewBox="0 0 16 16"
+                            className="h-3.5 w-3.5 fill-current"
+                            aria-hidden="true"
+                        >
+                            <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3.5a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 8 4.5zm0 6.5a.875.875 0 1 1 0-1.75A.875.875 0 0 1 8 11z" />
+                        </svg>
+                        Time overlap detected
+                    </span>
+                )}
+            </div>
 
             {/* Bar */}
-            <div className="relative h-2.5 w-full overflow-hidden rounded-full bg-muted/60">
-                {/* Other covered segments — blue */}
-                {sessionRules
-                    .filter((r) => r.is_active)
-                    .map((r, i) => {
-                        const s = Math.max(timeToMinutes(r.start_time), openWindow.start);
-                        const e = Math.min(timeToMinutes(r.end_time), openWindow.end);
-                        if (e <= s) return null;
-                        return (
-                            <div
-                                key={i}
-                                className="absolute inset-y-0 bg-blue-500/75"
-                                style={{ left: `${pct(s)}%`, width: `${pct(e) - pct(s)}%` }}
-                                title={`Rule: ${r.start_time} – ${r.end_time}`}
-                            />
-                        );
-                    })}
-                {/* Gap segments — red */}
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted/60">
+                {/* Existing active rule segments — blue */}
+                {activeRules.map((r, i) => {
+                    const s = Math.max(timeToMinutes(r.start_time), openWindow.start);
+                    const e = Math.min(timeToMinutes(r.end_time), openWindow.end);
+                    if (e <= s) return null;
+                    return (
+                        <div
+                            key={i}
+                            className="absolute inset-y-0 bg-blue-500/60"
+                            style={{ left: `${pct(s)}%`, width: `${pct(e) - pct(s)}%` }}
+                            title={`Existing rule: ${r.start_time} – ${r.end_time}`}
+                        />
+                    );
+                })}
+                {/* Gap segments — faint red */}
                 {gaps.map((g, i) => {
                     const s = Math.max(g.start, openWindow.start);
                     const e = Math.min(g.end, openWindow.end);
@@ -116,23 +167,37 @@ function RuleCoverageBar({
                     return (
                         <div
                             key={`gap-${i}`}
-                            className="absolute inset-y-0 bg-destructive/30"
+                            className="absolute inset-y-0 bg-destructive/20"
                             style={{ left: `${pct(s)}%`, width: `${pct(e) - pct(s)}%` }}
-                            title="No pricing for this period"
+                            title="No pricing rule for this period"
                         />
                     );
                 })}
-                {/* Current rule segment (edit mode) — green, rendered on top */}
-                {showEditSegment ? (
+                {/* Current rule segment — green, rendered above existing */}
+                {showCurrentSegment && (
                     <div
                         className="absolute inset-y-0 bg-success/70"
                         style={{
                             left: `${pct(editS)}%`,
                             width: `${pct(editE) - pct(editS)}%`,
                         }}
-                        title={`Editing: ${editStartTime} – ${editEndTime}`}
+                        title={`This rule: ${editStartTime} – ${editEndTime}`}
                     />
-                ) : null}
+                )}
+                {/* Overlap segments — amber, rendered on top of everything */}
+                {overlapSegments.map((seg, i) => {
+                    const s = Math.max(seg.start, openWindow.start);
+                    const e = Math.min(seg.end, openWindow.end);
+                    if (e <= s) return null;
+                    return (
+                        <div
+                            key={`overlap-${i}`}
+                            className="absolute inset-y-0 bg-warning/80"
+                            style={{ left: `${pct(s)}%`, width: `${pct(e) - pct(s)}%` }}
+                            title={`Overlap: ${formatTime(s)} – ${formatTime(e)}`}
+                        />
+                    );
+                })}
                 {/* Hour ticks */}
                 {ticks.map((t) => (
                     <div
@@ -163,6 +228,53 @@ function RuleCoverageBar({
                     {formatShortTime(openWindow.end)}
                 </span>
             </div>
+
+            {/* Legend */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
+                    <span className="h-2 w-3 rounded-sm bg-blue-500/60" />
+                    Existing rules
+                </span>
+                {showCurrentSegment && (
+                    <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
+                        <span className="h-2 w-3 rounded-sm bg-success/70" />
+                        This rule
+                    </span>
+                )}
+                {hasOverlap && (
+                    <span className="flex items-center gap-1.5 text-[10px] font-medium text-warning">
+                        <span className="h-2 w-3 rounded-sm bg-warning/80" />
+                        Overlap
+                    </span>
+                )}
+                {gaps.length > 0 && (
+                    <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground/80">
+                        <span className="h-2 w-3 rounded-sm bg-destructive/20" />
+                        No rule
+                    </span>
+                )}
+            </div>
+
+            {/* Overlap detail */}
+            {hasOverlap && conflictingRules.length > 0 && (
+                <div className="mt-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
+                    <p className="text-xs font-medium text-warning">
+                        This time range overlaps with{" "}
+                        {conflictingRules.length === 1
+                            ? "an existing rule"
+                            : `${conflictingRules.length} existing rules`}
+                        :
+                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                        {conflictingRules.map((r, i) => (
+                            <li key={i} className="text-xs text-warning/90">
+                                {r.start_time} – {r.end_time}
+                                {r.label ? ` (${r.label})` : ""}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
         </div>
     );
 }
