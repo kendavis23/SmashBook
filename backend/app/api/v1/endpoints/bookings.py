@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
 from app.core.timezones import club_tz, ensure_utc, local_walltime_to_utc, utc_to_local
-from app.db.models.booking import Booking, BookingPlayer, InviteStatus
+from app.db.models.booking import Booking, BookingPlayer, BookingType, InviteStatus
 from app.db.models.club import Club
 from app.db.models.court import CalendarReservation
 from app.db.models.tenant import Tenant
@@ -33,6 +33,7 @@ from app.schemas.booking import (
     InviteRespondRequest,
     OpenGamePlayer,
     OpenGameSummary,
+    PriceQuoteResponse,
     RecurringBookingCreate,
     RecurringBookingResponse,
     RecurringBookingSkipped,
@@ -475,6 +476,74 @@ async def get_calendar_view(
         date_from=date_from,
         date_to=date_to,
         days=days,
+    )
+
+
+@router.get("/price-quote", response_model=PriceQuoteResponse)
+async def get_price_quote(
+    club_id: uuid.UUID = Query(...),
+    start_datetime: ClubLocalDatetime = Query(...),
+    booking_type: BookingType = Query(default=BookingType.regular),
+    max_players: int = Query(default=4, ge=1, le=20),
+    for_user_id: Optional[uuid.UUID] = Query(
+        default=None,
+        description="Staff only: compute the quote using this player's membership pricing (defaults to the caller).",
+    ),
+    current_user: User = Depends(get_current_user),
+    tenant: Tenant = Depends(get_tenant),
+    db: AsyncSession = Depends(get_read_db),
+):
+    """
+    Lightweight, read-only price preview for a slot at a given booking type.
+
+    Use when staff or a player picks a slot then changes the booking type
+    (e.g. regular → individual lesson) and the UI needs the price refreshed.
+    Persists nothing and never consumes a membership credit.
+
+    Returns the slot total, per-player price, and any membership discount.
+    `pricing_available` is false when the club has no pricing rule matching
+    the slot's day/time and session type, in which case money fields are null.
+    """
+    svc = BookingService(db)
+    # quote_price normalizes the club-local start to UTC against the
+    # tenant-validated club and returns it for render-out.
+    club, start_utc, breakdown = await svc.quote_price(
+        tenant_id=tenant.id,
+        requesting_user=current_user,
+        club_id=club_id,
+        start_datetime=start_datetime,
+        booking_type=booking_type,
+        max_players=max_players,
+        for_user_id=for_user_id,
+    )
+    tz = club_tz(club)
+    start_local = utc_to_local(start_utc, tz)
+
+    if breakdown is None:
+        return PriceQuoteResponse(
+            club_id=club_id,
+            booking_type=booking_type,
+            start_datetime=start_local,
+            max_players=max_players,
+            pricing_available=False,
+        )
+
+    per_player_price = (breakdown.unit_price / max_players).quantize(Decimal("0.01"))
+    return PriceQuoteResponse(
+        club_id=club_id,
+        booking_type=booking_type,
+        start_datetime=start_local,
+        max_players=max_players,
+        pricing_available=True,
+        base_price=breakdown.base_price,
+        unit_price=breakdown.unit_price,
+        total_price=breakdown.total_price,
+        per_player_price=per_player_price,
+        discount_amount=breakdown.discount_amount,
+        discount_source=breakdown.discount_source,
+        amount_due=breakdown.amount_due,
+        membership_subscription_id=breakdown.membership_subscription_id,
+        credit_applies=breakdown.credit_consumed,
     )
 
 

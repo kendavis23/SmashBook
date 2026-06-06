@@ -3519,3 +3519,149 @@ class TestLessonBookingValidation:
         )
         assert resp.status_code == 422
         assert "staff_profile_id" in resp.json()["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# GET /api/v1/bookings/price-quote
+# ---------------------------------------------------------------------------
+
+class TestPriceQuote:
+    """Read-only price preview for a slot at a given booking type."""
+
+    def _params(self, club_id, start, **kwargs):
+        return {
+            "club_id": str(club_id),
+            "start_datetime": start.isoformat(),
+            "booking_type": "regular",
+            "max_players": 4,
+            **kwargs,
+        }
+
+    async def test_player_quotes_regular_slot(self, client, player_headers, club, court_with_hours):
+        start = _future()
+        resp = await client.get(
+            "/api/v1/bookings/price-quote",
+            params=self._params(club.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["pricing_available"] is True
+        assert Decimal(body["total_price"]) == Decimal("20.00")
+        assert Decimal(body["unit_price"]) == Decimal("20.00")
+        assert Decimal(body["per_player_price"]) == Decimal("5.00")  # 20.00 / 4
+        assert Decimal(body["amount_due"]) == Decimal("5.00")        # no membership discount
+        assert body["discount_source"] is None
+        assert body["credit_applies"] is False
+
+    async def test_booking_type_changes_price(
+        self, client, player_headers, club, court_with_hours, test_session_factory
+    ):
+        # Same window, a dearer individual-lesson rule. Switching the type must
+        # surface the lesson price, not the regular one.
+        async with test_session_factory() as session:
+            session.add(PricingRule(
+                club_id=club.id,
+                session_type=BookingType.lesson_individual,
+                label="standard",
+                day_of_week=_future().weekday(),
+                start_time=time(0, 0),
+                end_time=time(23, 59),
+                is_active=True,
+                price_per_slot=Decimal("60.00"),
+            ))
+            await session.commit()
+
+        start = _future()
+        resp = await client.get(
+            "/api/v1/bookings/price-quote",
+            params=self._params(club.id, start, booking_type="lesson_individual", max_players=1),
+            headers=player_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["booking_type"] == "lesson_individual"
+        assert Decimal(body["total_price"]) == Decimal("60.00")
+        assert Decimal(body["per_player_price"]) == Decimal("60.00")
+
+    async def test_no_matching_rule_returns_unavailable(
+        self, client, player_headers, club, court_with_hours
+    ):
+        # The seeded rule only covers _future().weekday(); a slot on a different
+        # weekday matches nothing → pricing_available False, money fields null.
+        start = _future() + timedelta(days=1)
+        resp = await client.get(
+            "/api/v1/bookings/price-quote",
+            params=self._params(club.id, start),
+            headers=player_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        body = resp.json()
+        assert body["pricing_available"] is False
+        assert body["total_price"] is None
+        assert body["per_player_price"] is None
+
+    async def test_player_cannot_quote_for_another_user(
+        self, client, player_headers, club, court_with_hours, player2
+    ):
+        start = _future()
+        resp = await client.get(
+            "/api/v1/bookings/price-quote",
+            params=self._params(club.id, start, for_user_id=str(player2.id)),
+            headers=player_headers,
+        )
+        assert resp.status_code == 403
+
+    async def test_staff_can_quote_for_player(
+        self, client, staff_headers, club, court_with_hours, player2
+    ):
+        start = _future()
+        resp = await client.get(
+            "/api/v1/bookings/price-quote",
+            params=self._params(club.id, start, for_user_id=str(player2.id)),
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        assert resp.json()["pricing_available"] is True
+
+    async def test_tenant_isolation(self, client, club, court_with_hours, plan, test_session_factory):
+        """A token issued for a different tenant must be rejected."""
+        from app.db.models.tenant import Tenant as TenantModel
+        subdomain = f"alien-{uuid.uuid4().hex[:8]}"
+        async with test_session_factory() as session:
+            t2 = TenantModel(name="Alien", trading_name="Alien", player_subdomain=subdomain, staff_subdomain=f"{subdomain}-staff", plan_id=plan.id, is_active=True)
+            session.add(t2)
+            await session.flush()
+            alien_user = User(
+                tenant_id=t2.id,
+                email=f"alien-{uuid.uuid4().hex[:6]}@test.com",
+                full_name="Alien",
+                hashed_password="x",
+                is_active=True,
+                role=TenantUserRole.player,
+            )
+            session.add(alien_user)
+            await session.commit()
+            await session.refresh(alien_user)
+            t2_id, alien_id = t2.id, alien_user.id
+
+        token = create_access_token({"sub": str(alien_id), "tid": str(t2_id)})
+        headers = {"Authorization": f"Bearer {token}", "X-Tenant-ID": str(t2_id)}
+        start = _future()
+        resp = await client.get(
+            "/api/v1/bookings/price-quote",
+            params=self._params(club.id, start),
+            headers=headers,
+        )
+        assert resp.status_code in (401, 404)
+
+        # Remove the alien tenant/user so the shared `plan` fixture teardown does
+        # not trip the tenants.plan_id NOT NULL constraint when cascading the delete.
+        async with test_session_factory() as session:
+            au = await session.get(User, alien_id)
+            if au:
+                await session.delete(au)
+            at = await session.get(TenantModel, t2_id)
+            if at:
+                await session.delete(at)
+            await session.commit()

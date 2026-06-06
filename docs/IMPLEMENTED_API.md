@@ -1,4 +1,4 @@
-_Last updated: 2026-06-05 18:00 UTC_
+_Last updated: 2026-06-06 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -145,6 +145,7 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | `GET` | `/api/v1/bookings` | List bookings for a club; staff see all, players see only their own. Filters: `date_from`, `date_to`, `booking_type`, `booking_status`, `court_id`, `player_search` (staff only — name/email substring) |
 | `GET` | `/api/v1/bookings/calendar` | Staff: calendar grid view (day or week) grouped by day → court column → `slots[]`. Each slot is a discriminated union: `kind="booking"` (non-cancelled booking with players/price) or `kind="block"` (CalendarReservation — maintenance, skill filter, training block, etc.). Club-wide blocks (court_id=null) appear in every court column. Slots are sorted by `start_datetime`. Params: `club_id`, `view=day\|week`, `anchor_date` |
 | `GET` | `/api/v1/bookings/open-games` | Browse publicly joinable open games; filterable by date and skill range (no auth) |
+| `GET` | `/api/v1/bookings/price-quote` | Read-only price preview for a slot at a given `booking_type` (used when staff/player picks a slot then changes the type). Params: `club_id`, `start_datetime`, `booking_type`, `max_players`, `for_user_id` (staff only — quote a specific player's membership pricing). Returns slot total, `per_player_price`, `discount_amount`/`discount_source`, per-player `amount_due`, and `credit_applies`. `pricing_available=false` (money fields null) when no pricing rule matches. Persists nothing; never consumes a credit |
 | `GET` | `/api/v1/bookings/{booking_id}` | Get booking detail; players can only see their own or open games |
 | `POST` | `/api/v1/bookings/{booking_id}/join` | Player self-joins an open game; enforces skill range and capacity |
 | `POST` | `/api/v1/bookings/{booking_id}/invite` | Organiser or staff invites a player; bypasses skill check; pending invite holds a slot |

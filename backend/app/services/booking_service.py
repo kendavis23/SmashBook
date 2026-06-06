@@ -29,7 +29,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
+from app.core.timezones import club_tz, ensure_utc, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import (
     Booking,
     BookingPlayer,
@@ -45,7 +45,7 @@ from app.db.models.court import CalendarReservation, CalendarReservationType, Co
 from app.db.models.staff import StaffProfile, StaffRole
 from app.db.models.user import TenantUserRole, User
 from app.services.booking_confirmation import should_confirm
-from app.services.pricing_service import PricingService
+from app.services.pricing_service import PriceBreakdown, PricingService
 
 _STAFF_ROLES = {
     TenantUserRole.owner,
@@ -286,6 +286,62 @@ class BookingService:
     # ------------------------------------------------------------------
     # Public methods
     # ------------------------------------------------------------------
+
+    async def quote_price(
+        self,
+        tenant_id: uuid.UUID,
+        requesting_user: User,
+        club_id: uuid.UUID,
+        start_datetime: datetime,
+        booking_type: BookingType,
+        max_players: int,
+        for_user_id: Optional[uuid.UUID] = None,
+    ) -> tuple[Club, datetime, Optional[PriceBreakdown]]:
+        """Preview the price of a prospective slot without persisting anything.
+
+        Powers the UI flow where a user has picked a slot and switches the
+        booking type (e.g. regular → lesson_individual) and wants the resulting
+        price refreshed. Read-only: never consumes a membership credit (that is
+        a side effect reserved for actual booking creation).
+
+        ``start_datetime`` is a club-scoped parse-in value (naive = club-local
+        wall-clock, offset-aware = honored); it is normalized to UTC here using
+        the tenant-validated club's zone. Returns ``(club, start_utc, breakdown)``
+        where ``breakdown`` is ``None`` when the club has configured no matching
+        pricing rule for the slot/session type.
+        """
+        is_staff = _is_staff(requesting_user)
+
+        # Tenant gate — never compute pricing for a club outside the caller's tenant.
+        club_result = await self.db.execute(
+            select(Club).where(Club.id == club_id, Club.tenant_id == tenant_id)
+        )
+        club = club_result.scalar_one_or_none()
+        if not club:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+
+        start_utc = ensure_utc(start_datetime, club_tz(club))
+
+        # Resolve whose membership pricing applies:
+        #   - staff may quote on behalf of a specific player via for_user_id
+        #   - a player always quotes for themselves (for_user_id, if given, must be self)
+        #   - staff with no for_user_id get base (membership-free) pricing
+        if for_user_id is not None:
+            if not is_staff and for_user_id != requesting_user.id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cannot quote pricing on behalf of another player",
+                )
+            pricing_user_id: Optional[uuid.UUID] = for_user_id
+        elif not is_staff:
+            pricing_user_id = requesting_user.id
+        else:
+            pricing_user_id = None
+
+        breakdown = await PricingService(self.db).calculate(
+            club_id, start_utc, max_players, pricing_user_id, booking_type
+        )
+        return club, start_utc, breakdown
 
     async def create_booking(
         self,

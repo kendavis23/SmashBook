@@ -104,6 +104,31 @@ class BookingUpdate(BaseModel):
     contact_phone: Optional[str] = None
 
 
+class PriceQuoteResponse(BaseModel):
+    """Read-only price preview for a prospective slot + booking type.
+
+    All money fields are ``None`` when ``pricing_available`` is False (the club
+    has no pricing rule matching the slot/session type). Per-player fields apply
+    to the user the quote was computed for (the caller, or ``for_user_id`` when
+    staff quote on someone's behalf); membership discounts only appear when a
+    pricing user was resolved.
+    """
+    club_id: uuid.UUID
+    booking_type: BookingType
+    start_datetime: datetime
+    max_players: int
+    pricing_available: bool
+    base_price: Optional[Decimal] = None        # per-slot list price before any incentive
+    unit_price: Optional[Decimal] = None        # per-slot price after incentive override
+    total_price: Optional[Decimal] = None       # total charge for the whole slot
+    per_player_price: Optional[Decimal] = None  # unit_price split across max_players, before discount
+    discount_amount: Optional[Decimal] = None   # per-player discount applied
+    discount_source: Optional[DiscountSource] = None
+    amount_due: Optional[Decimal] = None        # per-player charge after discount
+    membership_subscription_id: Optional[uuid.UUID] = None
+    credit_applies: bool = False                 # a membership booking credit would cover this player's slot
+
+
 class BookingPlayerResponse(BaseModel):
     id: uuid.UUID
     booking_id: uuid.UUID
