@@ -5,11 +5,14 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
+from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import Booking, BookingPlayer, InviteStatus
+from app.db.models.club import Club
 from app.db.models.court import CalendarReservation
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
@@ -34,6 +37,7 @@ from app.schemas.booking import (
     RecurringBookingResponse,
     RecurringBookingSkipped,
 )
+from app.schemas.common import UtcDatetime
 from app.schemas.equipment import EquipmentRentalRequest, EquipmentRentalResponse
 from app.services.booking_service import BookingService
 from app.services.court_service import CourtService
@@ -45,6 +49,16 @@ router = APIRouter(prefix="/bookings", tags=["bookings"])
 # ---------------------------------------------------------------------------
 # Response builders
 # ---------------------------------------------------------------------------
+
+async def _resolve_club_tz(db: AsyncSession, club_id: uuid.UUID):
+    """Resolve a club's IANA timezone for render-out localization.
+
+    All booking responses render start/end in club-local time; the club is
+    already tenant-validated by the service layer before responses are built.
+    """
+    club = await db.scalar(select(Club).where(Club.id == club_id))
+    return club_tz(club)
+
 
 def _accepted_count(players: list[BookingPlayer]) -> int:
     return sum(1 for p in players if p.invite_status == InviteStatus.accepted)
@@ -65,8 +79,10 @@ def _build_player_response(bp: BookingPlayer) -> BookingPlayerResponse:
     )
 
 
-def _build_booking_response(booking: Booking) -> BookingResponse:
+def _build_booking_response(booking: Booking, tz) -> BookingResponse:
     accepted = _accepted_count(booking.players)
+    # start/end are stored as true-UTC instants; render club-local for display.
+    # created_at stays UTC (audit timestamp, not a display field).
     return BookingResponse(
         id=booking.id,
         club_id=booking.club_id,
@@ -75,8 +91,8 @@ def _build_booking_response(booking: Booking) -> BookingResponse:
         booking_type=booking.booking_type,
         status=booking.status,
         is_open_game=booking.is_open_game,
-        start_datetime=booking.start_datetime,
-        end_datetime=booking.end_datetime,
+        start_datetime=utc_to_local(booking.start_datetime, tz),
+        end_datetime=utc_to_local(booking.end_datetime, tz),
         min_skill_level=booking.min_skill_level,
         max_skill_level=booking.max_skill_level,
         max_players=booking.max_players,
@@ -89,7 +105,7 @@ def _build_booking_response(booking: Booking) -> BookingResponse:
     )
 
 
-def _build_open_game_summary(booking: Booking) -> OpenGameSummary:
+def _build_open_game_summary(booking: Booking, tz) -> OpenGameSummary:
     accepted = _accepted_count(booking.players)
     players = [
         OpenGamePlayer(
@@ -104,8 +120,8 @@ def _build_open_game_summary(booking: Booking) -> OpenGameSummary:
         id=booking.id,
         court_id=booking.court_id,
         court_name=booking.court.name,
-        start_datetime=booking.start_datetime,
-        end_datetime=booking.end_datetime,
+        start_datetime=utc_to_local(booking.start_datetime, tz),
+        end_datetime=utc_to_local(booking.end_datetime, tz),
         min_skill_level=booking.min_skill_level,
         max_skill_level=booking.max_skill_level,
         slots_available=max(0, (booking.max_players or 0) - accepted),
@@ -114,8 +130,10 @@ def _build_open_game_summary(booking: Booking) -> OpenGameSummary:
     )
 
 
-def _build_calendar_booking_item(booking: Booking) -> CalendarBookingItem:
+def _build_calendar_booking_item(booking: Booking, tz) -> CalendarBookingItem:
     accepted = _accepted_count(booking.players)
+    # start/end are stored as true-UTC instants; the calendar renders club-local
+    # wall-clock (the frontend displays these literally), so convert here.
     return CalendarBookingItem(
         id=booking.id,
         court_id=booking.court_id,
@@ -123,8 +141,8 @@ def _build_calendar_booking_item(booking: Booking) -> CalendarBookingItem:
         booking_type=booking.booking_type,
         status=booking.status,
         is_open_game=booking.is_open_game,
-        start_datetime=booking.start_datetime,
-        end_datetime=booking.end_datetime,
+        start_datetime=utc_to_local(booking.start_datetime, tz),
+        end_datetime=utc_to_local(booking.end_datetime, tz),
         event_name=booking.event_name,
         players=[_build_player_response(p) for p in booking.players],
         slots_available=max(0, (booking.max_players or 0) - accepted),
@@ -132,12 +150,12 @@ def _build_calendar_booking_item(booking: Booking) -> CalendarBookingItem:
     )
 
 
-def _build_calendar_block_item(reservation: CalendarReservation) -> CalendarBlockItem:
+def _build_calendar_block_item(reservation: CalendarReservation, tz) -> CalendarBlockItem:
     return CalendarBlockItem(
         id=reservation.id,
         court_id=reservation.court_id,
-        start_datetime=reservation.start_datetime,
-        end_datetime=reservation.end_datetime,
+        start_datetime=utc_to_local(reservation.start_datetime, tz),
+        end_datetime=utc_to_local(reservation.end_datetime, tz),
         reservation_type=reservation.reservation_type.value,
         title=reservation.title,
     )
@@ -182,7 +200,8 @@ async def create_booking(
         staff_profile_id=body.staff_profile_id,
         on_behalf_of_user_id=body.on_behalf_of_user_id,
     )
-    return _build_booking_response(booking)
+    tz = await _resolve_club_tz(db, body.club_id)
+    return _build_booking_response(booking, tz)
 
 
 @router.post("/recurring", response_model=RecurringBookingResponse, status_code=status.HTTP_201_CREATED)
@@ -224,8 +243,9 @@ async def create_recurring_booking(
         skip_conflicts=body.skip_conflicts,
     )
 
+    tz = await _resolve_club_tz(db, body.club_id)
     created_responses = [
-        _build_booking_response(b) for b in result["created"]
+        _build_booking_response(b, tz) for b in result["created"]
     ]
     skipped_responses = [
         RecurringBookingSkipped(occurrence=s["occurrence"], reason=s["reason"])
@@ -237,8 +257,8 @@ async def create_recurring_booking(
 @router.get("", response_model=list[BookingResponse])
 async def list_bookings(
     club_id: uuid.UUID = Query(...),
-    date_from: Optional[datetime] = None,
-    date_to: Optional[datetime] = None,
+    date_from: Optional[UtcDatetime] = None,
+    date_to: Optional[UtcDatetime] = None,
     booking_type: Optional[str] = None,
     booking_status: Optional[str] = None,
     court_id: Optional[uuid.UUID] = None,
@@ -260,7 +280,8 @@ async def list_bookings(
         court_id=court_id,
         player_search=player_search,
     )
-    return [_build_booking_response(b) for b in bookings]
+    tz = await _resolve_club_tz(db, club_id)
+    return [_build_booking_response(b, tz) for b in bookings]
 
 
 @router.get("/open-games", response_model=list[OpenGameSummary])
@@ -286,7 +307,8 @@ async def list_open_games(
         min_skill=min_skill,
         max_skill=max_skill,
     )
-    return [_build_open_game_summary(b) for b in bookings]
+    tz = await _resolve_club_tz(db, club_id)
+    return [_build_open_game_summary(b, tz) for b in bookings]
 
 
 @router.get("/calendar", response_model=CalendarResponse)
@@ -326,19 +348,21 @@ async def get_calendar_view(
     date_from: date = data["date_from"]
     date_to: date = data["date_to"]
 
+    tz = club_tz(club)
     oh_by_dow = {oh.day_of_week: oh for oh in club.operating_hours}
     slot_duration = timedelta(minutes=club.booking_duration_minutes)
     now = datetime.now(tz=timezone.utc)
 
-    # Group booking items by date then court
+    # Group booking items by club-local calendar date then court (a 23:00-local
+    # booking is stored as the next UTC day, so group on the local date).
     by_date_court: dict = defaultdict(lambda: defaultdict(list))
     for b in bookings:
-        by_date_court[b.start_datetime.date()][b.court_id].append(b)
+        by_date_court[utc_to_local(b.start_datetime, tz).date()][b.court_id].append(b)
 
     # Group block items by date; court_id=None means club-wide (all courts)
     blocks_by_date_court: dict = defaultdict(lambda: defaultdict(list))
     for r in reservations:
-        r_date = r.start_datetime.date()
+        r_date = utc_to_local(r.start_datetime, tz).date()
         blocks_by_date_court[r_date][r.court_id].append(r)
 
     # Index all bookings and reservations per court for time_slots overlap checks
@@ -354,8 +378,11 @@ async def get_calendar_view(
         oh = oh_by_dow.get(day.weekday())
         if not oh:
             return []
-        slot_start = datetime.combine(day, oh.open_time, tzinfo=timezone.utc)
-        day_end = datetime.combine(day, oh.close_time, tzinfo=timezone.utc)
+        # open_time/close_time are club-local wall-clock: interpret them in the
+        # club's zone and convert to true UTC so the slot instants compare
+        # directly against stored booking/reservation instants and `now`.
+        slot_start = local_walltime_to_utc(day, oh.open_time, tz)
+        day_end = local_walltime_to_utc(day, oh.close_time, tz)
         court_bookings = bookings_by_court.get(court_id, [])
         court_reservations = (
             reservations_by_court.get(court_id, [])
@@ -364,10 +391,13 @@ async def get_calendar_view(
         result = []
         while slot_start + slot_duration <= day_end:
             slot_end = slot_start + slot_duration
+            # Render in club-local wall-clock to match the booking/block items.
+            local_start = utc_to_local(slot_start, tz)
+            local_end = utc_to_local(slot_end, tz)
             if slot_start < now:
                 result.append(CalendarTimeSlot(
-                    start_datetime=slot_start,
-                    end_datetime=slot_end,
+                    start_datetime=local_start,
+                    end_datetime=local_end,
                     status="past",
                 ))
                 slot_start = slot_end
@@ -378,8 +408,8 @@ async def get_calendar_view(
             )
             if booking_match:
                 result.append(CalendarTimeSlot(
-                    start_datetime=slot_start,
-                    end_datetime=slot_end,
+                    start_datetime=local_start,
+                    end_datetime=local_end,
                     status="booked",
                     booking_id=booking_match.id,
                 ))
@@ -390,15 +420,15 @@ async def get_calendar_view(
                 )
                 if res_match:
                     result.append(CalendarTimeSlot(
-                        start_datetime=slot_start,
-                        end_datetime=slot_end,
+                        start_datetime=local_start,
+                        end_datetime=local_end,
                         status="blocked",
                         reservation_id=res_match.id,
                     ))
                 else:
                     result.append(CalendarTimeSlot(
-                        start_datetime=slot_start,
-                        end_datetime=slot_end,
+                        start_datetime=local_start,
+                        end_datetime=local_end,
                         status="available",
                     ))
             slot_start = slot_end
@@ -410,11 +440,11 @@ async def get_calendar_view(
         court_columns = []
         for court in courts:
             booking_slots: list[CalendarSlot] = [
-                _build_calendar_booking_item(b)
+                _build_calendar_booking_item(b, tz)
                 for b in by_date_court[current].get(court.id, [])
             ]
             block_slots: list[CalendarSlot] = [
-                _build_calendar_block_item(r)
+                _build_calendar_block_item(r, tz)
                 for r in (
                     blocks_by_date_court[current].get(court.id, [])
                     + blocks_by_date_court[current].get(None, [])
@@ -463,7 +493,8 @@ async def get_booking(
         tenant_id=tenant.id,
         requesting_user=current_user,
     )
-    return _build_booking_response(booking)
+    tz = await _resolve_club_tz(db, club_id)
+    return _build_booking_response(booking, tz)
 
 
 @router.post("/{booking_id}/join", response_model=BookingResponse)
@@ -485,7 +516,8 @@ async def join_booking(
         tenant_id=tenant.id,
         requesting_user=current_user,
     )
-    return _build_booking_response(booking)
+    tz = await _resolve_club_tz(db, club_id)
+    return _build_booking_response(booking, tz)
 
 
 @router.post("/{booking_id}/invite", response_model=BookingResponse)
@@ -509,7 +541,8 @@ async def invite_player(
         requesting_user=current_user,
         invited_user_id=body.user_id,
     )
-    return _build_booking_response(booking)
+    tz = await _resolve_club_tz(db, club_id)
+    return _build_booking_response(booking, tz)
 
 
 @router.post("/{booking_id}/respond-invite", response_model=BookingResponse)
@@ -535,7 +568,8 @@ async def respond_to_invite(
         requesting_user=current_user,
         action=body.action,
     )
-    return _build_booking_response(booking)
+    tz = await _resolve_club_tz(db, club_id)
+    return _build_booking_response(booking, tz)
 
 
 @router.delete("/{booking_id}", response_model=BookingResponse)
@@ -557,7 +591,8 @@ async def cancel_booking(
         tenant_id=tenant.id,
         requesting_user=current_user,
     )
-    return _build_booking_response(booking)
+    tz = await _resolve_club_tz(db, club_id)
+    return _build_booking_response(booking, tz)
 
 
 @router.patch("/{booking_id}", response_model=BookingResponse)
@@ -588,7 +623,8 @@ async def update_booking(
         contact_email=body.contact_email,
         contact_phone=body.contact_phone,
     )
-    return _build_booking_response(booking)
+    tz = await _resolve_club_tz(db, club_id)
+    return _build_booking_response(booking, tz)
 
 
 # ---------------------------------------------------------------------------

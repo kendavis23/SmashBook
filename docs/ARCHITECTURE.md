@@ -1,4 +1,4 @@
-_Last updated: 2026-06-06 12:00 UTC_
+_Last updated: 2026-06-06 14:00 UTC_
 
 # SmashBook — Architecture
 
@@ -297,9 +297,11 @@ Client → FastAPI route → dependency injection (auth, db session)
 
 AI features are triggered either synchronously (e.g. pricing lookup at booking time) or asynchronously via Pub/Sub events (e.g. post-match skill rating update).
 
-### Datetimes & timezones (UTC everywhere)
+### Datetimes & timezones (UTC in/stored, club-local out)
 
-All datetimes are stored as true UTC (`timestamptz`) and exchanged on the wire as UTC ISO-8601 with offset; naive datetimes are rejected at the schema layer. Club-local time (operating hours, user-supplied `HH:MM`, availability grids) is purely a parse-in / render-out concern, resolved against the `clubs.timezone` IANA column. The single sanctioned conversion point is `app/core/timezones.py` (`club_tz`, `local_walltime_to_utc`, `utc_to_local`); code must never stamp a wall-clock value as UTC. The analytics read path and the operational booking/availability path share this assumption, so rollups and live availability agree. See the "Datetime & Timezone Convention" section in `CLAUDE.md` for the full rule.
+All datetimes are stored as true UTC (`timestamptz`). The frontend just displays what it receives. Incoming datetimes must carry an explicit offset (the client may send the user's local time so long as it is offset-tagged) and are normalized to UTC at the schema layer — naive, offset-less values are rejected (`422`), never silently interpreted via the club zone. Outgoing club-scoped reads are converted by the backend to club-local time. Club-local time (operating hours, user-supplied `HH:MM`, availability grids) is purely a parse-in / render-out concern, resolved against the `clubs.timezone` IANA column.
+
+**Parse-in:** every incoming datetime (request bodies *and* datetime query-param filters) is typed `UtcDatetime` (`app/schemas/common.py`) — naive values are rejected (`422`) and offset-bearing values normalized to UTC. **Render-out:** all club-scoped read endpoints emit club-local. Court availability returns local `HH:MM` strings; the staff calendar (`GET /bookings/calendar`), booking responses (create/list/detail/mutations + open games), calendar reservations, trainer bookings/open-slots, the multi-day availability scan, and player booking history all return club-local **tz-aware** datetimes (offset such as `+02:00`, not `Z`) — the instant stays unambiguous via the offset while the wall-clock reads local. Player booking history spans clubs, so each item is localized to its own booking's club. Audit/billing timestamps (`created_at`, subscription/Stripe periods) stay UTC: they are tenant/platform-level with no single club timezone (`tenants.timezone` does not exist). Do not "correct" the club-local render-out back to UTC. The single sanctioned conversion point is `app/core/timezones.py` (`club_tz`, `local_walltime_to_utc`, `utc_to_local`); code must never stamp a wall-clock value as UTC. The analytics read path and the operational booking/availability path share this assumption, so rollups and live availability agree. See the "Datetime & Timezone Convention" section in `CLAUDE.md` for the full rule.
 
 ---
 

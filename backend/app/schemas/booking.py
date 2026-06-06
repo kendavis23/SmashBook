@@ -50,7 +50,7 @@ class RecurringBookingCreate(BaseModel):
     club_id: uuid.UUID
     court_id: uuid.UUID
     booking_type: BookingType = BookingType.lesson_individual
-    first_start: datetime
+    first_start: UtcDatetime
     recurrence_rule: str = Field(
         ...,
         description="iCal RRULE string, e.g. FREQ=WEEKLY;BYDAY=MO;COUNT=12",

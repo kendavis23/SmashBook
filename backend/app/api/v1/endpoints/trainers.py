@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
+from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus, BookingType
 from app.db.models.club import Club, OperatingHours
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
@@ -133,8 +134,10 @@ async def list_available_trainers(
     club_result = await db.execute(
         select(Club).where(Club.id == club_id, Club.tenant_id == tenant.id)
     )
-    if not club_result.scalar_one_or_none():
+    club = club_result.scalar_one_or_none()
+    if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+    tz = club_tz(club)
 
     profiles_result = await db.execute(
         select(StaffProfile)
@@ -155,8 +158,10 @@ async def list_available_trainers(
     )
     user_names: dict[uuid.UUID, str] = {row.id: row.full_name for row in users_result}
 
-    slot_start_dt = datetime.combine(slot_date, start_time, tzinfo=timezone.utc)
-    slot_end_dt = datetime.combine(slot_date, end_time, tzinfo=timezone.utc)
+    # start_time/end_time are club-local wall-clock query params; convert to the
+    # true-UTC instants that stored bookings and availability windows compare in.
+    slot_start_dt = local_walltime_to_utc(slot_date, start_time, tz)
+    slot_end_dt = local_walltime_to_utc(slot_date, end_time, tz)
 
     booked_result = await db.execute(
         select(Booking.staff_profile_id).where(
@@ -177,8 +182,8 @@ async def list_available_trainers(
             w.day_of_week == day_of_week
             and w.effective_from <= slot_date
             and (w.effective_until is None or w.effective_until >= slot_date)
-            and datetime.combine(slot_date, w.start_time, tzinfo=timezone.utc) <= slot_start_dt
-            and datetime.combine(slot_date, w.end_time, tzinfo=timezone.utc) >= slot_end_dt
+            and local_walltime_to_utc(slot_date, w.start_time, tz) <= slot_start_dt
+            and local_walltime_to_utc(slot_date, w.end_time, tz) >= slot_end_dt
             for w in profile.availability
         )
         if not in_availability:
@@ -216,6 +221,7 @@ async def get_trainer_open_slots(
     club = club_result.scalar_one_or_none()
     if not club:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
+    tz = club_tz(club)
 
     # Fetch trainer profile (must be active trainer at this club)
     profile_result = await db.execute(
@@ -262,8 +268,9 @@ async def get_trainer_open_slots(
 
     # Build slot grid for the day
     duration = club.booking_duration_minutes
-    open_dt = datetime.combine(slot_date, oh.open_time, tzinfo=timezone.utc)
-    close_dt = datetime.combine(slot_date, oh.close_time, tzinfo=timezone.utc)
+    # Operating hours are club-local wall-clock; build the grid in true UTC.
+    open_dt = local_walltime_to_utc(slot_date, oh.open_time, tz)
+    close_dt = local_walltime_to_utc(slot_date, oh.close_time, tz)
     slots: list[tuple[datetime, datetime]] = []
     slot_start = open_dt
     while slot_start + timedelta(minutes=duration) <= close_dt:
@@ -284,8 +291,8 @@ async def get_trainer_open_slots(
         return []
 
     # Existing pending/confirmed bookings for this trainer on this date
-    day_start = datetime.combine(slot_date, datetime.min.time()).replace(tzinfo=timezone.utc)
-    day_end = day_start + timedelta(days=1)
+    day_start = local_walltime_to_utc(slot_date, datetime.min.time(), tz)
+    day_end = local_walltime_to_utc(slot_date + timedelta(days=1), datetime.min.time(), tz)
     booked_result = await db.execute(
         select(Booking.start_datetime, Booking.end_datetime).where(
             Booking.staff_profile_id == trainer_id,
@@ -300,8 +307,8 @@ async def get_trainer_open_slots(
     for s_start, s_end in slots:
         # Must fall within at least one trainer availability window
         in_availability = any(
-            datetime.combine(slot_date, w.start_time, tzinfo=timezone.utc) <= s_start
-            and datetime.combine(slot_date, w.end_time, tzinfo=timezone.utc) >= s_end
+            local_walltime_to_utc(slot_date, w.start_time, tz) <= s_start
+            and local_walltime_to_utc(slot_date, w.end_time, tz) >= s_end
             for w in effective_windows
         )
         if not in_availability:
@@ -315,7 +322,11 @@ async def get_trainer_open_slots(
         if already_booked:
             continue
 
-        open_slots.append(TrainerOpenSlot(start_datetime=s_start, end_datetime=s_end))
+        # Render slots in club-local time for display.
+        open_slots.append(TrainerOpenSlot(
+            start_datetime=utc_to_local(s_start, tz),
+            end_datetime=utc_to_local(s_end, tz),
+        ))
 
     return open_slots
 
@@ -459,6 +470,9 @@ async def get_trainer_bookings(
     profile = await _get_staff_profile(db, trainer_id, tenant)
     _check_write_access(profile, current_user)
 
+    club = await db.scalar(select(Club).where(Club.id == profile.club_id))
+    tz = club_tz(club)
+
     stmt = (
         select(Booking)
         .where(
@@ -487,8 +501,8 @@ async def get_trainer_bookings(
             court_name=b.court.name,
             booking_type=b.booking_type,
             status=b.status,
-            start_datetime=b.start_datetime,
-            end_datetime=b.end_datetime,
+            start_datetime=utc_to_local(b.start_datetime, tz),
+            end_datetime=utc_to_local(b.end_datetime, tz),
             participants=[
                 BookingParticipant(
                     user_id=p.user_id,

@@ -29,7 +29,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.timezones import club_tz, local_walltime_to_utc
+from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import (
     Booking,
     BookingPlayer,
@@ -143,8 +143,10 @@ class BookingService:
         ``start`` is a true-UTC instant; ``oh.open_time`` is club-local wall-clock.
         The opening anchor is built in the club's zone (``tz``) and converted to
         UTC so the delta matches the contiguous UTC slot grid used for availability.
+        The anchor date is the club-LOCAL date of ``start`` (its UTC date can fall
+        on the wrong day for far-from-UTC clubs near local midnight).
         """
-        open_dt = local_walltime_to_utc(start.date(), oh.open_time, tz)
+        open_dt = local_walltime_to_utc(utc_to_local(start, tz).date(), oh.open_time, tz)
         delta_minutes = int((start - open_dt).total_seconds() // 60)
         if delta_minutes < 0 or delta_minutes % duration_minutes != 0:
             raise HTTPException(
@@ -350,12 +352,16 @@ class BookingService:
         # 2. Compute end datetime
         end_datetime = start_datetime + timedelta(minutes=club.booking_duration_minutes)
 
-        # 3. Operating hours for the booking date
-        oh = await self._get_operating_hours(club_id, start_datetime.date())
+        # 3. Operating hours for the booking date. start_datetime is a true-UTC
+        # instant; operating hours / seasonal windows key off the club-LOCAL
+        # calendar date (a 23:00-local booking is stored on the next UTC day, and
+        # for far-from-UTC clubs the UTC date can land on the wrong weekday).
+        tz = club_tz(club)
+        local_date = utc_to_local(start_datetime, tz).date()
+        oh = await self._get_operating_hours(club_id, local_date)
 
         # 4. Booking window within operating hours
-        tz = club_tz(club)
-        self._validate_window_in_hours(start_datetime, end_datetime, oh, start_datetime.date(), tz)
+        self._validate_window_in_hours(start_datetime, end_datetime, oh, local_date, tz)
 
         # 5. Grid alignment (regular bookings only)
         if booking_type in _GRID_ENFORCED_TYPES:
@@ -627,8 +633,12 @@ class BookingService:
             date_from = anchor_date - timedelta(days=anchor_date.weekday())
             date_to = date_from + timedelta(days=6)
 
-        start_dt = datetime.combine(date_from, datetime.min.time()).replace(tzinfo=timezone.utc)
-        end_dt = datetime.combine(date_to, datetime.max.time()).replace(tzinfo=timezone.utc)
+        # date_from/date_to are club-local calendar dates. Build the query window
+        # from the club-local day bounds and convert to UTC so bookings near the
+        # local midnight boundary (stored on the adjacent UTC day) aren't missed.
+        tz = club_tz(club)
+        start_dt = local_walltime_to_utc(date_from, datetime.min.time(), tz)
+        end_dt = local_walltime_to_utc(date_to, datetime.max.time(), tz)
 
         courts_query = (
             select(Court)
@@ -693,9 +703,10 @@ class BookingService:
         max_skill: Optional[Decimal] = None,
     ) -> list[Booking]:
         club_result = await self.db.execute(
-            select(Club.id).where(Club.id == club_id, Club.tenant_id == tenant_id)
+            select(Club).where(Club.id == club_id, Club.tenant_id == tenant_id)
         )
-        if not club_result.scalar_one_or_none():
+        club = club_result.scalar_one_or_none()
+        if not club:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Club not found")
 
         # Subquery: count accepted players per booking
@@ -722,8 +733,11 @@ class BookingService:
         )
 
         if date:
-            day_start = datetime.combine(date, datetime.min.time(), tzinfo=timezone.utc)
-            day_end = day_start + timedelta(days=1)
+            # `date` is a club-local calendar date; bound the query by the club's
+            # local day converted to UTC so games are filtered on local-day edges.
+            tz = club_tz(club)
+            day_start = local_walltime_to_utc(date, datetime.min.time(), tz)
+            day_end = local_walltime_to_utc(date + timedelta(days=1), datetime.min.time(), tz)
             stmt = stmt.where(Booking.start_datetime >= day_start, Booking.start_datetime < day_end)
 
         if player_skill_level is not None:
@@ -1173,10 +1187,12 @@ class BookingService:
                     detail="Bookings cannot be rescheduled into the past",
                 )
 
-            # Operating hours and grid alignment
-            oh = await self._get_operating_hours(club_id, new_start.date())
+            # Operating hours and grid alignment. Key off the club-LOCAL date of
+            # the new start instant, not its UTC date (see create_booking).
             tz = club_tz(club)
-            self._validate_window_in_hours(new_start, new_end, oh, new_start.date(), tz)
+            local_date = utc_to_local(new_start, tz).date()
+            oh = await self._get_operating_hours(club_id, local_date)
+            self._validate_window_in_hours(new_start, new_end, oh, local_date, tz)
             if booking.booking_type in _GRID_ENFORCED_TYPES:
                 self._validate_grid_alignment(new_start, oh, club.booking_duration_minutes, tz)
 

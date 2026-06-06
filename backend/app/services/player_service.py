@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.timezones import club_tz, utc_to_local
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus
 from app.db.models.skill import SkillLevelHistory, SkillChangeSource
 from app.db.models.user import User, TenantUserRole
@@ -146,6 +147,9 @@ class PlayerService:
         items = []
         for bp in rows:
             b = bp.booking
+            # History can span multiple clubs; render each booking in its own
+            # club's local time (start/end stored as true-UTC instants).
+            tz = club_tz(b.club)
             items.append(PlayerBookingItem(
                 booking_id=b.id,
                 club_id=b.club_id,
@@ -154,8 +158,8 @@ class PlayerService:
                 court_name=b.court.name,
                 booking_type=b.booking_type,
                 status=b.status,
-                start_datetime=b.start_datetime,
-                end_datetime=b.end_datetime,
+                start_datetime=utc_to_local(b.start_datetime, tz),
+                end_datetime=utc_to_local(b.end_datetime, tz),
                 role=bp.role,
                 invite_status=bp.invite_status,
                 payment_status=bp.payment_status,

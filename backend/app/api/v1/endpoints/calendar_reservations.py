@@ -8,12 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies.auth import require_staff
 from app.api.v1.dependencies.tenant import get_tenant
+from app.core.timezones import club_tz, utc_to_local
 from app.db.models.booking import Booking, BookingStatus
 from app.db.models.club import Club
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.tenant import Tenant
 from app.db.models.user import User
 from app.db.session import get_db, get_read_db
+from app.schemas.common import UtcDatetime
 from app.schemas.court import (
     CalendarReservationCreate,
     CalendarReservationResponse,
@@ -21,6 +23,30 @@ from app.schemas.court import (
 )
 
 router = APIRouter(prefix="/calendar-reservations", tags=["calendar-reservations"])
+
+
+def _to_response(reservation: CalendarReservation, tz) -> CalendarReservationResponse:
+    """Render a reservation with its time window in club-local time.
+
+    start/end are stored as true-UTC instants; the API renders club-local
+    (created_at/updated_at stay UTC — they are audit timestamps, not display).
+    """
+    return CalendarReservationResponse(
+        id=reservation.id,
+        club_id=reservation.club_id,
+        court_id=reservation.court_id,
+        reservation_type=reservation.reservation_type,
+        title=reservation.title,
+        start_datetime=utc_to_local(reservation.start_datetime, tz),
+        end_datetime=utc_to_local(reservation.end_datetime, tz),
+        allowed_booking_types=reservation.allowed_booking_types,
+        is_recurring=reservation.is_recurring,
+        recurrence_rule=reservation.recurrence_rule,
+        recurrence_end_date=reservation.recurrence_end_date,
+        created_by=reservation.created_by,
+        created_at=reservation.created_at,
+        updated_at=reservation.updated_at,
+    )
 
 
 async def _get_club(db: AsyncSession, club_id: uuid.UUID, tenant: Tenant) -> Club:
@@ -97,7 +123,7 @@ async def create_reservation(
     db: AsyncSession = Depends(get_db),
 ):
     """Staff: create a calendar reservation (maintenance block, skill filter, training block, etc)."""
-    await _get_club(db, body.club_id, tenant)
+    club = await _get_club(db, body.club_id, tenant)
 
     if body.court_id is not None:
         court_result = await db.execute(
@@ -123,7 +149,7 @@ async def create_reservation(
     )
     db.add(reservation)
     await db.flush()
-    return reservation
+    return _to_response(reservation, club_tz(club))
 
 
 @router.get("", response_model=list[CalendarReservationResponse])
@@ -131,13 +157,13 @@ async def list_reservations(
     club_id: uuid.UUID = Query(...),
     reservation_type: Optional[CalendarReservationType] = None,
     court_id: Optional[uuid.UUID] = None,
-    from_dt: Optional[datetime] = None,
-    to_dt: Optional[datetime] = None,
+    from_dt: Optional[UtcDatetime] = None,
+    to_dt: Optional[UtcDatetime] = None,
     tenant: Tenant = Depends(get_tenant),
     db=Depends(get_read_db),
 ):
     """Staff: list calendar reservations for a club, with optional filters."""
-    await _get_club(db, club_id, tenant)
+    club = await _get_club(db, club_id, tenant)
 
     stmt = select(CalendarReservation).where(CalendarReservation.club_id == club_id)
 
@@ -152,7 +178,8 @@ async def list_reservations(
 
     stmt = stmt.order_by(CalendarReservation.start_datetime)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    tz = club_tz(club)
+    return [_to_response(r, tz) for r in result.scalars().all()]
 
 
 @router.get("/{reservation_id}", response_model=CalendarReservationResponse)
@@ -162,7 +189,9 @@ async def get_reservation(
     db=Depends(get_read_db),
 ):
     """Staff: get a single calendar reservation."""
-    return await _get_reservation(db, reservation_id, tenant)
+    reservation = await _get_reservation(db, reservation_id, tenant)
+    club = await _get_club(db, reservation.club_id, tenant)
+    return _to_response(reservation, club_tz(club))
 
 
 @router.patch("/{reservation_id}", response_model=CalendarReservationResponse)
@@ -212,7 +241,8 @@ async def update_reservation(
 
     await db.flush()
     await db.refresh(reservation)
-    return reservation
+    club = await _get_club(db, reservation.club_id, tenant)
+    return _to_response(reservation, club_tz(club))
 
 
 @router.delete("/{reservation_id}", status_code=status.HTTP_204_NO_CONTENT)

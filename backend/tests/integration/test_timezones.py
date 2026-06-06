@@ -12,7 +12,7 @@ club is pinned to UTC in conftest), proving:
 - naive (offset-less) datetimes are rejected at the schema layer (422).
 """
 
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
 import pytest_asyncio
@@ -268,3 +268,102 @@ class TestBookingCreateTimezone:
         )
         assert resp.status_code == 422, resp.text
         assert "operating hours" in resp.text.lower()
+
+
+# ---------------------------------------------------------------------------
+# Staff calendar view: existing bookings + time-slot grid rendered club-local
+# ---------------------------------------------------------------------------
+
+
+class TestCalendarTimezone:
+    async def test_booking_rendered_in_club_local_time(
+        self, client, club, tenant, staff, staff_headers, test_session_factory
+    ):
+        """A booking stored at 06:00Z must surface on the staff calendar as
+        08:00 club-local (Madrid CEST, UTC+2) — not 06:00. Regression test for
+        the calendar returning raw UTC instants instead of club-local time."""
+        await _configure_club(club.id, test_session_factory, MADRID)
+        court = await _seed_court(club.id, test_session_factory)
+        await _seed_oh(club.id, test_session_factory, SUMMER_DATE.weekday(), time(9, 0), time(21, 0))
+        # 06:00Z == 08:00 Madrid CEST
+        start_utc = datetime(2030, 7, 1, 6, 0, tzinfo=timezone.utc)
+        end_utc = datetime(2030, 7, 1, 7, 30, tzinfo=timezone.utc)
+        await _seed_confirmed_booking(court.id, club.id, staff.id, start_utc, end_utc, test_session_factory)
+
+        resp = await client.get(
+            "/api/v1/bookings/calendar",
+            params={"club_id": str(club.id), "view": "day", "anchor_date": SUMMER_DATE.isoformat()},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        days = resp.json()["days"]
+        assert len(days) == 1
+        court_col = next(c for c in days[0]["courts"] if c["court_id"] == str(court.id))
+        booking_items = [s for s in court_col["slots"] if s["kind"] == "booking"]
+        assert len(booking_items) == 1
+        start = datetime.fromisoformat(booking_items[0]["start_datetime"])
+        assert start.hour == 8  # local wall-clock, not the stored 06:00Z
+        assert start.utcoffset() == timezone(timedelta(hours=2)).utcoffset(None)
+
+    async def test_time_slot_grid_anchored_to_local_open(
+        self, client, club, tenant, staff_headers, test_session_factory
+    ):
+        """The calendar time-slot grid starts at the club-local open time, not
+        the open time misread as UTC."""
+        await _configure_club(club.id, test_session_factory, MADRID)
+        court = await _seed_court(club.id, test_session_factory)
+        await _seed_oh(club.id, test_session_factory, SUMMER_DATE.weekday(), time(9, 0), time(12, 0))
+
+        resp = await client.get(
+            "/api/v1/bookings/calendar",
+            params={"club_id": str(club.id), "view": "day", "anchor_date": SUMMER_DATE.isoformat()},
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200, resp.text
+        court_col = next(
+            c for c in resp.json()["days"][0]["courts"] if c["court_id"] == str(court.id)
+        )
+        time_slots = court_col["time_slots"]
+        assert time_slots, "expected operating-hours slots"
+        first = datetime.fromisoformat(time_slots[0]["start_datetime"])
+        assert first.hour == 9  # 09:00 local (== 07:00Z), not 09:00Z
+        assert first.utcoffset() == timezone(timedelta(hours=2)).utcoffset(None)
+
+
+# ---------------------------------------------------------------------------
+# Booking responses (list / detail) rendered club-local
+# ---------------------------------------------------------------------------
+
+
+class TestBookingResponseTimezone:
+    async def test_list_and_detail_rendered_in_club_local_time(
+        self, client, club, tenant, staff, staff_headers, test_session_factory
+    ):
+        """GET /bookings and GET /bookings/{id} must render start/end in
+        club-local time (08:00 Madrid CEST) rather than the stored 06:00Z."""
+        await _configure_club(club.id, test_session_factory, MADRID)
+        court = await _seed_court(club.id, test_session_factory)
+        start_utc = datetime(2030, 7, 1, 6, 0, tzinfo=timezone.utc)  # 08:00 Madrid CEST
+        end_utc = datetime(2030, 7, 1, 7, 30, tzinfo=timezone.utc)
+        booking = await _seed_confirmed_booking(
+            court.id, club.id, staff.id, start_utc, end_utc, test_session_factory
+        )
+
+        list_resp = await client.get(
+            "/api/v1/bookings",
+            params={"club_id": str(club.id)},
+            headers=staff_headers,
+        )
+        assert list_resp.status_code == 200, list_resp.text
+        item = next(b for b in list_resp.json() if b["id"] == str(booking.id))
+        start = datetime.fromisoformat(item["start_datetime"])
+        assert start.hour == 8
+        assert start.utcoffset() == timezone(timedelta(hours=2)).utcoffset(None)
+
+        detail_resp = await client.get(
+            f"/api/v1/bookings/{booking.id}",
+            params={"club_id": str(club.id)},
+            headers=staff_headers,
+        )
+        assert detail_resp.status_code == 200, detail_resp.text
+        assert datetime.fromisoformat(detail_resp.json()["start_datetime"]).hour == 8

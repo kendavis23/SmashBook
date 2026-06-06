@@ -27,6 +27,7 @@ from app.db.models.booking import (
     PaymentStatus,
     PlayerRole,
 )
+from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
 from app.db.models.club import Club, OperatingHours, PricingRule
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court, SurfaceType
 from app.db.models.user import User
@@ -170,16 +171,26 @@ class CourtService:
 
         duration = timedelta(minutes=club.booking_duration_minutes)
 
-        # Expand RRULE
+        # Expand the RRULE in the club's LOCAL zone, not in UTC. first_start is a
+        # true-UTC instant; a recurring lesson must recur on the same local
+        # wall-clock (a weekly 18:00 stays 18:00 local), so DST transitions shift
+        # the underlying UTC instant by an hour rather than silently moving the
+        # lesson. Expanding against a UTC dtstart would freeze the UTC offset and
+        # drift the local time across DST. Each occurrence is converted back to
+        # true UTC for storage / conflict checks below.
+        tz = club_tz(club)
+        first_start_local = utc_to_local(first_start, tz)
         try:
-            rule = rrulestr(recurrence_rule, dtstart=first_start, ignoretz=False)
+            rule = rrulestr(recurrence_rule, dtstart=first_start_local, ignoretz=False)
         except Exception as exc:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Invalid recurrence_rule: {exc}",
             )
 
-        # Collect occurrences within end date, capped
+        # Collect occurrences within end date, capped. recurrence_end_date is a
+        # club-local calendar date; bound it at local end-of-day so the comparison
+        # happens in the same zone the rule is expanding in.
         end_boundary = None
         if recurrence_end_date:
             end_boundary = datetime(
@@ -187,14 +198,15 @@ class CourtService:
                 recurrence_end_date.month,
                 recurrence_end_date.day,
                 23, 59, 59,
-                tzinfo=first_start.tzinfo,
+                tzinfo=tz,
             )
 
         occurrences: list[datetime] = []
         for dt in rule:
             if end_boundary and dt > end_boundary:
                 break
-            occurrences.append(dt)
+            # Store and check conflicts as true-UTC instants.
+            occurrences.append(dt.astimezone(timezone.utc))
             if len(occurrences) >= _MAX_OCCURRENCES:
                 break
 
@@ -406,8 +418,11 @@ class CourtService:
             scan_end = start_date + timedelta(days=_AVAILABILITY_MAX_SCAN_DAYS - 1)
             apply_limit = True
 
-        range_start_dt = datetime.combine(start_date, TimeType.min, tzinfo=timezone.utc)
-        range_end_dt = datetime.combine(scan_end + timedelta(days=1), TimeType.min, tzinfo=timezone.utc)
+        # start_date/scan_end are club-local calendar dates; the query window is
+        # their club-local day bounds converted to true UTC.
+        tz = club_tz(club)
+        range_start_dt = local_walltime_to_utc(start_date, TimeType.min, tz)
+        range_end_dt = local_walltime_to_utc(scan_end + timedelta(days=1), TimeType.min, tz)
 
         # Bookings in range across our courts
         bookings_result = await self.db.execute(
@@ -505,14 +520,17 @@ class CourtService:
             # Prefer seasonal (valid_from set) over the catch-all row
             oh = next((h for h in day_oh if h.valid_from is not None), day_oh[0])
 
-            window_open = datetime.combine(current, oh.open_time, tzinfo=timezone.utc)
-            window_close = datetime.combine(current, oh.close_time, tzinfo=timezone.utc)
+            # open/close + from/to clamps are club-local wall-clock; build the
+            # day's window as true-UTC instants so it compares against stored
+            # booking/reservation instants and notice/advance cutoffs.
+            window_open = local_walltime_to_utc(current, oh.open_time, tz)
+            window_close = local_walltime_to_utc(current, oh.close_time, tz)
             if from_time is not None:
-                clamp_open = datetime.combine(current, from_time, tzinfo=timezone.utc)
+                clamp_open = local_walltime_to_utc(current, from_time, tz)
                 if clamp_open > window_open:
                     window_open = clamp_open
             if to_time is not None:
-                clamp_close = datetime.combine(current, to_time, tzinfo=timezone.utc)
+                clamp_close = local_walltime_to_utc(current, to_time, tz)
                 if clamp_close < window_close:
                     window_close = clamp_close
             if window_open >= window_close:
@@ -556,7 +574,7 @@ class CourtService:
                     if overlap_booking is None:
                         if not bookable:
                             continue
-                        price, price_label = _select_pricing(day_rules, slot_start.time(), current)
+                        price, price_label = _select_pricing(day_rules, utc_to_local(slot_start, tz).time(), current)
                         available_courts.append({
                             "court_id": court.id,
                             "price": price,
@@ -599,13 +617,13 @@ class CourtService:
                     if apply_limit and emitted_count >= limit:
                         next_cursor = {
                             "date": current,
-                            "from_time": slot_start.strftime("%H:%M"),
+                            "from_time": utc_to_local(slot_start, tz).strftime("%H:%M"),
                         }
                         cursor_set = True
                         break
                     day_slots.append({
-                        "start_time": slot_start.strftime("%H:%M"),
-                        "end_time": slot_end.strftime("%H:%M"),
+                        "start_time": utc_to_local(slot_start, tz).strftime("%H:%M"),
+                        "end_time": utc_to_local(slot_end, tz).strftime("%H:%M"),
                         "available_count": len(available_courts),
                         "available_courts": available_courts,
                         "existing_matches": existing_matches,
