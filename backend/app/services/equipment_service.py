@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.permissions import Capability, can
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus
 from app.db.models.club import Club
 from app.db.models.equipment import EquipmentInventory, EquipmentRental, ItemCondition, ItemType
@@ -170,16 +171,6 @@ class EquipmentService:
         6. Decrement quantity_available
         7. Add charge to the requesting user's BookingPlayer.amount_due
         """
-        from app.db.models.user import TenantUserRole
-
-        _STAFF_ROLES = {
-            TenantUserRole.owner,
-            TenantUserRole.admin,
-            TenantUserRole.staff,
-            TenantUserRole.trainer,
-            TenantUserRole.ops_lead,
-        }
-
         # 1. Load booking scoped to club + tenant
         booking_result = await self.db.execute(
             select(Booking).where(
@@ -205,7 +196,7 @@ class EquipmentService:
             )
 
         # 2. Verify requesting user is a participant (staff bypass)
-        is_staff = requesting_user.role in _STAFF_ROLES
+        is_staff = can(requesting_user.role, Capability.ACCESS_STAFF)
         if not is_staff:
             bp_result = await self.db.execute(
                 select(BookingPlayer).where(

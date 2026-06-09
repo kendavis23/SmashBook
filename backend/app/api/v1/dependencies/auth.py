@@ -3,21 +3,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.core.permissions import Capability, can
 from app.core.security import decode_token
-from app.db.models.user import User, TenantUserRole
+from app.db.models.user import User
 
 security = HTTPBearer()
-
-_STAFF_ROLES = {
-    TenantUserRole.owner,
-    TenantUserRole.admin,
-    TenantUserRole.staff,
-    TenantUserRole.trainer,
-    TenantUserRole.ops_lead,
-}
-_OPS_LEAD_ROLES = {TenantUserRole.owner, TenantUserRole.admin, TenantUserRole.ops_lead}
-_ADMIN_ROLES = {TenantUserRole.owner, TenantUserRole.admin}
-_OWNER_ROLES = {TenantUserRole.owner}
 
 
 async def get_current_user(
@@ -55,23 +45,23 @@ async def get_current_user(
     return user
 
 
-def _require_role(user: User, allowed_roles: set[TenantUserRole]) -> User:
-    if user.role not in allowed_roles:
+def _require_capability(user: User, capability: Capability) -> User:
+    if not can(user.role, capability):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
     return user
 
 
 async def require_staff(current_user: User = Depends(get_current_user)) -> User:
-    return _require_role(current_user, _STAFF_ROLES)
+    return _require_capability(current_user, Capability.ACCESS_STAFF)
 
 
 async def require_ops_lead(current_user: User = Depends(get_current_user)) -> User:
-    return _require_role(current_user, _OPS_LEAD_ROLES)
+    return _require_capability(current_user, Capability.ACCESS_OPS_LEAD)
 
 
 async def require_admin(current_user: User = Depends(get_current_user)) -> User:
-    return _require_role(current_user, _ADMIN_ROLES)
+    return _require_capability(current_user, Capability.ACCESS_ADMIN)
 
 
 async def require_owner(current_user: User = Depends(get_current_user)) -> User:
-    return _require_role(current_user, _OWNER_ROLES)
+    return _require_capability(current_user, Capability.ACCESS_OWNER)

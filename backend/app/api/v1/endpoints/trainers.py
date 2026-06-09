@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.v1.dependencies.auth import get_current_user, require_staff
 from app.api.v1.dependencies.tenant import get_tenant
+from app.core.permissions import Capability, can
 from app.core.timezones import club_tz, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus, BookingType
 from app.db.models.club import Club, OperatingHours
@@ -27,8 +28,6 @@ from app.schemas.trainer import (
 )
 
 router = APIRouter(prefix="/trainers", tags=["trainers"])
-
-_OPS_LEAD_ROLES = {TenantUserRole.owner, TenantUserRole.admin, TenantUserRole.ops_lead}
 
 
 async def _get_staff_profile(
@@ -52,7 +51,7 @@ def _check_write_access(profile: StaffProfile, current_user: User) -> None:
     Trainer may only modify their own availability.
     ops_lead / admin / owner may modify any trainer's availability.
     """
-    if current_user.role in _OPS_LEAD_ROLES:
+    if can(current_user.role, Capability.ACCESS_OPS_LEAD):
         return
     if current_user.role == TenantUserRole.trainer and profile.user_id == current_user.id:
         return

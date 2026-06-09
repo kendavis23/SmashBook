@@ -29,6 +29,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import contains_eager, selectinload
 
+from app.core.permissions import Capability, can
 from app.core.timezones import club_tz, ensure_utc, local_walltime_to_utc, utc_to_local
 from app.db.models.booking import (
     Booking,
@@ -43,17 +44,9 @@ from app.db.models.equipment import EquipmentInventory, EquipmentRental
 from app.db.models.club import Club, OperatingHours
 from app.db.models.court import CalendarReservation, CalendarReservationType, Court
 from app.db.models.staff import StaffProfile, StaffRole
-from app.db.models.user import TenantUserRole, User
+from app.db.models.user import User
 from app.services.booking_confirmation import should_confirm
 from app.services.pricing_service import PriceBreakdown, PricingService
-
-_STAFF_ROLES = {
-    TenantUserRole.owner,
-    TenantUserRole.admin,
-    TenantUserRole.staff,
-    TenantUserRole.trainer,
-    TenantUserRole.ops_lead,
-}
 
 _GRID_ENFORCED_TYPES = {BookingType.regular}
 
@@ -63,7 +56,7 @@ HOLD_WINDOW = timedelta(minutes=5)
 
 
 def _is_staff(user: User) -> bool:
-    return user.role in _STAFF_ROLES
+    return can(user.role, Capability.ACCESS_STAFF)
 
 
 def _hold_until() -> datetime:
