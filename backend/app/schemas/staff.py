@@ -7,7 +7,6 @@ B2 covers the invite → accept vertical slice only: ``StaffInviteRequest`` /
 The list/update read schemas land in B3.
 """
 import uuid
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, field_validator
 
