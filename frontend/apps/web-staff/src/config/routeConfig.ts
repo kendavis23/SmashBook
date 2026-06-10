@@ -201,6 +201,17 @@ export const ROUTES: RouteConfig[] = [
                 subgroup: "People",
             },
             {
+                key: "staff-invitations",
+                path: "/staff/invitations",
+                label: "Staff Invitations",
+                icon: UserPlus,
+                title: "Staff Invitations",
+                subtitle: "Review invitations and register staff for your active club.",
+                breadcrumb: ["Operations", "Staff", "Staff Invitations"],
+                roles: ["owner", "admin"],
+                subgroup: "People",
+            },
+            {
                 key: "clubs",
                 path: "/clubs",
                 label: "Clubs",

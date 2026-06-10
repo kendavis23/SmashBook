@@ -28,10 +28,7 @@ function applyOverrides(base: ThemeColors, overrides?: Partial<ThemeColors>): Th
 export function defineBrand(input: BrandInput): BrandManifest {
     const { branding, native, assets } = input;
 
-    const light = applyOverrides(
-        generateLightTheme(branding),
-        input.themeOverrides?.light
-    );
+    const light = applyOverrides(generateLightTheme(branding), input.themeOverrides?.light);
     const dark = applyOverrides(generateDarkTheme(branding), input.themeOverrides?.dark);
 
     // Native conventions: scheme/Stripe merchant default from the bundle id; adaptive +
@@ -41,8 +38,7 @@ export function defineBrand(input: BrandInput): BrandManifest {
         iosBundleId: native.iosBundleId,
         androidPackage: native.androidPackage,
         scheme: input.nativeOverrides?.scheme ?? input.id,
-        easProjectId:
-            input.nativeOverrides?.easProjectId ?? "00000000-0000-0000-0000-000000000000",
+        easProjectId: input.nativeOverrides?.easProjectId ?? "00000000-0000-0000-0000-000000000000",
         stripeMerchantId:
             input.nativeOverrides?.stripeMerchantId ?? `merchant.${native.iosBundleId}`,
         icon: native.icon,
@@ -54,9 +50,7 @@ export function defineBrand(input: BrandInput): BrandManifest {
             branding.backgroundColor ??
             DEFAULT_BG,
         splashBackgroundColor:
-            input.nativeOverrides?.splashBackgroundColor ??
-            branding.backgroundColor ??
-            DEFAULT_BG,
+            input.nativeOverrides?.splashBackgroundColor ?? branding.backgroundColor ?? DEFAULT_BG,
         ...(input.nativeOverrides?.associatedDomains
             ? { associatedDomains: input.nativeOverrides.associatedDomains }
             : {}),

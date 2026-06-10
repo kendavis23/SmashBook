@@ -30,5 +30,5 @@ describe.each(brandAssetDescriptors.map((d) => [d.id, d] as const))(
                 expect(header.hasAlpha, `${rel} alpha`).toBe(!spec.opaque);
             });
         }
-    },
+    }
 );

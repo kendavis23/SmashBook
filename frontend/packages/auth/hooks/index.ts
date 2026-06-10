@@ -13,6 +13,7 @@ import {
     getMeService,
     verifyEmailService,
     completeInvitationService,
+    completeStaffInvitationService,
 } from "../services";
 import { isTokenExpired } from "../utils";
 import type {
@@ -25,6 +26,8 @@ import type {
     TenantUserRole,
     EmailVerifyResponse,
     CompleteInvitationRequest,
+    CompleteStaffInvitationRequest,
+    CompleteStaffInvitationResponse,
 } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -302,5 +305,22 @@ export function useCompleteInvitation() {
     return useMutation({
         mutationFn: (data: CompleteInvitationRequest): Promise<EmailVerifyResponse> =>
             completeInvitationService(data),
+    });
+}
+
+// ---------------------------------------------------------------------------
+// useCompleteStaffInvitation — POST /api/v1/auth/complete-staff-invitation
+//
+// Called from the staff invitation-acceptance page. The invitee sets their
+// password and full name using the JWT (type=invite, carrying the invitation
+// id) embedded in the invitation email. Single-use — the backend rejects the
+// token once the invitation is accepted.
+// ---------------------------------------------------------------------------
+
+export function useCompleteStaffInvitation() {
+    return useMutation({
+        mutationFn: (
+            data: CompleteStaffInvitationRequest
+        ): Promise<CompleteStaffInvitationResponse> => completeStaffInvitationService(data),
     });
 }

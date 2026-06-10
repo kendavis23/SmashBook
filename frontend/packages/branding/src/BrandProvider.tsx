@@ -21,14 +21,7 @@
 // and an optional `remoteFlags` prop carries the per-tenant backend override on top. Features
 // gate via `useBrandFlags()` / `useFlag()` so the remote layer is transparent to them.
 
-import {
-    createContext,
-    useCallback,
-    useContext,
-    useMemo,
-    useState,
-    type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 import { resolveActiveBrand, resolveBrand } from "./resolve";
 import { isFlagEnabled, resolveFlags } from "./flags";
 import type { BrandFlags, BrandManifest } from "./types";

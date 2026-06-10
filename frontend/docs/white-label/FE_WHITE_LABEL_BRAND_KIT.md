@@ -16,20 +16,20 @@ The whole point is that the input surface is small. A club provides **one master
 colour spec** — everything else (the full 49-token light/dark theme, every icon size, the
 splash, the notification icon) is **generated and validated**.
 
-| Field | Required | Notes |
-| --- | --- | --- |
-| **Brand id** | ✅ | kebab-case, globally unique (e.g. `ace-london`). Becomes the asset folder + OTA channel prefix. |
-| **Display name** | ✅ | Springboard/launcher label + store name (e.g. "Ace London"). |
-| **Delivery model** | ✅ | `shared` (Model B, default — instant, no store build) or `dedicated` (Model A — own store listing). |
-| **Primary colour** | ✅ | `#RRGGBB`. Drives CTA, hero, active tab, ring + all derived hover/surface/border variants. |
-| **Secondary colour** | optional | Defaults to a near-black neutral. Text / primary surfaces. |
-| **Background colour** | optional | Defaults to white (light). Dark-theme background is derived. |
-| **Font family** | optional | One of the **curated** bundled set (default `Inter`). No client-supplied font files (licensing/bundle-size, §7). |
-| **Master logo** | ✅ (dedicated) | One high-res square master (SVG preferred, or ≥1024² PNG). All native icons are generated from it. |
-| **In-app logo** | ✅ | Wordmark/header logo shown inside the app (distinct from the OS icon). |
-| **Native bundle ids** | ✅ (dedicated) | `iosBundleId` + `androidPackage` (e.g. `app.acelondon.player`). Immutable once shipped. |
-| **Associated domains** | optional | Universal/app links (e.g. `applinks:ace.london`). |
-| **Tenants served** | optional | Subdomains this brand may serve (Model B mapping). Config, not identity (§4). |
+| Field                  | Required       | Notes                                                                                                            |
+| ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **Brand id**           | ✅             | kebab-case, globally unique (e.g. `ace-london`). Becomes the asset folder + OTA channel prefix.                  |
+| **Display name**       | ✅             | Springboard/launcher label + store name (e.g. "Ace London").                                                     |
+| **Delivery model**     | ✅             | `shared` (Model B, default — instant, no store build) or `dedicated` (Model A — own store listing).              |
+| **Primary colour**     | ✅             | `#RRGGBB`. Drives CTA, hero, active tab, ring + all derived hover/surface/border variants.                       |
+| **Secondary colour**   | optional       | Defaults to a near-black neutral. Text / primary surfaces.                                                       |
+| **Background colour**  | optional       | Defaults to white (light). Dark-theme background is derived.                                                     |
+| **Font family**        | optional       | One of the **curated** bundled set (default `Inter`). No client-supplied font files (licensing/bundle-size, §7). |
+| **Master logo**        | ✅ (dedicated) | One high-res square master (SVG preferred, or ≥1024² PNG). All native icons are generated from it.               |
+| **In-app logo**        | ✅             | Wordmark/header logo shown inside the app (distinct from the OS icon).                                           |
+| **Native bundle ids**  | ✅ (dedicated) | `iosBundleId` + `androidPackage` (e.g. `app.acelondon.player`). Immutable once shipped.                          |
+| **Associated domains** | optional       | Universal/app links (e.g. `applinks:ace.london`).                                                                |
+| **Tenants served**     | optional       | Subdomains this brand may serve (Model B mapping). Config, not identity (§4).                                    |
 
 Everything else in the resolved manifest — the complete theme, scheme, Stripe merchant id,
 asset background colours — is **derived** by `defineBrand()`. Reaching for a per-token
@@ -48,21 +48,21 @@ A brand is a single `BrandInput` expanded by `defineBrand()`. Copy an existing b
 import { defineBrand } from "../../define-brand";
 
 export const aceLondonBrand = defineBrand({
-  id: "ace-london",
-  displayName: "Ace London",
-  deliveryModel: "dedicated",
-  native: {
-    iosBundleId: "app.acelondon.player",
-    androidPackage: "app.acelondon.player",
-    icon: "./assets/ace-london/icon.png",
-    adaptiveIcon: "./assets/ace-london/adaptive-icon.png",
-    splash: "./assets/ace-london/splash-icon.png",
-    notificationIcon: "./assets/ace-london/notification-icon.png",
-  },
-  branding: { primaryColor: "#7C3AED" },        // the one essential input
-  assets: { logo: "./assets/ace-london/icon.png" },
-  links: { support: "…", terms: "…", privacy: "…" },
-  tenants: ["ace-london"],
+    id: "ace-london",
+    displayName: "Ace London",
+    deliveryModel: "dedicated",
+    native: {
+        iosBundleId: "app.acelondon.player",
+        androidPackage: "app.acelondon.player",
+        icon: "./assets/ace-london/icon.png",
+        adaptiveIcon: "./assets/ace-london/adaptive-icon.png",
+        splash: "./assets/ace-london/splash-icon.png",
+        notificationIcon: "./assets/ace-london/notification-icon.png",
+    },
+    branding: { primaryColor: "#7C3AED" }, // the one essential input
+    assets: { logo: "./assets/ace-london/icon.png" },
+    links: { support: "…", terms: "…", privacy: "…" },
+    tenants: ["ace-london"],
 });
 ```
 
@@ -95,12 +95,12 @@ node scripts/generate-assets.mjs              # …or all brands
 node scripts/generate-assets.mjs --dedicated  # …or only Model A brands
 ```
 
-| Asset (`native.<key>`) | Size | Alpha | Used for |
-| --- | --- | --- | --- |
-| `icon` | 1024×1024 | **no** (App Store rejects alpha) | iOS app icon |
-| `adaptiveIcon` | 1024×1024 | yes | Android adaptive icon foreground |
-| `splash` | 1024×1024 | yes | Native splash logo |
-| `notificationIcon` | 96×96 | yes (white-on-transparent) | Android notification icon |
+| Asset (`native.<key>`) | Size      | Alpha                            | Used for                         |
+| ---------------------- | --------- | -------------------------------- | -------------------------------- |
+| `icon`                 | 1024×1024 | **no** (App Store rejects alpha) | iOS app icon                     |
+| `adaptiveIcon`         | 1024×1024 | yes                              | Android adaptive icon foreground |
+| `splash`               | 1024×1024 | yes                              | Native splash logo               |
+| `notificationIcon`     | 96×96     | yes (white-on-transparent)       | Android notification icon        |
 
 > The generated PNGs are correctly-dimensioned **placeholders** (accent field + geometric
 > mark). For a production dedicated brand, hand the master logo to a designer and drop the
@@ -131,12 +131,12 @@ The `.github/workflows/mobile-brand-build.yml` workflow runs this as its first g
 4. Replace placeholder PNGs with final art (dedicated brands only).
 5. `pnpm --filter @repo/branding test` — green (schema + dimensions + sync).
 6. **Dedicated only — native onboarding** (the per-brand manual steps):
-   - `eas init` under the brand's account → real `easProjectId`; update `brand.config.ts` + `app.config.ts`.
-   - `eas credentials` → provision iOS cert/provisioning + Android keystore (EAS-managed, §10).
-   - `ACTIVE_BRAND=<id> npx expo start` — verify the theme renders in the dev client.
-   - `ACTIVE_BRAND=<id> eas build --profile preview --platform all` → smoke-test on TestFlight / internal track.
-   - Create OTA channel `<id>-production` (and `<id>-preview`) in EAS Update.
-   - Production build via the workflow; **manual approval gate** before `eas submit` (Apple Guideline 4.3, §16).
+    - `eas init` under the brand's account → real `easProjectId`; update `brand.config.ts` + `app.config.ts`.
+    - `eas credentials` → provision iOS cert/provisioning + Android keystore (EAS-managed, §10).
+    - `ACTIVE_BRAND=<id> npx expo start` — verify the theme renders in the dev client.
+    - `ACTIVE_BRAND=<id> eas build --profile preview --platform all` → smoke-test on TestFlight / internal track.
+    - Create OTA channel `<id>-production` (and `<id>-preview`) in EAS Update.
+    - Production build via the workflow; **manual approval gate** before `eas submit` (Apple Guideline 4.3, §16).
 7. **Shared (Model B)** — no native build: add the club's subdomain to the brand's `tenants[]`
    (and the backend brand↔tenant mapping row once that endpoint lands, §13). The shared
    `_default` binary re-skins to the brand at runtime.

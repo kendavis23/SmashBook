@@ -12,17 +12,17 @@ A production-grade technical plan to evolve `apps/mobile-player` from a single-b
 
 Understanding the current state is the whole reason this plan is specific rather than generic. Key facts from the codebase:
 
-| Concern | Current state | White-label implication |
-| --- | --- | --- |
-| **App config** | Static `apps/mobile-player/app.json` — hardcoded `name: "SmashBook"`, `slug`, `bundleIdentifier: app.smashbook.mobile`, `package`, `scheme: smashbook`, Stripe `merchantIdentifier`. | Must become **dynamic** (`app.config.ts`) driven by an active brand. These are **build-time** identity fields — they cannot change at runtime. |
-| **Assets** | No `assets/` folder exists; no icon/splash referenced in `app.json`. | Need a per-brand asset pipeline (icon, adaptive icon, splash, notification icon). |
-| **Theme** | `src/theme/` is already a clean token system: `palette.ts` (raw hues), `themes.ts` (`lightColors`/`darkColors` semantic tokens), `ThemeProvider.tsx` (`useThemeColors()`). Pinned to light; dark exists but hidden. NativeWind `className` tokens resolve via `tailwind-config`. | **This is our biggest asset.** Because every screen already reads semantic tokens (no hardcoded hex — enforced by the mobile guide), re-skinning per brand is a matter of swapping the token object source. This is the foundation that makes **runtime** theming cheap. |
-| **Tenant resolution** | Runtime, per-login: `tenantSubdomain` stored in `@repo/auth` store, attached as `X-Tenant-Subdomain` header by `fetcher.ts` (dev/staging only). | A multi-tenant *data* boundary already exists. White-label is the *presentation* boundary on top of it. Keep them distinct (see §4). |
-| **Env / config** | `@repo/config` (`env.ts`) is the only place env is read, Zod-validated (`VITE_*` — currently web-shaped). | Mobile needs its own validated config surface (Expo reads env differently than Vite). Brand config must flow through here, never `process.env` scattered in features. |
-| **Build tooling** | EAS-ready (`expo-dev-client` installed) but **no `eas.json`**. Single `slug: smashbook-mobile`. | Need a multi-profile EAS strategy keyed on brand. |
-| **Structure** | Thin `app/` routes → `src/features/` → `@repo/*-domain` hooks. Strict layer boundaries. | Branding must slot into this without violating boundaries — a new `@repo/branding` package is the natural home. |
+| Concern               | Current state                                                                                                                                                                                                                                                                    | White-label implication                                                                                                                                                                                                                                                  |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **App config**        | Static `apps/mobile-player/app.json` — hardcoded `name: "SmashBook"`, `slug`, `bundleIdentifier: app.smashbook.mobile`, `package`, `scheme: smashbook`, Stripe `merchantIdentifier`.                                                                                             | Must become **dynamic** (`app.config.ts`) driven by an active brand. These are **build-time** identity fields — they cannot change at runtime.                                                                                                                           |
+| **Assets**            | No `assets/` folder exists; no icon/splash referenced in `app.json`.                                                                                                                                                                                                             | Need a per-brand asset pipeline (icon, adaptive icon, splash, notification icon).                                                                                                                                                                                        |
+| **Theme**             | `src/theme/` is already a clean token system: `palette.ts` (raw hues), `themes.ts` (`lightColors`/`darkColors` semantic tokens), `ThemeProvider.tsx` (`useThemeColors()`). Pinned to light; dark exists but hidden. NativeWind `className` tokens resolve via `tailwind-config`. | **This is our biggest asset.** Because every screen already reads semantic tokens (no hardcoded hex — enforced by the mobile guide), re-skinning per brand is a matter of swapping the token object source. This is the foundation that makes **runtime** theming cheap. |
+| **Tenant resolution** | Runtime, per-login: `tenantSubdomain` stored in `@repo/auth` store, attached as `X-Tenant-Subdomain` header by `fetcher.ts` (dev/staging only).                                                                                                                                  | A multi-tenant _data_ boundary already exists. White-label is the _presentation_ boundary on top of it. Keep them distinct (see §4).                                                                                                                                     |
+| **Env / config**      | `@repo/config` (`env.ts`) is the only place env is read, Zod-validated (`VITE_*` — currently web-shaped).                                                                                                                                                                        | Mobile needs its own validated config surface (Expo reads env differently than Vite). Brand config must flow through here, never `process.env` scattered in features.                                                                                                    |
+| **Build tooling**     | EAS-ready (`expo-dev-client` installed) but **no `eas.json`**. Single `slug: smashbook-mobile`.                                                                                                                                                                                  | Need a multi-profile EAS strategy keyed on brand.                                                                                                                                                                                                                        |
+| **Structure**         | Thin `app/` routes → `src/features/` → `@repo/*-domain` hooks. Strict layer boundaries.                                                                                                                                                                                          | Branding must slot into this without violating boundaries — a new `@repo/branding` package is the natural home.                                                                                                                                                          |
 
-**The core architectural insight:** the codebase already cleanly separates *what color a thing is* (theme tokens) from *what a thing does* (features/domain). White-label branding is mostly the act of making the token source, the asset source, and the native identity **a function of `brandId`** instead of constants.
+**The core architectural insight:** the codebase already cleanly separates _what color a thing is_ (theme tokens) from _what a thing does_ (features/domain). White-label branding is mostly the act of making the token source, the asset source, and the native identity **a function of `brandId`** instead of constants.
 
 ---
 
@@ -75,7 +75,7 @@ These are **presentation** attributes:
                                               remote override via OTA/API)
 ```
 
-**Why hybrid and not "everything runtime":** iOS/Android *force* name, bundle ID, icon, and splash to be build-time. You cannot ship a single binary that becomes "Club Padel Madrid" or "Ace London" at runtime — the App Store listing, the icon on the home screen, and the bundle ID are immutable per binary. Any vendor promising "one app, infinite brands at runtime" is describing a *tenant switcher inside one branded shell*, which is a different product (see §4).
+**Why hybrid and not "everything runtime":** iOS/Android _force_ name, bundle ID, icon, and splash to be build-time. You cannot ship a single binary that becomes "Club Padel Madrid" or "Ace London" at runtime — the App Store listing, the icon on the home screen, and the bundle ID are immutable per binary. Any vendor promising "one app, infinite brands at runtime" is describing a _tenant switcher inside one branded shell_, which is a different product (see §4).
 
 **Why not "everything build-time":** baking theme/flags into the binary means a color tweak for one club = a full store resubmission. Keeping presentation runtime-capable lets us push a palette fix via OTA in minutes.
 
@@ -103,7 +103,7 @@ A single SmashBook-branded (or neutrally-branded) app where a player picks/enter
 
 **Build the architecture so a brand can be either, and default new clubs to Model B; promote high-value clubs to Model A.** The brand manifest carries a `deliveryModel: "dedicated" | "shared"` field. The runtime presentation layer (theme/logo/flags/fonts) is **identical machinery in both models** — the only difference is whether native identity is per-brand (A) or shared (B), and whether the brand is selected at build time (A) or at runtime by the user (B). This keeps one codebase and one mental model.
 
-> The runtime theming work we do for Model B *also* powers Model A (OTA color fixes). So we never throw work away — build the runtime layer first, layer dedicated builds on top.
+> The runtime theming work we do for Model B _also_ powers Model A (OTA color fixes). So we never throw work away — build the runtime layer first, layer dedicated builds on top.
 
 ---
 
@@ -111,8 +111,8 @@ A single SmashBook-branded (or neutrally-branded) app where a player picks/enter
 
 SmashBook already has a **tenant** concept (`X-Tenant-Subdomain`, club-scoped data). It is tempting to equate "brand" with "tenant." **Do not.** They answer different questions:
 
-- **Tenant** = *whose data am I looking at?* (data isolation, auth, API scoping). Lives in `@repo/auth` + `fetcher.ts`. Already built.
-- **Brand** = *what does the app look/feel like, and what is its store identity?* (presentation + native identity). New concern.
+- **Tenant** = _whose data am I looking at?_ (data isolation, auth, API scoping). Lives in `@repo/auth` + `fetcher.ts`. Already built.
+- **Brand** = _what does the app look/feel like, and what is its store identity?_ (presentation + native identity). New concern.
 
 They usually map 1:1 (one club → one brand), but decoupling them buys flexibility:
 
@@ -157,7 +157,7 @@ packages/branding/
 
 ### 5.2 The brand manifest (single source of truth per brand)
 
-> **Authoring vs. resolved manifest (implemented).** There are now two shapes. Clubs author a **minimal `BrandInput`** — `id`, `displayName`, a few `native` ids, an `assets.logo`, a `branding` block (`primaryColor` + optional `secondaryColor`/`backgroundColor`/`fontFamily`), and `flags`. `defineBrand()` (`packages/branding/src/define-brand.ts`) expands that into the **full `BrandManifest`** below by deriving the complete 49-token light/dark theme via the generator (`theme-generator.ts`) and filling native conventions (scheme from `id`, Stripe merchant from bundle id, adaptive/notification icons from `icon`). Every downstream consumer (`BrandProvider`, `ThemeProvider`, `cssVars`, `app.config.ts`) still reads the full `BrandManifest` unchanged — only the *authoring* surface shrank. Rare per-token exceptions use the `themeOverrides` / `nativeOverrides` escape hatches; reaching for them often is the "missing abstraction" signal (§15). The `_default` brand is itself authored this way and pins the Tailwind blue ramp via `themeOverrides` so it stays byte-identical to its hand-authored predecessor (parity test in `theme-generator.test.ts`).
+> **Authoring vs. resolved manifest (implemented).** There are now two shapes. Clubs author a **minimal `BrandInput`** — `id`, `displayName`, a few `native` ids, an `assets.logo`, a `branding` block (`primaryColor` + optional `secondaryColor`/`backgroundColor`/`fontFamily`), and `flags`. `defineBrand()` (`packages/branding/src/define-brand.ts`) expands that into the **full `BrandManifest`** below by deriving the complete 49-token light/dark theme via the generator (`theme-generator.ts`) and filling native conventions (scheme from `id`, Stripe merchant from bundle id, adaptive/notification icons from `icon`). Every downstream consumer (`BrandProvider`, `ThemeProvider`, `cssVars`, `app.config.ts`) still reads the full `BrandManifest` unchanged — only the _authoring_ surface shrank. Rare per-token exceptions use the `themeOverrides` / `nativeOverrides` escape hatches; reaching for them often is the "missing abstraction" signal (§15). The `_default` brand is itself authored this way and pins the Tailwind blue ramp via `themeOverrides` so it stays byte-identical to its hand-authored predecessor (parity test in `theme-generator.test.ts`).
 
 The full **resolved** shape — one typed, Zod-validated object per brand (conceptual, illustrative only):
 
@@ -216,7 +216,7 @@ useThemeColors() (existing — UNCHANGED)
 
 For NativeWind `className` tokens (which resolve through `tailwind-config` CSS variables, not JS), brand color overrides are applied by writing the active brand's CSS variables at the root at runtime (NativeWind 4 supports runtime CSS-var updates via `vars()`), keeping web/mobile token parity. This is the one piece that needs careful prototyping (see §11 risks).
 
-`themes.ts`'s `lightColors`/`darkColors` become the **`_default` brand's** tokens — nothing is deleted, the default brand *is* today's look.
+`themes.ts`'s `lightColors`/`darkColors` become the **`_default` brand's** tokens — nothing is deleted, the default brand _is_ today's look.
 
 ### 5.4 Dynamic `app.config.ts` (replaces static `app.json`)
 
@@ -240,20 +240,20 @@ Assets are the operationally heaviest part of white-label — get the pipeline r
 
 ### Required assets per brand
 
-| Asset | Size / format | Build or runtime |
-| --- | --- | --- |
-| iOS app icon | 1024×1024 PNG, no alpha | Build |
-| Android adaptive icon (fg + bg) | 1024×1024 fg PNG + bg color/image | Build |
-| Splash screen | logo PNG + background color (use `expo-splash-screen`) | Build |
-| Notification icon (Android) | white-on-transparent 96×96 | Build |
-| In-app logo (wordmark + mark) | SVG preferred, or @1x/@2x/@3x PNG | Runtime (bundled) |
-| Favicon (if web re-skin later) | 48×48 | Build (web only) |
+| Asset                           | Size / format                                          | Build or runtime  |
+| ------------------------------- | ------------------------------------------------------ | ----------------- |
+| iOS app icon                    | 1024×1024 PNG, no alpha                                | Build             |
+| Android adaptive icon (fg + bg) | 1024×1024 fg PNG + bg color/image                      | Build             |
+| Splash screen                   | logo PNG + background color (use `expo-splash-screen`) | Build             |
+| Notification icon (Android)     | white-on-transparent 96×96                             | Build             |
+| In-app logo (wordmark + mark)   | SVG preferred, or @1x/@2x/@3x PNG                      | Runtime (bundled) |
+| Favicon (if web re-skin later)  | 48×48                                                  | Build (web only)  |
 
 ### Pipeline recommendation
 
 1. **Source of truth per brand:** a single high-res logo + a color spec. Generate icon/adaptive/splash/notification variants from it with a script (`expo-asset` + a small Sharp-based generator, or a paid service). Manual per-size asset wrangling does not scale past ~5 brands.
 2. **Store generated assets in-repo** under `packages/branding/src/brands/<id>/assets/` for dedicated brands (Model A) so builds are reproducible and reviewable.
-3. **Runtime/in-app logos** are bundled with the binary (fast, offline-safe). Avoid runtime-downloading the *primary* logo — a brand without a logo on first paint looks broken on poor networks. Remote assets are acceptable only as *overrides* layered over a bundled default.
+3. **Runtime/in-app logos** are bundled with the binary (fast, offline-safe). Avoid runtime-downloading the _primary_ logo — a brand without a logo on first paint looks broken on poor networks. Remote assets are acceptable only as _overrides_ layered over a bundled default.
 4. **Brand kit intake:** define a strict asset spec doc clients fill (or your team produces): one master logo (SVG), primary/secondary/CTA colors, font choice. Everything else is generated. This is the unsexy-but-decisive part of scaling to many brands.
 5. **Validation in CI:** a test asserts every brand manifest has all required assets at correct dimensions and that the Zod schema passes. A brand with a missing splash should fail CI, not a customer's first launch.
 
@@ -275,7 +275,7 @@ Assets are the operationally heaviest part of white-label — get the pipeline r
 
 ### Config
 
-- All brand-derived config flows through **`@repo/config`** (the one sanctioned env reader) — mobile gets its own validated surface (`expo-constants` / `extra` + `process.env.EXPO_PUBLIC_*`), Zod-validated like the web `env.ts`. Brand config is *resolved*, not read ad-hoc in features.
+- All brand-derived config flows through **`@repo/config`** (the one sanctioned env reader) — mobile gets its own validated surface (`expo-constants` / `extra` + `process.env.EXPO_PUBLIC_*`), Zod-validated like the web `env.ts`. Brand config is _resolved_, not read ad-hoc in features.
 - Per-environment values (API base URL, Stripe publishable key) are **environment** config, kept separate from **brand** config. A brand × environment matrix (`ace-london` × `staging`) resolves to a concrete config at build time.
 
 ---
@@ -372,6 +372,7 @@ Release
 ```
 
 Recommendations:
+
 - **Gate builds on `validate-brands`** — a malformed manifest must fail before any expensive native build.
 - **Only rebuild brands that changed** — diff the brand folder + shared native deps; don't rebuild 50 apps because one club changed a color (that's an OTA, not a build).
 - **`eas submit`** automated per brand for dedicated apps, but keep a **manual approval gate** before store submission (Apple review risk, §13).
@@ -384,14 +385,14 @@ Recommendations:
 
 `expo-updates` + EAS Update. The build-time/runtime split maps directly onto OTA capability:
 
-| Change type | Mechanism | Speed |
-| --- | --- | --- |
-| Theme color / token fix | **OTA** (runtime presentation) | minutes |
-| In-app logo swap, copy change | **OTA** | minutes |
-| Feature flag default flip | **OTA** or backend flag | minutes |
-| JS/feature logic change | **OTA** (same JS bundle) | minutes |
+| Change type                          | Mechanism                           | Speed         |
+| ------------------------------------ | ----------------------------------- | ------------- |
+| Theme color / token fix              | **OTA** (runtime presentation)      | minutes       |
+| In-app logo swap, copy change        | **OTA**                             | minutes       |
+| Feature flag default flip            | **OTA** or backend flag             | minutes       |
+| JS/feature logic change              | **OTA** (same JS bundle)            | minutes       |
 | App name / icon / splash / bundle ID | **Store rebuild** (native identity) | days (review) |
-| New native module | **Store rebuild** | days |
+| New native module                    | **Store rebuild**                   | days          |
 
 ### Channel model
 
@@ -399,13 +400,13 @@ Recommendations:
 - **Runtime version policy:** use `runtimeVersion` policy (`appVersion` or `fingerprint`) so OTA bundles only land on compatible binaries. A brand's OTA must never land on the wrong brand's binary — the channel naming + `extra.brandId` guard this.
 - **Rollback:** EAS Update supports republishing a previous update per channel — define a per-brand rollback runbook.
 
-**Guard rail:** because the JS bundle is shared across brands but the *active brand* is build-embedded (`extra.brandId`) for Model A, an OTA bundle is brand-agnostic JS that reads its brand at runtime — so one published JS update can safely serve all brands, while channels still isolate brand-specific config rollouts. Prototype this carefully (§14) — it's the subtle part.
+**Guard rail:** because the JS bundle is shared across brands but the _active brand_ is build-embedded (`extra.brandId`) for Model A, an OTA bundle is brand-agnostic JS that reads its brand at runtime — so one published JS update can safely serve all brands, while channels still isolate brand-specific config rollouts. Prototype this carefully (§14) — it's the subtle part.
 
 ---
 
 ## 13. Backend support requirements
 
-White-label is mostly client-side, but a few backend touchpoints make it scale. (These are *requirements to coordinate with the backend team* — the `/backend` and `/mobile` trees are partner-owned per the root CLAUDE.md; this section is a spec, not a task list.)
+White-label is mostly client-side, but a few backend touchpoints make it scale. (These are _requirements to coordinate with the backend team_ — the `/backend` and `/mobile` trees are partner-owned per the root CLAUDE.md; this section is a spec, not a task list.)
 
 1. **Brand resolution endpoint (Model B):** given a tenant/club subdomain, return the brand id + runtime presentation config (theme, logo URL, flags, copy). Lets the shared app re-skin after the user picks a club, without a rebuild. Public/unauthenticated (pre-login skin), cacheable.
 2. **Player-facing feature-flag endpoint:** mobile needs to read effective flags per tenant (the backend already has `ai_feature_flags` + plan flags). Expose a read-only, player-scoped projection so ops can toggle features for a club without an app update.
@@ -415,7 +416,7 @@ White-label is mostly client-side, but a few backend touchpoints make it scale. 
 6. **Stripe identity per brand (Model A):** each dedicated app may use its own `merchantIdentifier`; backend/Stripe Connect config must align (the platform already runs a two-account Stripe model — coordinate which account each brand's player payments route through).
 7. **(Optional) Remote theme override store:** for OTA-free color tweaks, a tenant-scoped theme override the app layers over its bundled brand theme.
 
-**Non-requirement:** the backend should **not** become the primary brand store for dedicated (Model A) apps — those ship bundled config for offline-first, fast first paint. The backend is the *override and Model-B* path.
+**Non-requirement:** the backend should **not** become the primary brand store for dedicated (Model A) apps — those ship bundled config for offline-first, fast first paint. The backend is the _override and Model-B_ path.
 
 ---
 
@@ -424,18 +425,21 @@ White-label is mostly client-side, but a few backend touchpoints make it scale. 
 Sequenced so each phase ships value and de-risks the next. Nothing here changes user-visible behavior until Phase 4+.
 
 ### Phase 0 — Foundations & proof (no brands yet) — ✅ Implemented
+
 - ✅ Added `eas.json` with `development`/`preview`/`production` profiles for the current single app (each pins `ACTIVE_BRAND=_default` + a matching OTA `channel`).
 - ✅ Converted `app.json` → `app.config.ts` (still hardcoded to SmashBook via an inlined `BRAND` object — pure refactor, behavior-identical). `extra.brandId` + `extra.eas.projectId` embedded for Phase 3 runtime self-identification.
 - ✅ Added `apps/mobile-player/assets/` for the SmashBook brand (icon, adaptive-icon, splash, notification-icon) with SVG masters + a dependency-free PNG generator in `assets/_src/`. Current PNGs are placeholders to be replaced with final art.
 - **Exit criterion (met):** `app.config.ts` resolves the full native identity from one `BRAND` object, shaped so Phase 3 can swap it for an `ACTIVE_BRAND` lookup mechanically.
 
 ### Phase 1 — `@repo/branding` skeleton + `_default` brand — ✅ Implemented
+
 - ✅ Created `packages/branding` (`@repo/branding`): `BrandManifest` type (`src/types.ts`, with `ThemeColors` mirroring the mobile theme contract), Zod schema (`src/schema.ts`), `registry` (`src/registry.ts` — the single iterable brand map), and pure `resolve` (`src/resolve.ts` — `resolveBrand` / `resolveActiveBrand`, always falling back to `_default`).
 - ✅ Authored the `_default` brand (`src/brands/_default/brand.config.ts`) — `theme.light` / `theme.dark` are a verbatim mirror of today's `apps/mobile-player/src/theme/themes.ts` tokens; `native.*` mirrors `app.config.ts` + the Phase 0 assets.
 - ✅ `validate-brands` CI check (`src/schema.test.ts`): every registered brand Zod-validates, defines every `ThemeColors` token, and has all four native assets on disk. A compile-time parity guard asserts the schema's token set equals `keyof ThemeColors` so the manifest and mobile theme cannot drift (plan §16).
 - **Exit criterion (met):** `_default` validates (5/5 tests green, clean `tsc`); the package is **not** wired into the app yet — `BrandProvider` / `useBrand` / `fonts` and the runtime theming keystone are Phase 2.
 
 ### Phase 2 — Runtime theming wired through existing ThemeProvider — ✅ Implemented
+
 - ✅ `@repo/branding` now exports the runtime surface: `BrandProvider` / `useBrand` / `useBrandFlags` (`src/BrandProvider.tsx`, framework-agnostic — no RN/Expo imports) plus the pure helpers `buildBrandCssVars` (`src/cssVars.ts`) and `hexToHslTriplet` (`src/color.ts`).
 - ✅ `BrandProvider` is mounted as the outermost wrapper in `apps/mobile-player/src/providers/index.tsx` (no props → resolves `_default`).
 - ✅ `ThemeProvider` now sources its color tokens from `useBrand().theme` instead of the hardcoded `lightColors`/`darkColors` — JS tokens (`useThemeColors()`) flow from the manifest unchanged for every screen.
@@ -444,6 +448,7 @@ Sequenced so each phase ships value and de-risks the next. Nothing here changes 
 - **Exit criterion (met):** the app looks identical to today, but every color — JS and className — now flows from the `_default` brand manifest. Re-skinning is now config: a new brand's `theme.light` drives both token surfaces with zero per-screen change.
 
 ### Phase 3 — `app.config.ts` reads ACTIVE_BRAND — ✅ Implemented
+
 - ✅ Removed the hardcoded `BRAND` object from `app.config.ts`; replaced with a call to `resolveActiveBrand(process.env)` from `@repo/branding`. All native identity fields (name, slug, scheme, `bundleIdentifier`, `package`, icon/adaptive-icon/splash/notification-icon asset paths, `stripeMerchantId`, `associatedDomains`) now come from `brand.native.*`.
 - ✅ `extra.brandId` and `extra.eas.projectId` are embedded from the manifest so the runtime binary can self-identify without a network call (plan §5.4).
 - ✅ Slug convention: `_default` brand keeps `"smashbook-mobile"` to preserve existing EAS/store links; dedicated brands use their `id` as the slug.
@@ -452,25 +457,27 @@ Sequenced so each phase ships value and de-risks the next. Nothing here changes 
 - **Exit criterion (met):** `ACTIVE_BRAND=_default eas build` produces today's app unchanged.
 
 ### Phase 4 — Second brand end-to-end (the real test) — ✅ Implemented
+
 - ✅ Authored `packages/branding/src/brands/ace-staging/brand.config.ts` via `defineBrand()` — `deliveryModel: "dedicated"` (Model A), green theme (`primaryColor: "#16A34A"` / green600), Tailwind green-ramp stops pinned via `themeOverrides` (green50/200/500/700 light; green400/500/900 dark), bundle ID `app.ace.staging.mobile`, `associatedDomains: ["applinks:ace.smashbook.app"]`, EAS project placeholder `...0001`.
 - ✅ Registered `ace-staging` in `packages/branding/src/registry.ts` — the single iterable brand map now has two entries; CI `validate-brands` tests iterate both automatically.
 - ✅ Added `"ace-staging"` entry to the `BRAND_REGISTRY` in `apps/mobile-player/app.config.ts` — `ACTIVE_BRAND=ace-staging eas build` now resolves the full native identity (name, slug, scheme, bundle ID, icon/splash/adaptive/notification paths, Stripe merchant, associated domains).
 - ✅ Placeholder brand assets created under `apps/mobile-player/assets/ace-staging/` (icon, adaptive-icon, splash-icon, notification-icon — copies of `_default` PNGs; to be replaced with final Ace brand art before store submission).
 - ✅ All 25 `@repo/branding` tests pass (schema, color, cssVars, theme-generator — covering both `_default` and `ace-staging`); `tsc` clean.
 - **Remaining manual steps before store submission** (become the runbook for each new dedicated brand):
-  1. Replace placeholder PNGs in `assets/ace-staging/` with final 1024×1024 brand art.
-  2. Run `eas init` under the Ace account to get a real `easProjectId`; update `brand.config.ts` + `app.config.ts`.
-  3. Run `eas credentials` for the new EAS project to provision iOS cert/provisioning + Android keystore.
-  4. Test: `ACTIVE_BRAND=ace-staging npx expo start` — verify green theme renders in the dev client.
-  5. First build: `ACTIVE_BRAND=ace-staging eas build --profile preview --platform all`.
-  6. Smoke-test on TestFlight / internal Play track.
-  7. Production build + `eas submit` with a **manual approval gate** before store publication (Apple Guideline 4.3 risk, §16).
-  8. Create OTA channel `ace-staging-production` in EAS Update; update `eas.json` channel mapping.
+    1. Replace placeholder PNGs in `assets/ace-staging/` with final 1024×1024 brand art.
+    2. Run `eas init` under the Ace account to get a real `easProjectId`; update `brand.config.ts` + `app.config.ts`.
+    3. Run `eas credentials` for the new EAS project to provision iOS cert/provisioning + Android keystore.
+    4. Test: `ACTIVE_BRAND=ace-staging npx expo start` — verify green theme renders in the dev client.
+    5. First build: `ACTIVE_BRAND=ace-staging eas build --profile preview --platform all`.
+    6. Smoke-test on TestFlight / internal Play track.
+    7. Production build + `eas submit` with a **manual approval gate** before store publication (Apple Guideline 4.3 risk, §16).
+    8. Create OTA channel `ace-staging-production` in EAS Update; update `eas.json` channel mapping.
 - **Exit criterion (met):** two distinct branded apps (`_default` SmashBook + `ace-staging` Ace) build from one codebase via `ACTIVE_BRAND`; all validation tests pass; runbook steps above documented.
 
 ### Phase 5 — Feature flags + Model B (shared app) — ✅ Implemented (client-side)
+
 - ✅ **Layered flag resolution** (`packages/branding/src/flags.ts`): a typed `PLAYER_FEATURE_FLAGS` set + `PlayerFeatureFlag` type, `FLAG_DEFAULTS` (the code-default floor — every known flag has a safe default so a missing/failed remote fetch can never blank the app), and pure `resolveFlags(brandFlags, remoteFlags?)` / `isFlagEnabled(...)` implementing the plan §8 layering `remote ?? brand ?? default` per key.
-- ✅ **`BrandProvider` made stateful + remote-flag-aware** (`src/BrandProvider.tsx`): holds the active brand in state, accepts an optional `remoteFlags` prop (the per-tenant backend override layer), and exposes `useBrandFlags()` (returns the *merged* effective flags, not raw `brand.flags`), `useFlag(name)` (single resolved flag with the default floor re-applied for unknown keys), and `useBrandSelection()` (`{ activeBrandId, selectBrand }`) for Model B runtime re-skin. Features gate via these hooks, so the remote layer stays transparent.
+- ✅ **`BrandProvider` made stateful + remote-flag-aware** (`src/BrandProvider.tsx`): holds the active brand in state, accepts an optional `remoteFlags` prop (the per-tenant backend override layer), and exposes `useBrandFlags()` (returns the _merged_ effective flags, not raw `brand.flags`), `useFlag(name)` (single resolved flag with the default floor re-applied for unknown keys), and `useBrandSelection()` (`{ activeBrandId, selectBrand }`) for Model B runtime re-skin. Features gate via these hooks, so the remote layer stays transparent.
 - ✅ **Model B tenant → brand mapping** (`src/resolve.ts`): pure `brandForTenant(subdomain)` finds the brand whose manifest `tenants[]` claims that subdomain, falling back to `_default` for an unclaimed tenant (the common Model B case — a club on the default SmashBook brand until it pays for white-label). Keeps brand/tenant orthogonal (§4): a config lookup over the registry, never an auth/tenant import.
 - ✅ **Shared-app re-skin flow wired in the app** (`apps/mobile-player/src/providers/index.tsx`): a `BrandTenantBridge` mounted under `AuthSessionInitializer` reads `tenantSubdomain` from `useAuth()` and calls `selectBrand(brandForTenant(subdomain).id)` once the tenant is known — but only when the build's active brand is `deliveryModel: "shared"`, so a dedicated (Model A) build keeps its build-embedded brand. The bridge lives in the app (not in `@repo/branding`) so branding never imports auth/tenant internals (§4). Native identity (Stripe `urlScheme`, scheme) still comes from the build-time `activeBrand` — only presentation (theme/flags) re-skins, honouring the §2 build-time/runtime split.
 - ✅ Tests: `flags.test.ts` (8) + `resolve.test.ts` (8) green alongside the existing suite (41 total in `@repo/branding`); `tsc` clean for `@repo/branding`; the mobile `providers/index.tsx` change adds zero new type errors (the 4 pre-existing mobile errors — `expo-font` resolution + a `club_name` booking-type gap — are unrelated).
@@ -478,6 +485,7 @@ Sequenced so each phase ships value and de-risks the next. Nothing here changes 
 - **Exit criterion (met, client-side):** the shared `_default` build re-skins to a claimed tenant's brand at runtime with zero rebuild; a new club joins the shared app by adding its `tenants[]` entry (and, for a remote-driven skin, a backend mapping row — no app build). The native-identity half of "zero rebuild for any club" is inherent to Model B (one shared binary).
 
 ### Phase 6 — Asset & build automation (scale) — ✅ Implemented
+
 - ✅ **Registry-driven asset pipeline** (`packages/branding/scripts/`): `generate-assets.mjs` iterates the brand registry and emits the full native asset set (icon/adaptive/splash/notification) for each brand from its accent colour — one master geometry, every size, **no per-brand code**. The dependency-free PNG encoder (`png.mjs`, extracted from the original per-app generator) and the shared `asset-spec.mjs` (the single dimension/alpha spec) back it. Accent + output paths come straight from each resolved manifest via `src/asset-descriptors.ts` → `scripts/brands.generated.json` (the JSON projection the `.mjs` scripts read; `asset-descriptors.test.ts` keeps it in sync with the registry, failing CI with the exact regen command if it drifts). `ace-staging`'s assets are now genuinely green-accent-derived (previously blue `_default` copies).
 - ✅ **CI dimension validation** (`scripts/asset-dimensions.test.ts`): every brand's generated assets must exist at the exact spec dimensions **and** alpha rule (iOS icon opaque, the rest RGBA) — a bad master export fails CI, not a customer's first launch. Complements the Phase 1 existence check in `schema.test.ts`. Branding suite is now 50 tests (was 41).
 - ✅ **Brand-matrix orchestration** (`scripts/brand-matrix.mjs` + `.github/workflows/mobile-brand-build.yml`): the workflow gates on `validate-brands`, then projects the registry into the set of dedicated (Model A) brands needing a native build as a GH Actions matrix, then runs one `ACTIVE_BRAND`-parameterised EAS build per brand on channel `<brand>-<profile>`. On `push` it only rebuilds brands whose folder changed (a colour change is an OTA, not 50 rebuilds); manual dispatch honours a `dedicated|all` scope. Store submission stays behind a manual approval gate (§16). `eas.json` `preview`/`production` profiles no longer pin `ACTIVE_BRAND`, so the matrix's per-brand env flows through; `development` stays pinned to `_default` for local dev.
@@ -491,7 +499,7 @@ Sequenced so each phase ships value and de-risks the next. Nothing here changes 
 
 The difference between 3 brands and 50 is **automation and convention**, not architecture — get these right in Phases 4–6:
 
-- **Convention over configuration:** strict manifest schema + generated assets means a new brand is data, not code. The moment a brand needs *code*, that's a missing abstraction — fix the abstraction, don't fork.
+- **Convention over configuration:** strict manifest schema + generated assets means a new brand is data, not code. The moment a brand needs _code_, that's a missing abstraction — fix the abstraction, don't fork.
 - **Brand registry as the single iterable:** CI, validation, and build matrices all iterate `registry.ts`. One list, never hand-maintained per-brand scripts.
 - **Generated assets, curated inputs:** clients supply a master logo + color/font choices; everything else is generated and validated. This is the actual bottleneck at scale — invest here.
 - **Default to Model B:** new clubs join the shared app instantly (no build, no review). Only promote to a dedicated app when the business case justifies the App Store review and credential overhead. This keeps the dedicated-build count (the expensive set) small and deliberate.
@@ -503,19 +511,19 @@ The difference between 3 brands and 50 is **automation and convention**, not arc
 
 ## 16. Risks & pitfalls
 
-| Risk | Severity | Mitigation |
-| --- | --- | --- |
-| **Apple Guideline 4.3 (spam / cloned apps)** rejecting many near-identical white-label apps under one account | High | Prefer client-owned store accounts for dedicated apps; differentiate brands meaningfully; consider Apple's "white-label" provisions; default new clubs to Model B to limit dedicated-app count. |
-| **NativeWind `className` runtime re-theming** doesn't cleanly support per-brand CSS-var swaps | Medium-High | Prototype in Phase 2 *before* committing. Fallback: drive *all* color through `useThemeColors()` (JS) and minimize brand-varying `className` color tokens. The existing token discipline makes this feasible. |
-| **Build-time/runtime confusion** — trying to change native identity at runtime | Medium | This document's §2 split is the canonical rule; encode it in the manifest type (native vs presentation sections are structurally separate). |
-| **Asset sprawl / inconsistency** at scale | Medium | Generated-from-master pipeline + CI dimension validation; no hand-placed per-size assets. |
-| **Credential/secret explosion** across brands | Medium | EAS-managed credentials; secrets keyed by brand in CI vault; never in manifests. |
-| **OTA cross-brand leakage** (an update lands on the wrong brand) | Medium | Channel-per-brand + `runtimeVersion` policy + `extra.brandId` runtime guard. Brand-agnostic JS bundle by design. |
-| **Brand ≠ tenant coupling creeps in** | Medium | Enforce the §4 boundary in review; branding never imports auth/tenant internals. |
-| **Default/fallback gaps** (a brand missing a token, logo, or flag → broken first paint) | Medium | Zod schema makes every required field non-optional; `_default` brand is the ultimate fallback; CI blocks incomplete brands. |
-| **Font licensing** for bundled brand fonts | Low-Medium | Curated, licensed font set only; no client-supplied arbitrary fonts at runtime. |
-| **Stripe merchant identity per brand** (Apple Pay) misconfigured | Low-Medium | Manifest carries `stripeMerchantId`; coordinate with backend two-account Stripe model; test Apple Pay per dedicated brand. |
-| **Maintenance drift** — `themes.ts` ThemeColors and manifest theme type diverge | Low | Single shared `ThemeColors` type imported by both; schema test asserts parity. |
+| Risk                                                                                                          | Severity    | Mitigation                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Apple Guideline 4.3 (spam / cloned apps)** rejecting many near-identical white-label apps under one account | High        | Prefer client-owned store accounts for dedicated apps; differentiate brands meaningfully; consider Apple's "white-label" provisions; default new clubs to Model B to limit dedicated-app count.               |
+| **NativeWind `className` runtime re-theming** doesn't cleanly support per-brand CSS-var swaps                 | Medium-High | Prototype in Phase 2 _before_ committing. Fallback: drive _all_ color through `useThemeColors()` (JS) and minimize brand-varying `className` color tokens. The existing token discipline makes this feasible. |
+| **Build-time/runtime confusion** — trying to change native identity at runtime                                | Medium      | This document's §2 split is the canonical rule; encode it in the manifest type (native vs presentation sections are structurally separate).                                                                   |
+| **Asset sprawl / inconsistency** at scale                                                                     | Medium      | Generated-from-master pipeline + CI dimension validation; no hand-placed per-size assets.                                                                                                                     |
+| **Credential/secret explosion** across brands                                                                 | Medium      | EAS-managed credentials; secrets keyed by brand in CI vault; never in manifests.                                                                                                                              |
+| **OTA cross-brand leakage** (an update lands on the wrong brand)                                              | Medium      | Channel-per-brand + `runtimeVersion` policy + `extra.brandId` runtime guard. Brand-agnostic JS bundle by design.                                                                                              |
+| **Brand ≠ tenant coupling creeps in**                                                                         | Medium      | Enforce the §4 boundary in review; branding never imports auth/tenant internals.                                                                                                                              |
+| **Default/fallback gaps** (a brand missing a token, logo, or flag → broken first paint)                       | Medium      | Zod schema makes every required field non-optional; `_default` brand is the ultimate fallback; CI blocks incomplete brands.                                                                                   |
+| **Font licensing** for bundled brand fonts                                                                    | Low-Medium  | Curated, licensed font set only; no client-supplied arbitrary fonts at runtime.                                                                                                                               |
+| **Stripe merchant identity per brand** (Apple Pay) misconfigured                                              | Low-Medium  | Manifest carries `stripeMerchantId`; coordinate with backend two-account Stripe model; test Apple Pay per dedicated brand.                                                                                    |
+| **Maintenance drift** — `themes.ts` ThemeColors and manifest theme type diverge                               | Low         | Single shared `ThemeColors` type imported by both; schema test asserts parity.                                                                                                                                |
 
 ---
 
@@ -525,7 +533,7 @@ The difference between 3 brands and 50 is **automation and convention**, not arc
 
 2. **Adopt the hybrid build-time/runtime split (§2):** native identity (name, bundle ID, icon, splash, scheme, Stripe) is **build-time** via `app.config.ts` reading `ACTIVE_BRAND`; presentation (theme, logo, fonts, flags, copy) is **runtime-capable** via `BrandProvider` over the existing `ThemeProvider`.
 
-3. **Exploit the existing theme discipline.** The no-hardcoded-color rule and `useThemeColors()` everywhere mean re-skinning is *config*, not a refactor. This is the single biggest reason this is tractable on your stack — protect that invariant.
+3. **Exploit the existing theme discipline.** The no-hardcoded-color rule and `useThemeColors()` everywhere mean re-skinning is _config_, not a refactor. This is the single biggest reason this is tractable on your stack — protect that invariant.
 
 4. **Support both delivery models, default to Model B.** One shared app (runtime tenant skin) for fast, review-free onboarding; promote high-value clubs to dedicated (Model A) builds. Same runtime machinery powers both — no wasted work.
 

@@ -1,10 +1,5 @@
 import { useAuth, useInitAuth } from "@repo/auth";
-import {
-    BrandProvider,
-    brandForTenant,
-    resolveBrand,
-    useBrandSelection,
-} from "@repo/branding";
+import { BrandProvider, brandForTenant, resolveBrand, useBrandSelection } from "@repo/branding";
 import { config } from "@repo/config";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StripeProvider } from "@stripe/stripe-react-native";

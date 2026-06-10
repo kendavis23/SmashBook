@@ -10,12 +10,12 @@ Build-time native identity assets for the SmashBook brand, referenced by
 
 ## Files
 
-| File | Size / format | Alpha | Used for |
-| --- | --- | --- | --- |
-| `icon.png` | 1024×1024 PNG | **no** (App Store requires opaque) | iOS app icon |
-| `adaptive-icon.png` | 1024×1024 PNG | yes | Android adaptive icon foreground (over `adaptiveIcon.backgroundColor`) |
-| `splash-icon.png` | 1024×1024 PNG | yes | Native splash logo (over `splash.backgroundColor`) |
-| `notification-icon.png` | 96×96 PNG | yes (white-on-transparent) | Android notification icon |
+| File                    | Size / format | Alpha                              | Used for                                                               |
+| ----------------------- | ------------- | ---------------------------------- | ---------------------------------------------------------------------- |
+| `icon.png`              | 1024×1024 PNG | **no** (App Store requires opaque) | iOS app icon                                                           |
+| `adaptive-icon.png`     | 1024×1024 PNG | yes                                | Android adaptive icon foreground (over `adaptiveIcon.backgroundColor`) |
+| `splash-icon.png`       | 1024×1024 PNG | yes                                | Native splash logo (over `splash.backgroundColor`)                     |
+| `notification-icon.png` | 96×96 PNG     | yes (white-on-transparent)         | Android notification icon                                              |
 
 Brand color: `#2563EB` (`cta` / `hero`, mirrors `src/theme/palette.ts` `blue600`).
 

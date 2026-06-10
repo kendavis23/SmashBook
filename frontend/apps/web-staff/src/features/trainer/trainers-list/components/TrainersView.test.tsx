@@ -222,11 +222,7 @@ describe("TrainersView — trainers list", () => {
 
     it("renders Inactive status badge for inactive trainer", () => {
         render(
-            <TrainersView
-                {...defaultProps}
-                trainers={mockTrainers}
-                selectedTrainer={miraTrainer}
-            />
+            <TrainersView {...defaultProps} trainers={mockTrainers} selectedTrainer={miraTrainer} />
         );
         expect(screen.getByText("Inactive")).toBeInTheDocument();
     });

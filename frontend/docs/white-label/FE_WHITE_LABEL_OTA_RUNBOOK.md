@@ -13,14 +13,14 @@ plus the OTA-channel convention. Implements
 The build-time/runtime split (§2) maps directly onto OTA capability. **If a change touches
 native identity, it needs a store rebuild; everything else is an OTA.**
 
-| Change | Mechanism | Speed |
-| --- | --- | --- |
-| Theme colour / token fix | **OTA** | minutes |
-| In-app logo swap, copy change | **OTA** | minutes |
-| Feature-flag default flip | **OTA** or backend flag | minutes |
-| JS / feature logic change | **OTA** (shared JS bundle) | minutes |
-| App name / icon / splash / bundle id | **Store rebuild** | days (review) |
-| New native module | **Store rebuild** | days |
+| Change                               | Mechanism                  | Speed         |
+| ------------------------------------ | -------------------------- | ------------- |
+| Theme colour / token fix             | **OTA**                    | minutes       |
+| In-app logo swap, copy change        | **OTA**                    | minutes       |
+| Feature-flag default flip            | **OTA** or backend flag    | minutes       |
+| JS / feature logic change            | **OTA** (shared JS bundle) | minutes       |
+| App name / icon / splash / bundle id | **Store rebuild**          | days (review) |
+| New native module                    | **Store rebuild**          | days          |
 
 The published JS bundle is **brand-agnostic** — it reads its active brand at runtime
 (`extra.brandId` for Model A; tenant→brand selection for Model B). One published JS update
@@ -100,7 +100,7 @@ eas update:roll-back-to-embedded --channel ace-london-production
    channels in the incident log. Open a fix-forward PR — rollback is a stopgap, not the fix.
 
 > **Guard rail:** because channels isolate brands, a rollback on `ace-london-production` does
-> **not** touch `_default-production`. Always roll back the *narrowest* set of channels that
+> **not** touch `_default-production`. Always roll back the _narrowest_ set of channels that
 > were actually serving the bad update.
 
 ---
