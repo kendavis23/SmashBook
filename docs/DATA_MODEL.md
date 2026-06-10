@@ -1,4 +1,4 @@
-_Last updated: 2026-06-05 18:00 UTC_
+_Last updated: 2026-06-10 09:00 UTC_
 
 # SmashBook Data Model
 
@@ -389,6 +389,31 @@ Tracks players waiting for a slot on a specific date/time.
 | `notes` | TEXT | Nullable |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
+
+---
+
+#### `staff_invitations`
+
+Invite-based onboarding of a user into a club as staff (Phase B). A dedicated table (rather than overloading `staff_profiles.is_active`, which means "deactivated") so an existing tenant user can be promoted (player → front_desk) without an email round-trip. The service layer enforces ≤1 `pending` invitation per `(club_id, email)`. `tenant_id` is direct (`TenantScopedMixin`); `club_id` scopes it to a single club.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `tenant_id` | UUID | FK → `tenants` |
+| `club_id` | UUID | FK → `clubs` |
+| `email` | VARCHAR(255) | Invitee email |
+| `role` | ENUM | `staffrole`: `trainer`, `ops_lead`, `admin`, `front_desk` (shared with `staff_profiles`) |
+| `invited_by_user_id` | UUID | FK → `users` |
+| `status` | ENUM | `staffinvitationstatus`: `pending`, `accepted`, `revoked`, `expired` (default `pending`) |
+| `expires_at` | TIMESTAMPTZ | now() + 7d, matches `create_invite_token` TTL |
+| `accepted_at` | TIMESTAMPTZ | Nullable |
+| `accepted_user_id` | UUID | FK → `users`, nullable |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Indexes:** `(club_id, email)`, `(tenant_id)`
+
+**Relationships:** `club`
 
 ---
 
@@ -880,6 +905,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `4d439313634d` | G7 (Analytics) — club player-flow report (workstream A): new materialized views `mv_club_active_player_day` (presence, grain `(club_id, activity_date, user_id)`, `UNIQUE(club_id, activity_date, user_id)`) and `mv_club_signups_day` (flow, grain `(club_id, signup_date)`, `UNIQUE(club_id, signup_date)`), both for `REFRESH … CONCURRENTLY`. Hand-written DDL. Active = distinct on-court players (`booking_players` ⋈ `bookings`); signups = new paid subscription starts (`membership_subscriptions` ⋈ `membership_plans`, price > 0). Backs `/api/v1/analytics/players/clubs/{id}/{active,active/timeseries,signups}` |
 | `da94effd108c` | `pricing_rules.label` tightened from free-text `VARCHAR(50)` to new `pricinglabel` enum (`peak`, `off_peak`, `standard`). Legacy values remapped in-migration by time-of-day semantics before the cast: `off_peak` ← `Off-Peak`, `Wknd AM`; `peak` ← `Peak`, `Evening`, `Weekend`, `Wknd PM`, `Wknd Eve`; `standard` ← catch-all. Extend the tier set by `ALTER TYPE pricinglabel ADD VALUE` + a model member |
 | `360c29cd9c05` | Per-activity pricing: new `pricing_rules.session_type` column (`bookingtype` enum, default `regular`, `NOT NULL`), letting a club price each session type within the same time window. Adds `train_and_play` to the existing `bookingtype` enum via `ALTER TYPE … ADD VALUE` inside an `autocommit_block()` (committed before the column references it); column added with `create_type=False` since `bookingtype` already exists. Existing rows backfill to `regular` via `server_default`. Downgrade drops the column but leaves `train_and_play` on the enum (Postgres cannot drop an enum value) |
+| `b94daf2c75e8` | Staff onboarding (Phase B1) — new table `staff_invitations` (`TenantScopedMixin`; FKs `tenant_id`, `club_id`, `invited_by_user_id`→users, `accepted_user_id`→users nullable; indexes `(club_id, email)`, `(tenant_id)`). New enum `staffinvitationstatus` (`pending`/`accepted`/`revoked`/`expired`); `role` reuses the existing shared `staffrole` enum via `create_type=False`. Downgrade drops the table + `staffinvitationstatus` only, leaving `staffrole` (shared with `staff_profiles`) intact |
 
 To run migrations:
 ```bash

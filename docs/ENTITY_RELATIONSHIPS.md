@@ -1,4 +1,4 @@
-_Last updated: 2026-06-06 12:00 UTC_
+_Last updated: 2026-06-10 09:00 UTC_
 
 # Entity Relationships — Gotchas & Cross-Entity Rules
 
@@ -41,6 +41,8 @@ Wallet booking payment: does **not** transfer money to the club at pay time — 
 `payment_intent.payment_failed`: frees the player's held slot immediately; cancels the whole booking if no paid player remains | reason: a failed card attempt must not keep blocking the court.
 First successful payment on a booking: clears `bookings.hold_expires_at` | reason: once anyone has paid, a long-lived (e.g. open game) booking must stop being a court hold that can expire.
 `tenants.subscription_status`: billing-webhook handlers **preserve** the `suspended` value and never overwrite it from a Stripe sync | reason: `suspended` is SmashBook's own state, not a Stripe-sourced one.
+`staff_invitations.status`: `pending → {accepted | revoked | expired}`, all terminal; acceptance is **single-use** — the accept path flips `pending → accepted` (stamping `accepted_at`/`accepted_user_id`) and a replay against a non-`pending` row is rejected | reason: an invite token must not create two staff profiles. *(Service enforcement lands in Phase B2; B1 is schema only.)*
+`staff_invitations`: at most **one `pending`** row per `(club_id, email)` — enforced in the **service layer**, not by a DB constraint (the `(club_id, email)` index is non-unique and spans all statuses) | reason: re-inviting after revoke/expire must stay possible, so a partial-unique DB constraint would be wrong; the duplicate-pending guard is application logic. *(Phase B2.)*
 
 ## Concurrency / locking requirements
 
@@ -55,6 +57,7 @@ Operational tables: scope by **`club_id`**, not `tenant_id` — service layer en
 `TenantScopedMixin` tables (direct `tenant_id`: `users`, `platform_fees`, `wallet_club_debts`, plus planned `ai_feature_flags` / `ai_inference_log`): use `tenant_clause(Model, tenant_id)`; transitively-scoped models (Court, Booking, …) must join through `clubs.tenant_id` | reason: only some tables carry a direct `tenant_id` column.
 `wallets`: **global per user** (`user_id` UNIQUE, no `club_id`) — a wallet is not club-scoped | reason: pre-loaded credit is usable across all of a user's clubs.
 `users`: scoped by `tenant_id`, not `club_id`; club membership is derived from `staff_profiles` (staff/trainer) or `membership_subscriptions` (player) | reason: a user belongs to a tenant and may participate in several of its clubs.
+Authority has **two planes**: a **tenant plane** (`users.role` = `owner`/`admin`) granting that role at *every* club in the tenant, and a **club plane** (`staff_profiles.role` per `(user, club)`). `resolve_club_context` (`app/api/v1/dependencies/club_context.py`) collapses both into a single `effective_role` value string for `can()`/`ROLE_RANK` | reason: a tenant admin is implicitly admin of all clubs, while a `front_desk`/`trainer`/`ops_lead` is club-local; both must rank in one ordering.
 `analytics_refresh_log` + all materialized views: **not** tenant-scoped | reason: views are tenant-wide aggregates and refresh is a platform operation.
 `tenants` subdomain uniqueness: cross-row/cross-column uniqueness (a string in at most one of `player_subdomain` / `staff_subdomain` across all tenants) is enforced in the **application layer**, not the DB | reason: per-column UNIQUE constraints don't catch a string moving between the two columns on different tenants.
 

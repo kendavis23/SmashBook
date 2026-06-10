@@ -1,4 +1,4 @@
-_Last updated: 2026-06-05 (pricing_rules.session_type — per-activity pricing)_
+_Last updated: 2026-06-10 (staff_invitations — staff onboarding Phase B1)_
 
 # SmashBook — Data Model Target State
 
@@ -117,6 +117,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | G10 | Sprint 10 — **CRM II** (campaigns & recommendations) | ⬜ Not started | New tables: `campaigns`, `ai_recommendations` (inbox variant); membership v2: add `membership_plan_pricing` (perks stay as columns on `membership_plans`). Features: re-engagement campaigns, churn-prevention, membership tier suggestions, AI pricing/outreach recommendations |
 | G11 | Sprint 11 — **Tournaments + match/skill** | ⬜ Not started | New tables: `tournaments`, `tournament_registrations`, `match_results`, `match_result_players`; `bookings`: add `tournament_id` FK, `tournament_round`, `tournament_match_label`; `booking_players`: add `team`. Features: skill auto-update (ELO), bracket auto-arrange |
 | G12 | Sprint 12 — **Phase 3 (deferred)** | ⬜ Not started | New tables: `training_recommendations`, `video_analyses`, `competitor_price_snapshots`; `support_tickets`: add `category`; `support_messages`: add `intent`, `booking_id`, AI fields. Features: AI support chatbot, conversational booking, training recommendations, video analysis, competitor pricing intel |
+| G-Staff | Staff onboarding (Phase B) | ✅ Applied (`b94daf2c75e8`) | New table: `staff_invitations` (`StaffInvitationStatus` enum; `role` reuses shared `StaffRole`). Invite-based staff onboarding into clubs — schema foundation for the B2 invite→accept slice + B3 CRUD endpoints. Not part of the original G1–G12 roadmap; landed to support the staff-onboarding + permissions work |
 | OOB | Out-of-band fix | ✅ Applied (`a3ad99663232`) | `payments`: add `stripe_destination_payment_id` (indexed) — connected-account-side payment id (`py_xxx`) so `payout.paid` can match destination-charge Connect payouts |
 
 > **🔁 Re-prioritisation (2026-05-29):** The post-MVP roadmap was re-sequenced to **Analytics → AI infrastructure → CRM → Tournaments**, with a Foundation step first. Groups G7–G12 were **redefined in place** (labels kept, contents and target sprints remapped) — G1–G6 are untouched. The driver is the analytics-first ROI story (see `Jamie Info` user stories: Site Performance + Player Analytics are HIGH priority). Two feature areas were **descoped entirely**: (1) all **weather** features/columns/flags, (2) all **equipment & maintenance AI**. See the "Descoped 2026-05-29" note below.
@@ -490,6 +491,28 @@ No changes from current state.
 | `notes` | TEXT | Nullable |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
+
+---
+
+### `staff_invitations` **NEW** (G-Staff)
+Invite-based onboarding of a user into a club as staff. A dedicated table (rather than overloading `staff_profiles.is_active`, which means "deactivated") so an existing tenant user can be promoted (player → front_desk) without an email round-trip. Service layer enforces ≤1 `pending` per `(club_id, email)`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `tenant_id` | UUID | FK → `tenants` (`TenantScopedMixin`) |
+| `club_id` | UUID | FK → `clubs` |
+| `email` | VARCHAR(255) | Invitee email |
+| `role` | ENUM | `StaffRole` (shared with `staff_profiles`) |
+| `invited_by_user_id` | UUID | FK → `users` |
+| `status` | ENUM | `StaffInvitationStatus` (`pending`/`accepted`/`revoked`/`expired`, default `pending`) |
+| `expires_at` | TIMESTAMPTZ | now() + 7d (matches `create_invite_token` TTL) |
+| `accepted_at` | TIMESTAMPTZ | Nullable |
+| `accepted_user_id` | UUID | FK → `users`, nullable |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Indexes:** `(club_id, email)`, `(tenant_id)`
 
 ---
 
@@ -1325,6 +1348,7 @@ All new enums must be created in Alembic migrations **before** the columns that 
 |---|---|---|
 | `TenantUserRole` | `owner`, `admin`, `staff`, `trainer`, `ops_lead`, `viewer`, `player` | existing |
 | `StaffRole` | `trainer`, `ops_lead`, `admin`, `front_desk` | existing |
+| `StaffInvitationStatus` | `pending`, `accepted`, `revoked`, `expired` | G-Staff |
 | `SurfaceType` | `indoor`, `outdoor`, `crystal`, `artificial_grass` | existing |
 | `BookingType` | `regular`, `lesson_individual`, `lesson_group`, `train_and_play`, `corporate_event`, `tournament`, **`open_game`** | `train_and_play` added (per-activity pricing); G3 — add `open_game` |
 | `BookingStatus` | `pending`, `confirmed`, `cancelled`, `completed` | existing |
