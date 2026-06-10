@@ -17,12 +17,10 @@ staff queries are unaffected by invitation rows.
 import uuid
 from datetime import datetime, timedelta, timezone
 
-import pytest
 import pytest_asyncio
-from sqlalchemy import delete as sql_delete, select
+from sqlalchemy import delete as sql_delete
 
 from app.core.security import create_access_token
-from app.db.models.club import Club
 from app.db.models.staff import StaffProfile, StaffRole
 from app.db.models.staff_invitation import StaffInvitation, StaffInvitationStatus
 from app.db.models.tenant import Tenant as TenantModel
