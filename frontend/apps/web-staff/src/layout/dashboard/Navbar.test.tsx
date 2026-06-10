@@ -258,7 +258,7 @@ describe("Navbar — module search", () => {
         fireEvent.keyDown(searchInput, { key: "ArrowUp" });
         fireEvent.keyDown(searchInput, { key: "Enter" });
 
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/staff" });
+        expect(mockNavigate).toHaveBeenCalledWith({ to: "/staff/invitations" });
     });
 
     it("renders inactive search results and updates the active item on hover", () => {

@@ -134,9 +134,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         ios: {
             supportsTablet: true,
             bundleIdentifier: brand.iosBundleId,
-            ...(brand.associatedDomains
-                ? { associatedDomains: brand.associatedDomains }
-                : {}),
+            ...(brand.associatedDomains ? { associatedDomains: brand.associatedDomains } : {}),
         },
         android: {
             package: brand.androidPackage,

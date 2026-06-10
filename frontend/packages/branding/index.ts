@@ -62,10 +62,5 @@ export { buildBrandCssVars } from "./src/cssVars";
 export { hexToHslTriplet } from "./src/color";
 
 // Phase 5 — layered feature-flag resolution (plan §8)
-export {
-    PLAYER_FEATURE_FLAGS,
-    FLAG_DEFAULTS,
-    resolveFlags,
-    isFlagEnabled,
-} from "./src/flags";
+export { PLAYER_FEATURE_FLAGS, FLAG_DEFAULTS, resolveFlags, isFlagEnabled } from "./src/flags";
 export type { PlayerFeatureFlag } from "./src/flags";

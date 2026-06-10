@@ -39,7 +39,7 @@ describe("brands.generated.json", () => {
         expect(
             current,
             "brands.generated.json is stale. Regenerate it with:\n" +
-                "  REGEN=1 pnpm --filter @repo/branding test -- asset-descriptors",
+                "  REGEN=1 pnpm --filter @repo/branding test -- asset-descriptors"
         ).toBe(serialized);
     });
 });

@@ -24,8 +24,7 @@ export const PLAYER_FEATURE_FLAGS = {
     profile: "profile",
 } as const;
 
-export type PlayerFeatureFlag =
-    (typeof PLAYER_FEATURE_FLAGS)[keyof typeof PLAYER_FEATURE_FLAGS];
+export type PlayerFeatureFlag = (typeof PLAYER_FEATURE_FLAGS)[keyof typeof PLAYER_FEATURE_FLAGS];
 
 // Global code defaults — the floor of the layered resolution. Every known flag has a safe
 // default so an app with no brand flags and no remote fetch still renders its core surfaces.

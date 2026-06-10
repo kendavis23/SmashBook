@@ -41,5 +41,4 @@ export function toAssetDescriptor(brand: BrandManifest): BrandAssetDescriptor {
     };
 }
 
-export const brandAssetDescriptors: BrandAssetDescriptor[] =
-    allBrands.map(toAssetDescriptor);
+export const brandAssetDescriptors: BrandAssetDescriptor[] = allBrands.map(toAssetDescriptor);
