@@ -79,6 +79,14 @@ export {
     useGetPriceQuote,
 } from "./booking.hooks";
 export {
+    useCreateStaffInvitation,
+    useListStaffInvitations,
+    useDeleteStaffInvitation,
+    useListStaff,
+    useUpdateStaff,
+    useDeleteStaff,
+} from "./staff.hooks";
+export {
     usePlayerValueLeaderboard,
     useMostActivePlayers,
     useInactiveMembers,

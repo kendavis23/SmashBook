@@ -124,6 +124,14 @@ export type {
     PriceQuote,
 } from "./booking.model";
 export type {
+    StaffRole,
+    StaffInviteInput,
+    StaffInviteResult,
+    StaffInvitation,
+    StaffMember,
+    StaffUpdateInput,
+} from "./staff.model";
+export type {
     PlayerSort,
     GroupDimension,
     FlowGranularity,

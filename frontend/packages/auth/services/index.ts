@@ -16,6 +16,8 @@ import type {
     EmailVerifyRequest,
     EmailVerifyResponse,
     CompleteInvitationRequest,
+    CompleteStaffInvitationRequest,
+    CompleteStaffInvitationResponse,
 } from "../types";
 
 const BASE = config.apiBaseUrl;
@@ -113,6 +115,18 @@ export async function completeInvitationService(
     });
     if (!res.ok) throw await parseError(res);
     return res.json() as Promise<EmailVerifyResponse>;
+}
+
+export async function completeStaffInvitationService(
+    data: CompleteStaffInvitationRequest
+): Promise<CompleteStaffInvitationResponse> {
+    const res = await fetch(`${BASE}/api/v1/auth/complete-staff-invitation`, {
+        method: "POST",
+        headers: buildAuthHeaders(),
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw await parseError(res);
+    return res.json() as Promise<CompleteStaffInvitationResponse>;
 }
 
 export async function getMeService(

@@ -78,6 +78,29 @@ export interface CompleteInvitationRequest {
     password: string;
 }
 
+export type StaffRole =
+    | "owner"
+    | "admin"
+    | "ops_lead"
+    | "staff"
+    | "front_desk"
+    | "trainer"
+    | "viewer";
+
+export interface CompleteStaffInvitationRequest {
+    token: string;
+    password: string;
+    full_name: string;
+}
+
+export interface CompleteStaffInvitationResponse {
+    user_id: UUID;
+    email: string;
+    club_id: UUID;
+    role: StaffRole;
+    message: string;
+}
+
 export interface UserResponse {
     id: UUID;
     email: string;

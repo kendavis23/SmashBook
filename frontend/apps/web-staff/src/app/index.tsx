@@ -18,6 +18,7 @@ const LogoutPage = lazy(() => import("../features/auth/pages/LogoutPage"));
 const UnauthorizedPage = lazy(() => import("../features/auth/pages/UnauthorizedPage"));
 const ForgotPasswordPage = lazy(() => import("../features/auth/pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("../features/auth/pages/ResetPasswordPage"));
+const CompleteInvitationPage = lazy(() => import("../features/auth/pages/CompleteInvitationPage"));
 const ClubsPage = lazy(() => import("../features/club/pages/ClubsPage"));
 const NewClubPage = lazy(() => import("../features/club/pages/NewClubPage"));
 const ClubDetailPage = lazy(() => import("../features/club/pages/ClubDetailPage"));
@@ -62,6 +63,8 @@ const PlayerValuePage = lazy(() => import("../features/analytics/pages/PlayerVal
 const PlayerEngagementPage = lazy(() => import("../features/analytics/pages/PlayerEngagementPage"));
 const PlayerSegmentsPage = lazy(() => import("../features/analytics/pages/PlayerSegmentsPage"));
 const PlayerActivityPage = lazy(() => import("../features/analytics/pages/PlayerActivityPage"));
+const StaffListPage = lazy(() => import("../features/staff/pages/StaffPage"));
+const StaffInvitationsPage = lazy(() => import("../features/staff/pages/StaffInvitationsPage"));
 const MySubscriptionPage = lazy(() => import("../features/subscription/pages/MySubscriptionPage"));
 const InvoicesPage = lazy(() => import("../features/subscription/pages/InvoicesPage"));
 const PaymentPage = lazy(() => import("../features/subscription/pages/PaymentPage"));
@@ -86,10 +89,6 @@ function PageLoader() {
 // Placeholder until dashboard feature is built
 function DashboardPage() {
     return <div className="p-8 text-gray-700">Dashboard — coming soon</div>;
-}
-
-function StaffPage() {
-    return <div className="p-8 text-gray-700">Staff — coming soon</div>;
 }
 
 function FinancePage() {
@@ -160,6 +159,15 @@ const resetPasswordRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/reset-password",
     component: ResetPasswordPage,
+});
+
+const completeInvitationRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/complete-invitation",
+    validateSearch: (search: Record<string, unknown>) => ({
+        token: typeof search.token === "string" ? search.token : undefined,
+    }),
+    component: CompleteInvitationPage,
 });
 
 const dashboardLayoutRoute = createRoute({
@@ -404,7 +412,17 @@ const staffRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/staff",
     beforeLoad: requireRole(["owner", "admin"]),
-    component: StaffPage,
+    validateSearch: (search: Record<string, unknown>) => ({
+        invited: search.invited === true ? true : undefined,
+    }),
+    component: StaffListPage,
+});
+
+const staffInvitationsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/staff/invitations",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: StaffInvitationsPage,
 });
 
 const trainersRoute = createRoute({
@@ -522,6 +540,7 @@ const routeTree = rootRoute.addChildren([
     unauthorizedRoute,
     forgotPasswordRoute,
     resetPasswordRoute,
+    completeInvitationRoute,
     dashboardLayoutRoute.addChildren([
         dashboardRoute,
         clubUtilisationRoute,
@@ -550,6 +569,7 @@ const routeTree = rootRoute.addChildren([
         newMembershipPlanRoute,
         editMembershipPlanRoute,
         staffRoute,
+        staffInvitationsRoute,
         trainersRoute,
         trainerDetailRoute,
         openMatchRoute,
