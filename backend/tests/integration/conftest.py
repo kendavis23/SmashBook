@@ -60,6 +60,7 @@ from app.db.models.court import CalendarReservation, Court
 from app.db.models.payment import Payment, PlatformFee
 from app.db.models.skill import SkillLevelHistory
 from app.db.models.staff import StaffProfile, StaffRole, TrainerAvailability
+from app.db.models.staff_invitation import StaffInvitation
 from app.db.models.tenant import SubscriptionPlan, Tenant
 from app.db.models.user import TenantUserRole, User
 from app.db.models.wallet import Wallet, WalletClubDebt, WalletTransaction
@@ -218,6 +219,11 @@ async def _cleanup_tenant(tenant_id: uuid.UUID, session_factory) -> None:
         user_ids = (
             await session.execute(select(User.id).where(User.tenant_id == tenant_id))
         ).scalars().all()
+
+        # Staff invitations FK clubs + users — clear them before either is deleted.
+        await session.execute(
+            sql_delete(StaffInvitation).where(StaffInvitation.tenant_id == tenant_id)
+        )
 
         # --- Clubs: delete FK children before the club row ---
         if club_ids:
@@ -445,6 +451,29 @@ async def _delete_user(user_id: uuid.UUID, session_factory) -> None:
             .where(User.skill_assigned_by == user_id)
             .values(skill_assigned_by=None, skill_assigned_at=None)
         )
+        # Staff onboarding (Phase B): invitations FK the user as inviter/acceptor;
+        # staff profiles created via invite/accept FK the user. Clear both (and
+        # availability children) before the user row goes.
+        await session.execute(
+            sql_delete(StaffInvitation).where(
+                (StaffInvitation.invited_by_user_id == user_id)
+                | (StaffInvitation.accepted_user_id == user_id)
+            )
+        )
+        user_staff_ids = (
+            await session.execute(
+                select(StaffProfile.id).where(StaffProfile.user_id == user_id)
+            )
+        ).scalars().all()
+        if user_staff_ids:
+            await session.execute(
+                sql_delete(TrainerAvailability).where(
+                    TrainerAvailability.staff_profile_id.in_(user_staff_ids)
+                )
+            )
+            await session.execute(
+                sql_delete(StaffProfile).where(StaffProfile.user_id == user_id)
+            )
         await session.execute(
             sql_delete(SkillLevelHistory).where(SkillLevelHistory.user_id == user_id)
         )
@@ -681,6 +710,26 @@ async def club(tenant, test_session_factory):
         await session.execute(
             sql_delete(SkillLevelHistory).where(SkillLevelHistory.club_id == c.id)
         )
+        # Staff onboarding (Phase B): invitations FK the club; staff profiles
+        # created via accept/attach FK both club and user. Clear them (and their
+        # trainer-availability children) before deleting the club row.
+        await session.execute(
+            sql_delete(StaffInvitation).where(StaffInvitation.club_id == c.id)
+        )
+        club_staff_ids = (
+            await session.execute(
+                select(StaffProfile.id).where(StaffProfile.club_id == c.id)
+            )
+        ).scalars().all()
+        if club_staff_ids:
+            await session.execute(
+                sql_delete(TrainerAvailability).where(
+                    TrainerAvailability.staff_profile_id.in_(club_staff_ids)
+                )
+            )
+            await session.execute(
+                sql_delete(StaffProfile).where(StaffProfile.club_id == c.id)
+            )
         obj = await session.get(Club, c.id)
         if obj:
             await session.delete(obj)

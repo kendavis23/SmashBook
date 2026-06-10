@@ -2,6 +2,624 @@
   {
     "assignees": [],
     "body": "",
+    "closedAt": null,
+    "createdAt": "2026-06-02T13:51:50Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      }
+    ],
+    "milestone": null,
+    "number": 275,
+    "state": "OPEN",
+    "title": "Add subscription payment log into db to track for financial reporting",
+    "updatedAt": "2026-06-02T13:51:50Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/275",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-05-29T15:32:44Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68AA",
+        "name": "Infra | dx",
+        "description": "",
+        "color": "CFD3D7"
+      }
+    ],
+    "milestone": null,
+    "number": 259,
+    "state": "OPEN",
+    "title": "Production Readiness Infra (remaining sections)",
+    "updatedAt": "2026-05-29T15:32:44Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/259",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-05-29T15:00:35Z",
+    "createdAt": "2026-05-27T21:47:30Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      }
+    ],
+    "milestone": null,
+    "number": 252,
+    "state": "CLOSED",
+    "title": "upgrade and downgrade membership",
+    "updatedAt": "2026-05-29T15:00:35Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/252",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-05-27T21:46:30Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      }
+    ],
+    "milestone": null,
+    "number": 251,
+    "state": "OPEN",
+    "title": "Finish player registration flows - QR and List of Clubs",
+    "updatedAt": "2026-05-27T21:46:30Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/251",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-05-26T16:11:17Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68mA",
+        "name": "Staff",
+        "description": "",
+        "color": "F9D0C4"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      }
+    ],
+    "milestone": null,
+    "number": 245,
+    "state": "OPEN",
+    "title": "Player Analytics: As a club operator, I want to see a map of where my members live, so I can assess catchment area and plan marketing spend.",
+    "updatedAt": "2026-05-26T16:11:17Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/245",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-05-26T16:10:36Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68mA",
+        "name": "Staff",
+        "description": "",
+        "color": "F9D0C4"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      }
+    ],
+    "milestone": null,
+    "number": 244,
+    "state": "OPEN",
+    "title": "Player Analytics: As a club operator, I want basic demographic data (age, gender) on my members, so I can understand my player base.",
+    "updatedAt": "2026-05-26T16:10:36Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/244",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-06-05T16:12:30Z",
+    "createdAt": "2026-05-26T16:09:53Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68mA",
+        "name": "Staff",
+        "description": "",
+        "color": "F9D0C4"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      }
+    ],
+    "milestone": null,
+    "number": 243,
+    "state": "CLOSED",
+    "title": "Player Analytics: As a club operator, I want to see LTV per player, so I can prioritise retention efforts on high-value members.",
+    "updatedAt": "2026-06-05T16:12:30Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/243",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-06-05T16:12:22Z",
+    "createdAt": "2026-05-26T16:09:12Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68mA",
+        "name": "Staff",
+        "description": "",
+        "color": "F9D0C4"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      }
+    ],
+    "milestone": null,
+    "number": 242,
+    "state": "CLOSED",
+    "title": "Player Analytics: As a club operator, I want to identify churners — members who haven't played in 60+ days — so I can target them with re-engagement campaigns.",
+    "updatedAt": "2026-06-05T16:12:22Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/242",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-06-05T16:11:13Z",
+    "createdAt": "2026-05-26T15:46:16Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACkyxsHw",
+        "name": "Owner",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 241,
+    "state": "CLOSED",
+    "title": "Site Performance Analytics: As a club GM, I want to see new member sign-ups per site per month, so I can measure growth rate.",
+    "updatedAt": "2026-06-05T16:11:13Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/241",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-06-05T16:11:01Z",
+    "createdAt": "2026-05-26T15:45:35Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACkyxsHw",
+        "name": "Owner",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 240,
+    "state": "CLOSED",
+    "title": "Site Performance Analytics: As a club GM, I want to see a rolling count of active players per site over the last 30 days, so I can track engagement trends.",
+    "updatedAt": "2026-06-05T16:11:01Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/240",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-05-26T15:44:11Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACkyxsHw",
+        "name": "Owner",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 239,
+    "state": "OPEN",
+    "title": "Site Performance Analytics: As a club GM, I want to know which courts get booked first, so I can make pricing and layout decisions based on player preference.",
+    "updatedAt": "2026-05-26T15:48:12Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/239",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-06-05T16:10:48Z",
+    "createdAt": "2026-05-26T15:43:27Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACkyxsHw",
+        "name": "Owner",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 238,
+    "state": "CLOSED",
+    "title": "Site Performance Analytics: As a club GM, I want to see total revenue broken down by site, so I can identify which locations are underperforming.",
+    "updatedAt": "2026-06-05T16:10:48Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/238",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Based on role, view information for the club and/or organisation. \n\nOwner / Admin - Full access across organisation and clubs\n\nStaff - ability to view reports by club",
+    "closedAt": "2026-06-05T16:10:42Z",
+    "createdAt": "2026-05-26T15:40:28Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
+        "description": "",
+        "color": "E4C5F9"
+      }
+    ],
+    "milestone": null,
+    "number": 237,
+    "state": "CLOSED",
+    "title": "Core - ability to report by club or organisation",
+    "updatedAt": "2026-06-05T16:10:42Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/237",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-05-22T07:17:36Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal68mA",
+        "name": "Staff",
+        "description": "",
+        "color": "F9D0C4"
+      }
+    ],
+    "milestone": null,
+    "number": 232,
+    "state": "OPEN",
+    "title": "Staff Onboarding",
+    "updatedAt": "2026-05-22T07:17:36Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/232",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Show available slots to book a new match or join a match where the player fits the skill profile",
+    "closedAt": "2026-05-29T15:00:40Z",
+    "createdAt": "2026-05-20T12:39:58Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb_aMjQ",
+        "name": "Booking",
+        "description": "",
+        "color": "9c6e8a"
+      }
+    ],
+    "milestone": null,
+    "number": 228,
+    "state": "CLOSED",
+    "title": "Slot first availability",
+    "updatedAt": "2026-05-29T15:00:40Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/228",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": null,
+    "createdAt": "2026-05-20T12:37:17Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      }
+    ],
+    "milestone": null,
+    "number": 227,
+    "state": "OPEN",
+    "title": "Allow for payment without saving card",
+    "updatedAt": "2026-05-20T12:37:17Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/227",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Player: \n- Update dashboard section\n- Only show open matches that I'm not in or put text on to show I'm in the match\n- Update to show calendar view of open slots and available to join\n\nStaff: \n- Change pricing to be day of the week\n- Change pricing to have Peak, Off-Peak, Standard pricing only for labels\n- Change 'Settings' to Booking\n- Update View section\n- Split 'Management' and 'Booking' on left hand panel sections",
+    "closedAt": "2026-06-05T16:11:46Z",
+    "createdAt": "2026-05-20T12:32:00Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACj_soZA",
+        "name": "UX",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 226,
+    "state": "CLOSED",
+    "title": "UI Prep for Demos",
+    "updatedAt": "2026-06-05T16:11:46Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/226",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
+    "closedAt": "2026-05-27T21:46:47Z",
+    "createdAt": "2026-05-18T08:26:34Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACb-2WWw",
+        "name": "Player",
+        "description": "",
+        "color": "e7398d"
+      }
+    ],
+    "milestone": null,
+    "number": 220,
+    "state": "CLOSED",
+    "title": "Player registration",
+    "updatedAt": "2026-05-27T21:46:47Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/220",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Set up organisation to pay subscription to Smashbook",
+    "closedAt": "2026-05-18T16:30:24Z",
+    "createdAt": "2026-05-16T09:41:40Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACjcDTWg",
+        "name": "SB Onboarding",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 214,
+    "state": "CLOSED",
+    "title": "Organisation Subscription environment setup (ready to implement)",
+    "updatedAt": "2026-05-18T16:30:24Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/214",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Create endpoint for an organisation to be set up to use Smashbook, assign membership level and details. ",
+    "closedAt": "2026-05-23T12:33:45Z",
+    "createdAt": "2026-05-16T09:41:05Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACjcDTWg",
+        "name": "SB Onboarding",
+        "description": "",
+        "color": "aaaaaa"
+      }
+    ],
+    "milestone": null,
+    "number": 213,
+    "state": "CLOSED",
+    "title": "Organisation Setup and update",
+    "updatedAt": "2026-05-23T12:33:45Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/213",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "Allow player to subscribe to membership and set up stripe to trigger payment based on monthly or annual payment cycle.  Allow player to cancel subscription. ",
+    "closedAt": "2026-05-18T13:21:47Z",
+    "createdAt": "2026-05-16T09:39:47Z",
+    "labels": [
+      {
+        "id": "LA_kwDORVso0c8AAAACal69LQ",
+        "name": "Payments",
+        "description": "",
+        "color": "FEF2C0"
+      }
+    ],
+    "milestone": null,
+    "number": 212,
+    "state": "CLOSED",
+    "title": "Player Subscription",
+    "updatedAt": "2026-05-18T13:21:47Z",
+    "url": "https://github.com/kendavis23/SmashBook/issues/212",
+    "sprint": {
+      "duration": 14,
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
+    }
+  },
+  {
+    "assignees": [],
+    "body": "",
     "closedAt": "2026-05-06T12:27:24Z",
     "createdAt": "2026-05-06T08:13:30Z",
     "labels": [
@@ -46,9 +664,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/201",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -67,14 +685,14 @@
     "milestone": null,
     "number": 200,
     "state": "OPEN",
-    "title": "Production Readiness Infrastructure",
-    "updatedAt": "2026-05-04T12:22:02Z",
+    "title": "Production Readiness Infrastructure sections 2.1 (done), 2.2, 2.5, 2.6",
+    "updatedAt": "2026-05-30T07:30:34Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/200",
     "sprint": {
       "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -179,32 +797,6 @@
       "iterationId": "3a41d995",
       "startDate": "2026-04-19",
       "title": "Sprint 4"
-    }
-  },
-  {
-    "assignees": [],
-    "body": "Provide clear report to show financial reconcilation of bookings, payments, etc. by time period",
-    "closedAt": null,
-    "createdAt": "2026-04-28T20:06:38Z",
-    "labels": [
-      {
-        "id": "LA_kwDORVso0c8AAAACal6-og",
-        "name": "Analytics",
-        "description": "",
-        "color": "E4C5F9"
-      }
-    ],
-    "milestone": null,
-    "number": 186,
-    "state": "OPEN",
-    "title": "Reconciliation report",
-    "updatedAt": "2026-04-28T20:06:38Z",
-    "url": "https://github.com/kendavis23/SmashBook/issues/186",
-    "sprint": {
-      "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
     }
   },
   {
@@ -332,9 +924,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/179",
     "sprint": {
       "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -442,9 +1034,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/167",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -457,7 +1049,7 @@
       }
     ],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-12T18:43:43Z",
     "createdAt": "2026-04-21T07:34:14Z",
     "labels": [
       {
@@ -469,15 +1061,15 @@
     ],
     "milestone": null,
     "number": 166,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Ensure read replica is being deployed and set up correctly",
-    "updatedAt": "2026-04-21T07:34:14Z",
+    "updatedAt": "2026-05-12T18:43:43Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/166",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -562,7 +1154,7 @@
       }
     ],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-29T15:26:41Z",
     "createdAt": "2026-04-15T18:27:30Z",
     "labels": [
       {
@@ -580,15 +1172,15 @@
     ],
     "milestone": null,
     "number": 155,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "full end-to-end testing with test data for booking and payments",
-    "updatedAt": "2026-05-09T11:02:47Z",
+    "updatedAt": "2026-05-29T15:26:41Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/155",
     "sprint": {
       "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
     }
   },
   {
@@ -1015,7 +1607,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-30T14:00:11Z",
     "createdAt": "2026-03-28T15:02:59Z",
     "labels": [
       {
@@ -1032,9 +1624,9 @@
       "dueOn": null
     },
     "number": 139,
-    "state": "OPEN",
-    "title": "Implement G6/7/8 db changes",
-    "updatedAt": "2026-04-21T13:59:08Z",
+    "state": "CLOSED",
+    "title": "G6 and G7 database updates",
+    "updatedAt": "2026-05-30T14:00:12Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/139",
     "sprint": {
       "duration": 14,
@@ -1069,9 +1661,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/138",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -1267,9 +1859,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/131",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -1304,46 +1896,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/130",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
-    }
-  },
-  {
-    "assignees": [],
-    "body": "Enter in amount charged for event, track with booking, take payment",
-    "closedAt": null,
-    "createdAt": "2026-03-19T12:04:39Z",
-    "labels": [
-      {
-        "id": "LA_kwDORVso0c8AAAACal68mA",
-        "name": "Staff",
-        "description": "",
-        "color": "F9D0C4"
-      },
-      {
-        "id": "LA_kwDORVso0c8AAAACal69LQ",
-        "name": "Payments",
-        "description": "",
-        "color": "FEF2C0"
-      }
-    ],
-    "milestone": {
-      "number": 1,
-      "title": "Phase 1 / MVP Go-Live",
-      "description": "",
-      "dueOn": null
-    },
-    "number": 129,
-    "state": "OPEN",
-    "title": "Charge for Event - Corporate, Custom Pricing",
-    "updatedAt": "2026-03-19T12:04:39Z",
-    "url": "https://github.com/kendavis23/SmashBook/issues/129",
-    "sprint": {
-      "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -1417,7 +1972,7 @@
   {
     "assignees": [],
     "body": "SmashBook set up of pricing structure",
-    "closedAt": null,
+    "closedAt": "2026-05-19T06:51:54Z",
     "createdAt": "2026-03-19T10:38:21Z",
     "labels": [
       {
@@ -1434,15 +1989,15 @@
       "dueOn": null
     },
     "number": 126,
-    "state": "OPEN",
-    "title": "Client Pricing Setup",
-    "updatedAt": "2026-03-19T10:38:21Z",
+    "state": "CLOSED",
+    "title": "Onboarding client pricing and plans - membership per tenant, membership terms, etc. ",
+    "updatedAt": "2026-05-19T06:51:54Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/126",
     "sprint": {
       "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
     }
   },
   {
@@ -1688,9 +2243,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/116",
     "sprint": {
       "duration": 14,
-      "iterationId": "11f3fc95",
-      "startDate": "2026-08-23",
-      "title": "Sprint 13"
+      "iterationId": "d05c06fb",
+      "startDate": "2026-09-06",
+      "title": "Sprint 14"
     }
   },
   {
@@ -1719,9 +2274,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/115",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -1750,9 +2305,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/114",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -1781,9 +2336,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/113",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -1812,9 +2367,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/112",
     "sprint": {
       "duration": 14,
-      "iterationId": "8de274b8",
-      "startDate": "2026-08-09",
-      "title": "Sprint 12"
+      "iterationId": "11f3fc95",
+      "startDate": "2026-08-23",
+      "title": "Sprint 13"
     }
   },
   {
@@ -1843,9 +2398,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/111",
     "sprint": {
       "duration": 14,
-      "iterationId": "8de274b8",
-      "startDate": "2026-08-09",
-      "title": "Sprint 12"
+      "iterationId": "11f3fc95",
+      "startDate": "2026-08-23",
+      "title": "Sprint 13"
     }
   },
   {
@@ -1874,9 +2429,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/110",
     "sprint": {
       "duration": 14,
-      "iterationId": "8de274b8",
-      "startDate": "2026-08-09",
-      "title": "Sprint 12"
+      "iterationId": "11f3fc95",
+      "startDate": "2026-08-23",
+      "title": "Sprint 13"
     }
   },
   {
@@ -1905,9 +2460,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/109",
     "sprint": {
       "duration": 14,
-      "iterationId": "8de274b8",
-      "startDate": "2026-08-09",
-      "title": "Sprint 12"
+      "iterationId": "11f3fc95",
+      "startDate": "2026-08-23",
+      "title": "Sprint 13"
     }
   },
   {
@@ -1936,9 +2491,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/108",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -1967,9 +2522,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/107",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -1998,9 +2553,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/106",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -2029,9 +2584,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/105",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -2060,9 +2615,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/104",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -2091,9 +2646,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/103",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2122,9 +2677,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/102",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2153,9 +2708,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/101",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2184,9 +2739,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/100",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2215,15 +2770,15 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/99",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-26T16:17:36Z",
     "createdAt": "2026-03-08T13:56:29Z",
     "labels": [
       {
@@ -2240,15 +2795,15 @@
       "dueOn": null
     },
     "number": 98,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Player: view skill progression over time on a personal development dashboard",
-    "updatedAt": "2026-03-24T23:02:40Z",
+    "updatedAt": "2026-05-26T16:17:36Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/98",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -2277,9 +2832,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/97",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -2308,9 +2863,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/96",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -2339,9 +2894,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/94",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2370,9 +2925,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/92",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2401,9 +2956,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/91",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2432,9 +2987,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/89",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -2463,9 +3018,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/86",
     "sprint": {
       "duration": 14,
-      "iterationId": "c9a35b7d",
-      "startDate": "2026-07-26",
-      "title": "Sprint 11"
+      "iterationId": "8de274b8",
+      "startDate": "2026-08-09",
+      "title": "Sprint 12"
     }
   },
   {
@@ -2494,9 +3049,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/84",
     "sprint": {
       "duration": 14,
-      "iterationId": "11f3fc95",
-      "startDate": "2026-08-23",
-      "title": "Sprint 13"
+      "iterationId": "d05c06fb",
+      "startDate": "2026-09-06",
+      "title": "Sprint 14"
     }
   },
   {
@@ -2525,9 +3080,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/83",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2562,9 +3117,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/82",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2593,9 +3148,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/81",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2624,9 +3179,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/80",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2655,9 +3210,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/79",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2686,9 +3241,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/78",
     "sprint": {
       "duration": 14,
-      "iterationId": "11f3fc95",
-      "startDate": "2026-08-23",
-      "title": "Sprint 13"
+      "iterationId": "d05c06fb",
+      "startDate": "2026-09-06",
+      "title": "Sprint 14"
     }
   },
   {
@@ -2717,9 +3272,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/77",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2748,9 +3303,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/76",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2779,9 +3334,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/75",
     "sprint": {
       "duration": 14,
-      "iterationId": "cf0d05b1",
-      "startDate": "2026-07-12",
-      "title": "Sprint 10"
+      "iterationId": "c9a35b7d",
+      "startDate": "2026-07-26",
+      "title": "Sprint 11"
     }
   },
   {
@@ -2810,9 +3365,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/74",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2841,9 +3396,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/73",
     "sprint": {
       "duration": 14,
-      "iterationId": "11f3fc95",
-      "startDate": "2026-08-23",
-      "title": "Sprint 13"
+      "iterationId": "d05c06fb",
+      "startDate": "2026-09-06",
+      "title": "Sprint 14"
     }
   },
   {
@@ -2872,9 +3427,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/72",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2903,9 +3458,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/71",
     "sprint": {
       "duration": 14,
-      "iterationId": "59bc3e61",
-      "startDate": "2026-06-28",
-      "title": "Sprint 9"
+      "iterationId": "cf0d05b1",
+      "startDate": "2026-07-12",
+      "title": "Sprint 10"
     }
   },
   {
@@ -2940,15 +3495,15 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/70",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-26T16:17:02Z",
     "createdAt": "2026-03-08T13:55:32Z",
     "labels": [
       {
@@ -2971,15 +3526,15 @@
       "dueOn": null
     },
     "number": 69,
-    "state": "OPEN",
+    "state": "CLOSED",
     "title": "Staff: view log of skill level changes per player",
-    "updatedAt": "2026-03-24T23:03:06Z",
+    "updatedAt": "2026-05-26T16:17:02Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/69",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -3057,9 +3612,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/67",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3094,9 +3649,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/66",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3131,9 +3686,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/65",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3168,9 +3723,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/64",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3200,8 +3755,8 @@
     },
     "number": 63,
     "state": "OPEN",
-    "title": "Staff: export full financial report for a selected period",
-    "updatedAt": "2026-03-24T23:03:12Z",
+    "title": "Financial: export full financial report for a selected period",
+    "updatedAt": "2026-05-26T16:17:17Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/63",
     "sprint": {
       "duration": 14,
@@ -3274,8 +3829,8 @@
     },
     "number": 61,
     "state": "OPEN",
-    "title": "Staff: view and reconcile Stripe payout records against bank deposits",
-    "updatedAt": "2026-03-24T23:03:14Z",
+    "title": "Financial: As a staff member, I want to view reconciled Stripe transactions to payouts made to bank",
+    "updatedAt": "2026-05-26T16:16:21Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/61",
     "sprint": {
       "duration": 14,
@@ -3287,7 +3842,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-06-05T16:12:04Z",
     "createdAt": "2026-03-08T13:55:15Z",
     "labels": [
       {
@@ -3310,15 +3865,15 @@
       "dueOn": null
     },
     "number": 60,
-    "state": "OPEN",
-    "title": "Staff: view revenue breakdown by booking type and court",
-    "updatedAt": "2026-03-24T23:03:15Z",
+    "state": "CLOSED",
+    "title": "Financial: As an owner, I want to be able to view overall revenue by club for any time period",
+    "updatedAt": "2026-06-05T16:12:04Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/60",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -3361,44 +3916,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
-    "createdAt": "2026-03-08T13:55:11Z",
-    "labels": [
-      {
-        "id": "LA_kwDORVso0c8AAAACal68mA",
-        "name": "Staff",
-        "description": "",
-        "color": "F9D0C4"
-      },
-      {
-        "id": "LA_kwDORVso0c8AAAACal6-og",
-        "name": "Analytics",
-        "description": "",
-        "color": "E4C5F9"
-      }
-    ],
-    "milestone": {
-      "number": 1,
-      "title": "Phase 1 / MVP Go-Live",
-      "description": "",
-      "dueOn": null
-    },
-    "number": 58,
-    "state": "OPEN",
-    "title": "Staff: export booking and payment data",
-    "updatedAt": "2026-03-24T23:03:18Z",
-    "url": "https://github.com/kendavis23/SmashBook/issues/58",
-    "sprint": {
-      "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
-    }
-  },
-  {
-    "assignees": [],
-    "body": "",
-    "closedAt": null,
+    "closedAt": "2026-06-05T16:12:37Z",
     "createdAt": "2026-03-08T13:55:09Z",
     "labels": [
       {
@@ -3421,9 +3939,9 @@
       "dueOn": null
     },
     "number": 57,
-    "state": "OPEN",
-    "title": "Staff: view player retention and booking frequency data",
-    "updatedAt": "2026-03-24T23:03:19Z",
+    "state": "CLOSED",
+    "title": "Player Analytics: As a club operator, I want to see which players are most active at each site (by sessions), so I can identify my best customers.",
+    "updatedAt": "2026-06-05T16:12:37Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/57",
     "sprint": {
       "duration": 14,
@@ -3435,7 +3953,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-06-01T05:57:49Z",
     "createdAt": "2026-03-08T13:55:07Z",
     "labels": [
       {
@@ -3458,15 +3976,15 @@
       "dueOn": null
     },
     "number": 56,
-    "state": "OPEN",
-    "title": "Staff: generate utilisation reports by court and time period",
-    "updatedAt": "2026-03-24T23:03:20Z",
+    "state": "CLOSED",
+    "title": "Site Performance Analytics: As a club GM, I want to see court utilisation by court, time of day, and day of week, so I can identify scheduling gaps and adjust pricing or programming.",
+    "updatedAt": "2026-06-01T05:57:49Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/56",
     "sprint": {
       "duration": 14,
-      "iterationId": "d7549699",
-      "startDate": "2026-06-14",
-      "title": "Sprint 8"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -3618,9 +4136,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/52",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3655,9 +4173,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/51",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3692,9 +4210,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/50",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3729,9 +4247,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/49",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -3772,9 +4290,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/48",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -4030,9 +4548,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/42",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {
@@ -4062,14 +4580,14 @@
     },
     "number": 41,
     "state": "OPEN",
-    "title": "Player: cancel a booking",
-    "updatedAt": "2026-03-24T23:03:37Z",
+    "title": "Player: cancel a booking and refund funds to charged card based on club rules (allow, don't allow, percentage)",
+    "updatedAt": "2026-05-20T12:35:36Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/41",
     "sprint": {
       "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -4112,7 +4630,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-06-05T16:11:57Z",
     "createdAt": "2026-03-08T13:54:36Z",
     "labels": [
       {
@@ -4122,10 +4640,10 @@
         "color": "F9D0C4"
       },
       {
-        "id": "LA_kwDORVso0c8AAAACal69LQ",
-        "name": "Payments",
+        "id": "LA_kwDORVso0c8AAAACal6-og",
+        "name": "Analytics",
         "description": "",
-        "color": "FEF2C0"
+        "color": "E4C5F9"
       }
     ],
     "milestone": {
@@ -4135,52 +4653,15 @@
       "dueOn": null
     },
     "number": 39,
-    "state": "OPEN",
-    "title": "Staff: view daily revenue summary and transaction log",
-    "updatedAt": "2026-03-24T23:03:39Z",
+    "state": "CLOSED",
+    "title": "Financial: As an owner, I want to be able to view revenue by type for any time period",
+    "updatedAt": "2026-06-05T16:11:57Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/39",
     "sprint": {
       "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
-    }
-  },
-  {
-    "assignees": [],
-    "body": "",
-    "closedAt": null,
-    "createdAt": "2026-03-08T13:54:34Z",
-    "labels": [
-      {
-        "id": "LA_kwDORVso0c8AAAACal68mA",
-        "name": "Staff",
-        "description": "",
-        "color": "F9D0C4"
-      },
-      {
-        "id": "LA_kwDORVso0c8AAAACal69LQ",
-        "name": "Payments",
-        "description": "",
-        "color": "FEF2C0"
-      }
-    ],
-    "milestone": {
-      "number": 1,
-      "title": "Phase 1 / MVP Go-Live",
-      "description": "",
-      "dueOn": null
-    },
-    "number": 38,
-    "state": "OPEN",
-    "title": "Staff: issue full or partial refunds for cancelled bookings",
-    "updatedAt": "2026-03-24T23:03:40Z",
-    "url": "https://github.com/kendavis23/SmashBook/issues/38",
-    "sprint": {
-      "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -4210,14 +4691,14 @@
     },
     "number": 37,
     "state": "OPEN",
-    "title": "Staff: process in-person payments (cash / card / credit)",
-    "updatedAt": "2026-03-24T23:03:41Z",
+    "title": "Staff: process in-person card payments for customer or corp client (event)",
+    "updatedAt": "2026-05-29T15:27:50Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/37",
     "sprint": {
       "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
+      "iterationId": "cd608bfe",
+      "startDate": "2026-05-31",
+      "title": "Sprint 7"
     }
   },
   {
@@ -4243,6 +4724,12 @@
         "name": "Club Config",
         "description": "",
         "color": "4b04fa"
+      },
+      {
+        "id": "LA_kwDORVso0c8AAAACjcDTWg",
+        "name": "SB Onboarding",
+        "description": "",
+        "color": "aaaaaa"
       }
     ],
     "milestone": {
@@ -4254,124 +4741,13 @@
     "number": 36,
     "state": "OPEN",
     "title": "Staff: configure Stripe Connect account per club",
-    "updatedAt": "2026-03-24T23:03:43Z",
+    "updatedAt": "2026-05-16T09:42:16Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/36",
     "sprint": {
       "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
-    }
-  },
-  {
-    "assignees": [],
-    "body": "",
-    "closedAt": null,
-    "createdAt": "2026-03-08T13:54:28Z",
-    "labels": [
-      {
-        "id": "LA_kwDORVso0c8AAAACal69LQ",
-        "name": "Payments",
-        "description": "",
-        "color": "FEF2C0"
-      },
-      {
-        "id": "LA_kwDORVso0c8AAAACb-2WWw",
-        "name": "Player",
-        "description": "",
-        "color": "e7398d"
-      }
-    ],
-    "milestone": {
-      "number": 1,
-      "title": "Phase 1 / MVP Go-Live",
-      "description": "",
-      "dueOn": null
-    },
-    "number": 35,
-    "state": "OPEN",
-    "title": "Player: refunds returned to original payment method or wallet",
-    "updatedAt": "2026-03-24T23:03:44Z",
-    "url": "https://github.com/kendavis23/SmashBook/issues/35",
-    "sprint": {
-      "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
-    }
-  },
-  {
-    "assignees": [],
-    "body": "",
-    "closedAt": null,
-    "createdAt": "2026-03-08T13:54:26Z",
-    "labels": [
-      {
-        "id": "LA_kwDORVso0c8AAAACal69LQ",
-        "name": "Payments",
-        "description": "",
-        "color": "FEF2C0"
-      },
-      {
-        "id": "LA_kwDORVso0c8AAAACb-2WWw",
-        "name": "Player",
-        "description": "",
-        "color": "e7398d"
-      }
-    ],
-    "milestone": {
-      "number": 1,
-      "title": "Phase 1 / MVP Go-Live",
-      "description": "",
-      "dueOn": null
-    },
-    "number": 34,
-    "state": "OPEN",
-    "title": "Player: view and download past invoices in-app",
-    "updatedAt": "2026-03-24T23:03:45Z",
-    "url": "https://github.com/kendavis23/SmashBook/issues/34",
-    "sprint": {
-      "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
-    }
-  },
-  {
-    "assignees": [],
-    "body": "",
-    "closedAt": null,
-    "createdAt": "2026-03-08T13:54:24Z",
-    "labels": [
-      {
-        "id": "LA_kwDORVso0c8AAAACal69LQ",
-        "name": "Payments",
-        "description": "",
-        "color": "FEF2C0"
-      },
-      {
-        "id": "LA_kwDORVso0c8AAAACb-2WWw",
-        "name": "Player",
-        "description": "",
-        "color": "e7398d"
-      }
-    ],
-    "milestone": {
-      "number": 1,
-      "title": "Phase 1 / MVP Go-Live",
-      "description": "",
-      "dueOn": null
-    },
-    "number": 33,
-    "state": "OPEN",
-    "title": "Player: receive Stripe receipt by email after every payment",
-    "updatedAt": "2026-03-24T23:03:46Z",
-    "url": "https://github.com/kendavis23/SmashBook/issues/33",
-    "sprint": {
-      "duration": 14,
-      "iterationId": "e3cfe48c",
-      "startDate": "2026-05-17",
-      "title": "Sprint 6"
+      "iterationId": "d7549699",
+      "startDate": "2026-06-14",
+      "title": "Sprint 8"
     }
   },
   {
@@ -4414,7 +4790,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-18T07:06:58Z",
     "createdAt": "2026-03-08T13:54:21Z",
     "labels": [
       {
@@ -4437,9 +4813,9 @@
       "dueOn": null
     },
     "number": 31,
-    "state": "OPEN",
-    "title": "Player: pay for bookings and equipment rentals from wallet",
-    "updatedAt": "2026-03-24T23:03:48Z",
+    "state": "CLOSED",
+    "title": "Player: pay for bookings from wallet",
+    "updatedAt": "2026-05-18T07:06:58Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/31",
     "sprint": {
       "duration": 14,
@@ -4636,7 +5012,7 @@
   {
     "assignees": [],
     "body": "",
-    "closedAt": null,
+    "closedAt": "2026-05-24T12:57:06Z",
     "createdAt": "2026-03-08T13:54:10Z",
     "labels": [
       {
@@ -4659,15 +5035,15 @@
       "dueOn": null
     },
     "number": 25,
-    "state": "OPEN",
-    "title": "Player: receive email payment confirmation / Stripe receipt",
-    "updatedAt": "2026-03-24T23:03:55Z",
+    "state": "CLOSED",
+    "title": "Player: receive email booking & payment confirmation",
+    "updatedAt": "2026-05-24T12:57:06Z",
     "url": "https://github.com/kendavis23/SmashBook/issues/25",
     "sprint": {
       "duration": 14,
-      "iterationId": "04ba1475",
-      "startDate": "2026-05-03",
-      "title": "Sprint 5"
+      "iterationId": "e3cfe48c",
+      "startDate": "2026-05-17",
+      "title": "Sprint 6"
     }
   },
   {
@@ -4967,9 +5343,9 @@
     "url": "https://github.com/kendavis23/SmashBook/issues/17",
     "sprint": {
       "duration": 14,
-      "iterationId": "cd608bfe",
-      "startDate": "2026-05-31",
-      "title": "Sprint 7"
+      "iterationId": "59bc3e61",
+      "startDate": "2026-06-28",
+      "title": "Sprint 9"
     }
   },
   {

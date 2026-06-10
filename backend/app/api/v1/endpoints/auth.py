@@ -29,6 +29,10 @@ from app.db.models.staff import StaffProfile
 from app.db.models.tenant import Tenant
 from app.db.models.user import User, TenantUserRole
 from app.db.models.wallet import Wallet
+from app.schemas.staff import (
+    CompleteStaffInvitationRequest,
+    CompleteStaffInvitationResponse,
+)
 from app.schemas.user import (
     ClubSummary,
     CompleteInvitationRequest,
@@ -42,6 +46,7 @@ from app.schemas.user import (
     UserLogin,
     UserRegister,
 )
+from app.services.staff_invitation_service import StaffInvitationService
 
 logger = logging.getLogger(__name__)
 
@@ -341,6 +346,60 @@ async def complete_invitation(body: CompleteInvitationRequest, db: AsyncSession 
         email=user.email,
         club_id=club.id,
         membership_subscription_id=subscription.id,
+    )
+
+
+@router.post("/complete-staff-invitation", response_model=CompleteStaffInvitationResponse)
+async def complete_staff_invitation(
+    body: CompleteStaffInvitationRequest, db: AsyncSession = Depends(get_db)
+):
+    """
+    Accept a staff invitation: find-or-create the user, attach an active staff
+    profile at the invited club, and mark the invitation accepted (single-use).
+    The token is the JWT (type=invite) carrying the invitation id (``inv``).
+    """
+    payload = decode_token(body.token)
+    if not payload or payload.get("type") != "invite" or "inv" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired invitation token",
+        )
+
+    try:
+        invitation_id = uuid.UUID(payload["inv"])
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired invitation token",
+        )
+
+    service = StaffInvitationService(db)
+    user, club, role = await service.accept(
+        invitation_id=invitation_id,
+        password=body.password,
+        full_name=body.full_name,
+    )
+
+    tenant = await db.get(Tenant, user.tenant_id)
+    try:
+        publish_notification_event("welcome", {
+            "user_id": str(user.id),
+            "email": user.email,
+            "full_name": user.full_name,
+            "tenant_name": tenant.name,
+            "login_url": _tenant_url(tenant, tenant.staff_subdomain, "/login", {}),
+        })
+    except Exception:
+        logger.exception(
+            "failed to publish welcome event user_id=%s tenant_id=%s",
+            user.id, user.tenant_id,
+        )
+
+    return CompleteStaffInvitationResponse(
+        user_id=user.id,
+        email=user.email,
+        club_id=club.id,
+        role=role,
     )
 
 
