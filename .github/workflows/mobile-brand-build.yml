@@ -1,0 +1,174 @@
+name: Mobile brand build
+
+# White-label mobile brand build orchestration (FE plan §10–§12, Phase 6).
+#
+# Pipeline:
+#   1. validate-brands  — Zod-validate every manifest + assert assets exist at correct
+#                         dimensions (the @repo/branding test suite). Gates everything.
+#   2. brand-matrix     — project the brand registry into the set of dedicated (Model A)
+#                         brands that need a native EAS build, as a GH Actions matrix.
+#   3. build            — one EAS build per brand in the matrix, ACTIVE_BRAND-parameterised,
+#                         on the OTA channel `<brand>-production`.
+#
+# A malformed/incomplete brand fails at step 1, before any expensive native build.
+# Store submission stays behind a MANUAL approval gate (Apple Guideline 4.3 risk, §16):
+# this workflow builds; promotion to the stores is a separate, human-gated action.
+
+on:
+  workflow_dispatch:
+    inputs:
+      scope:
+        description: Which brands to build
+        required: true
+        default: dedicated
+        type: choice
+        options:
+          - dedicated # all Model A brands
+          - all # every brand (incl. _default shared)
+      profile:
+        description: EAS build profile
+        required: true
+        default: production
+        type: choice
+        options:
+          - preview
+          - production
+  push:
+    branches:
+      - not_impelemented
+    paths:
+      - frontend/packages/branding/**
+      - frontend/apps/mobile-player/**
+      - .github/workflows/mobile-brand-build.yml
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "9"
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. VALIDATE BRANDS (the CI gate — plan §11)
+  # ─────────────────────────────────────────────
+  validate-brands:
+    name: Validate brands
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      # Schema + token-parity + asset existence + asset DIMENSIONS + registry/JSON sync.
+      - name: Validate brand manifests & assets
+        working-directory: frontend
+        run: pnpm --filter @repo/branding test
+
+      - name: Type-check branding
+        working-directory: frontend
+        run: pnpm --filter @repo/branding type-check
+
+  # ─────────────────────────────────────────────
+  # 2. BRAND MATRIX (which brands need a build — plan §10)
+  # ─────────────────────────────────────────────
+  brand-matrix:
+    name: Compute brand matrix
+    runs-on: ubuntu-latest
+    needs: validate-brands
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+      has_brands: ${{ steps.gen.outputs.has_brands }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # need the previous commit to diff changed brand folders
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # On `push`, only rebuild brands whose folder actually changed (don't rebuild every
+      # app because one club changed a colour — that's an OTA, not a native build, §11).
+      # On manual dispatch, honour the chosen scope (dedicated|all) with no change filter.
+      - name: Generate matrix
+        id: gen
+        working-directory: frontend/packages/branding
+        run: |
+          PROFILE="${{ github.event.inputs.profile || 'production' }}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            CHANGED=$(git diff --name-only HEAD^ HEAD \
+              | grep -oE 'packages/branding/src/brands/[^/]+' \
+              | sed 's#packages/branding/src/brands/##' \
+              | sort -u | paste -sd, -)
+            echo "changed brand folders: ${CHANGED:-<none>}"
+            if [ -z "$CHANGED" ]; then
+              echo 'matrix={"brand":[]}' >> "$GITHUB_OUTPUT"
+              echo "has_brands=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            OUT=$(node scripts/brand-matrix.mjs --profile "$PROFILE" --changed "$CHANGED")
+          elif [ "${{ github.event.inputs.scope }}" = "all" ]; then
+            OUT=$(node scripts/brand-matrix.mjs --profile "$PROFILE" --all)
+          else
+            OUT=$(node scripts/brand-matrix.mjs --profile "$PROFILE")
+          fi
+          echo "$OUT" >> "$GITHUB_OUTPUT"
+          COUNT=$(echo "$OUT" | sed 's/^matrix=//' | node -e "process.stdin.once('data',d=>console.log(JSON.parse(d).brand.length))")
+          [ "$COUNT" -gt 0 ] && echo "has_brands=true" >> "$GITHUB_OUTPUT" || echo "has_brands=false" >> "$GITHUB_OUTPUT"
+
+  # ─────────────────────────────────────────────
+  # 3. BUILD (one EAS build per brand — plan §10)
+  # ─────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.brand.id }}
+    runs-on: ubuntu-latest
+    needs: brand-matrix
+    if: needs.brand-matrix.outputs.has_brands == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.brand-matrix.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      - name: Set up EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      # ACTIVE_BRAND drives app.config.ts (build-time native identity) and the OTA channel.
+      # `--non-interactive` + EAS-managed credentials per brand project (plan §10).
+      - name: EAS build
+        working-directory: frontend/apps/mobile-player
+        env:
+          ACTIVE_BRAND: ${{ matrix.brand.id }}
+        run: |
+          eas build \
+            --non-interactive \
+            --platform all \
+            --profile ${{ matrix.brand.profile }} \
+            --channel ${{ matrix.brand.channel }}

@@ -1,5 +1,5 @@
 // Dynamic Expo app config — Phase 3 of the white-label plan.
-// (docs/FE_WHITE_LABEL_MOBILE_ARCHITECTURE_PLAN.md §14, Phase 3)
+// (docs/white-label/FE_WHITE_LABEL_MOBILE_ARCHITECTURE_PLAN.md §14, Phase 3)
 //
 // Native identity (name, bundle ID, icon, splash, scheme, Stripe) is now sourced from
 // the active brand manifest in `@repo/branding`. Set `ACTIVE_BRAND=<brandId>` before
@@ -70,8 +70,42 @@ const BRAND_REGISTRY: Record<string, BrandNative> = {
         splashBackgroundColor: "#FFFFFF",
         notificationIcon: "./assets/notification-icon.png",
     },
-    // Phase 4: add dedicated brands here, e.g.:
-    // "ace-london": { id: "ace-london", displayName: "Ace London", slug: "ace-london", ... },
+    // Phase 4: ace-staging — green-themed dedicated (Model A) brand.
+    "ace-staging": {
+        id: "ace-staging",
+        displayName: "Ace",
+        slug: "ace-staging",
+        scheme: "ace-staging",
+        iosBundleId: "app.ace.staging.mobile",
+        androidPackage: "app.ace.staging.mobile",
+        stripeMerchantId: "merchant.app.ace.staging.mobile",
+        easProjectId: "00000000-0000-0000-0000-000000000001",
+        icon: "./assets/ace-staging/icon.png",
+        adaptiveIcon: "./assets/ace-staging/adaptive-icon.png",
+        adaptiveIconBackgroundColor: "#DCFCE7",
+        splash: "./assets/ace-staging/splash-icon.png",
+        splashBackgroundColor: "#FFFFFF",
+        notificationIcon: "./assets/ace-staging/notification-icon.png",
+        associatedDomains: ["applinks:ace.smashbook.app"],
+    },
+    // Phase 4: rally-staging — dark violet-themed dedicated (Model A) brand.
+    "rally-staging": {
+        id: "rally-staging",
+        displayName: "Rally",
+        slug: "rally-staging",
+        scheme: "rally-staging",
+        iosBundleId: "app.rally.staging.mobile",
+        androidPackage: "app.rally.staging.mobile",
+        stripeMerchantId: "merchant.app.rally.staging.mobile",
+        easProjectId: "00000000-0000-0000-0000-000000000002",
+        icon: "./assets/rally-staging/icon.png",
+        adaptiveIcon: "./assets/rally-staging/adaptive-icon.png",
+        adaptiveIconBackgroundColor: "#1A1430",
+        splash: "./assets/rally-staging/splash-icon.png",
+        splashBackgroundColor: "#0F1117",
+        notificationIcon: "./assets/rally-staging/notification-icon.png",
+        associatedDomains: ["applinks:rally.smashbook.app"],
+    },
 };
 
 function resolveActiveBrand(env: Record<string, string | undefined>): BrandNative {

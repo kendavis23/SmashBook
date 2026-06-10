@@ -14,17 +14,11 @@
         },
         "preview": {
             "distribution": "internal",
-            "channel": "preview",
-            "env": {
-                "ACTIVE_BRAND": "_default"
-            }
+            "channel": "preview"
         },
         "production": {
             "autoIncrement": true,
-            "channel": "production",
-            "env": {
-                "ACTIVE_BRAND": "_default"
-            }
+            "channel": "production"
         }
     },
     "submit": {

@@ -6,11 +6,15 @@
 
 import type { BrandManifest } from "./types";
 import { defaultBrand } from "./brands/_default/brand.config";
+import { aceStagingBrand } from "./brands/ace-staging/brand.config";
+import { rallyStagingBrand } from "./brands/rally-staging/brand.config";
 
 export const DEFAULT_BRAND_ID = "_default";
 
 export const brandRegistry: Record<string, BrandManifest> = {
     [DEFAULT_BRAND_ID]: defaultBrand,
+    "ace-staging": aceStagingBrand,
+    "rally-staging": rallyStagingBrand,
 };
 
 export const allBrands: BrandManifest[] = Object.values(brandRegistry);

@@ -1,5 +1,5 @@
 // Brand manifest types — the typed shape every brand under `src/brands/<id>/` must
-// satisfy. See the white-label plan §5.2 (docs/FE_WHITE_LABEL_MOBILE_ARCHITECTURE_PLAN.md).
+// satisfy. See the white-label plan §5.2 (docs/white-label/FE_WHITE_LABEL_MOBILE_ARCHITECTURE_PLAN.md).
 //
 // Two structurally-separate sections encode the build-time vs runtime split (plan §2):
 //   - `native`  → BUILD-TIME OS identity, consumed by app.config.ts (name/bundle/icon/...)
