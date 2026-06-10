@@ -1,0 +1,33 @@
+{
+    "cli": {
+        "version": ">= 13.0.0",
+        "appVersionSource": "remote"
+    },
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal",
+            "channel": "development",
+            "env": {
+                "ACTIVE_BRAND": "_default"
+            }
+        },
+        "preview": {
+            "distribution": "internal",
+            "channel": "preview",
+            "env": {
+                "ACTIVE_BRAND": "_default"
+            }
+        },
+        "production": {
+            "autoIncrement": true,
+            "channel": "production",
+            "env": {
+                "ACTIVE_BRAND": "_default"
+            }
+        }
+    },
+    "submit": {
+        "production": {}
+    }
+}

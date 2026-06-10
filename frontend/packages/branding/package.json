@@ -1,0 +1,27 @@
+{
+    "name": "@repo/branding",
+    "version": "0.0.0",
+    "private": true,
+    "main": "./index.ts",
+    "types": "./index.ts",
+    "exports": {
+        ".": "./index.ts"
+    },
+    "dependencies": {
+        "zod": "3.24.1"
+    },
+    "peerDependencies": {
+        "react": "^19.0.0"
+    },
+    "scripts": {
+        "test": "vitest run",
+        "type-check": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@repo/tsconfig": "workspace:*",
+        "@types/react": "^19.0.0",
+        "react": "19.1.0",
+        "typescript": "5.6.3",
+        "vitest": "^2.0.0"
+    }
+}

@@ -15,6 +15,7 @@
         "@hookform/resolvers": "^3.9.0",
         "@react-native-async-storage/async-storage": "2.2.0",
         "@repo/auth": "workspace:*",
+        "@repo/branding": "workspace:*",
         "@repo/config": "workspace:*",
         "@repo/player-domain": "workspace:*",
         "@repo/tailwind-config": "workspace:*",
