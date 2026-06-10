@@ -11,7 +11,7 @@
 // the manifest stays a single source of truth (authored once as hex) and the className
 // tokens derive from it — no second, hand-maintained HSL copy per brand.
 //
-// Pure, no React/Expo imports — usable from BrandProvider and tests alike.
+// Pure, no React/Expo imports — usable from BrandProvider, the theme generator, and tests.
 
 // Parse a hex string (#rgb, #rrggbb, #rrggbbaa) into [r, g, b] 0–255. Returns null for
 // values that are not plain hex (e.g. "rgba(...)", named colors) — those are left to the
@@ -80,4 +80,63 @@ export function hexToHslTriplet(input: string): string | null {
     }
 
     return `${tidy(h)} ${tidy(s * 100)}% ${tidy(l * 100)}%`;
+}
+
+// ── Derivation helpers ──────────────────────────────────────────────────────
+// The theme generator (theme-generator.ts) derives the full ThemeColors token set from a
+// brand's handful of base colors. These pure helpers do the per-token math: darken/lighten
+// for hover/active states, low-alpha tints for soft surfaces, and translucent overlays.
+// All operate in hex/rgba so the output drops straight into ThemeColors.
+
+function clamp255(n: number): number {
+    return Math.max(0, Math.min(255, Math.round(n)));
+}
+
+function toHex2(n: number): string {
+    return clamp255(n).toString(16).padStart(2, "0");
+}
+
+function rgbToHex(r: number, g: number, b: number): string {
+    return `#${toHex2(r)}${toHex2(g)}${toHex2(b)}`.toUpperCase();
+}
+
+// Mix `color` toward `target` (both hex) by `amount` (0..1). amount=0 → color, 1 → target.
+function mix(color: string, target: string, amount: number): string {
+    const a = parseHex(color);
+    const b = parseHex(target);
+    if (!a || !b) return color;
+    const t = Math.max(0, Math.min(1, amount));
+    const [ar, ag, ab] = a;
+    const [br, bg, bb] = b;
+    return rgbToHex(ar + (br - ar) * t, ag + (bg - ag) * t, ab + (bb - ab) * t);
+}
+
+// Darken a hex color toward black by `amount` (0..1) — used for hover/pressed states.
+export function darken(color: string, amount: number): string {
+    return mix(color, "#000000", amount);
+}
+
+// Lighten a hex color toward white by `amount` (0..1).
+export function lighten(color: string, amount: number): string {
+    return mix(color, "#FFFFFF", amount);
+}
+
+// Build an `rgba(r,g,b,a)` string from a hex color and an alpha (0..1) — used for soft
+// surfaces, borders, ripple, and glass overlays on dark brands. `alpha` is rounded to two
+// decimals to match the rgba() literals authored by hand in the existing theme.
+export function rgba(color: string, alpha: number): string {
+    const c = parseHex(color);
+    if (!c) return color;
+    // Two-decimal alpha, matching the rgba() literals authored by hand in the existing theme
+    // ("rgba(37,99,235,0.10)") so generated tokens read identically.
+    const a = Math.max(0, Math.min(1, alpha)).toFixed(2);
+    return `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+}
+
+// A very light tint of `color` on a white background — the "soft surface" pattern used by
+// ctaSurface / successSurface / warningSurface / destructiveSurface in light themes. Returns
+// an opaque hex (not rgba) so it reads identically over any background, matching the existing
+// blue50 / green50 / amber50 / red50 surface tokens.
+export function tint(color: string, amount = 0.92): string {
+    return lighten(color, amount);
 }

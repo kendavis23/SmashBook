@@ -141,3 +141,68 @@ export type BrandManifest = {
     // is allowed to serve (Model A). Branding must never import auth/tenant internals.
     tenants?: string[];
 };
+
+// ── Authoring surface (the club-friendly manifest) ──────────────────────────
+//
+// `BrandManifest` above is the INTERNAL, fully-resolved shape every consumer reads — 49
+// theme tokens × light/dark, all native fields, etc. Clubs never author that.
+//
+// `BrandInput` is what a club (or our onboarding team) actually fills in: a logo, app name,
+// a primary colour, maybe a secondary, splash/icon, and feature preferences. `defineBrand()`
+// (define-brand.ts) expands a `BrandInput` into a full `BrandManifest` by deriving the
+// complete theme token set via the generator (theme-generator.ts), so design consistency is
+// guaranteed across brands and onboarding stays minimal (plan §6 "Brand kit intake", §15
+// "Convention over configuration: a new brand is data, not code").
+
+// The handful of colours/typography a club supplies. Everything else (hover, surface,
+// border, ripple, hero, tab, CTA variations) is derived. All colours are plain hex.
+export type BrandBranding = {
+    // The single most important input: the club's primary brand colour. Drives CTA, hero,
+    // active tab, ring, and all their derived hover/surface/border variants.
+    primaryColor: string;
+    // Optional. Defaults to a near-black neutral derived for text/primary surfaces.
+    secondaryColor?: string;
+    // App canvas background. Defaults to white (light) — dark theme background is derived.
+    backgroundColor?: string;
+    // Curated font family name (must be one of the bundled set). Defaults to "Inter".
+    fontFamily?: string;
+};
+
+// Minimal native identity a club provides. The remaining build-time fields the manifest
+// needs (scheme, EAS project, Stripe merchant id, associated domains, asset colours) are
+// derived from these by `defineBrand()` and can be overridden via `nativeOverrides`.
+export type BrandInputNative = {
+    iosBundleId: string;
+    androidPackage: string;
+    icon: string;
+    splash: string;
+    adaptiveIcon?: string; // defaults to `icon`
+    notificationIcon?: string; // defaults to `icon`
+};
+
+export type BrandInputAssets = {
+    logo: string; // in-app wordmark/header logo
+    wordmark?: string; // defaults to `logo`
+    mark?: string; // icon-only mark; defaults to `logo`
+};
+
+export type BrandInput = {
+    id: string;
+    displayName: string;
+    deliveryModel?: DeliveryModel; // defaults to "shared" (Model B — instant onboarding)
+
+    native: BrandInputNative;
+    branding: BrandBranding;
+    assets: BrandInputAssets;
+    flags?: BrandFlags;
+
+    copy?: Record<string, string>;
+    links?: Partial<BrandLinks>;
+    tenants?: string[];
+
+    // Escape hatches for the rare brand that needs to override a derived value. These are the
+    // "missing abstraction" signal (plan §15) — prefer extending the generator over reaching
+    // for these. `themeOverrides` deep-merges onto the generated light/dark token sets.
+    nativeOverrides?: Partial<BrandNative>;
+    themeOverrides?: { light?: Partial<ThemeColors>; dark?: Partial<ThemeColors> };
+};

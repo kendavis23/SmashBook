@@ -121,3 +121,61 @@ export const brandManifestSchema = z.object({
 // The full list of ThemeColors token names, derived from the schema — exported so the
 // parity test can compare it against the mobile type's keys without re-listing them.
 export const themeColorTokenNames = Object.keys(themeColorsShape) as Array<keyof ThemeColors>;
+
+// ── BrandInput schema (the club-friendly authoring surface) ─────────────────
+//
+// Validates the MINIMAL manifest a club authors, before `defineBrand()` expands it into a
+// full `BrandManifest` (which is then validated by `brandManifestSchema`). The onboarding /
+// intake tooling validates against this so a club gets clear errors on the few fields they
+// actually provide, not on 49 derived tokens.
+
+// A required hex colour (#rgb / #rrggbb). Stricter than the output `colorValue` because
+// inputs are always plain hex — derived rgba/named values only appear post-generation.
+const hexColor = z.string().regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "must be a hex colour");
+
+const partialThemeColors = z.object(themeColorsShape).partial();
+
+export const brandInputSchema = z.object({
+    id: z.string().min(1),
+    displayName: z.string().min(1),
+    deliveryModel: z.enum(["dedicated", "shared"]).optional(),
+
+    native: z.object({
+        iosBundleId: z.string().min(1),
+        androidPackage: z.string().min(1),
+        icon: z.string().min(1),
+        splash: z.string().min(1),
+        adaptiveIcon: z.string().optional(),
+        notificationIcon: z.string().optional(),
+    }),
+
+    branding: z.object({
+        primaryColor: hexColor,
+        secondaryColor: hexColor.optional(),
+        backgroundColor: hexColor.optional(),
+        fontFamily: z.string().optional(),
+    }),
+
+    assets: z.object({
+        logo: z.string().min(1),
+        wordmark: z.string().optional(),
+        mark: z.string().optional(),
+    }),
+
+    flags: z.record(z.boolean()).optional(),
+    copy: z.record(z.string()).optional(),
+    links: z
+        .object({
+            support: z.string().min(1),
+            terms: z.string().min(1),
+            privacy: z.string().min(1),
+        })
+        .partial()
+        .optional(),
+    tenants: z.array(z.string()).optional(),
+
+    nativeOverrides: brandNativeSchema.partial().optional(),
+    themeOverrides: z
+        .object({ light: partialThemeColors.optional(), dark: partialThemeColors.optional() })
+        .optional(),
+});

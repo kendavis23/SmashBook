@@ -16,6 +16,11 @@ export type {
     BrandLinks,
     DeliveryModel,
     ThemeColors,
+    // Authoring surface — the minimal, club-friendly manifest (plan §6, §15).
+    BrandInput,
+    BrandInputNative,
+    BrandInputAssets,
+    BrandBranding,
 } from "./src/types";
 
 export {
@@ -24,7 +29,13 @@ export {
     brandNativeSchema,
     themeColorsSchema,
     themeColorTokenNames,
+    brandInputSchema,
 } from "./src/schema";
+
+// Authoring pipeline — clubs write a BrandInput, defineBrand() derives the full manifest.
+export { defineBrand } from "./src/define-brand";
+export { generateLightTheme, generateDarkTheme } from "./src/theme-generator";
+export { darken, lighten, rgba, tint } from "./src/color";
 
 export { brandRegistry, allBrands, getBrand, DEFAULT_BRAND_ID } from "./src/registry";
 

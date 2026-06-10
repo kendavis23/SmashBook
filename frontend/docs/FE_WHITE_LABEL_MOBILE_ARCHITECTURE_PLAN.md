@@ -1,10 +1,10 @@
-_Last updated: 2026-06-10 13:10 UTC_
+_Last updated: 2026-06-10 14:45 UTC_
 
 # White-Label Mobile Architecture Plan
 
 A production-grade technical plan to evolve `apps/mobile-player` from a single-brand Expo app into a scalable white-label mobile platform, where every client/club can ship a fully branded native app (name, bundle ID, icon, splash, theme, fonts, feature flags, env config) from one shared codebase.
 
-> **Status: Phases 0–2 implemented; Phases 3–6 planning only.** The architecture, sequencing, and trade-off analysis below are tailored to the current SmashBook monorepo (Turborepo + pnpm, Expo SDK 54 / RN 0.81, Expo Router 6, NativeWind 4, MMKV). Foundations are in place: `apps/mobile-player` has `eas.json` + a dynamic `app.config.ts` + brand assets (Phase 0); `@repo/branding` exists with the `_default` brand and a `validate-brands` CI check (Phase 1); and runtime theming now flows from the active brand manifest through the existing `ThemeProvider` for both JS (`useThemeColors()`) and NativeWind `className` tokens (Phase 2). See §14 for per-phase status. Phase 3 (`app.config.ts` reading `ACTIVE_BRAND` for native identity) is next.
+> **Status: Phases 0–3 implemented; Phases 4–6 planning only.** The architecture, sequencing, and trade-off analysis below are tailored to the current SmashBook monorepo (Turborepo + pnpm, Expo SDK 54 / RN 0.81, Expo Router 6, NativeWind 4, MMKV). Foundations are in place: `apps/mobile-player` has `eas.json` + a dynamic `app.config.ts` + brand assets (Phase 0); `@repo/branding` exists with the `_default` brand and a `validate-brands` CI check (Phase 1); runtime theming flows from the active brand manifest through the existing `ThemeProvider` for both JS (`useThemeColors()`) and NativeWind `className` tokens (Phase 2); and `app.config.ts` now reads `ACTIVE_BRAND` from the environment, sourcing all native identity from the active brand manifest (Phase 3). See §14 for per-phase status. Phase 4 (second brand end-to-end) is next.
 
 ---
 
@@ -157,7 +157,9 @@ packages/branding/
 
 ### 5.2 The brand manifest (single source of truth per brand)
 
-One typed, Zod-validated object per brand. Conceptual shape (no implementation — illustrative only):
+> **Authoring vs. resolved manifest (implemented).** There are now two shapes. Clubs author a **minimal `BrandInput`** — `id`, `displayName`, a few `native` ids, an `assets.logo`, a `branding` block (`primaryColor` + optional `secondaryColor`/`backgroundColor`/`fontFamily`), and `flags`. `defineBrand()` (`packages/branding/src/define-brand.ts`) expands that into the **full `BrandManifest`** below by deriving the complete 49-token light/dark theme via the generator (`theme-generator.ts`) and filling native conventions (scheme from `id`, Stripe merchant from bundle id, adaptive/notification icons from `icon`). Every downstream consumer (`BrandProvider`, `ThemeProvider`, `cssVars`, `app.config.ts`) still reads the full `BrandManifest` unchanged — only the *authoring* surface shrank. Rare per-token exceptions use the `themeOverrides` / `nativeOverrides` escape hatches; reaching for them often is the "missing abstraction" signal (§15). The `_default` brand is itself authored this way and pins the Tailwind blue ramp via `themeOverrides` so it stays byte-identical to its hand-authored predecessor (parity test in `theme-generator.test.ts`).
+
+The full **resolved** shape — one typed, Zod-validated object per brand (conceptual, illustrative only):
 
 ```
 BrandManifest {
@@ -441,10 +443,13 @@ Sequenced so each phase ships value and de-risks the next. Nothing here changes 
 - ✅ Tests: `color.test.ts` + `cssVars.test.ts` (9 new) green alongside the Phase 1 schema tests (14 total); `tsc` clean for `@repo/branding` and no new errors in `apps/mobile-player`.
 - **Exit criterion (met):** the app looks identical to today, but every color — JS and className — now flows from the `_default` brand manifest. Re-skinning is now config: a new brand's `theme.light` drives both token surfaces with zero per-screen change.
 
-### Phase 3 — `app.config.ts` reads ACTIVE_BRAND
-- Native identity (name/bundle/icon/splash/scheme/Stripe) sourced from the active brand manifest.
-- `extra.brandId` embedded for runtime self-identification.
-- **Exit criterion:** `ACTIVE_BRAND=_default eas build` produces today's app.
+### Phase 3 — `app.config.ts` reads ACTIVE_BRAND — ✅ Implemented
+- ✅ Removed the hardcoded `BRAND` object from `app.config.ts`; replaced with a call to `resolveActiveBrand(process.env)` from `@repo/branding`. All native identity fields (name, slug, scheme, `bundleIdentifier`, `package`, icon/adaptive-icon/splash/notification-icon asset paths, `stripeMerchantId`, `associatedDomains`) now come from `brand.native.*`.
+- ✅ `extra.brandId` and `extra.eas.projectId` are embedded from the manifest so the runtime binary can self-identify without a network call (plan §5.4).
+- ✅ Slug convention: `_default` brand keeps `"smashbook-mobile"` to preserve existing EAS/store links; dedicated brands use their `id` as the slug.
+- ✅ `associatedDomains` spread conditionally — only appears in the iOS config when the brand manifest defines it.
+- ✅ Omitting `ACTIVE_BRAND` falls back to `_default` (SmashBook reference brand) — behavior-identical to Phase 0; all 14 branding tests remain green.
+- **Exit criterion (met):** `ACTIVE_BRAND=_default eas build` produces today's app unchanged.
 
 ### Phase 4 — Second brand end-to-end (the real test)
 - Onboard one pilot club as a dedicated (Model A) brand: assets, manifest, EAS project, credentials.
