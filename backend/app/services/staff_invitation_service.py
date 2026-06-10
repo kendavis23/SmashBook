@@ -243,6 +243,161 @@ class StaffInvitationService:
         await self.db.commit()
         return user, club, invitation.role
 
+    # --- B3: management & read --------------------------------------------
+
+    async def list_staff(
+        self, *, club: Club, viewer_effective_role: str | None
+    ) -> list[tuple[StaffProfile, User]]:
+        """Active staff at ``club`` paired with their user row. Gated by STAFF_VIEW."""
+        self._require(viewer_effective_role, Capability.STAFF_VIEW)
+        rows = (
+            await self.db.execute(
+                select(StaffProfile, User)
+                .join(User, User.id == StaffProfile.user_id)
+                .where(StaffProfile.club_id == club.id, StaffProfile.is_active)
+                .order_by(User.full_name)
+            )
+        ).all()
+        return [(sp, user) for sp, user in rows]
+
+    async def list_invitations(
+        self, *, club: Club, viewer_effective_role: str | None
+    ) -> list[StaffInvitation]:
+        """Invitations for ``club``, most recent first. Gated by STAFF_VIEW."""
+        self._require(viewer_effective_role, Capability.STAFF_VIEW)
+        return list(
+            (
+                await self.db.execute(
+                    select(StaffInvitation)
+                    .where(StaffInvitation.club_id == club.id)
+                    .order_by(StaffInvitation.created_at.desc())
+                )
+            )
+            .scalars()
+            .all()
+        )
+
+    async def revoke(
+        self,
+        *,
+        club: Club,
+        revoker_effective_role: str | None,
+        invitation_id: uuid.UUID,
+    ) -> StaffInvitation:
+        """Revoke a pending invitation (``pending → revoked``). Gated by
+        STAFF_INVITE. Flushes; the endpoint commits.
+
+        Raises 403 (no authority), 404 (invitation not at this club), 409 (not
+        pending — already accepted/revoked/expired).
+        """
+        self._require(revoker_effective_role, Capability.STAFF_INVITE)
+
+        invitation = await self.db.get(StaffInvitation, invitation_id)
+        if invitation is None or invitation.club_id != club.id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found"
+            )
+        if invitation.status != StaffInvitationStatus.pending:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Only a pending invitation can be revoked",
+            )
+        invitation.status = StaffInvitationStatus.revoked
+        self.db.add(invitation)
+        await self.db.flush()
+        return invitation
+
+    async def update_staff(
+        self,
+        *,
+        club: Club,
+        editor_effective_role: str | None,
+        staff_id: uuid.UUID,
+        new_role: StaffRole | None,
+        new_bio: str | None,
+    ) -> tuple[StaffProfile, User]:
+        """Change a staff member's role and/or bio. Gated by STAFF_UPDATE_ROLE.
+        Flushes; the endpoint commits.
+
+        Escalation guard: the editor may only act on a member ranked **below**
+        their own authority, and may only set a role they could grant
+        (``max_grantable_rank``). Raises 403/404 accordingly.
+        """
+        self._require(editor_effective_role, Capability.STAFF_UPDATE_ROLE)
+        profile, user = await self._load_active_staff(club, staff_id)
+        self._require_outranks(editor_effective_role, profile.role)
+
+        if new_role is not None:
+            if ROLE_RANK.get(new_role.value, 99) > max_grantable_rank(editor_effective_role):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Cannot grant a role at or above your own authority",
+                )
+            profile.role = new_role
+        if new_bio is not None:
+            profile.bio = new_bio
+        self.db.add(profile)
+        await self.db.flush()
+        return profile, user
+
+    async def deactivate_staff(
+        self,
+        *,
+        club: Club,
+        actor_effective_role: str | None,
+        staff_id: uuid.UUID,
+    ) -> None:
+        """Deactivate a staff profile (``is_active=False``). Gated by
+        STAFF_DEACTIVATE. Flushes; the endpoint commits.
+
+        Escalation guard: may only deactivate a member ranked below the actor.
+        """
+        self._require(actor_effective_role, Capability.STAFF_DEACTIVATE)
+        profile, _ = await self._load_active_staff(club, staff_id)
+        self._require_outranks(actor_effective_role, profile.role)
+        profile.is_active = False
+        self.db.add(profile)
+        await self.db.flush()
+
+    async def _load_active_staff(
+        self, club: Club, staff_id: uuid.UUID
+    ) -> tuple[StaffProfile, User]:
+        row = (
+            await self.db.execute(
+                select(StaffProfile, User)
+                .join(User, User.id == StaffProfile.user_id)
+                .where(
+                    StaffProfile.id == staff_id,
+                    StaffProfile.club_id == club.id,
+                    StaffProfile.is_active,
+                )
+            )
+        ).first()
+        if row is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Staff member not found"
+            )
+        return row[0], row[1]
+
+    @staticmethod
+    def _require(effective_role: str | None, capability: Capability) -> None:
+        if not can(effective_role, capability):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient permissions",
+            )
+
+    @staticmethod
+    def _require_outranks(actor_role: str | None, target_role: StaffRole) -> None:
+        """The actor must rank strictly above the target — no acting on a peer
+        or superior (an ops_lead cannot demote/deactivate another ops_lead)."""
+        actor_rank = ROLE_RANK.get(getattr(actor_role, "value", actor_role), -1)
+        if ROLE_RANK.get(target_role.value, 99) >= actor_rank:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot modify a staff member at or above your own authority",
+            )
+
     async def _reject_if_active_profile(
         self, user_id: uuid.UUID, club_id: uuid.UUID
     ) -> None:

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-06-06_
+_Last updated: 2026-06-10_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -189,7 +189,7 @@ Dynamic pricing is the only **synchronous** AI call (blocks the booking request)
 
 ### Auth
 
-JWT dual-token pattern (access token 60 min, refresh token 30 days). Tokens carry `user_id`, `club_id`, `role`, and `tenant_id` claims. Role enforcement via `require_role()` FastAPI dependencies. Roles: `player`, `viewer`, `staff`, `trainer`, `ops_lead`, `admin`, `owner`.
+JWT dual-token pattern (access token 60 min, refresh token 30 days). The access token carries only `sub` (user_id) and `tid` (tenant_id) — **not** `club_id` or `role`. The tenant-wide role is re-read from `users.role` per request; club is never bound into the token. Per-club authority is resolved at request time via `resolve_club_context`/`get_club_context` ([app/api/v1/dependencies/club_context.py](backend/app/api/v1/dependencies/club_context.py)): a tenant `owner`/`admin` holds that role at every club, anyone else has authority at a club only via an active `staff_profiles` row. Capability checks (`can()`, `max_grantable_rank()`) live in [app/core/permissions.py](backend/app/core/permissions.py). Coarse role enforcement via `require_staff/ops_lead/admin/owner` FastAPI dependencies. Roles: `player`, `viewer`, `staff`, `trainer`, `ops_lead`, `admin`, `owner`.
 
 ### Datetime & Timezone Convention
 

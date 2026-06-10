@@ -1,4 +1,4 @@
-_Last updated: 2026-06-06 00:00 UTC_
+_Last updated: 2026-06-10 00:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -13,6 +13,7 @@ This file tracks every API endpoint that has a working implementation (i.e. not 
 | `POST` | `/api/v1/auth/register` | Register a new player for a tenant + chosen club. Creates the user in an unverified state (no tokens returned) and publishes `email_verify` event to `notification-events` → notification worker → SendGrid email with a signed 24h verification link. The free basic membership at the chosen club is attached at verify time, not here. |
 | `POST` | `/api/v1/auth/verify-email` | Confirm a player's email using the token emailed at registration. Sets `users.email_verified_at`, creates the active `MembershipSubscription` against the club's `is_default` plan (no Stripe — free basic plan), and publishes a `welcome` event. Idempotent on re-click. Returns 409 if the club has no default plan configured. |
 | `POST` | `/api/v1/auth/complete-invitation` | Finalise a staff-initiated invitation: validates the JWT `invite` token, sets the player's password, marks the email verified, attaches the club's `is_default` membership, and publishes a `welcome` event. Single-use — rejects with 400 once `email_verified_at` is set so the invitation link can't be replayed within its 7-day TTL. Returns 400 for invalid/expired/wrong-type tokens, 409 if the club has no default plan. |
+| `POST` | `/api/v1/auth/complete-staff-invitation` | Accept a staff invitation (B2 onboarding). Decodes the `invite` token's `inv` id, validates the `staff_invitations` row is `pending` and unexpired (lazily flips an over-the-hill row to `expired`), find-or-creates the `User` within the invitation's tenant (new email sets password + `email_verified_at` + a wallet; `full_name` collected here since the row has no name), attaches an active `StaffProfile` at the club, and flips the invitation to `accepted` (single-use). Returns 400 for missing/expired/revoked/replayed/wrong-type tokens. |
 | `POST` | `/api/v1/auth/login` | Login with email + password; returns access + refresh tokens. Returns 403 with "please verify your email" if `email_verified_at` is NULL. |
 | `POST` | `/api/v1/auth/refresh` | Exchange a refresh token for a new token pair |
 | `POST` | `/api/v1/auth/logout` | Stateless logout (client discards tokens) |
@@ -109,6 +110,24 @@ Both handlers verify the `Stripe-Signature` header against the relevant secret a
 | `GET` | `/api/v1/players/me/match-history` | Get current player's completed matches, most recent first. Each item includes `club_name` and `court_name` for display. |
 | `PATCH` | `/api/v1/players/{player_id}/skill-level` | Staff only: assign or update a player's skill level (1.0–7.0); writes an immutable `skill_level_history` audit entry. Requires `club_id` query param — the club the assessment is scoped to — supplied explicitly so owners/admins (who span multiple clubs and hold no `staff_profiles` row) can act on the selected club |
 | `GET` | `/api/v1/players/{player_id}/skill-history` | Staff only: list all skill level changes for a player, most recent first |
+
+---
+
+## Staff — `/api/v1/staff`
+
+Staff onboarding + management (Phase B). Authority is resolved **at the target
+club** via `resolve_club_context` (a tenant owner/admin everywhere, otherwise the
+caller's active `staff_profiles` role at that club) and checked against the
+capability matrix in `app/core/permissions.py`. Cross-tenant club → 404.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/v1/staff/invitations` | Invite someone to a club as staff (`club_id` in body). Requires `STAFF_INVITE` at the club; escalation guard rejects granting a role at/above the inviter's own authority (`ROLE_RANK`/`max_grantable_rank`). ≤1 pending invite per `(club, email)` (409 on dup). For an email that already belongs to a tenant user, attaches the `StaffProfile` immediately (no email round-trip; invitation recorded `accepted`, `attached_existing_user=true`, no event) — 409 if already active staff. Otherwise creates a `pending` invitation and publishes a `staff_invite` event with a signed 7-day link to `/complete-staff-invitation`. |
+| `GET` | `/api/v1/staff/invitations` | List invitations for a club (`?club_id=`, most recent first). Requires `STAFF_VIEW`. Read replica. |
+| `DELETE` | `/api/v1/staff/invitations/{invitation_id}` | Revoke a pending invitation (`pending → revoked`); `?club_id=`. Requires `STAFF_INVITE`. 404 if not at that club, 409 if no longer pending. Returns 204. |
+| `GET` | `/api/v1/staff` | List active staff at a club (`?club_id=`). Requires `STAFF_VIEW`. Read replica. |
+| `PATCH` | `/api/v1/staff/{staff_id}` | Change a staff member's role and/or bio (`?club_id=`). Requires `STAFF_UPDATE_ROLE`; escalation guard forbids acting on a peer/superior and forbids granting a role at/above the editor's authority. 404 if not active staff at the club. |
+| `DELETE` | `/api/v1/staff/{staff_id}` | Deactivate a staff member (`is_active=false`); `?club_id=`. Requires `STAFF_DEACTIVATE`; cannot deactivate a peer/superior. Returns 204. |
 
 ---
 
@@ -293,7 +312,7 @@ validates and enqueues, the worker builds the file and emails a signed link.
 |---|---|
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
 | `payments.py` | wallet (adjust), invoices (list/download), refunds, discounts, in-person payment, `GET /transactions` (transaction log), `GET /payouts` (Stripe payout reconciliation) |
-| `staff.py` | List/create/update/deactivate staff, suspend player, send notification, post announcement |
+| `staff.py` | suspend player, send notification, post announcement |
 | `players.py` | `GET /{id}` |
 | `support.py` | Create/list/get ticket, respond to ticket |
 
