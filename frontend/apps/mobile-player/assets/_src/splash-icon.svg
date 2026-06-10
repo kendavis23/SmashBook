@@ -1,0 +1,7 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Transparent background; the native splash uses splash.backgroundColor (#FFFFFF). -->
+  <text x="512" y="470" font-family="Helvetica, Arial, sans-serif" font-size="300" font-weight="700"
+        fill="#2563EB" text-anchor="middle" dominant-baseline="central">S</text>
+  <text x="512" y="660" font-family="Helvetica, Arial, sans-serif" font-size="90" font-weight="600"
+        fill="#0F172A" text-anchor="middle" dominant-baseline="central" letter-spacing="4">SMASHBOOK</text>
+</svg>

@@ -11,6 +11,7 @@ import { Controller, type Control } from "react-hook-form";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { useBrand } from "@repo/branding";
 import type { ReactNode } from "react";
 import { useThemeColors } from "../../../theme";
 import type { LoginFormValues } from "./types";
@@ -66,6 +67,7 @@ export function LoginView({
     onTogglePassword,
 }: Props) {
     const colors = useThemeColors();
+    const brand = useBrand();
     const inputBase = "h-[54px] rounded-2xl border px-4 py-0 text-[15px] text-foreground";
     const inputResting = "border-input bg-muted";
 
@@ -93,8 +95,8 @@ export function LoginView({
                                     color={colors.ctaForeground}
                                 />
                             </View>
-                            <Text className="text-xl font-black tracking-tight text-foreground">
-                                Smash<Text className="text-cta">Book</Text>
+                            <Text className="text-xl font-black tracking-tight text-cta">
+                                {brand.displayName}
                             </Text>
                         </View>
 
@@ -300,7 +302,7 @@ export function LoginView({
                                 </Pressable>
                             </View>
                             <Text className="text-[11px] tracking-wide text-muted-foreground/70">
-                                SmashBook · Player Portal
+                                {brand.displayName} · Player Portal
                             </Text>
                         </View>
                     </View>

@@ -1,0 +1,6 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Transparent background; Android applies the adaptiveIcon.backgroundColor.
+       Mark is sized within the 66% safe zone of the adaptive icon canvas. -->
+  <text x="512" y="512" font-family="Helvetica, Arial, sans-serif" font-size="440" font-weight="700"
+        fill="#2563EB" text-anchor="middle" dominant-baseline="central">S</text>
+</svg>

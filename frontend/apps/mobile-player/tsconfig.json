@@ -1,5 +1,6 @@
 {
     "extends": "@repo/tsconfig/react-native.json",
+    "references": [{ "path": "./tsconfig.node.json" }],
     "include": [
         "app",
         "src",
@@ -8,5 +9,5 @@
         "nativewind-env.d.ts",
         "tailwind.config.ts"
     ],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules", "app.config.ts"]
 }

@@ -29,6 +29,9 @@ importers:
       '@repo/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@repo/branding':
+        specifier: workspace:*
+        version: link:../../packages/branding
       '@repo/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -625,6 +628,28 @@ importers:
       vitest:
         specifier: ^3.0.0
         version: 3.2.4(@types/node@25.5.0)(jsdom@25.0.1)(lightningcss@1.32.0)(msw@2.12.14(@types/node@25.5.0)(typescript@5.6.3))(terser@5.46.1)
+
+  packages/branding:
+    dependencies:
+      zod:
+        specifier: 3.24.1
+        version: 3.24.1
+    devDependencies:
+      '@repo/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      react:
+        specifier: 19.1.0
+        version: 19.1.0
+      typescript:
+        specifier: 5.6.3
+        version: 5.6.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@25.5.0)(jsdom@25.0.1)(lightningcss@1.32.0)(msw@2.12.14(@types/node@25.5.0)(typescript@5.6.3))(terser@5.46.1)
 
   packages/config:
     dependencies:
@@ -8869,7 +8894,9 @@ snapshots:
       metro-runtime: 0.83.5
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
     optional: true
 
   '@react-native/normalize-colors@0.81.5': {}

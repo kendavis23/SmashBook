@@ -1,4 +1,4 @@
-_Last updated: 2026-06-06 00:00 UTC_
+_Last updated: 2026-06-10 16:40 UTC_
 
 # Mobile Player Development Guide
 
@@ -215,8 +215,10 @@ function MyCard() {
 ```
 
 - `src/theme/palette.ts` — raw fixed hue/shade constants (`blue600`, `slate100`, …). Mode-agnostic.
-- `src/theme/themes.ts` — `lightColors` / `darkColors` semantic token objects (the RN-side mirror of `tokens.css`).
-- `src/theme/ThemeProvider.tsx` — `<ThemeProvider>` (wired into `AppProviders`) + `useTheme()` / `useThemeColors()`. The active scheme is **pinned to light** on mount (`setColorScheme("light")`) and ignores the device dark setting. The `preference` / `setPreference` / persistence machinery is retained but not surfaced anywhere in the UI — wiring a future appearance toggle is just a matter of rendering `setPreference` again; consumers (`useThemeColors`) need no changes.
+- `src/theme/themes.ts` — the `ThemeColors`/`Theme` type contract + the `lightColors` / `darkColors` reference objects (kept for the context default and type parity; the **live** token values now come from the active brand manifest, see below).
+- `src/theme/ThemeProvider.tsx` — `<ThemeProvider>` (wired into `AppProviders`, inside `<BrandProvider>`) + `useTheme()` / `useThemeColors()`. The active scheme is **pinned to light** on mount (`setColorScheme("light")`) and ignores the device dark setting. The `preference` / `setPreference` / persistence machinery is retained but not surfaced anywhere in the UI — wiring a future appearance toggle is just a matter of rendering `setPreference` again; consumers (`useThemeColors`) need no changes.
+
+> **Color source is the active brand (white-label, plan Phase 2).** As of the white-label runtime-theming phase, `ThemeProvider` no longer hardcodes its tokens — it reads them from `useBrand().theme` (`@repo/branding`). The `_default` brand mirrors today's `lightColors`/`darkColors` verbatim, so the look is unchanged. Both token surfaces are branded: JS tokens flow straight from the manifest into `useThemeColors()`, and NativeWind `className` tokens (`bg-card`, `text-foreground`, …) are re-skinned by injecting the brand's CSS variables via NativeWind `vars()` on the theme-root View (built by `buildBrandCssVars` from `@repo/branding`). **This is exactly why the no-hardcoded-color rule matters even more now:** any hardcoded hex is a pixel that won't re-skin when a club's brand is mounted.
 
 ### Semantic token reference
 
@@ -681,6 +683,31 @@ Both buttons share: `width: 40, height: 40, borderRadius: 20, alignItems: "cente
 | Auth state                   | `@repo/auth` → `useAuth()`                   |
 | Mobile-only persistent state | `src/store/` with MMKV persistence           |
 | UI state (modals, tabs)      | Component `useState` — never Zustand         |
+
+---
+
+## Feature Flags & Brand (white-label, plan Phase 5)
+
+The app is white-label: the active **brand** supplies theme tokens (already covered under Styling) **and** a set of **feature flags** that gate which screens/capabilities are on. Gate presentation/availability on flags — never data access (that stays enforced server-side by tenant/role).
+
+**Reading flags** — use the hooks from `@repo/branding`, never read `brand.flags` directly:
+
+```tsx
+import { useFlag, useBrandFlags, PLAYER_FEATURE_FLAGS } from "@repo/branding";
+
+// Single flag (preferred — known flags fall back to their safe default when unset)
+const showMembership = useFlag(PLAYER_FEATURE_FLAGS.membership);
+if (!showMembership) return null;
+
+// All effective flags at once
+const flags = useBrandFlags();
+```
+
+Flags resolve in layers, most-specific wins: **per-tenant remote override ?? bundled brand flag ?? code default** (`FLAG_DEFAULTS` in `@repo/branding/src/flags.ts`). Every known flag (`PLAYER_FEATURE_FLAGS`) has a safe default, so a missing or failed remote fetch can never blank the app — a flag is only ever "more off" when explicitly turned off. When you add a screen that should be gateable, add its flag to `PLAYER_FEATURE_FLAGS` + `FLAG_DEFAULTS` (default it `true` for a shipped core feature), then gate the route/screen with `useFlag()`.
+
+**Brand selection (Model B shared app)** — for the shared build, the app re-skins to the player's club brand at runtime once their tenant is known. This is wired in `src/providers/index.tsx` (`BrandTenantBridge`) — you don't call it per-feature. It only fires for a `deliveryModel: "shared"` build; a dedicated (Model A) build keeps its build-embedded brand. Native identity (app name, bundle id, URL scheme, Stripe merchant) is **build-time** and never changes at runtime — only theme/flags/copy re-skin.
+
+**Rule:** never branch on the brand id or read `brand.flags` in a feature; gate on `useFlag()` so the remote-override layer stays transparent and the safe default always applies.
 
 ---
 
