@@ -1,4 +1,4 @@
-_Last updated: 2026-06-10 18:45 UTC_
+_Last updated: 2026-06-12 17:27 UTC_
 
 # White-Label OTA & Rollback Runbook
 
@@ -44,6 +44,13 @@ _default-preview        ace-staging-preview        ace-london-preview
 - `eas.json` defines only the **default** channels (`development` / `preview` / `production`)
   for un-parameterised local builds; per-brand channels are set at build invocation time, not
   hardcoded in `eas.json` (which is strict JSON and can't carry the matrix).
+
+> **Channel vs. branch:** EAS distinguishes *channels* (what a binary points at) from
+> *branches* (what an update is published to), linked by a mapping that defaults to 1:1 by
+> name. This runbook relies on that default — `<brandId>-<environment>` names both, and
+> commands below use `--channel` / `--branch` accordingly. **Never re-point a brand channel
+> at a differently-named branch**; if a mapping is ever changed (e.g. for a staged rollout),
+> every `--branch` invocation here must follow the mapping, not the name.
 
 ---
 
@@ -95,7 +102,9 @@ eas update:roll-back-to-embedded --channel ace-london-production
    group to **every** affected `<brand>-production` channel (loop as in §3). For a single
    brand, only that channel.
 3. **Verify.** Re-open the app on the affected brand; confirm it pulls the rolled-back update
-   (force-quit + relaunch to fetch). Watch crash/error dashboards for the brand.
+   (force-quit + relaunch to fetch). Watch crash/error dashboards **filtered to the brand** —
+   this presupposes events are tagged with `brandId` (plan §15/§16); aggregate dashboards
+   will hide a single-brand regression.
 4. **Record.** Note the bad group id, the good group id rolled back to, and the affected
    channels in the incident log. Open a fix-forward PR — rollback is a stopgap, not the fix.
 

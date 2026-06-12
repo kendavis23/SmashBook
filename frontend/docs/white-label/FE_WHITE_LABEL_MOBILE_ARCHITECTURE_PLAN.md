@@ -1,4 +1,4 @@
-_Last updated: 2026-06-10 18:45 UTC_
+_Last updated: 2026-06-12 17:27 UTC_
 
 # White-Label Mobile Architecture Plan
 
@@ -346,6 +346,7 @@ Build invocation (CI loops over brands):
 
 - **Model A (dedicated):** each brand needs its **own EAS project** (separate `projectId`, credentials, push keys, bundle ID). Store the per-brand `easProjectId` in the brand manifest. iOS credentials (certs/provisioning) and Android keystores are per-bundle-ID — let EAS manage them (`eas credentials`) per project.
 - **Model B (shared):** one EAS project, one set of credentials, `_default` brand.
+- **Per-brand push config (dedicated):** push credentials are per-bundle-ID, which means more than EAS-managed certs — each dedicated brand needs its **own Firebase app** (→ per-brand `google-services.json` + `GoogleService-Info.plist`, wired via `app.config.ts` `android.googleServicesFile` / `ios.googleServicesFile` from the brand manifest) and its own APNs key registration. These files are brand config, not secrets-by-obscurity, but keep server keys in the CI vault like everything else. A dedicated brand without its push config wired will silently fail to receive notifications — make the files a `validate-brands` requirement for `deliveryModel: "dedicated"`.
 
 ### Build matrix orchestration
 
@@ -506,6 +507,9 @@ The difference between 3 brands and 50 is **automation and convention**, not arc
 - **Credential management:** let EAS manage per-brand credentials; never hand-juggle keystores/certs across dozens of brands.
 - **Store-account strategy:** decide early whether dedicated apps live under SmashBook's Apple/Google accounts (simpler, but Guideline 4.3 risk) or the client's accounts (more setup, cleaner brand ownership). This is a business decision with real engineering consequences — resolve it before Phase 4.
 - **Versioning discipline:** shared JS bundle + per-brand native shells means most updates are one OTA reaching all brands. Reserve native rebuilds for genuine native changes.
+- **Store listings are part of the brand, not an afterthought:** every dedicated app needs per-brand store metadata — description/subtitle, keywords, screenshots, App Privacy / Play data-safety answers, support + marketing URLs. Apple review requires them, and *meaningfully different* listings are themselves a Guideline 4.3 mitigation. Capture them in the brand-kit intake ([FE_WHITE_LABEL_BRAND_KIT.md](FE_WHITE_LABEL_BRAND_KIT.md) §1) so `eas submit` is never blocked on missing copy.
+- **Offboard as deliberately as you onboard:** a churned dedicated brand needs a defined exit — final OTA with an end-of-service notice, store listing removed (or transferred to the club), brand dropped from the registry/build matrix, credentials + push keys revoked, OTA channel frozen, `tenants[]` mapping deleted. A Model B club is just a mapping-row removal (players fall back to `_default`). Bundle IDs are never reused. Write this runbook before the first dedicated client churns, not after ([FE_WHITE_LABEL_BRAND_KIT.md](FE_WHITE_LABEL_BRAND_KIT.md) §6).
+- **Per-brand observability from day one:** tag crash reports, errors, and analytics events with `brandId` (available from `extra.brandId` / the active brand). Aggregate dashboards hide a crash spike that affects one brand of fifty — and the OTA rollback runbook's "verify" step (§12) is only real if per-brand release health exists.
 
 ---
 
@@ -514,6 +518,7 @@ The difference between 3 brands and 50 is **automation and convention**, not arc
 | Risk                                                                                                          | Severity    | Mitigation                                                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Apple Guideline 4.3 (spam / cloned apps)** rejecting many near-identical white-label apps under one account | High        | Prefer client-owned store accounts for dedicated apps; differentiate brands meaningfully; consider Apple's "white-label" provisions; default new clubs to Model B to limit dedicated-app count.               |
+| **Google Play "repetitive content" rejections** — the Android twin of Apple 4.3, same cloned-app concern      | Medium-High | Same mitigations as the 4.3 row: prefer client-owned Play Console accounts for dedicated apps, meaningfully differentiated listings/branding, keep the dedicated-app count small via the Model B default.     |
 | **NativeWind `className` runtime re-theming** doesn't cleanly support per-brand CSS-var swaps                 | Medium-High | Prototype in Phase 2 _before_ committing. Fallback: drive _all_ color through `useThemeColors()` (JS) and minimize brand-varying `className` color tokens. The existing token discipline makes this feasible. |
 | **Build-time/runtime confusion** — trying to change native identity at runtime                                | Medium      | This document's §2 split is the canonical rule; encode it in the manifest type (native vs presentation sections are structurally separate).                                                                   |
 | **Asset sprawl / inconsistency** at scale                                                                     | Medium      | Generated-from-master pipeline + CI dimension validation; no hand-placed per-size assets.                                                                                                                     |
@@ -523,6 +528,8 @@ The difference between 3 brands and 50 is **automation and convention**, not arc
 | **Default/fallback gaps** (a brand missing a token, logo, or flag → broken first paint)                       | Medium      | Zod schema makes every required field non-optional; `_default` brand is the ultimate fallback; CI blocks incomplete brands.                                                                                   |
 | **Font licensing** for bundled brand fonts                                                                    | Low-Medium  | Curated, licensed font set only; no client-supplied arbitrary fonts at runtime.                                                                                                                               |
 | **Stripe merchant identity per brand** (Apple Pay) misconfigured                                              | Low-Medium  | Manifest carries `stripeMerchantId`; coordinate with backend two-account Stripe model; test Apple Pay per dedicated brand.                                                                                    |
+| **No per-brand observability** — a one-brand crash spike is invisible in aggregate dashboards                 | Medium      | Tag crash/error/analytics events with `brandId` from day one (§15); per-brand release health is a prerequisite for the OTA rollback verify step (§12).                                                        |
+| **Push misconfiguration per dedicated brand** — wrong/missing Firebase app or APNs key per bundle ID          | Medium      | Per-brand `googleServicesFile` paths in the manifest (§10), validated for dedicated brands in `validate-brands`; smoke-test a push on TestFlight/internal track before store submission.                      |
 | **Maintenance drift** — `themes.ts` ThemeColors and manifest theme type diverge                               | Low         | Single shared `ThemeColors` type imported by both; schema test asserts parity.                                                                                                                                |
 
 ---
