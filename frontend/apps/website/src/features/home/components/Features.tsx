@@ -45,13 +45,13 @@ export function Features() {
             <div className="mx-auto max-w-7xl px-6 lg:px-8">
                 <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div className="max-w-xl">
-                        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-cta/20 bg-cta/5 px-3 py-1">
+                        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cta/20 bg-cta/5 px-3.5 py-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-cta" />
-                            <p className="text-xs font-semibold uppercase tracking-widest text-cta">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-cta">
                                 Platform
                             </p>
                         </div>
-                        <h2 className="text-4xl font-bold leading-tight text-foreground lg:text-5xl">
+                        <h2 className="text-4xl font-bold leading-[1.1] tracking-tight text-foreground lg:text-5xl">
                             One operating layer
                             <br className="hidden sm:block" /> for the entire club.
                         </h2>
@@ -63,18 +63,18 @@ export function Features() {
                     </p>
                 </div>
 
-                <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+                <div className="mt-14 grid grid-cols-1 gap-px overflow-hidden rounded-xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
                     {FEATURES.map((feature) => {
                         const Icon = feature.icon;
                         return (
                             <div
                                 key={feature.title}
-                                className="group bg-card p-6 transition-colors hover:bg-background"
+                                className="group bg-card p-7 transition-colors duration-200 hover:bg-secondary/60"
                             >
-                                <div className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-md bg-cta/10 text-cta transition-colors group-hover:bg-cta group-hover:text-cta-foreground">
+                                <div className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-cta/8 text-cta transition-all duration-200 group-hover:bg-cta group-hover:text-cta-foreground group-hover:shadow-md">
                                     <Icon className="h-5 w-5" />
                                 </div>
-                                <h3 className="text-base font-semibold text-foreground">
+                                <h3 className="text-[15px] font-semibold tracking-tight text-foreground">
                                     {feature.title}
                                 </h3>
                                 <p className="mt-2 text-sm leading-6 text-muted-foreground">

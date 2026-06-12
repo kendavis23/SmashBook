@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Update the host below if the website is served from a different domain. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url><loc>https://smashbook.app/</loc></url>
+    <url><loc>https://smashbook.app/product</loc></url>
+    <url><loc>https://smashbook.app/pricing</loc></url>
+    <url><loc>https://smashbook.app/about</loc></url>
+    <url><loc>https://smashbook.app/contact</loc></url>
+    <url><loc>https://smashbook.app/privacy</loc></url>
+    <url><loc>https://smashbook.app/terms</loc></url>
+</urlset>

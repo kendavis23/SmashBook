@@ -1,35 +1,35 @@
 :root {
    --background: 0 0% 100%;
-   --foreground: 224 71% 4%;
+   --foreground: 222 47% 8%;
    --card: 0 0% 100%;
-   --card-foreground: 224 71% 4%;
-   --primary: 224 64% 10%;
+   --card-foreground: 222 47% 8%;
+   --primary: 222 47% 8%;
    --primary-foreground: 0 0% 100%;
-   --secondary: 220 14% 96%;
-   --secondary-foreground: 224 64% 10%;
-   --muted: 220 18% 95.5%;
-   --muted-foreground: 220 11% 38%;
-   --accent: 220 18% 92%;
-   --accent-foreground: 224 64% 10%;
+   --secondary: 220 20% 97%;
+   --secondary-foreground: 222 47% 8%;
+   --muted: 220 20% 96%;
+   --muted-foreground: 220 13% 42%;
+   --accent: 220 20% 93%;
+   --accent-foreground: 222 47% 8%;
    --destructive: 0 72% 51%;
    --destructive-foreground: 0 0% 100%;
    --success: 142 71% 29%;
    --success-foreground: 0 0% 100%;
    --warning: 38 92% 50%;
    --warning-foreground: 0 0% 100%;
-   --border: 220 14% 88%;
-   --input: 220 14% 88%;
+   --border: 220 16% 90%;
+   --input: 220 16% 90%;
    --ring: 221 83% 53%;
    --cta: 221 83% 53%;
    --cta-foreground: 0 0% 100%;
    --cta-hover: 221 83% 47%;
    --cta-ring: 221 83% 70%;
-   --radius: 0.5rem;
-   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
-   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
-   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.07);
-   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.08);
+   --radius: 0.625rem;
+   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+   --shadow-md: 0 4px 8px -2px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+   --shadow-lg: 0 12px 20px -4px rgb(0 0 0 / 0.07), 0 4px 8px -4px rgb(0 0 0 / 0.05);
+   --shadow-xl: 0 24px 32px -6px rgb(0 0 0 / 0.08), 0 8px 12px -6px rgb(0 0 0 / 0.05);
    --spacing-px: 1px;
    --spacing-0: 0px;
    --spacing-0-5: 0.125rem;
@@ -145,10 +145,10 @@
 
 @layer components {
     .btn-cta {
-        @apply inline-flex items-center justify-center gap-2 rounded-md bg-cta px-4 py-2.5 text-sm font-medium text-cta-foreground shadow-xs transition-all duration-150 hover:bg-cta-hover active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta-ring/70 disabled:pointer-events-none disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg bg-cta px-4 py-2.5 text-sm font-semibold text-cta-foreground shadow-sm transition-all duration-200 hover:bg-cta-hover hover:shadow-md active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cta-ring/70 disabled:pointer-events-none disabled:opacity-50;
     }
 
     .btn-outline {
-        @apply inline-flex items-center justify-center gap-2 rounded-md border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground shadow-xs transition-all duration-150 hover:bg-accent hover:text-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50;
+        @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-semibold text-foreground shadow-xs transition-all duration-200 hover:bg-accent hover:border-border/80 hover:text-foreground active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 disabled:pointer-events-none disabled:opacity-50;
     }
 }
