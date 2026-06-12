@@ -184,14 +184,14 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 
 MVP-era cron jobs that must run before production go-live. The Cloud Scheduler SA from Stage 2.5 is needed for the OIDC-authenticated targets; if Stage 2 has not landed yet, create a minimal SA here as a placeholder.
 
-`payment-retry-job` and `waitlist-offer-expiry-job` were originally scoped to Stage 1 but have been moved to Stage 2 (§2.7) — they depend on the Cloud Scheduler SA and VPC connector from Stage 2, and deferring keeps Stage 1 focused on structural hardening.
+`payment-retry-job` and `waitlist-offer-expiry-job` were originally scoped to Stage 1 but have been moved to Stage 2 (§2.7) — they belong with the other production-readiness crons on the §2.5 Scheduler → Pub/Sub pattern, and deferring keeps Stage 1 focused on structural hardening.
 
-`release-expired-holds` is the exception that does ship in Stage 1: because its target endpoint is header-gated (not IAM-gated) it needs neither the Cloud Scheduler SA nor the VPC connector, so it has no Stage 2 dependency. It is paused in staging (no need to run continuously there) and fires every minute in prod.
+`release-expired-holds` is the exception that does ship in Stage 1: because its target endpoint is header-gated (not IAM-gated) it has no Stage 2 dependency. It is paused in staging (no need to run continuously there) and fires every minute in prod. **Note:** this header-gated `X-Platform-Key` shortcut is a staging-only divergence — it breaks under the P1 ingress lockdown and is tracked for refactor onto the §2.5 Pub/Sub pattern as **P2** in the Production Go-Live Checklist.
 
 | Job | Schedule | Purpose | Status |
 |---|---|---|---|
 | `db-migration` | CI/CD (not Cloud Scheduler) | `alembic upgrade head` before each Cloud Run revision receives traffic — wired into the GitHub Actions deploy pipeline | ✅ Implemented |
-| `release-expired-holds` | `* * * * *` (prod); paused in staging | Cloud Scheduler → `POST /api/v1/admin/bookings/release-expired-holds` — frees abandoned court/slot holds past their payment deadline. No OIDC/Cloud Scheduler SA needed: `padel-api` is public and the endpoint is gated by the `X-Platform-Key` header, which the job sends from the `padel-platform-api-key` secret. Module: `be-infra/terraform/modules/scheduler`. | 🚧 Terraform written, pending apply |
+| `release-expired-holds` | `* * * * *` (prod); paused in staging | Cloud Scheduler → `POST /api/v1/admin/bookings/release-expired-holds` — frees abandoned court/slot holds past their payment deadline. Currently header-gated: `padel-api` is public and the endpoint is gated by the `X-Platform-Key` header, which the job sends from the `padel-platform-api-key` secret. Module: `be-infra/terraform/modules/scheduler`. **Refactor to Scheduler → Pub/Sub (§2.5) before prod — tracked as P2; the current HTTP path breaks under the P1 ingress lockdown.** | 🚧 Terraform written, pending apply |
 
 ### 1.9 Additional Pub/Sub topic — `booking-cancelled`
 
@@ -289,36 +289,43 @@ This task is **prod-only** — the public front door only exists once a producti
 - New secret: `firebase-fcm-credentials` (or migrate notification worker to Firebase Admin SDK with runtime SA — decide before this stage starts)
 - IAM: runtime SA gets `roles/aiplatform.user` (Vertex AI access)
 
-### 2.5 Cloud Scheduler service account
+### 2.5 Scheduled-job invocation pattern (Cloud Scheduler → Pub/Sub)
 
-**Why:** Stage 3 introduces multiple Cloud Run Jobs triggered by Cloud Scheduler. Set up the SA and base permissions now so each later stage just adds invoker bindings.
+**Standard pattern for all scheduled work.** Cloud Scheduler **publishes an event to a Pub/Sub topic**; a **push subscription** delivers it to a handler (a worker, or a `/pubsub` receiver on `padel-api` that dispatches by `event_type`). This is the pattern the analytics jobs (`analytics-snapshot-daily`, `analytics-refresh-daily`) already use, and it is the standard every new scheduled job in §2.6/§2.7 must follow. A direct Cloud Scheduler → `padel-api` HTTP target is **not** an approved pattern.
 
-**Resources:**
-- `google_service_account.cloud_scheduler` — `cloud-scheduler@PROJECT.iam.gserviceaccount.com`
-- The SA gets `roles/run.invoker` granted per-job in later stages (not project-wide)
+**Why Pub/Sub and not a direct HTTP call:**
+- **No static secret.** Scheduler authenticates to Pub/Sub as the Google-managed Cloud Scheduler service agent (`service-<num>@gcp-sa-cloudscheduler.iam.gserviceaccount.com`), granted `roles/pubsub.publisher` per topic. Push delivery to the handler uses an OIDC token Pub/Sub mints automatically. Nothing lands in Terraform state or on the job config — unlike the `X-Platform-Key` header approach, which copies a long-lived shared secret into both.
+- **Survives the prod ingress lockdown (P1).** Once `padel-api` ingress is flipped to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`, a direct Cloud Scheduler HTTP target is rejected — Scheduler is an external caller, neither an internal source nor Cloudflare. **Pub/Sub push is an internal ingress source**, so it still reaches the handler. This is the load-bearing reason the pattern must be Pub/Sub.
+- **Retries + DLQ for free** from the subscription, decoupled from the schedule.
+
+**Resources (per job):**
+- One Pub/Sub topic (or a shared `scheduled-tasks` topic discriminated by `event_type`, as `analytics-events` does).
+- `google_pubsub_topic_iam_member` granting the Cloud Scheduler service agent `roles/pubsub.publisher` on that topic.
+- A push subscription → the handler, with OIDC push auth (the push SA holds `roles/run.invoker` on the handler service).
+- `google_cloud_scheduler_job` with a `pubsub_target` (never `http_target`).
+
+**Superseded:** the original design here was a dedicated user-managed `cloud-scheduler@PROJECT` SA with per-job `run.invoker` for direct OIDC HTTP calls to `padel-api`. That SA was never created and is **not needed** for triggering work in a running service — the managed service agent + Pub/Sub covers it, and the dedicated-SA/HTTP path would not survive the P1 lockdown anyway. The one **already-built** job still on the old `X-Platform-Key` HTTP pattern (`release-expired-holds`) is tracked for refactor as **P2** in the Production Go-Live Checklist.
+
+**Scope — this is for triggering a *running* service** (`padel-api` or a worker). Cloud Run **Jobs** (§3.4) are a different mechanism: invoked by Scheduler → OIDC → the job's `:run` Admin API endpoint, which *does* use a small dedicated invoker SA with `roles/run.invoker` **on the job**. That path targets the Run Admin API, not `padel-api`, so it is unaffected by the P1 ingress lockdown and is sanctioned as-is. The anti-pattern being retired is specifically Scheduler → HTTP → `padel-api` with a static key.
 
 ### 2.6 Wallet settlement cron
 
 **Why:** `POST /payments/wallet/settle-debts` transfers accumulated `WalletClubDebt` rows to each club's Stripe Connect account. Today it is admin-triggered only — clubs do not receive their wallet-paid bookings until someone remembers to hit the endpoint. Production must run this automatically on a schedule. Without it, a club's wallet receivables grow indefinitely and we have a quiet liability on the platform balance.
 
-**Resources:**
-- `google_cloud_scheduler_job.wallet_settle_debts`
-  - Schedule: `0 2 * * *` (daily 02:00 UTC — low-traffic window)
-  - Target: HTTPS POST to `https://<padel-api-url>/api/v1/payments/wallet/settle-debts`
-  - Auth: OIDC token, audience = padel-api URL, SA = `cloud-scheduler`
-  - Headers: `X-Tenant-ID: <platform-admin-tenant>` (settlement is platform-wide, not tenant-scoped, but the admin user lives in a specific tenant)
-  - Retry: `retry_count = 3`, `max_backoff_duration = 600s`
-- The Cloud Scheduler SA needs `roles/run.invoker` on `padel-api`
-- The endpoint stays admin-only; the scheduler authenticates as a service-account-backed admin user (or we add a separate `require_internal_scheduler` dependency)
+**Resources** (Cloud Scheduler → Pub/Sub pattern, per §2.5):
+- `google_cloud_scheduler_job.wallet_settle_debts` with a **`pubsub_target`** — publishes `{"event_type": "wallet.settle"}` to the settlement topic on `0 2 * * *` (daily 02:00 UTC, low-traffic window).
+- A push subscription delivers the event to a handler that runs the settlement logic (the `/payments/wallet/settle-debts` work). The handler resolves the platform-admin scope **server-side** — no `X-Tenant-ID` header is supplied by the scheduler; settlement is platform-wide.
+- Cloud Scheduler service agent gets `roles/pubsub.publisher` on the topic; the push SA gets `roles/run.invoker` on the handler. No static `X-Platform-Key`, no dedicated `cloud-scheduler@` SA.
+- Delivery retries/DLQ come from the subscription (replacing the old per-job `retry_count`/`max_backoff`).
 
 **Operational notes:**
 - Daily cadence is the floor. If a club asks for faster settlement, lower to hourly — the underlying Stripe `Transfer.create` is already idempotency-keyed per debt set, so re-running is safe.
-- Alert on consecutive failures (the Stage 2.3 alert policy on Cloud Run 5xx will catch this, but consider adding a Cloud Scheduler-specific alert on `state = FAILED` for two consecutive runs).
+- Alert on failure via the subscription's DLQ (oldest-unacked / DLQ-message-count alert, like the other Pub/Sub paths) plus the Stage 2.3 Cloud Run 5xx policy on the handler.
 - Until this lands, document a manual runbook step: ops admin calls `/wallet/settle-debts` at least weekly.
 
 ### 2.7 Additional Scheduled Jobs
 
-Production-readiness cron jobs beyond wallet settlement. All follow the same Cloud Scheduler → OIDC → `padel-api` HTTP target pattern established in §2.6. `wallet-settle-debts` is listed here for completeness; its full resource spec is in §2.6.
+Production-readiness cron jobs beyond wallet settlement. All follow the standard **Cloud Scheduler → Pub/Sub → push** pattern from §2.5 — **not** a direct HTTP target, which does not survive the prod ingress lockdown (P1). Each job publishes an `event_type` to a topic; a push subscription delivers it to its handler. `wallet-settle-debts` is listed here for completeness; its full resource spec is in §2.6.
 
 | Job | Schedule | Purpose | Status |
 |---|---|---|---|
@@ -354,8 +361,8 @@ Production-readiness cron jobs beyond wallet settlement. All follow the same Clo
 - [x] VPC connector live and attached to all Cloud Run services _(delivered 2026-05-29: `padel-connector-staging`, `10.8.0.0/28`; all four services on `PRIVATE_RANGES_ONLY`)_
 - [ ] At minimum 6 monitoring alert policies firing to a real notification channel
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`
-- [ ] Cloud Scheduler SA exists
-- [ ] Wallet settlement cron live, hitting `/payments/wallet/settle-debts` daily
+- [ ] Scheduled-job Pub/Sub topic(s) + push subscriptions live; Cloud Scheduler service agent has `pubsub.publisher` (per §2.5)
+- [ ] Wallet settlement cron live via Scheduler → Pub/Sub → settlement handler, daily
 - [ ] SendGrid webhook endpoint live, signature verification passing, `message_deliveries` rows updating (§2.8)
 - [ ] `sendgrid-webhook-secret` secret created and value set
 
@@ -407,7 +414,7 @@ Both follow the existing worker pattern: `google_cloud_run_v2_service` + push su
 | `campaign-send-job` | Dynamic (per `campaigns.scheduled_at`) | Fire `scheduled` campaigns; Anthropic draft generation; dispatch via SendGrid/Firebase | ❌ Not implemented |
 | `campaign-expiry-job` | Daily | Mark campaigns `completed` where `sent_at` is set and send window has passed | ❌ Not implemented |
 
-Each is `google_cloud_run_v2_job` + `google_cloud_scheduler_job` (with `http_target` invoking the job's `:run` endpoint) + `roles/run.invoker` granted to the Cloud Scheduler SA on the job.
+Each is `google_cloud_run_v2_job` + `google_cloud_scheduler_job` (with `http_target` invoking the job's `:run` Admin API endpoint) + `roles/run.invoker` granted on the job to a **dedicated Cloud Scheduler invoker SA introduced with this stage**. This is the sanctioned Cloud Run *Jobs* path (§2.5 "Scope"): it targets the Run Admin API, not `padel-api`, so it is unaffected by the P1 ingress lockdown — distinct from the retired Scheduler → HTTP → `padel-api` pattern.
 
 ### 3.5 IAM additions
 
@@ -593,6 +600,7 @@ Out of Terraform scope — connected to BigQuery via console.
 
 - [ ] Production GCP project created and `prod/` Terraform applied (Stage 1.5)
 - [ ] **P1 — Global HTTPS LB + Cloud Armor origin lockdown behind Cloudflare** (see below)
+- [ ] **P2 — Refactor `release-expired-holds` off the static-key HTTP target onto Scheduler → Pub/Sub** (see below; must land *before* P1's ingress flip)
 - _(further go-live items added here over time — secrets cutover, DNS, data seeding, smoke tests, rollback plan, etc.)_
 
 ---
@@ -737,6 +745,30 @@ Then in `prod/main.tf`: pass `module.api_lb.lb_ip` into a `cloudflare_dns`-style
 - [ ] `padel-api` ingress flipped to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` (run.app no longer publicly reachable)
 - [ ] Proxied DNS record for `smashbook.app`/`api.smashbook.app` points at LB IP in Cloudflare
 - [ ] Validated end-to-end in staging (temporary subdomain) and torn down before prod apply
+
+---
+
+### P2 — Refactor `release-expired-holds` off the static-key HTTP target
+
+**Why:** `release-expired-holds` is the one **already-built** Cloud Scheduler job still on the legacy pattern — a direct HTTP target to `padel-api` carrying the platform god-key in an `X-Platform-Key` header ([scheduler/main.tf:41-49](be-infra/terraform/modules/scheduler/main.tf#L41-L49)). It has two problems the rest of the scheduled work doesn't:
+- **Static shared secret** — the high-privilege `PLATFORM_API_KEY` is copied into Terraform state *and* onto the job config, with no rotation/expiry/per-caller identity.
+- **Breaks at the P1 cutover** — a direct Scheduler HTTP call is an external caller; once `padel-api` ingress is locked to internal + LB and Cloud Armor to Cloudflare IPs, it is rejected. So this job silently stops firing the moment P1 lands unless it is reworked first.
+
+The two analytics jobs (`analytics-snapshot-daily`, `analytics-refresh-daily`) already use Scheduler → Pub/Sub and need **no** change. This is the only refactor.
+
+**What to do** (apply the §2.5 standard):
+- Change the job's `http_target` to a **`pubsub_target`** publishing `{"event_type": "release_expired_holds"}` to a topic (a dedicated topic, or a shared `scheduled-tasks` topic).
+- Add a push subscription → the handler (a `/pubsub` receiver that runs the existing release-expired-holds logic), authenticated by OIDC push.
+- Grant the Cloud Scheduler service agent `roles/pubsub.publisher` on the topic; grant the push SA `roles/run.invoker` on the handler.
+- Drop the `X-Platform-Key` header, the `platform_api_key` data source, and the secret-in-state path from the scheduler module.
+
+**Ordering — this gates P1.** Do P2 **before** flipping `padel-api` ingress in P1. If the ingress is locked while this job still depends on the public `run.app` HTTP path, the court-hold expiry sweep stops running (held slots never release). Sequence: ship P2 → confirm the sweep fires via Pub/Sub → then do the P1 ingress flip.
+
+**P2 checklist:**
+- [ ] `release-expired-holds` job converted to `pubsub_target` (no `http_target`)
+- [ ] Push subscription → handler live with OIDC auth; sweep confirmed firing end-to-end
+- [ ] `X-Platform-Key` header + `platform_api_key` data source + secret-in-state removed from the scheduler module
+- [ ] Verified the sweep still fires *after* the P1 ingress flip (run.app no longer public)
 
 ---
 
