@@ -180,7 +180,16 @@ export default function StaffInvitationsView({
                                         </td>
                                         <td className="px-5 py-4">
                                             <div className="flex justify-end">
-                                                {canManage ? (
+                                                {!canManage ? (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        View only
+                                                    </span>
+                                                ) : invitation.status.toLowerCase() ===
+                                                  "accepted" ? (
+                                                    <span className="text-xs text-muted-foreground">
+                                                        —
+                                                    </span>
+                                                ) : (
                                                     <button
                                                         type="button"
                                                         onClick={() => onDeleteClick(invitation)}
@@ -189,10 +198,6 @@ export default function StaffInvitationsView({
                                                         <Trash2 size={13} />
                                                         Delete
                                                     </button>
-                                                ) : (
-                                                    <span className="text-xs text-muted-foreground">
-                                                        View only
-                                                    </span>
                                                 )}
                                             </div>
                                         </td>
