@@ -1,4 +1,4 @@
-_Last updated: 2026-06-10 00:00 UTC_
+_Last updated: 2026-06-12 19:30 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -292,6 +292,18 @@ subscription starts only (`membership_plans.price > 0`).
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/active/timeseries` | Distinct active players per calendar bucket (WAP/MAP). `?granularity=day\|week\|month` (default week), optional `date_from`/`date_to` (trailing 30d; 366-day cap → 413). Calendar buckets, not a trailing window. |
 | `GET` | `/api/v1/analytics/players/clubs/{club_id}/signups` | New paid-member sign-ups over time + range total. `?granularity=day\|week\|month` (default month), optional range (366-day cap → 413). |
 
+### Coach popularity — `/api/v1/analytics/coaches`
+
+Reads `mv_coach_popularity` (grain `(club_id, staff_profile_id)`) — same `staff`+ /
+tenant-isolated / read-replica contract. A coaching session is a lesson booking
+(`lesson_individual\|lesson_group\|train_and_play`) led by a `staff_profile`,
+non-cancelled + already-started. `return_rate` (`repeat_players / distinct_players`)
+is derived in the service, not stored.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/v1/analytics/coaches/clubs/{club_id}/popularity` | Coach leaderboard. `?sort=sessions\|distinct_players\|repeat_players\|return_rate\|lesson_revenue\|last_session_at` (default sessions), `?limit`/`?offset`. Each row: sessions (+30/90d), distinct/repeat players, `return_rate`, total_attendances, net `lesson_revenue`, plus `coach_name`/`is_active`. Tenant-isolated (404 for another tenant's club). |
+
 Report **exports** are asynchronous (analytics/CLAUDE.md rule 5): the endpoint
 validates and enqueues, the worker builds the file and emails a signed link.
 
@@ -301,7 +313,7 @@ validates and enqueues, the worker builds the file and emails a signed link.
 
 **Workers:**
 - `app/analytics/workers/snapshot_court_utilisation.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`). `analytics.snapshot_daily` snapshots each club's local yesterday; `analytics.snapshot_backfill` backfills a trailing window (default 90 days). Delete-then-insert per (court, day) → idempotent.
-- `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered views (`mv_revenue_by_club_day_service`, `…_cash`, `mv_player_value`, `mv_club_active_player_day`, `mv_club_signups_day`); logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
+- `app/analytics/workers/refresh_views.py` — Pub/Sub-push Cloud Run service (Cloud Scheduler → `analytics-events`, `analytics.refresh_views`). `REFRESH … CONCURRENTLY` over the registered views (`mv_revenue_by_club_day_service`, `…_cash`, `mv_player_value`, `mv_player_rfv`, `mv_club_active_player_day`, `mv_club_signups_day`, `mv_coach_popularity`); logs each run to `analytics_refresh_log` and publishes failures to `analytics-alerts`. The first MV-refresh worker in the system.
 - `app/analytics/workers/export_report.py` — Pub/Sub-push Cloud Run service on its own `analytics-export-events` topic, handles `analytics.export_requested` (published by `POST /analytics/exports`). Builds the report off the read replica, serialises to CSV/XLSX, uploads to `GCS_BUCKET_EXPORTS` (1h signed URL, 7-day lifecycle delete), and emails the link via SendGrid. Failures publish to `analytics-alerts`.
 
 ---

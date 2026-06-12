@@ -1,4 +1,4 @@
-_Last updated: 2026-06-04 00:00 UTC_
+_Last updated: 2026-06-12 19:00 UTC_
 
 # Report Catalog
 
@@ -117,6 +117,14 @@ Each report has:
   (`last_played_at = NULL`, `lifetime_spend = 0`) — the prime inactive case.
 - Display fields (`full_name`, `email`) are joined live from `users`, **not**
   denormalised into the view (no stale PII; names stay fresh).
+- **RFV enrichment:** every `PlayerValueRow` (shared by `value`, `most-active`,
+  and `inactive-members`) also carries the player's RFV scores
+  (`recency_score`, `frequency_score`, `value_score`, `rfv_total`, `rfv_cell`),
+  LEFT-joined from `mv_player_rfv` on `(club_id, user_id)`. They are **nullable
+  and display-only** — never used to filter, sort, or paginate — so the
+  enrichment adds no behaviour change: a player not yet scored (only *engaged*
+  players get an RFV row) comes back with null scores, and no row is dropped. The
+  `value/by-group` roll-up does **not** read RFV.
 - One view, three reports via filter/sort:
   - `GET /api/v1/analytics/players/clubs/{club_id}/value` — per-player LTV,
     highest first. `?members_only=true` restricts to paid members;
@@ -193,6 +201,71 @@ Each report has:
   value" report. Note the trailing-30d/90d active *count as of now* is also
   derivable from `mv_player_value.played_last_30d/90d`; this report adds the
   sign-up flow and the active **trend over time**.
+
+### Coach popularity (& return rate)
+- Owner: `staff`+ (all staff roles)
+- Scope: club-scoped (tenant-isolated; a club is only readable by its own tenant).
+- Refresh: **materialized view** — `mv_coach_popularity`, refreshed by
+  `app/analytics/workers/refresh_views.py` (`REFRESH … CONCURRENTLY`, nightly
+  03:00 UTC). See [MATERIALIZED_VIEWS.md](MATERIALIZED_VIEWS.md).
+- Compute model: one row per `(club_id, staff_profile_id)` — a point-in-time
+  **stock**. A "coaching session" is a lesson booking led by a staff member:
+  `bookings` with `booking_type IN (lesson_individual, lesson_group,
+  train_and_play)` and a non-null `staff_profile_id`, counted only when
+  non-cancelled and already started (`status IN (confirmed, completed)` and
+  `start_datetime <= now()`) — future reservations are not delivered coaching.
+  Three sub-aggregates stitched on `(club_id, staff_profile_id)`:
+  - **sessions** (the lesson bookings themselves) → `sessions`,
+    `first_session_at`, `last_session_at`, `sessions_last_30d`,
+    `sessions_last_90d`.
+  - **players** (`booking_players` ⋈ lessons) → `distinct_players`,
+    `repeat_players` (took ≥2 lessons with this coach), `total_attendances`
+    (sum of per-player lesson counts).
+  - **revenue** (`payments` by `booking_id`, states `succeeded`/`refunded`/
+    `partially_refunded`) → `lesson_revenue` (net of refunds), `currency`.
+    Membership MRR excluded, matching the revenue and player-value views.
+- Aggregation rule: **`return_rate` is `repeat_players / distinct_players`,
+  computed by the service from the stored counts — never a baked per-row ratio**
+  (so a tenant-wide or cross-coach roll-up recomputes from numerator/denominator,
+  consistent with the revenue report's avg-per-transaction). Coach display names
+  (`full_name`) are joined live from `users` via `staff_profiles` — not
+  denormalised into the view.
+- Source tables (read replica): `mv_coach_popularity` (serving), joined to
+  `staff_profiles` ⋈ `users` for display; computed from `bookings`,
+  `booking_players`, `payments` (view definition).
+- Endpoints:
+  - `GET /api/v1/analytics/coaches/clubs/{club_id}/popularity?sort=` — coach
+    leaderboard, ranked by `?sort=` ∈ {`sessions` (default), `distinct_players`,
+    `repeat_players`, `return_rate`, `lesson_revenue`, `last_session_at`}, paginated
+    via `?limit`/`?offset`. Each row carries the measures above plus the derived
+    `return_rate` and the coach's `coach_name` / `is_active`.
+- Consumer: staff portal (coaching/ops dashboard); feeds trainer-performance and
+  scheduling decisions.
+
+### Player RFV pre-aggregate
+- Owner: internal substrate (no public report).
+- Scope: club-scoped (tenant-isolated).
+- Refresh: **materialized view** — `mv_player_rfv`, built **on top of**
+  `mv_player_value` and refreshed by `app/analytics/workers/refresh_views.py`
+  immediately after it (`REFRESH … CONCURRENTLY`, nightly 03:00 UTC). See
+  [MATERIALIZED_VIEWS.md](MATERIALIZED_VIEWS.md).
+- Compute model: one row per `(club_id, user_id)` for *engaged* players
+  (`bookings_played > 0 OR lifetime_spend > 0`), scoring Recency
+  (`last_played_at`), Frequency (`bookings_played`), and Value (`lifetime_spend`)
+  via per-club `ntile(5)` quintiles. Exposes `recency_score`/`frequency_score`/
+  `value_score` (1–5), `rfv_total`, and `rfv_cell` (e.g. `"543"`).
+- **Deliberately a pre-aggregate, not a segmentation taxonomy** — no named
+  segments ("champions", "at risk", …). Structured multi-dimensional player
+  segmentation stays deferred (see the dropped `player_segments` decision and the
+  `value/by-group` note under "Player value"). This view is the precomputed
+  scoring substrate for the existing player-value cuts and later AI churn work.
+- Source tables (read replica): `mv_player_rfv` (serving substrate); derived from
+  `mv_player_value`.
+- Endpoints: no dedicated endpoint. Surfaced as the RFV columns on every
+  `PlayerValueRow` (the `value` / `most-active` / `inactive-members` responses),
+  LEFT-joined by `PlayerValueService` — see "Player value" above.
+- Consumer: staff portal (player-value rows carry the scores); future AI
+  churn/segmentation input.
 
 ### Report exports (CSV / XLSX)
 - Owner: `staff`+ (all staff roles)

@@ -16,6 +16,7 @@ Example, once endpoints exist:
 
 from fastapi import APIRouter
 
+from .coaches import router as coaches_router
 from .exports import router as exports_router
 from .players import router as players_router
 from .revenue import router as revenue_router
@@ -25,4 +26,5 @@ analytics_router = APIRouter(prefix="/analytics")
 analytics_router.include_router(utilisation_router)
 analytics_router.include_router(revenue_router)
 analytics_router.include_router(players_router)
+analytics_router.include_router(coaches_router)
 analytics_router.include_router(exports_router)
