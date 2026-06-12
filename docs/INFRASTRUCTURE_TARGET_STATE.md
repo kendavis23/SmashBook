@@ -1,4 +1,4 @@
-_Last updated: 2026-05-29 18:00 UTC_
+_Last updated: 2026-06-12 00:00 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -23,6 +23,7 @@ _Last updated: 2026-05-29 18:00 UTC_
 - [Stage 4 — AI Phase 2 (Sprint 9–10)](#stage-4--ai-phase-2-sprint-910)
 - [Stage 5 — AI Phase 3 (Sprint 11–12)](#stage-5--ai-phase-3-sprint-1112)
 - [Stage 6 — Cross-Tenant Analytics (Sprint 13+)](#stage-6--cross-tenant-analytics-sprint-13)
+- [Production Go-Live Checklist](#production-go-live-checklist)
 - [Cross-Cutting Conventions](#cross-cutting-conventions)
 - [Maintenance & Updates](#maintenance--updates)
 
@@ -261,17 +262,9 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 
 **Delivered notes (2026-05-29):** New `modules/vpc_connector` declares `padel-connector-<env>` (`default` network, `e2-micro`, min/max 2/3). Staging applied on `10.8.0.0/28`; all four Cloud Run services attached with `egress = "PRIVATE_RANGES_ONLY"`. Prod wired in `prod/main.tf` on `10.9.0.0/28`, not yet applied (no prod project). The Cloud SQL private IP migration this unblocks is still outstanding — tracked as a follow-on in `INFRASTRUCTURE.md` Known Gaps.
 
-### 2.2 Cloud Armor + global HTTPS load balancer
+### 2.2 Global HTTPS LB + Cloud Armor origin lockdown — moved to Production Go-Live Checklist
 
-**Why:** `padel-api` is currently directly exposed via Cloud Run's public URL. Production needs a custom domain, managed certificate, and WAF.
-
-**Resources:**
-- `google_compute_global_address.api_lb`
-- `google_compute_managed_ssl_certificate.api`
-- `google_compute_backend_service.api` pointing at a `serverless_neg` for `padel-api`
-- `google_compute_url_map.api`, `google_compute_target_https_proxy.api`, `google_compute_global_forwarding_rule.api_https`
-- `google_compute_security_policy.api` with rate-limit + standard OWASP rules
-- DNS: A record at the registrar pointing the custom domain at the LB IP (out-of-band)
+This task is **prod-only** — the public front door only exists once a production GCP project does, and staging stays on the plain `run.app` URL. It has been relocated to the [Production Go-Live Checklist](#production-go-live-checklist) as **P1**, where the full design, Terraform sketch, and validation strategy now live. Section numbers 2.3–2.8 below are unchanged.
 
 ### 2.3 Monitoring & alerting
 
@@ -359,7 +352,6 @@ Production-readiness cron jobs beyond wallet settlement. All follow the same Clo
 ### Stage 2 deliverables checklist
 
 - [x] VPC connector live and attached to all Cloud Run services _(delivered 2026-05-29: `padel-connector-staging`, `10.8.0.0/28`; all four services on `PRIVATE_RANGES_ONLY`)_
-- [ ] Custom domain + LB + Cloud Armor live for `padel-api`
 - [ ] At minimum 6 monitoring alert policies firing to a real notification channel
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`
 - [ ] Cloud Scheduler SA exists
@@ -588,6 +580,163 @@ Out of Terraform scope — connected to BigQuery via console.
 - [ ] At least one cross-tenant query that previously could not be answered, now answered
 - [ ] BigQuery dataset live, three Pub/Sub mirrors streaming
 - [ ] First analytics dashboard wired to BigQuery
+
+---
+
+## Production Go-Live Checklist
+
+> **Status: not started — no production GCP project exists yet.** This section is the running gate for everything that must be true *before* SmashBook serves real customers on a production GCP project, and the home for **prod-only** tasks that have no staging equivalent. It is **built up over time**: as each readiness item is identified it gets a row here, and go-live is blocked until every box is checked. Items are promoted here out of the Stage roadmap above when they turn out to be prod-only — they aren't really "delivered" until the prod cutover, so tracking them as Stage deliverables would be misleading.
+
+**Hard prerequisite for everything below:** a production GCP project, provisioned and with the `prod/` Terraform applied. The `prod/` scaffold exists (Stage 1.5) but points at no project yet — nothing in this checklist can be applied until that lands.
+
+### Summary checklist
+
+- [ ] Production GCP project created and `prod/` Terraform applied (Stage 1.5)
+- [ ] **P1 — Global HTTPS LB + Cloud Armor origin lockdown behind Cloudflare** (see below)
+- _(further go-live items added here over time — secrets cutover, DNS, data seeding, smoke tests, rollback plan, etc.)_
+
+---
+
+### P1 — Global HTTPS load balancer + Cloud Armor origin lockdown (behind Cloudflare)
+
+**Why:** `padel-api` is currently exposed directly on its public `*.run.app` URL to `allUsers` (Stage 0). `smashbook.app` already sits behind **Cloudflare** — DNS, TLS termination, WAF, and rate-limiting all run at the Cloudflare edge. That edge protection is worthless as long as the raw `run.app` URL still answers the public internet: anyone who learns it bypasses every Cloudflare rule. The job here is therefore **not** to rebuild the WAF in GCP — it is to put a global external HTTPS load balancer in front of Cloud Run and use **Cloud Armor to lock the origin to Cloudflare's published IP ranges**, then flip Cloud Run ingress so it only accepts traffic from the LB. The OWASP/rate-limit WAF stays where it already is (Cloudflare); Cloud Armor here is an allowlist + a backstop rate-limit, not the primary filter.
+
+**Topology (Option B):**
+```
+client → Cloudflare edge (DNS, TLS, WAF, rate-limit, "Full (strict)")
+       → GCP global external HTTPS LB (:443, Origin CA cert)
+       → Cloud Armor security policy (allow Cloudflare IPs only, else 403)
+       → serverless NEG → padel-api  (ingress = internal-and-cloud-load-balancing)
+```
+
+**Resources:**
+- `google_compute_global_address.api_lb` — anycast LB IP.
+- `google_compute_region_network_endpoint_group.api` — `SERVERLESS` NEG targeting the `padel-api` Cloud Run service (the adapter that lets a global LB front Cloud Run).
+- `google_compute_backend_service.api` (`load_balancing_scheme = EXTERNAL_MANAGED`) → the serverless NEG, with `security_policy` attached.
+- `google_compute_url_map.api`, `google_compute_target_https_proxy.api`, `google_compute_global_forwarding_rule.api_https` — the L7 HTTPS front door.
+- **TLS cert — not Google-managed.** With Cloudflare proxying (orange-cloud), `smashbook.app` resolves to Cloudflare, so a Google `managed_ssl_certificate` cannot complete domain-validation against the LB. Instead upload a **Cloudflare Origin CA certificate** as a `google_compute_ssl_certificate` on the LB and set the Cloudflare SSL/TLS mode to **Full (strict)**. (Alternative if you want Google-managed renewal: a managed cert with **DNS authorization** — more moving parts; Origin CA is the path of least resistance.)
+- `google_compute_security_policy.api` (Cloud Armor): **default `deny(403)`**, an `allow` rule for Cloudflare's [published IPv4/IPv6 ranges](https://www.cloudflare.com/ips/), plus a backstop `rate_based_ban` keyed on the `CF-Connecting-IP` header (Cloudflare's true-client-IP) as defense-in-depth. No OWASP preconfigured rules here — they live at Cloudflare.
+- **Cloud Run ingress flip:** set `padel-api` `ingress = INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` once the LB is healthy. Keep the `allUsers` `run.invoker` binding — ingress governs the *network path* (LB only), IAM still governs auth; for a public site the invoker stays public while the network path is locked. This step is what actually closes the bypass.
+- **DNS:** the proxied (orange-cloud) `A`/`AAAA` record for `smashbook.app` (and/or `api.smashbook.app`) lives in **Cloudflare**, pointing at the LB IP — not "at the registrar." Reuse the existing `fe-infra/terraform/modules/cloudflare_dns` module pattern (`proxied = true`).
+
+**Terraform sketch** — new `be-infra/terraform/modules/api_lb`, wired from `prod/main.tf` (prod-only; the LB's fixed forwarding-rule cost isn't worth it in steady-state staging):
+
+```hcl
+# modules/api_lb/main.tf
+# Cloudflare → global external HTTPS LB → serverless NEG → padel-api.
+# Cloud Armor locks the origin to Cloudflare edge IPs so the CF WAF can't be
+# bypassed via the raw run.app URL.
+
+resource "google_compute_region_network_endpoint_group" "api" {
+  name                  = "padel-api-neg-${var.environment}"
+  region                = var.region
+  network_endpoint_type = "SERVERLESS"
+  cloud_run { service = var.cloud_run_service_name } # "padel-api"
+}
+
+resource "google_compute_security_policy" "api" {
+  name = "padel-api-armor-${var.environment}"
+
+  # Default: deny everything not explicitly allowed below.
+  rule {
+    action   = "deny(403)"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config { src_ip_ranges = ["*"] }
+    }
+    description = "default deny"
+  }
+
+  # Allow only Cloudflare edge ranges (var refreshed from cloudflare.com/ips).
+  rule {
+    action   = "allow"
+    priority = 1000
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config { src_ip_ranges = var.cloudflare_ip_ranges }
+    }
+    description = "allow Cloudflare edge"
+  }
+
+  # Backstop per-true-client-IP rate limit (Cloudflare is the primary limiter).
+  rule {
+    action   = "rate_based_ban"
+    priority = 900
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config { src_ip_ranges = var.cloudflare_ip_ranges }
+    }
+    rate_limit_options {
+      conform_action      = "allow"
+      exceed_action       = "deny(429)"
+      enforce_on_key      = "HTTP_HEADER"
+      enforce_on_key_name = "CF-Connecting-IP"
+      rate_limit_threshold {
+        count        = 600
+        interval_sec = 60
+      }
+    }
+    description = "backstop rate limit on true client IP"
+  }
+}
+
+resource "google_compute_backend_service" "api" {
+  name                  = "padel-api-backend-${var.environment}"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  protocol              = "HTTPS"
+  security_policy       = google_compute_security_policy.api.id
+  backend { group = google_compute_region_network_endpoint_group.api.id }
+}
+
+# Cloudflare Origin CA cert (PEM + key passed in as sensitive vars / from a secret).
+resource "google_compute_ssl_certificate" "api" {
+  name        = "padel-api-origin-${var.environment}"
+  certificate = var.origin_cert_pem
+  private_key = var.origin_key_pem
+}
+
+resource "google_compute_url_map" "api" {
+  name            = "padel-api-urlmap-${var.environment}"
+  default_service = google_compute_backend_service.api.id
+}
+
+resource "google_compute_target_https_proxy" "api" {
+  name             = "padel-api-https-proxy-${var.environment}"
+  url_map          = google_compute_url_map.api.id
+  ssl_certificates = [google_compute_ssl_certificate.api.id]
+}
+
+resource "google_compute_global_address" "api_lb" {
+  name = "padel-api-lb-ip-${var.environment}"
+}
+
+resource "google_compute_global_forwarding_rule" "api_https" {
+  name                  = "padel-api-fr-${var.environment}"
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  ip_address            = google_compute_global_address.api_lb.id
+  port_range            = "443"
+  target                = google_compute_target_https_proxy.api.id
+}
+
+output "lb_ip" { value = google_compute_global_address.api_lb.address }
+```
+
+Then in `prod/main.tf`: pass `module.api_lb.lb_ip` into a `cloudflare_dns`-style record (`proxied = true`), and change the `padel-api` service `ingress` to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER`.
+
+**Sequencing gotchas:**
+- Bring the LB up and confirm it serves through Cloudflare **before** flipping Cloud Run ingress to LB-only — otherwise you cut off the only working path mid-apply.
+- The Origin CA cert PEM + key are secrets; source them from Secret Manager or sensitive vars, never commit them.
+- `cloudflare_ip_ranges` drifts (rarely). Keep it a variable you can refresh, or populate it from an `http` data source against `https://www.cloudflare.com/ips-v4`/`-v6` so a re-apply picks up changes.
+
+**Validation strategy — rehearse in staging, then tear down:** this is prod-only steady-state, but its three first-time failure modes are environment-agnostic and nasty to debug live: (1) the Cloudflare Origin CA + **Full (strict)** handshake, (2) Cloud Armor IP-allowlist correctness (get it wrong and you 403 *all* traffic), and (3) the ingress-flip ordering (flip before the LB serves and you sever the only working path). De-risk by standing the module up **once** in staging behind a temporary `staging-api.smashbook.app` + its own Origin CA cert, validating all three end-to-end, then `terraform destroy` just that module. Do **not** leave it as permanent staging infra.
+
+**P1 checklist:**
+- [ ] Global HTTPS LB + serverless NEG live for `padel-api`, fronted by Cloudflare (Origin CA cert, Full (strict))
+- [ ] Cloud Armor policy locks origin to Cloudflare IP ranges (default deny) + backstop rate limit
+- [ ] `padel-api` ingress flipped to `INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER` (run.app no longer publicly reachable)
+- [ ] Proxied DNS record for `smashbook.app`/`api.smashbook.app` points at LB IP in Cloudflare
+- [ ] Validated end-to-end in staging (temporary subdomain) and torn down before prod apply
 
 ---
 
