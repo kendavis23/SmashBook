@@ -63,6 +63,7 @@ async def process_notification_event(request: Request):
         "password_reset": dispatch_password_reset,
         "email_verify": dispatch_email_verify,
         "player_invite": dispatch_player_invite,
+        "staff_invite": dispatch_staff_invite,
         "welcome": dispatch_welcome,
     }
 
@@ -152,6 +153,49 @@ async def dispatch_player_invite(payload: dict):
         ),
     )
     _send_email(sg, message, event_type="player_invite", recipient=email)
+
+
+async def dispatch_staff_invite(payload: dict):
+    """
+    Staff onboarding invitation email (Phase B). Sent only for an email that is
+    not yet a tenant user — includes a 7-day link to /complete-staff-invitation
+    where the recipient sets their password and finishes creating their account.
+
+    Existing tenant users are promoted in place by the invite endpoint and never
+    reach this handler, so no name is known here — greet generically.
+    """
+    settings = get_settings()
+    email = payload.get("email")
+    invite_url = payload.get("invite_url")
+    if not email or not invite_url:
+        logger.warning(
+            "staff_invite payload missing email/invite_url invitation_id=%s",
+            payload.get("invitation_id"),
+        )
+        return
+    tenant_name = payload.get("tenant_name") or "SmashBook"
+    club_name = payload.get("club_name") or tenant_name
+    role = payload.get("role")
+    invited_by = payload.get("invited_by")
+    intro = (
+        f"{invited_by} has invited you" if invited_by else "You've been invited"
+    )
+    role_phrase = f" as a <strong>{role}</strong>" if role else ""
+    sg = sendgrid.SendGridAPIClient(api_key=settings.SENDGRID_API_KEY)
+    message = Mail(
+        from_email=settings.SENDGRID_FROM_EMAIL,
+        to_emails=email,
+        subject=f"You're invited to join {club_name} as staff",
+        html_content=(
+            f"<p>Hi there,</p>"
+            f"<p>{intro} to join <strong>{club_name}</strong>{role_phrase} on SmashBook. "
+            f"Click the link below to set your password and finish creating your account. "
+            f"This link expires in 7 days.</p>"
+            f'<p><a href="{invite_url}">Accept invitation</a></p>'
+            f"<p>If you weren't expecting this invitation, you can safely ignore this email.</p>"
+        ),
+    )
+    _send_email(sg, message, event_type="staff_invite", recipient=email)
 
 
 async def dispatch_password_reset(payload: dict):
