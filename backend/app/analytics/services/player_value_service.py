@@ -8,8 +8,12 @@ and paginates that grain — it never touches live operational tables.
 
 Display fields (``full_name`` / ``email``) are joined live from ``users`` rather
 than denormalised into the view, so they are never stale and no PII sits in the
-MV. Tenant isolation: the view carries ``club_id`` but not ``tenant_id`` — the
-caller passes a ``club_id`` it has already authorised.
+MV. The per-player RFV scores (``mv_player_rfv``) are LEFT-joined on
+``(club_id, user_id)`` for display only — nullable, never used to filter/sort, so
+the enrichment is additive and shared by all three row-based reports (LTV,
+most-active, inactive-members). The ``value/by-group`` roll-up does not read RFV.
+Tenant isolation: the views carry ``club_id`` but not ``tenant_id`` — the caller
+passes a ``club_id`` it has already authorised.
 """
 from __future__ import annotations
 
@@ -76,11 +80,29 @@ _COLUMNS = (
 
 _WINDOW_COLUMN = {30: "played_last_30d", 90: "played_last_90d"}
 
+# RFV pre-aggregate (``mv_player_rfv``), LEFT-joined onto the per-player rows for
+# display only — never used to filter, sort, or paginate, so it cannot change
+# which rows a report returns or their order (keeps the enrichment additive).
+_RFV_COLUMNS = (
+    "club_id",
+    "user_id",
+    "recency_score",
+    "frequency_score",
+    "value_score",
+    "rfv_total",
+    "rfv_cell",
+)
+
 
 def _mv():
     """Lightweight read-only handle on the materialized view. Uses ``table()``
     (not an ORM model) so Alembic autogenerate never tries to manage the view."""
     return table("mv_player_value", *(column(c) for c in _COLUMNS))
+
+
+def _rfv():
+    """Read-only handle on the ``mv_player_rfv`` pre-aggregate view."""
+    return table("mv_player_rfv", *(column(c) for c in _RFV_COLUMNS))
 
 
 def _d(value) -> Decimal:
@@ -91,10 +113,17 @@ class PlayerValueService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.mv = _mv()
+        self.rfv = _rfv()
 
     def _select_row(self):
-        """SELECT list joining the MV to ``users`` for display fields."""
+        """SELECT list joining the MV to ``users`` for display fields and to
+        ``mv_player_rfv`` for the (nullable) RFV scores. Both joins are LEFT
+        joins, so neither can drop or duplicate a player-value row. The RFV view
+        is keyed ``(club_id, user_id)``, so the join matches on both — a user can
+        belong to multiple clubs, and joining on ``user_id`` alone would pull a
+        different club's scores."""
         mv = self.mv
+        rfv = self.rfv
         return select(
             mv.c.user_id,
             User.full_name,
@@ -111,7 +140,21 @@ class PlayerValueService:
             mv.c.lifetime_spend,
             mv.c.payments_count,
             mv.c.currency,
-        ).select_from(mv.outerjoin(User, User.id == mv.c.user_id))
+            rfv.c.recency_score,
+            rfv.c.frequency_score,
+            rfv.c.value_score,
+            rfv.c.rfv_total,
+            rfv.c.rfv_cell,
+        ).select_from(
+            mv.outerjoin(User, User.id == mv.c.user_id).outerjoin(
+                rfv,
+                (rfv.c.club_id == mv.c.club_id) & (rfv.c.user_id == mv.c.user_id),
+            )
+        )
+
+    @staticmethod
+    def _opt_int(value) -> int | None:
+        return int(value) if value is not None else None
 
     @staticmethod
     def _to_row(r) -> PlayerValueRow:
@@ -131,6 +174,11 @@ class PlayerValueService:
             lifetime_spend=_d(r[12]),
             payments_count=int(r[13] or 0),
             currency=r[14],
+            recency_score=PlayerValueService._opt_int(r[15]),
+            frequency_score=PlayerValueService._opt_int(r[16]),
+            value_score=PlayerValueService._opt_int(r[17]),
+            rfv_total=PlayerValueService._opt_int(r[18]),
+            rfv_cell=r[19],
         )
 
     async def leaderboard(

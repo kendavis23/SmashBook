@@ -66,6 +66,16 @@ class PlayerValueRow(BaseModel):
     lifetime_spend: Decimal
     payments_count: int
     currency: Optional[str]
+    # RFV pre-aggregate scores (from ``mv_player_rfv``, LEFT-joined). Null for
+    # players not yet scored — only *engaged* players (bookings_played > 0 OR
+    # lifetime_spend > 0) get an RFV row, and a newly-engaged player is null until
+    # the next nightly refresh. Each score is a per-club quintile (1 = lowest ..
+    # 5 = highest); ``rfv_cell`` is the three scores concatenated, e.g. "543".
+    recency_score: Optional[int] = None
+    frequency_score: Optional[int] = None
+    value_score: Optional[int] = None
+    rfv_total: Optional[int] = None
+    rfv_cell: Optional[str] = None
 
 
 class PlayerValueLeaderboard(BaseModel):

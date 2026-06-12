@@ -39,12 +39,18 @@ logger = logging.getLogger(__name__)
 
 # Registry of refreshable views. Refresh requests are intersected with this list,
 # so an arbitrary string from the payload can never reach the SQL string.
+#
+# Order matters: views are refreshed sequentially in this order, and
+# ``mv_player_rfv`` is defined ON TOP OF ``mv_player_value``, so it must come
+# after it to score against the freshly-refreshed values.
 REFRESH_VIEWS: list[str] = [
     "mv_revenue_by_club_day_service",
     "mv_revenue_by_club_day_cash",
     "mv_player_value",
+    "mv_player_rfv",
     "mv_club_active_player_day",
     "mv_club_signups_day",
+    "mv_coach_popularity",
 ]
 
 app = FastAPI()

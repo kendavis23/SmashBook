@@ -1,4 +1,4 @@
-_Last updated: 2026-06-02 15:25 UTC_
+_Last updated: 2026-06-12 19:00 UTC_
 
 # Materialized Views & Rollup Tables
 
@@ -109,6 +109,58 @@ The precomputed surfaces that back the report catalog. A live query against `boo
   `UNIQUE (club_id, signup_date)` respectively — required for `REFRESH …
   CONCURRENTLY`.
 - Migration: `4d439313634d` (hand-written DDL — views aren't ORM models).
+
+### `mv_coach_popularity`
+- Purpose: back the "Coach popularity" report (G7) — which coaches run the most
+  lessons, how many distinct players they coach, how many of those come back, and
+  the revenue their lessons generate.
+- Grain: one row per `(club_id, staff_profile_id)` — a point-in-time **stock**. A
+  "coaching session" is a lesson booking led by a staff member: `bookings` with
+  `booking_type IN (lesson_individual, lesson_group, train_and_play)` and a
+  non-null `staff_profile_id`, restricted (like the player views) to non-cancelled
+  bookings that have already started (`status IN (confirmed, completed)` and
+  `start_datetime <= now()`).
+- Columns: `sessions`, `first_session_at`, `last_session_at`, `sessions_last_30d`,
+  `sessions_last_90d`, `distinct_players`, `repeat_players` (players with ≥2
+  lessons with this coach), `total_attendances`, `lesson_revenue` (net realised,
+  `payments` by `booking_id`, states `succeeded`/`refunded`/`partially_refunded`),
+  `currency`. **`return_rate` is not stored** — it is `repeat_players /
+  distinct_players`, derived by the service (same rule as the revenue view's
+  avg-per-transaction: keep numerator and denominator separate). Coach display
+  names join `users` via `staff_profiles` live — no PII in the view.
+- Source: `bookings`, `booking_players`, `payments`, `staff_profiles` (the last
+  only for serving-time name joins, not the view body). Membership MRR excluded,
+  matching the revenue and player-value views.
+- Refresh cadence: nightly 03:00 UTC via `app/analytics/workers/refresh_views.py`.
+  The `start_datetime <= now()` / 30-90d windows are refresh-time-relative.
+- Indexes: `UNIQUE (club_id, staff_profile_id)` — required for `REFRESH …
+  CONCURRENTLY`.
+- Migration: `1f0263eec44b` (hand-written DDL — views aren't ORM models).
+
+### `mv_player_rfv`
+- Purpose: the RFV (Recency / Frequency / Value) **pre-aggregate** (G7) — the
+  precomputed scoring substrate for player-value cuts and later AI churn/segmentation.
+- Grain: one row per `(club_id, user_id)`, restricted to *engaged* players
+  (`bookings_played > 0 OR lifetime_spend > 0`). Columns: raw inputs
+  (`last_played_at`, `bookings_played`, `lifetime_spend`) plus `recency_score`,
+  `frequency_score`, `value_score` (each `smallint` 1–5), `rfv_total` (their sum),
+  and `rfv_cell` (the three scores concatenated, e.g. `"543"`, as a stable grouping
+  key).
+- **Scope — pre-aggregate, not a taxonomy.** Scores are per-club `ntile(5)`
+  quintiles (1 = lowest .. 5 = highest); recency orders by `last_played_at` ascending
+  `NULLS FIRST` so the longest-gone score lowest. The view deliberately does **not**
+  name segments or build a cohort taxonomy — structured player segmentation stays
+  deferred (see the dropped `player_segments` decision). Naming is left to consumers.
+- Source: **`mv_player_value`** (a derivation, not the base tables). ⚠️ **Refresh
+  ordering:** this view reads `mv_player_value`, so it MUST refresh after it. It is
+  registered immediately after `mv_player_value` in `REFRESH_VIEWS`, and the worker
+  refreshes the list sequentially, so each run scores against the fresh values.
+- Refresh cadence: nightly 03:00 UTC via `app/analytics/workers/refresh_views.py`.
+- Consumer: LEFT-joined onto every `PlayerValueRow` by `PlayerValueService`
+  (nullable, display-only scores on the `value`/`most-active`/`inactive-members`
+  reports); future AI churn/segmentation input. No dedicated endpoint.
+- Indexes: `UNIQUE (club_id, user_id)` — required for `REFRESH … CONCURRENTLY`.
+- Migration: `dff4cf6de626` (hand-written DDL — views aren't ORM models).
 
 ### `rollup_ai_cost_by_feature_day`
 - Purpose: daily cost rollup of `ai_inference_log`, scoped to (tenant_id, feature, day)

@@ -191,6 +191,7 @@ async def _build_player_value(db, club_id, payload):
         "first_played_at", "last_played_at", "bookings_played", "played_last_30d",
         "played_last_90d", "lifetime_gross", "lifetime_refunds", "lifetime_spend",
         "payments_count", "currency",
+        "recency_score", "frequency_score", "value_score", "rfv_total", "rfv_cell",
     ]
     rows: list[list] = []
     offset = 0
@@ -208,6 +209,8 @@ async def _build_player_value(db, club_id, payload):
                 _cell(r.played_last_90d), _cell(r.lifetime_gross),
                 _cell(r.lifetime_refunds), _cell(r.lifetime_spend),
                 _cell(r.payments_count), _cell(r.currency),
+                _cell(r.recency_score), _cell(r.frequency_score),
+                _cell(r.value_score), _cell(r.rfv_total), _cell(r.rfv_cell),
             ])
         if len(page.rows) < _PLAYER_PAGE:
             break

@@ -49,10 +49,10 @@ STALE = NOW - timedelta(days=120)  # played > 90d ago
 _MIGRATIONS = pathlib.Path(__file__).resolve().parents[2] / "app" / "db" / "migrations" / "versions"
 
 
-def _load_view_ddl():
-    """Import the frozen MV DDL constants from the create-view migration."""
-    path = next(_MIGRATIONS.glob("*_create_player_value_materialized_*.py"))
-    spec = importlib.util.spec_from_file_location("_pv_mv_migration", path)
+def _load_view_ddl(glob: str, mod_name: str):
+    """Import the frozen MV DDL constants from a create-view migration."""
+    path = next(_MIGRATIONS.glob(glob))
+    spec = importlib.util.spec_from_file_location(mod_name, path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     return mod
@@ -60,20 +60,29 @@ def _load_view_ddl():
 
 @pytest_asyncio.fixture(scope="module")
 async def player_view(test_engine):
-    """Create the player_value materialized view in the test DB (once per module)."""
-    mig = _load_view_ddl()
+    """Create the player_value materialized view + the RFV pre-aggregate that is
+    LEFT-joined onto it (once per module). ``mv_player_rfv`` is built on top of
+    ``mv_player_value``, so it is created after — and dropped before — it."""
+    pv = _load_view_ddl("*_create_player_value_materialized_*.py", "_pv_mv_migration")
+    rfv = _load_view_ddl("*_create_player_rfv_materialized_*.py", "_rfv_mv_migration")
     async with test_engine.begin() as conn:
-        await conn.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {mig._VIEW_NAME}"))
-        await conn.execute(text(mig._VIEW_SQL))
-        await conn.execute(text(mig._INDEX_SQL))
+        await conn.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {rfv._VIEW_NAME}"))
+        await conn.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {pv._VIEW_NAME}"))
+        await conn.execute(text(pv._VIEW_SQL))
+        await conn.execute(text(pv._INDEX_SQL))
+        await conn.execute(text(rfv._VIEW_SQL))
+        await conn.execute(text(rfv._INDEX_SQL))
     yield
     async with test_engine.begin() as conn:
-        await conn.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {mig._VIEW_NAME}"))
+        await conn.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {rfv._VIEW_NAME}"))
+        await conn.execute(text(f"DROP MATERIALIZED VIEW IF EXISTS {pv._VIEW_NAME}"))
 
 
 async def _refresh(test_engine):
+    # RFV reads mv_player_value, so refresh it second (matches REFRESH_VIEWS order).
     async with test_engine.begin() as conn:
         await conn.execute(text("REFRESH MATERIALIZED VIEW mv_player_value"))
+        await conn.execute(text("REFRESH MATERIALIZED VIEW mv_player_rfv"))
 
 
 async def _make_user(session, tenant_id, name) -> User:
@@ -286,6 +295,43 @@ class TestValueLeaderboard:
         assert all(r["is_paid_member"] for r in rows)
         # total_records respects the members_only filter.
         assert body["total_records"] == 2
+
+    async def test_rfv_scores_enriched(
+        self, client, staff_headers, club, player, seeded_players
+    ):
+        """RFV scores are LEFT-joined onto the rows: engaged players (A, C) carry
+        valid quintile scores; the never-engaged member (B) is present with null
+        scores — proving the join is additive and drops no rows."""
+        resp = await client.get(
+            f"/api/v1/analytics/players/clubs/{club.id}/value",
+            headers=staff_headers,
+        )
+        assert resp.status_code == 200
+        rows = {r["user_id"]: r for r in resp.json()["rows"]}
+
+        player_a = str(player.id)            # paid member, played + spent -> scored
+        user_c = str(seeded_players["user_c"])  # non-member, played + spent -> scored
+        user_b = str(seeded_players["user_b"])  # paid member, never played -> unscored
+
+        for uid in (player_a, user_c):
+            row = rows[uid]
+            for field in ("recency_score", "frequency_score", "value_score"):
+                assert row[field] is not None, f"{field} missing for {uid}"
+                assert 1 <= row[field] <= 5
+            assert row["rfv_total"] == (
+                row["recency_score"] + row["frequency_score"] + row["value_score"]
+            )
+            assert row["rfv_cell"] == (
+                f"{row['recency_score']}{row['frequency_score']}{row['value_score']}"
+            )
+
+        # B is in the response (LEFT JOIN keeps it) but has no RFV row -> nulls.
+        b = rows[user_b]
+        assert b["recency_score"] is None
+        assert b["frequency_score"] is None
+        assert b["value_score"] is None
+        assert b["rfv_total"] is None
+        assert b["rfv_cell"] is None
 
     async def test_total_records_ignores_pagination(
         self, client, staff_headers, club, seeded_players
