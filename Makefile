@@ -64,17 +64,23 @@ erd-drawio-local:
 	cd backend && .venv/bin/python scripts/generate_erd_drawio.py ../docs/SmashBook_ERD.drawio
 
 # ── GitHub ────────────────────────────────────────────────────────────────────
-# Show one raw project item — use this to confirm the sprint field name
+# Show one project item in the same shape `make issues` produces — use this to
+# confirm the sprint/status field extraction before exporting all issues.
 project-fields:
-	gh project item-list 2 --owner kendavis23 --format json --limit 1 | jq '.'
+	gh project item-list 2 --owner kendavis23 --format json --limit 1 | jq \
+		'.items[0] | {number: .content.number, title: .content.title, labels: (.labels // []), sprint: .sprints.title, status: .status, url: .content.url}'
 
-# Export all issues with sprint data merged in (requires: gh auth login, jq)
+# Export all issues with sprint + status data merged in (requires: gh auth login, jq)
+# Project field keys (confirm with `make project-fields`): `status` is a string
+# (e.g. "Todo", "On hold", "Backlog"); `sprints` is an iteration object — take .title.
+# Empty fields are omitted by gh, so they fall through to null.
 issues:
-	@gh issue list --limit 1000 --state all --json number,title,body,state,labels,assignees,milestone,createdAt,updatedAt,closedAt,url > /tmp/smashbook_issues.json
+	@gh issue list --limit 1000 --state all --json number,title,body,state,labels,assignees,createdAt,updatedAt,closedAt,url > /tmp/smashbook_issues.json
 	@gh project item-list 2 --owner kendavis23 --format json --limit 1000 > /tmp/smashbook_project.json
 	@jq -s \
-		'(.[1].items | map(select(.content.type == "Issue")) | map({((.content.number | tostring)): .sprint}) | add) as $$sprints \
-		| .[0] | map(. + {sprint: $$sprints[(.number | tostring)]})' \
+		'(.[1].items | map(select(.content.type == "Issue")) | map({((.content.number | tostring)): {sprint: .sprints.title, status: .status}}) | add) as $$proj \
+		| .[0] | map(. + ($$proj[(.number | tostring)] // {sprint: null, status: null})) \
+		| sort_by(.sprint as $$s | if $$s == null then [1, 0] else [0, ($$s | capture("(?<n>[0-9]+)").n | tonumber)] end)' \
 		/tmp/smashbook_issues.json /tmp/smashbook_project.json > issues.json
 	@echo "Exported → issues.json"
 

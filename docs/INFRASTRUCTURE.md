@@ -1,4 +1,4 @@
-_Last updated: 2026-06-04 00:00 UTC_
+_Last updated: 2026-06-12 15:10 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -234,7 +234,7 @@ All buckets: `europe-west2`, uniform bucket-level access, public access preventi
 |---|---|---|
 | `padel-media-smashbook-488121-staging` | Booking receipts, court media, player avatars | No expiry. CORS restricted to `https://*.smashbook.app` (GET/HEAD). |
 | `padel-exports-smashbook-488121-staging` | Async CSV exports; callers retrieve objects via signed URL | Objects deleted after 7 days. |
-| `padel-ai-archive-smashbook-488121-staging` | `ai_inference_log` payload archives (>90 days). Archive job lands in Stage 3. | Transitions to Coldline after 30 days in bucket. |
+| `padel-ai-archive-smashbook-488121-staging` | `ai_inference_log` payload archives (>90 days). Archive job lands in Stage 4 (AI core platform). | Transitions to Coldline after 30 days in bucket. |
 
 The `padel-runtime` SA holds `roles/storage.objectAdmin` on each bucket via bucket-level IAM bindings (not project-level).
 

@@ -1,4 +1,4 @@
-_Last updated: 2026-06-12 00:00 UTC_
+_Last updated: 2026-06-12 15:10 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -7,6 +7,10 @@ _Last updated: 2026-06-12 00:00 UTC_
 > **What it is not:** A migration script or a standing-order to apply everything immediately. Each stage below is a discrete unit of Terraform work that should land in its own PR, alongside the sprint that consumes it. Nothing in this file should be applied ahead of the sprint that needs it — over-provisioning early creates drift between Terraform and what is actually running.
 >
 > **Relationship to live infrastructure:** The current Terraform in `infra/terraform/` reflects what is actually deployed in `smashbook-488121`. This document is the forward-looking blueprint. The diff between the two is the infrastructure backlog at any given time. When a stage is delivered, mark it ✅ in the [Stage Status](#stage-status) table and move the relevant items into a "Delivered" note.
+>
+> **Relationship to the issue backlog:** Stages are anchored to the sprint plan in the GitHub issue backlog (`issues.json`). Each stage header cites the backlog issues it serves. When the backlog re-sprints a feature, the corresponding infrastructure moves stage with it — restructured 2026-06-12 against that backlog.
+>
+> **Go-live anchor:** **Production go-live takes place after Sprint 10.** Stages 1–4 are pre-go-live gates: by the end of Sprint 10 the core architecture — including the AI platform — must be in place, with a deliberately minimal set of launch AI features (revenue forecasting, insights dashboard, churn flagging, automated re-engagement). The bulk of AI functionality (gap detection, dynamic pricing, matchmaking, prediction, conversational AI) lands post-go-live in Stages 5–7, Sprints 11–15. The [Production Go-Live Checklist](#production-go-live-checklist-after-sprint-10) sits between Stage 4 and Stage 5 in this document because that is where it sits in time.
 >
 > **How to use this with Claude:** When you're ready to deliver a stage, ask Claude to "generate Terraform for Stage N from `INFRASTRUCTURE_TARGET_STATE.md`." Each stage is self-contained — file-by-file changes, new resources, IAM bindings, and import notes are listed explicitly so Claude can produce a complete PR-ready patch without needing to re-derive context from the architecture docs.
 
@@ -18,12 +22,15 @@ _Last updated: 2026-06-12 00:00 UTC_
 - [Suggested Ordering](#suggested-ordering)
 - [Stage 0 — Current State (Delivered)](#stage-0--current-state-delivered)
 - [Stage 1 — MVP Hardening (Sprint 4–6)](#stage-1--mvp-hardening-sprint-46)
-- [Stage 2 — Production Readiness (Sprint 6–7)](#stage-2--production-readiness-sprint-67)
-- [Stage 3 — AI Phase 1 (Sprint 7–8)](#stage-3--ai-phase-1-sprint-78)
-- [Stage 4 — AI Phase 2 (Sprint 9–10)](#stage-4--ai-phase-2-sprint-910)
-- [Stage 5 — AI Phase 3 (Sprint 11–12)](#stage-5--ai-phase-3-sprint-1112)
-- [Stage 6 — Cross-Tenant Analytics (Sprint 13+)](#stage-6--cross-tenant-analytics-sprint-13)
-- [Production Go-Live Checklist](#production-go-live-checklist)
+- [Stage 2 — Production Readiness (Sprint 7–8)](#stage-2--production-readiness-sprint-78)
+- [Stage 3 — Messaging & Notification Infrastructure (Sprint 9)](#stage-3--messaging--notification-infrastructure-sprint-9)
+- [Stage 4 — AI Core Platform + Launch AI (Sprint 9–10)](#stage-4--ai-core-platform--launch-ai-sprint-910)
+- [Production Go-Live Checklist (after Sprint 10)](#production-go-live-checklist-after-sprint-10)
+- [Stage 5 — Revenue & Engagement AI (Sprint 11–12)](#stage-5--revenue--engagement-ai-sprint-1112)
+- [Stage 6 — Prediction & Automation (Sprint 13)](#stage-6--prediction--automation-sprint-13)
+- [Stage 7 — Conversational AI & Anomaly Detection (Sprint 14–15)](#stage-7--conversational-ai--anomaly-detection-sprint-1415)
+- [Stage 8 — Cross-Tenant Analytics (Sprint 16+)](#stage-8--cross-tenant-analytics-sprint-16)
+- [Deferred — Do Not Build](#deferred--do-not-build)
 - [Cross-Cutting Conventions](#cross-cutting-conventions)
 - [Maintenance & Updates](#maintenance--updates)
 
@@ -33,15 +40,18 @@ _Last updated: 2026-06-12 00:00 UTC_
 
 Update this table as each stage is delivered. The stage is "Delivered" only when the Terraform is merged AND the resources are live AND drift has been verified with `terraform plan`.
 
-| Stage | Scope | Sprint | Status | Delivered date |
-|---|---|---|---|---|
-| 0 | Current state baseline | Sprint 1–3 | ✅ Delivered | 2026-04 |
-| 1 | MVP hardening | Sprint 4–6 | ✅ Delivered | 2026-05-10 |
-| 2 | Production readiness | Sprint 6–7 | 🟡 Pending | — |
-| 3 | AI Phase 1 | Sprint 7–8 | 🟡 Pending | — |
-| 4 | AI Phase 2 | Sprint 9–10 | 🟡 Pending | — |
-| 5 | AI Phase 3 | Sprint 11–12 | 🟡 Pending | — |
-| 6 | Cross-tenant analytics (BigQuery) | Sprint 13+ | 🟡 Pending | — |
+| Stage | Scope | Sprint | Backlog issues | Status | Delivered date |
+|---|---|---|---|---|---|
+| 0 | Current state baseline | Sprint 1–3 | — | ✅ Delivered | 2026-04 |
+| 1 | MVP hardening | Sprint 4–6 | — | ✅ Delivered (carried-forward gaps: §1.9, two Stripe handlers in §1.10) | 2026-05-10 |
+| 2 | Production readiness | Sprint 7–8 | #200, #259 | 🟠 In progress | — |
+| 3 | Messaging & notification infra | Sprint 9 | #130, #167 | 🟠 In progress | — |
+| 4 | AI core platform + launch AI | Sprint 9–10 | #201 | 🟠 In progress | — |
+| — | **Production go-live** | **After Sprint 10** | #138 | ⬜ Gate — see [checklist](#production-go-live-checklist-after-sprint-10) | — |
+| 5 | Revenue & engagement AI | Sprint 11–12 | #71, #72, #79, #82, #83, #92, #100, #86, #103, #115 | 🟡 Pending | — |
+| 6 | Prediction & automation | Sprint 13 | #74, #96, #97, #102 | 🟡 Pending | — |
+| 7 | Conversational AI & anomaly detection | Sprint 14–15 | #111, #112, #109, #110, #73, #78, #108 | 🟡 Pending | — |
+| 8 | Cross-tenant analytics (BigQuery) | Sprint 16+ | — | 🟡 Pending | — |
 
 ---
 
@@ -49,14 +59,16 @@ Update this table as each stage is delivered. The stage is "Delivered" only when
 
 The stages below are designed to be delivered in order. The reasoning:
 
-1. **Stage 1 (MVP hardening)** lands first because every item in it is a gap that exists *today* and would block production go-live regardless of AI work — Cloud Storage, read replica, pgvector, production environment scaffold, Terraform remote state. None of it is AI work and all of it derisks what comes next.
-2. **Stage 2 (production readiness)** is the "before any AI worker ships" pass — VPC connector, Cloud Armor, monitoring, the Anthropic and Vertex AI access. It is easy to skip and will bite hard the first time production traffic hits the platform.
-3. **Stage 3 (AI Phase 1)** is the first AI delivery — gap detection, dynamic pricing, dashboard insights. This is where the Terraform expansion gets significant: two new workers, three new scheduled jobs, plus operational jobs (partition management, archive, materialized view refresh) that are easy to forget but mandatory.
-4. **Stage 4 (AI Phase 2)** adds churn, segmentation, matchmaking, cancellation prediction. Mostly mechanical — more topics, more workers, more scheduled jobs — once Stage 3 has established the pattern.
-5. **Stage 5 (AI Phase 3)** is conversational booking, support chatbot, CV court analysis. This phase mostly reuses existing infrastructure (Anthropic for language tasks; pgvector already on Cloud SQL); only the competitor scrape job is genuinely new.
-6. **Stage 6 (BigQuery)** is deliberately last. The architecture is explicit that cross-tenant analytics is post-MVP, and it should not be introduced until there is a real reporting query that the four-tier read-path (Tier 1–3) cannot answer.
+1. **Stage 2 (production readiness)** is the "before any AI worker ships" pass — monitoring, AI provider access, the scheduled-job pattern, wallet settlement, SendGrid webhook. The backlog splits it across two sprints: [#200](https://github.com/kendavis23/SmashBook/issues/200) (Sprint 7 — §2.1 ✅, §2.5, §2.6; the old §2.2 LB work is now go-live item P1) and [#259](https://github.com/kendavis23/SmashBook/issues/259) (Sprint 8 — §2.3, §2.4, part of §2.7, §2.8).
+2. **Stage 3 (messaging & notification infra)** lands in Sprint 9 alongside the chat/support/admin feature sprint ([#130](https://github.com/kendavis23/SmashBook/issues/130), [#167](https://github.com/kendavis23/SmashBook/issues/167)). Mostly rides existing infrastructure; the genuinely new pieces are the booking-reminder and support-SLA crons.
+3. **Stage 4 (AI core platform + launch AI)** is the last pre-go-live stage ([#201](https://github.com/kendavis23/SmashBook/issues/201), Sprint 9–10). It stands up everything structural about the AI layer — `ai_inference_log` partition/archive jobs, worker idempotency, materialized-view refresh — plus the deliberately minimal launch AI feature set: revenue forecasting, insights dashboard, churn scoring, automated re-engagement campaigns, and the tournament status cron. Gap detection and dynamic pricing are **not** here — the backlog puts them in Sprint 11, after go-live.
+4. **Production go-live (after Sprint 10).** Everything in Stages 1–4 plus the go-live checklist items (P1 origin lockdown, P2 scheduler refactor, P3 CI/CD to production) must be done. Nothing below this line blocks launch.
+5. **Stage 5 (revenue & engagement AI)** is the first post-launch expansion — gap detection, dynamic pricing, matchmaking, smart push, competitor scrape, staffing recommendations (Sprints 11–12).
+6. **Stage 6 (prediction & automation)** adds cancellation prediction, skill ELO, auto-segmentation, and fully automated pricing (Sprint 13). Mostly mechanical — more topics, more workers, more scheduled jobs — once Stages 4–5 have established the pattern.
+7. **Stage 7 (conversational AI & anomaly detection)** is the chatbot, NL booking, and payment-anomaly phase (Sprints 14–15). Mostly reuses existing infrastructure.
+8. **Stage 8 (BigQuery)** is deliberately last. The architecture is explicit that cross-tenant analytics is post-MVP, and it should not be introduced until there is a real reporting query that the four-tier read-path (Tier 1–3) cannot answer.
 
-The single biggest risk in skipping the ordering is **worker idempotency (Stage 3.6)**. AI workers must deduplicate Pub/Sub redeliveries before they ship — without it, a single redelivered `gap-detected` event causes duplicate Anthropic API calls and duplicate notification sends. The DLQ work in Stage 1.6 covers the poison-message case; idempotency is the separate "same message delivered twice" case.
+The single biggest risk in skipping the ordering is **worker idempotency (Stage 4.6)**. AI workers must deduplicate Pub/Sub redeliveries before they ship — without it, a single redelivered `churn-scores-updated` event causes duplicate Anthropic API calls and duplicate re-engagement sends to real players. The DLQ work in Stage 1.7 covers the poison-message case; idempotency is the separate "same message delivered twice" case. This bites at go-live, not in Sprint 11 — the campaign worker ships in Stage 4.
 
 ---
 
@@ -129,7 +141,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 **Resources:**
 - `padel-media-staging` — booking receipts, court media, player avatars
 - `padel-exports-staging` — async CSV exports, signed-URL retrieval
-- `padel-ai-archive-staging` — `ai_inference_log` payload archives (>90 days). Pre-create the bucket now even though the archive job lands in Stage 3
+- `padel-ai-archive-staging` — `ai_inference_log` payload archives (>90 days). Pre-create the bucket now even though the archive job lands in Stage 4
 - IAM: runtime SA gets `roles/storage.objectAdmin` on media + exports + ai-archive buckets
 
 ### 1.3 Cloud SQL read replica
@@ -144,7 +156,7 @@ This is what is in `infra/terraform/` and live in `smashbook-488121` today. It i
 
 ### 1.4 pgvector enablement
 
-**Why:** Required for Stage 4 matchmaking and Stage 5 conversational booking. Cheap to enable now; expensive to retrofit.
+**Why:** Required for Stage 5 matchmaking and Stage 7 conversational booking. Cheap to enable now; expensive to retrofit.
 
 **Resources:**
 - Add `database_flags { name = "cloudsql.enable_pgvector" value = "on" }` to the primary instance
@@ -195,9 +207,9 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 
 ### 1.9 Additional Pub/Sub topic — `booking-cancelled`
 
-**Why:** `booking-events` carries all booking lifecycle messages but cancellations need independent fan-out at MVP: the booking worker must release waitlist slots immediately when a booking is cancelled, and in Stage 3 the gap detection worker needs cancellations to re-evaluate court utilisation. Keeping these as a single message type in `booking-events` means the gap detection worker would have to subscribe to all booking traffic and filter — noisy and wasteful. A dedicated topic is cleaner.
+**Why:** `booking-events` carries all booking lifecycle messages but cancellations need independent fan-out at MVP: the booking worker must release waitlist slots immediately when a booking is cancelled, and in Stage 5 the gap detection worker needs cancellations to re-evaluate court utilisation. Keeping these as a single message type in `booking-events` means the gap detection worker would have to subscribe to all booking traffic and filter — noisy and wasteful. A dedicated topic is cleaner. **Sprint 9 dependency:** the player waitlist story ([#17](https://github.com/kendavis23/SmashBook/issues/17) — "get notified when slot opens") rides this topic; it must land by Stage 3.
 
-**Design:** `padel-api` publishes to `booking-cancelled` at the point of cancellation (in addition to the existing `booking-events` publish). The booking worker subscribes to `booking-cancelled` for waitlist logic; the gap detection worker (Stage 3) adds a second subscription.
+**Design:** `padel-api` publishes to `booking-cancelled` at the point of cancellation (in addition to the existing `booking-events` publish). The booking worker subscribes to `booking-cancelled` for waitlist logic; the gap detection worker (Stage 5) adds a second subscription.
 
 **Resources:**
 - `google_pubsub_topic.booking_cancelled`
@@ -217,7 +229,7 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 |---|---|---|
 | `payment_intent.succeeded` | Mark booking paid; publish to `payment-events` for confirmation flow | ✅ Implemented |
 | `payment_intent.payment_failed` | Flag payment failed; notify staff; publish to `payment-events` | ✅ Implemented |
-| `charge.dispute.created` | Set `payments.dispute_status = 'open'`; queue for manual review | ❌ Not implemented |
+| `charge.dispute.created` | Set `payments.dispute_status = 'open'`; queue for manual review. **Prerequisite for the Stage 7 dispute auto-flagging story (#108)** | ❌ Not implemented |
 | `account.updated` | Sync `clubs.stripe_connect_status`; block bookings if account deactivated | ❌ Not implemented |
 | `payout.paid` | Populate `payments.stripe_payout_id` for affected transfers | ✅ Implemented |
 | `customer.subscription.*` / `invoice.*` (memberships on connect accounts) | Sync membership subscription state | ✅ Implemented |
@@ -242,15 +254,17 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 - [x] Production environment scaffold merged _(delivered 2026-05-10: `be-infra/terraform/prod/` with prod-tuned settings — HA, backups, `db-custom-2-4096`; no GCP project yet)_
 - [x] Backups and point-in-time recovery enabled on Cloud SQL _(delivered 2026-05-10: 15 retained, 19:00 UTC window, 7-day PITR)_
 - [x] DLQ topics + policies on three MVP subscriptions _(delivered 2026-05-10: `booking-events-dlq`, `payment-events-dlq`, `notification-events-dlq`; max 5 attempts; Pub/Sub service agent publisher granted)_
-- [ ] `booking-cancelled` topic + DLQ + booking worker subscription live (§1.9)
+- [ ] `booking-cancelled` topic + DLQ + booking worker subscription live (§1.9) — **now gates Stage 3 (waitlist notifications, #17)**
 - [x] `payout.paid` webhook handler implemented (§1.10)
 - [ ] Stripe webhook handlers for `charge.dispute.created`, `account.updated` implemented (§1.10)
 
 ---
 
-## Stage 2 — Production Readiness (Sprint 6–7)
+## Stage 2 — Production Readiness (Sprint 7–8)
 
 > **Goal:** everything that must exist *before* the first AI worker ships and *before* production go-live. After this stage the platform is operationally safe to run real customer traffic.
+>
+> **Backlog mapping:** split across two issues — [#200](https://github.com/kendavis23/SmashBook/issues/200) (Sprint 7, in progress: §2.1 ✅ delivered, §2.5, §2.6; the §2.2 LB work it references has been relocated to go-live item P1) and [#259](https://github.com/kendavis23/SmashBook/issues/259) (Sprint 8: §2.3, §2.4, part of §2.7, §2.8).
 
 ### 2.1 Serverless VPC connector — ✅ Delivered (staging, 2026-05-29)
 
@@ -264,7 +278,7 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 
 ### 2.2 Global HTTPS LB + Cloud Armor origin lockdown — moved to Production Go-Live Checklist
 
-This task is **prod-only** — the public front door only exists once a production GCP project does, and staging stays on the plain `run.app` URL. It has been relocated to the [Production Go-Live Checklist](#production-go-live-checklist) as **P1**, where the full design, Terraform sketch, and validation strategy now live. Section numbers 2.3–2.8 below are unchanged.
+This task is **prod-only** — the public front door only exists once a production GCP project does, and staging stays on the plain `run.app` URL. It has been relocated to the [Production Go-Live Checklist](#production-go-live-checklist-after-sprint-10) as **P1**, where the full design, Terraform sketch, and validation strategy now live. Section numbers 2.3–2.8 below are unchanged.
 
 ### 2.3 Monitoring & alerting
 
@@ -282,11 +296,11 @@ This task is **prod-only** — the public front door only exists once a producti
 
 ### 2.4 AI provider access
 
-**Why:** Stage 3 needs Vertex AI and Anthropic from day one.
+**Why:** Stage 4 needs Vertex AI and Anthropic from day one.
 
 **Resources:**
 - New secret: `anthropic-api-key`
-- New secret: `firebase-fcm-credentials` (or migrate notification worker to Firebase Admin SDK with runtime SA — decide before this stage starts)
+- New secret: `firebase-fcm-credentials` (or migrate notification worker to Firebase Admin SDK with runtime SA — decide before this stage starts). **Stage 3 dependency:** push notifications (pre-game reminders, waitlist alerts) need this in Sprint 9 — do not let it slip behind the rest of #259.
 - IAM: runtime SA gets `roles/aiplatform.user` (Vertex AI access)
 
 ### 2.5 Scheduled-job invocation pattern (Cloud Scheduler → Pub/Sub)
@@ -306,7 +320,7 @@ This task is **prod-only** — the public front door only exists once a producti
 
 **Superseded:** the original design here was a dedicated user-managed `cloud-scheduler@PROJECT` SA with per-job `run.invoker` for direct OIDC HTTP calls to `padel-api`. That SA was never created and is **not needed** for triggering work in a running service — the managed service agent + Pub/Sub covers it, and the dedicated-SA/HTTP path would not survive the P1 lockdown anyway. The one **already-built** job still on the old `X-Platform-Key` HTTP pattern (`release-expired-holds`) is tracked for refactor as **P2** in the Production Go-Live Checklist.
 
-**Scope — this is for triggering a *running* service** (`padel-api` or a worker). Cloud Run **Jobs** (§3.4) are a different mechanism: invoked by Scheduler → OIDC → the job's `:run` Admin API endpoint, which *does* use a small dedicated invoker SA with `roles/run.invoker` **on the job**. That path targets the Run Admin API, not `padel-api`, so it is unaffected by the P1 ingress lockdown and is sanctioned as-is. The anti-pattern being retired is specifically Scheduler → HTTP → `padel-api` with a static key.
+**Scope — this is for triggering a *running* service** (`padel-api` or a worker). Cloud Run **Jobs** (§4.4) are a different mechanism: invoked by Scheduler → OIDC → the job's `:run` Admin API endpoint, which *does* use a small dedicated invoker SA with `roles/run.invoker` **on the job**. That path targets the Run Admin API, not `padel-api`, so it is unaffected by the P1 ingress lockdown and is sanctioned as-is. The anti-pattern being retired is specifically Scheduler → HTTP → `padel-api` with a static key.
 
 ### 2.6 Wallet settlement cron
 
@@ -327,6 +341,8 @@ This task is **prod-only** — the public front door only exists once a producti
 
 Production-readiness cron jobs beyond wallet settlement. All follow the standard **Cloud Scheduler → Pub/Sub → push** pattern from §2.5 — **not** a direct HTTP target, which does not survive the prod ingress lockdown (P1). Each job publishes an `event_type` to a topic; a push subscription delivers it to its handler. `wallet-settle-debts` is listed here for completeness; its full resource spec is in §2.6.
 
+**Note on `payment-retry-job`:** this is the plain *operational* retry cron (re-attempt failed charges on a backoff schedule) and stays here as pre-go-live production hygiene. The *AI-flavoured* version — auto-flagging and intelligent retry to minimise revenue leakage ([#78](https://github.com/kendavis23/SmashBook/issues/78), Sprint 15) — is a Stage 7 concern that layers scoring on top of this cron; it does not replace it.
+
 | Job | Schedule | Purpose | Status |
 |---|---|---|---|
 | `wallet-settle-debts` | `0 2 * * *` (daily 02:00 UTC) | Settle accumulated `wallet_club_debts` to club Stripe Connect accounts (see §2.6 for full resource spec) | ❌ Not implemented |
@@ -338,7 +354,7 @@ Production-readiness cron jobs beyond wallet settlement. All follow the standard
 
 ### 2.8 Inbound Webhooks (SendGrid)
 
-**Why:** SendGrid pushes delivery events (delivered, opened, clicked, bounced, unsubscribed, spam report) to a webhook endpoint. Without this endpoint the `message_deliveries` status tracking is permanently stuck at `sent` — no opened/clicked/bounced/converted data, no campaign analytics, no re-engagement logic. This is the delivery-side equivalent of the Stripe webhook and is equally load-bearing for production.
+**Why:** SendGrid pushes delivery events (delivered, opened, clicked, bounced, unsubscribed, spam report) to a webhook endpoint. Without this endpoint the `message_deliveries` status tracking is permanently stuck at `sent` — no opened/clicked/bounced/converted data, no campaign analytics, no re-engagement logic. This is the delivery-side equivalent of the Stripe webhook and is equally load-bearing for production. **Stage 4 dependency:** the launch re-engagement campaigns (#101) measure open/click through this webhook — it must be live before campaign analytics mean anything.
 
 **Resources:**
 - New endpoint on `padel-api`: `POST /api/v1/sendgrid/webhook`
@@ -361,6 +377,7 @@ Production-readiness cron jobs beyond wallet settlement. All follow the standard
 - [x] VPC connector live and attached to all Cloud Run services _(delivered 2026-05-29: `padel-connector-staging`, `10.8.0.0/28`; all four services on `PRIVATE_RANGES_ONLY`)_
 - [ ] At minimum 6 monitoring alert policies firing to a real notification channel
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`
+- [ ] `firebase-fcm-credentials` secret (or Admin SDK decision) resolved — gates Stage 3 push notifications
 - [ ] Scheduled-job Pub/Sub topic(s) + push subscriptions live; Cloud Scheduler service agent has `pubsub.publisher` (per §2.5)
 - [ ] Wallet settlement cron live via Scheduler → Pub/Sub → settlement handler, daily
 - [ ] SendGrid webhook endpoint live, signature verification passing, `message_deliveries` rows updating (§2.8)
@@ -368,63 +385,103 @@ Production-readiness cron jobs beyond wallet settlement. All follow the standard
 
 ---
 
-## Stage 3 — AI Phase 1 (Sprint 7–8)
+## Stage 3 — Messaging & Notification Infrastructure (Sprint 9)
 
-> **Goal:** ship gap detection, dynamic pricing, revenue forecasting, and AI insights dashboard. This is where Terraform expansion gets significant.
+> **Goal:** the infrastructure behind the Sprint 9 messaging/support/admin feature sprint — in-app chat and support ([#64](https://github.com/kendavis23/SmashBook/issues/64), [#66](https://github.com/kendavis23/SmashBook/issues/66)), staff→player messaging ([#48](https://github.com/kendavis23/SmashBook/issues/48)), pre-game reminders ([#42](https://github.com/kendavis23/SmashBook/issues/42)), waitlist notifications ([#17](https://github.com/kendavis23/SmashBook/issues/17)), and announcements ([#67](https://github.com/kendavis23/SmashBook/issues/67)).
+>
+> **Backlog mapping:** [#130](https://github.com/kendavis23/SmashBook/issues/130) and [#167](https://github.com/kendavis23/SmashBook/issues/167) (both Sprint 9, in progress).
+>
+> Most of this sprint deliberately rides existing infrastructure — the new GCP surface is two crons. The heavy lifting is application-level.
 
-### 3.1 New Pub/Sub topics
+### 3.1 What rides on existing infrastructure (no new GCP resources)
 
-| Topic | DLQ required | Published by | Consumed by |
-|---|---|---|---|
-| `utilisation-snapshots` | yes | `utilisation-snapshot-job` | `padel-gap-detection-worker` |
-| `gap-detected` | yes | `gap_detection_service` (in `padel-api`) | `padel-campaign-worker`, `padel-notification-worker` |
+- **Chat / support tickets** — `support_tickets` + `support_messages` via `padel-api` (one inbox, per the May 2026 data-model simplification). Request/response over the API; no dedicated chat service, no websocket infra at this stage.
+- **Staff→player messaging and announcements** — publish to the existing `notification-events` topic; `padel-notification-worker` dispatches. `announcement-expiry-job` is already scoped in §2.7.
+- **Email delivery + engagement tracking** — SendGrid (existing secret) + the §2.8 webhook.
+- **Push notifications** — Firebase FCM via the `firebase-fcm-credentials` secret from §2.4. Verify the notification worker is actually wired to FCM as part of this stage; that secret decision gates this.
+- **Waitlist slot-open notifications** — ride the `booking-cancelled` topic (§1.9). ⚠️ §1.9 is still an open Stage 1 item and is a hard prerequisite for [#17](https://github.com/kendavis23/SmashBook/issues/17); `waitlist-offer-expiry-job` is in §2.7.
 
-Add both to the `pubsub_topics` local in `pubsub.tf`. Each DLQ follows the Stage 1.6 pattern.
+### 3.2 New scheduled job — `booking-reminder-job`
 
-### 3.2 New Cloud Run worker services
+**Why:** Pre-game reminder notifications ([#42](https://github.com/kendavis23/SmashBook/issues/42)) need a sweep that finds bookings starting within the reminder window that have not yet been reminded, and publishes a reminder event per booking. This job was previously missing from this document entirely.
 
-| Service | Image | Subscribes to |
-|---|---|---|
-| `padel-gap-detection-worker` | `padel-worker` | `utilisation-snapshots`, `booking-cancelled` (Stage 1 topic — cancellations re-trigger gap evaluation) |
-| `padel-campaign-worker` | `padel-worker` | `gap-detected` (more topics added in Stage 4) |
-
-Both follow the existing worker pattern: `google_cloud_run_v2_service` + push subscription + `pubsub.serviceAgent` invoker binding + DLQ.
-
-### 3.3 Notification worker fan-in
-
-**Why:** Notification worker now consumes `gap-detected` in addition to `notification-events`.
-
-**Resources:**
-- New `google_pubsub_subscription.notification_worker_gap_detected` pointing at the same `padel-notification-worker` service URI
-
-### 3.4 Cloud Run Jobs (scheduled)
+**Resources** (Scheduler → Pub/Sub pattern, §2.5):
 
 | Job | Schedule | Purpose | Status |
 |---|---|---|---|
-| `utilisation-snapshot-job` | Hourly | Compute snapshots, publish to `utilisation-snapshots` | ❌ Not implemented |
-| `revenue-forecast-job` | Daily | Vertex AI revenue forecast | ❌ Not implemented |
-| `dashboard-insights-job` | Daily | Anthropic-generated club insight summaries | ❌ Not implemented |
+| `booking-reminder-job` | `*/15 * * * *` | Find confirmed bookings with `start_datetime` inside the club's reminder window and no reminder sent; publish one event per booking to `notification-events`; mark reminded (idempotent — a flag/timestamp on the booking, so a re-run never double-sends) | ❌ Not implemented |
+| `support-ticket-sla-job` | Hourly | Escalate support tickets nearing SLA breach; flag for staff review. _(Pulled forward from the old AI Phase 2 stage — support ships in Sprint 9, so its SLA sweep does too.)_ | ❌ Not implemented |
+
+### Stage 3 deliverables checklist
+
+- [ ] `booking-cancelled` topic live (§1.9 carried-forward item) and waitlist notifications flowing
+- [ ] `booking-reminder-job` live on the §2.5 pattern; no duplicate reminders on re-run
+- [ ] `support-ticket-sla-job` live
+- [ ] FCM push delivery verified end-to-end (secret from §2.4, notification worker wired)
+- [ ] Chat/support and staff messaging flows confirmed to need no further GCP resources (or this stage updated if that turns out false)
+
+---
+
+## Stage 4 — AI Core Platform + Launch AI (Sprint 9–10)
+
+> **Goal:** the last pre-go-live stage. Stand up everything *structural* about the AI layer — inference logging, partition/archive jobs, worker idempotency, materialized-view refresh — and ship the deliberately **minimal launch AI feature set**: revenue forecasting ([#75](https://github.com/kendavis23/SmashBook/issues/75)), AI insights dashboard ([#76](https://github.com/kendavis23/SmashBook/issues/76)), churn auto-flagging ([#99](https://github.com/kendavis23/SmashBook/issues/99)), automated re-engagement campaigns ([#101](https://github.com/kendavis23/SmashBook/issues/101)), off-peak discount notifications ([#80](https://github.com/kendavis23/SmashBook/issues/80)), automated booking comms ([#91](https://github.com/kendavis23/SmashBook/issues/91)), and the tournament status cron ([#131](https://github.com/kendavis23/SmashBook/issues/131)).
+>
+> **Backlog mapping:** [#201](https://github.com/kendavis23/SmashBook/issues/201) (Sprint 9, in progress).
+>
+> **Deliberately not here:** gap detection and dynamic pricing — the old "AI Phase 1" headliners. The backlog puts those stories in Sprint 11 ([#79](https://github.com/kendavis23/SmashBook/issues/79), [#71](https://github.com/kendavis23/SmashBook/issues/71)), after go-live, so their infrastructure (the `utilisation-snapshots`/`gap-detected` topics, the gap detection worker, the gap crons) moved to Stage 5. At go-live, the AI *platform* is fully in place; the AI *feature surface* is small.
+
+### 4.1 New Pub/Sub topics
+
+| Topic | DLQ required | Published by | Consumed by |
+|---|---|---|---|
+| `churn-scores-updated` | yes | `padel-churn-worker` | `padel-campaign-worker` |
+| `campaign-triggered` | yes | `campaign_service` | `padel-notification-worker` |
+
+Add both to the `pubsub_topics` local in `pubsub.tf`. Each DLQ follows the Stage 1.7 pattern.
+
+### 4.2 New Cloud Run worker services
+
+| Service | Image | Subscribes to |
+|---|---|---|
+| `padel-campaign-worker` | `padel-worker` | `churn-scores-updated` (more topics added in Stages 5–6) |
+| `padel-churn-worker` | `padel-worker` | none — scheduled batch (no push subscription) |
+
+Both follow the existing worker pattern: `google_cloud_run_v2_service` + push subscription + `pubsub.serviceAgent` invoker binding + DLQ. The churn worker has no push subscription — it is a long-running batch process triggered by scheduled invocation; if a future review prefers a Cloud Run Job for it, that is also valid. The architecture treats it as a service for parity with other workers.
+
+### 4.3 Notification worker fan-in
+
+**Why:** Notification worker now consumes `campaign-triggered` in addition to `notification-events`.
+
+**Resources:**
+- New `google_pubsub_subscription.notification_worker_campaign_triggered` pointing at the same `padel-notification-worker` service URI
+
+### 4.4 Cloud Run Jobs (scheduled)
+
+| Job | Schedule | Purpose | Status |
+|---|---|---|---|
+| `revenue-forecast-job` | Daily | Vertex AI revenue forecast (#75) | ❌ Not implemented |
+| `dashboard-insights-job` | Daily | Anthropic-generated club insight summaries (#76) | ❌ Not implemented |
+| `churn-scoring-job` | Daily | Score every active player; write `player_engagement_scores`; publish `churn-scores-updated` (#99) | ❌ Not implemented |
+| `campaign-send-job` | Dynamic (per `campaigns.scheduled_at`) | Fire `scheduled` campaigns; Anthropic draft generation; dispatch via SendGrid/Firebase (#101) | ❌ Not implemented |
+| `campaign-expiry-job` | Daily | Mark campaigns `completed` where `sent_at` is set and send window has passed | ❌ Not implemented |
+| `tournament-status-advance-job` | Daily | Auto-advance tournament status at registration deadline, start date, and end date (#131 — tournaments ship Sprint 10) | ❌ Not implemented |
 | `materialized-view-refresh-job-hourly` | Hourly | `REFRESH MATERIALIZED VIEW CONCURRENTLY` for hourly views | ❌ Not implemented |
 | `materialized-view-refresh-job-nightly` | Nightly | Same, for nightly views | ❌ Not implemented |
 | `ai-inference-log-partition-job` | Monthly (25th) | Create next month's partition on `ai_inference_log` | ❌ Not implemented |
 | `ai-inference-log-archive-job` | Nightly | Archive payloads >90 days to `padel-ai-archive-staging` | ❌ Not implemented |
-| `worker-event-dedup-cleanup-job` | Daily | `DELETE FROM worker_event_dedup WHERE processed_at < now() - interval '24 hours'` (see §3.6) | ❌ Not implemented |
-| `weather-alert-check-job` | Hourly | Fetch weather for clubs with `weather_alerts_enabled`; dispatch alerts if rain/extreme conditions predicted | ❌ Not implemented |
-| `gap-offer-expiry-job` | `*/5 * * * *` | Mark `gap_detection_events.status = 'expired'` where `offer_expires_at <= NOW()` | ❌ Not implemented |
-| `campaign-send-job` | Dynamic (per `campaigns.scheduled_at`) | Fire `scheduled` campaigns; Anthropic draft generation; dispatch via SendGrid/Firebase | ❌ Not implemented |
-| `campaign-expiry-job` | Daily | Mark campaigns `completed` where `sent_at` is set and send window has passed | ❌ Not implemented |
+| `worker-event-dedup-cleanup-job` | Daily | `DELETE FROM worker_event_dedup WHERE processed_at < now() - interval '24 hours'` (see §4.6) | ❌ Not implemented |
 
 Each is `google_cloud_run_v2_job` + `google_cloud_scheduler_job` (with `http_target` invoking the job's `:run` Admin API endpoint) + `roles/run.invoker` granted on the job to a **dedicated Cloud Scheduler invoker SA introduced with this stage**. This is the sanctioned Cloud Run *Jobs* path (§2.5 "Scope"): it targets the Run Admin API, not `padel-api`, so it is unaffected by the P1 ingress lockdown — distinct from the retired Scheduler → HTTP → `padel-api` pattern.
 
-### 3.5 IAM additions
+### 4.5 IAM additions
 
 - Runtime SA: `roles/aiplatform.user` (already added in Stage 2.4)
 - Runtime SA: `roles/storage.objectAdmin` on `padel-ai-archive-staging` (already added in Stage 1.2)
-- No new bindings unique to Stage 3 if Stages 1–2 were delivered
+- No new bindings unique to Stage 4 if Stages 1–2 were delivered
 
-### 3.6 Worker idempotency table
+### 4.6 Worker idempotency table
 
-**Why:** Pub/Sub guarantees at-least-once delivery, so the same `gap-detected` event can arrive twice. Without deduplication, that means two Anthropic API calls and two notification sends per duplicate. AI workers must be idempotent before they ship.
+**Why:** Pub/Sub guarantees at-least-once delivery, so the same `churn-scores-updated` event can arrive twice. Without deduplication, that means two Anthropic API calls and two re-engagement sends to a real player per duplicate. AI workers must be idempotent before they ship — and the first AI worker (campaign) ships in this stage, before go-live.
 
 **Design decision (2026-04-29):** use a Postgres table rather than Memorystore (Redis). Rationale:
 - Single-purpose dedup cache does not justify a separate managed service (~£35–40/month for Memorystore Basic in `europe-west2`)
@@ -454,153 +511,37 @@ CREATE INDEX idx_worker_event_dedup_processed_at
 
 **Cleanup:**
 - New scheduled job `worker-event-dedup-cleanup-job` (daily) — `DELETE FROM worker_event_dedup WHERE processed_at < now() - interval '24 hours'`
-- Already included in the Stage 3.4 jobs table (12 jobs total)
+- Already included in the Stage 4.4 jobs table (11 jobs total)
 
-**Resources:** none in Terraform. The table is an Alembic migration; the cleanup job follows the Stage 3.4 pattern. Listed here only because the design choice is load-bearing for AI worker correctness.
-
-### Stage 3 deliverables checklist
-
-- [ ] Two new topics + DLQs live
-- [ ] Two new worker services deployed and consuming
-- [ ] Notification worker subscribed to `gap-detected`
-- [ ] 12 scheduled jobs running on their cadences (see §3.4 table)
-- [ ] `worker_event_dedup` table created and used by every AI worker
-- [ ] First successful `ai_inference_log` write observed in production
-
----
-
-## Stage 4 — AI Phase 2 (Sprint 9–10)
-
-> **Goal:** ship churn prediction, player segmentation, matchmaking, cancellation prediction, equipment/maintenance/staffing recommendations. Mechanical extension of Stage 3.
-
-### 4.1 New Pub/Sub topics
-
-| Topic | DLQ | Published by | Consumed by |
-|---|---|---|---|
-| `churn-scores-updated` | yes | `padel-churn-worker` | `padel-campaign-worker` |
-| `segment-assigned` | yes | `padel-segmentation-worker` | `padel-campaign-worker` |
-| `recommendation-created` | yes | `ai_recommendation_service` | `padel-notification-worker` |
-| `campaign-triggered` | yes | `campaign_service` | `padel-notification-worker` |
-| `match-result-recorded` | yes | `padel-api` (staff score entry) | new `padel-skill-worker` (ELO update + training recommendation generation) |
-
-### 4.2 New Cloud Run worker services
-
-| Service | Image | Subscribes to |
-|---|---|---|
-| `padel-churn-worker` | `padel-worker` | none — scheduled (no push subscription) |
-| `padel-segmentation-worker` | `padel-worker` | none — DB-driven (no push subscription) |
-
-Note: these two have no push subscription. They are deployed as Cloud Run services because they hold long-running batch processes triggered by scheduled invocation; if a future review prefers Cloud Run Jobs for them, that is also valid. The architecture treats them as services for parity with other workers.
-
-### 4.3 Campaign worker fan-in
-
-Update `padel-campaign-worker` to subscribe to three additional topics:
-- `churn-scores-updated`
-- `segment-assigned`
-- (`gap-detected` already subscribed in Stage 3)
-
-### 4.4 Notification worker fan-in
-
-Add subscriptions for `recommendation-created` and `campaign-triggered` pointing at `padel-notification-worker`.
-
-### 4.5 Cloud Run Jobs (scheduled)
-
-| Job | Schedule | Purpose | Status |
-|---|---|---|---|
-| `cancellation-prediction-job` | Every 6h | Score upcoming bookings within 24h; write `cancellation_predictions` | ❌ Not implemented |
-| `churn-scoring-job` | Daily | Score every active player; write `player_engagement_scores` | ❌ Not implemented |
-| `embedding-refresh-job` | Nightly | Refresh `player_profiles.embedding` (pgvector) from booking history | ❌ Not implemented |
-| `equipment-prediction-job` | Weekly | Score equipment replacement needs; write `equipment_replacement_predictions` | ❌ Not implemented |
-| `maintenance-scheduling-job` | Weekly | Generate court/equipment maintenance recommendations | ❌ Not implemented |
-| `staffing-recommendation-job` | Weekly | Generate staffing recommendations from demand forecasts | ❌ Not implemented |
-| `wallet-auto-topup-job` | `*/30 * * * *` | Trigger Stripe charge for wallets where `balance <= auto_topup_threshold` | ❌ Not implemented |
-| `skill-rating-update-job` | Nightly batch | Compute ELO deltas from `match_results`; update `skill_level`; write `skill_level_history` | ❌ Not implemented |
-| `cancellation-prompts-job` | Daily | Identify high-risk bookings from `cancellation_predictions`; prompt players to confirm or release; write `player_prompted_at` | ❌ Not implemented |
-| `tournament-status-advance-job` | Daily | Auto-advance tournament status at registration deadline, start date, and end date | ❌ Not implemented |
-| `support-ticket-sla-job` | Hourly | Escalate support tickets nearing SLA breach; flag for staff review | ❌ Not implemented |
-| `maintenance-reminders-job` | Daily | Notify staff of upcoming `equipment_maintenance_log` entries | ❌ Not implemented |
-| `equipment-reorder-check-job` | Weekly | Flag inventory where `quantity_available <= reorder_threshold`; create AI purchase recommendations | ❌ Not implemented |
-
-Same pattern as Stage 3.4.
+**Resources:** none in Terraform. The table is an Alembic migration; the cleanup job follows the Stage 4.4 pattern. Listed here only because the design choice is load-bearing for AI worker correctness.
 
 ### Stage 4 deliverables checklist
 
-- [ ] Five new topics + DLQs live (including `match-result-recorded`)
-- [ ] Three new worker services deployed (churn, segmentation, skill)
-- [ ] Campaign and notification workers consuming all assigned topics
-- [ ] `padel-skill-worker` consuming `match-result-recorded`, writing ELO deltas and training recommendations
-- [ ] 13 new scheduled jobs running (see §4.5 table)
+- [ ] Two new topics + DLQs live (`churn-scores-updated`, `campaign-triggered`)
+- [ ] Campaign and churn workers deployed; campaign worker consuming `churn-scores-updated`
+- [ ] Notification worker subscribed to `campaign-triggered`
+- [ ] 11 scheduled jobs running on their cadences (see §4.4 table)
+- [ ] `worker_event_dedup` table created and used by every AI worker
+- [ ] First successful `ai_inference_log` write observed in staging; re-verified in production at go-live
 
 ---
 
-## Stage 5 — AI Phase 3 (Sprint 11–12)
+## Production Go-Live Checklist (after Sprint 10)
 
-> **Goal:** conversational booking, AI support chatbot, CV court analysis, competitor pricing intelligence. This phase mostly reuses existing infrastructure.
-
-### 5.1 New Cloud Run Job
-
-| Job | Schedule | Purpose |
-|---|---|---|
-| `competitor-scrape-job` | weekly | Scrape competitor prices, write `competitor_price_snapshots` |
-
-### 5.2 Notes on what does *not* need new infra
-
-- **Conversational booking** — uses Anthropic API (existing) + pgvector (Stage 1) + `padel-api` (existing)
-- **AI support chatbot** — same as above
-- **CV court analysis** — uses Vertex AI (existing) + Cloud Storage (Stage 1)
-- **Synchronous AI calls** generally — go through `padel-api`, no new service needed
-
-### 5.3 IAM review
-
-By this stage, runtime SA permissions should be reviewed against principle of least privilege. Anything broadly granted in earlier stages that isn't needed should be tightened. Add an audit-log-based review here.
-
-### Stage 5 deliverables checklist
-
-- [ ] Competitor scrape job live and writing snapshots
-- [ ] Phase 3 features all reachable via existing infra (no Terraform-blocked features)
-- [ ] IAM least-privilege review completed and recorded
-
----
-
-## Stage 6 — Cross-Tenant Analytics (Sprint 13+)
-
-> **Goal:** introduce BigQuery only when there is a real reporting query the four-tier read-path cannot answer. Until that exists, do not build this stage.
-
-### 6.1 BigQuery dataset
-
-**Resources:**
-- `google_bigquery_dataset.platform_analytics` — `EU` location, default table expiration off
-- `google_bigquery_table` for streamed event tables (one per Pub/Sub topic mirrored)
-
-### 6.2 Pub/Sub → BigQuery subscriptions
-
-For each topic that should mirror to BigQuery (start narrow — `booking-events`, `payment-events`, `ai_inference_log`-derived topic):
-- `google_pubsub_subscription` with `bigquery_config` block
-- IAM: BigQuery service agent gets `roles/bigquery.dataEditor` on the dataset
-
-### 6.3 Looker Studio / dashboards
-
-Out of Terraform scope — connected to BigQuery via console.
-
-### Stage 6 deliverables checklist
-
-- [ ] At least one cross-tenant query that previously could not be answered, now answered
-- [ ] BigQuery dataset live, three Pub/Sub mirrors streaming
-- [ ] First analytics dashboard wired to BigQuery
-
----
-
-## Production Go-Live Checklist
-
-> **Status: not started — no production GCP project exists yet.** This section is the running gate for everything that must be true *before* SmashBook serves real customers on a production GCP project, and the home for **prod-only** tasks that have no staging equivalent. It is **built up over time**: as each readiness item is identified it gets a row here, and go-live is blocked until every box is checked. Items are promoted here out of the Stage roadmap above when they turn out to be prod-only — they aren't really "delivered" until the prod cutover, so tracking them as Stage deliverables would be misleading.
+> **Go-live takes place after Sprint 10.** This section is the running gate for everything that must be true *before* SmashBook serves real customers on a production GCP project, and the home for **prod-only** tasks that have no staging equivalent. The pre-go-live stages are **1–4** (all of their deliverables checklists must be complete); Stages 5–8 are post-launch and nothing in them blocks the cutover. The checklist is **built up over time**: as each readiness item is identified it gets a row here, and go-live is blocked until every box is checked. Items are promoted here out of the Stage roadmap above when they turn out to be prod-only — they aren't really "delivered" until the prod cutover, so tracking them as Stage deliverables would be misleading.
 
 **Hard prerequisite for everything below:** a production GCP project, provisioned and with the `prod/` Terraform applied. The `prod/` scaffold exists (Stage 1.5) but points at no project yet — nothing in this checklist can be applied until that lands.
 
 ### Summary checklist
 
 - [ ] Production GCP project created and `prod/` Terraform applied (Stage 1.5)
+- [ ] Stage 1 carried-forward items closed (§1.9 `booking-cancelled`; `charge.dispute.created` + `account.updated` webhook handlers)
+- [ ] Stage 2 deliverables checklist complete (monitoring, AI provider access, scheduler pattern, wallet settlement, SendGrid webhook)
+- [ ] Stage 3 deliverables checklist complete (messaging, reminders, FCM push)
+- [ ] Stage 4 deliverables checklist complete (AI platform + launch AI features live)
 - [ ] **P1 — Global HTTPS LB + Cloud Armor origin lockdown behind Cloudflare** (see below)
 - [ ] **P2 — Refactor `release-expired-holds` off the static-key HTTP target onto Scheduler → Pub/Sub** (see below; must land *before* P1's ingress flip)
+- [ ] **P3 — CI/CD pipeline from staging to production** (see below)
 - _(further go-live items added here over time — secrets cutover, DNS, data seeding, smoke tests, rollback plan, etc.)_
 
 ---
@@ -772,6 +713,205 @@ The two analytics jobs (`analytics-snapshot-daily`, `analytics-refresh-daily`) a
 
 ---
 
+### P3 — CI/CD pipeline from staging to production
+
+**Why:** Today the GitHub Actions pipeline deploys to staging only. Go-live needs a hardened path to production: build once, promote the same image, run migrations against the prod Cloud SQL instance before traffic shifts, and a manual approval gate between staging and prod.
+
+**Backlog mapping:** [#138](https://github.com/kendavis23/SmashBook/issues/138). ⚠️ **Sprint discrepancy:** the backlog currently places #138 in **Sprint 11**, but go-live is *after Sprint 10* — a production deploy pipeline must exist *at* the cutover, not after it. Treat #138 as a go-live gate and consider re-sprinting it into Sprint 10; flagged here so the conflict is visible rather than silently resolved.
+
+**Scope (high level — detail lives in the issue and `DEPLOYMENT.md` when built):**
+- Promote-not-rebuild: the image deployed to prod is the digest already verified in staging
+- `db-migration` step against prod Cloud SQL gated before traffic shift (same pattern as the staging `db-migration` job in §1.8)
+- Manual approval (GitHub environment protection) between staging and prod deploy
+- Prod deploy SA scoped to the prod project only — do not reuse the staging deployer's bindings
+
+**P3 checklist:**
+- [ ] Prod deploy workflow merged (promote staging-verified image by digest)
+- [ ] Prod migration step wired and gated before traffic shift
+- [ ] Manual approval gate on the prod environment
+- [ ] Prod deploy SA created with prod-project-only bindings
+- [ ] One full rehearsal deploy to the prod project completed before cutover
+
+---
+
+## Stage 5 — Revenue & Engagement AI (Sprint 11–12)
+
+> **Goal:** the first post-launch expansion — the revenue-side AI that was historically called "AI Phase 1/2": gap detection with targeted offers ([#79](https://github.com/kendavis23/SmashBook/issues/79), [#82](https://github.com/kendavis23/SmashBook/issues/82)), dynamic pricing ([#71](https://github.com/kendavis23/SmashBook/issues/71)), segment-targeting recommendations ([#72](https://github.com/kendavis23/SmashBook/issues/72)), AI slot suggestions ([#83](https://github.com/kendavis23/SmashBook/issues/83)), matchmaking ([#92](https://github.com/kendavis23/SmashBook/issues/92)), personalised re-engagement drafts ([#100](https://github.com/kendavis23/SmashBook/issues/100)) in Sprint 11; membership/top-up suggestions ([#86](https://github.com/kendavis23/SmashBook/issues/86)), staffing recommendations ([#103](https://github.com/kendavis23/SmashBook/issues/103)), and competitor pricing intelligence ([#115](https://github.com/kendavis23/SmashBook/issues/115)) in Sprint 12.
+
+### 5.1 New Pub/Sub topics
+
+| Topic | DLQ required | Published by | Consumed by |
+|---|---|---|---|
+| `utilisation-snapshots` | yes | `utilisation-snapshot-job` | `padel-gap-detection-worker` |
+| `gap-detected` | yes | `gap_detection_service` (in `padel-api`) | `padel-campaign-worker`, `padel-notification-worker` |
+| `recommendation-created` | yes | `ai_recommendation_service` | `padel-notification-worker` |
+
+Add all to the `pubsub_topics` local in `pubsub.tf`. Each DLQ follows the Stage 1.7 pattern. Note: the `ai_recommendations` table design decision (thin inbox vs unified table) is still open per `DATA_MODEL_TARGET_STATE.md` — resolve it before wiring `recommendation-created`.
+
+### 5.2 New Cloud Run worker services
+
+| Service | Image | Subscribes to |
+|---|---|---|
+| `padel-gap-detection-worker` | `padel-worker` | `utilisation-snapshots`, `booking-cancelled` (Stage 1 topic — cancellations re-trigger gap evaluation) |
+
+Follows the existing worker pattern: `google_cloud_run_v2_service` + push subscription + `pubsub.serviceAgent` invoker binding + DLQ.
+
+### 5.3 Worker fan-in
+
+- `padel-campaign-worker` adds a subscription on `gap-detected` (already consuming `churn-scores-updated` since Stage 4)
+- `padel-notification-worker` adds subscriptions on `gap-detected` and `recommendation-created`
+
+### 5.4 Cloud Run Jobs (scheduled)
+
+Same Cloud Run Jobs pattern as §4.4 (Scheduler → OIDC → `:run` Admin API, dedicated invoker SA).
+
+| Job | Schedule | Purpose | Sprint | Status |
+|---|---|---|---|---|
+| `utilisation-snapshot-job` | Hourly | Compute snapshots, publish to `utilisation-snapshots` | 11 | ❌ Not implemented |
+| `gap-offer-expiry-job` | `*/5 * * * *` | Mark `gap_detection_events.status = 'expired'` where `offer_expires_at <= NOW()` | 11 | ❌ Not implemented |
+| `embedding-refresh-job` | Nightly | Refresh `player_profiles.embedding` (pgvector) from booking history — matchmaking (#92) | 11 | ❌ Not implemented |
+| `wallet-auto-topup-job` | `*/30 * * * *` | Trigger Stripe charge for wallets where `balance <= auto_topup_threshold` (#86) | 12 | ❌ Not implemented |
+| `staffing-recommendation-job` | Weekly | Generate staffing recommendations from demand forecasts (#103) | 12 | ❌ Not implemented |
+| `competitor-scrape-job` | Weekly | Scrape competitor prices, write `competitor_price_snapshots` (#115) | 12 | ❌ Not implemented |
+
+### 5.5 Dynamic pricing — no new infrastructure
+
+Dynamic pricing (#71) is the platform's only **synchronous** AI call: `padel-api` → Vertex AI inline in the booking request, logged to `ai_inference_log`, falling back to `pricing_rules.price_per_slot` when unavailable. Everything it needs (Vertex access §2.4, inference logging Stage 4) already exists — it is feature work, not Terraform work. At this stage pricing runs **staff-reviewed**; full automation is Stage 6 (#74).
+
+### Stage 5 deliverables checklist
+
+- [ ] Three new topics + DLQs live
+- [ ] Gap detection worker deployed, consuming `utilisation-snapshots` + `booking-cancelled`
+- [ ] Campaign and notification workers consuming their added topics
+- [ ] Six new scheduled jobs running (see §5.4 table)
+- [ ] Dynamic pricing live in the booking path with `pricing_rules` fallback verified
+- [ ] `ai_recommendations` design decision resolved before `recommendation-created` wiring
+
+---
+
+## Stage 6 — Prediction & Automation (Sprint 13)
+
+> **Goal:** the prediction layer and the shift from staff-reviewed to autonomous: fully automated dynamic pricing ([#74](https://github.com/kendavis23/SmashBook/issues/74)), cancellation prediction with confirm-or-release prompts ([#96](https://github.com/kendavis23/SmashBook/issues/96)), auto-updated skill ratings ([#97](https://github.com/kendavis23/SmashBook/issues/97)), and auto-segmentation ([#102](https://github.com/kendavis23/SmashBook/issues/102)).
+
+### 6.1 New Pub/Sub topics
+
+| Topic | DLQ required | Published by | Consumed by |
+|---|---|---|---|
+| `segment-assigned` | yes | `padel-segmentation-worker` | `padel-campaign-worker` |
+| `match-result-recorded` | yes | `padel-api` (staff score entry) | `padel-skill-worker` (ELO update + training recommendation generation) |
+
+### 6.2 New Cloud Run worker services
+
+| Service | Image | Subscribes to |
+|---|---|---|
+| `padel-segmentation-worker` | `padel-worker` | none — DB-driven batch (no push subscription) |
+| `padel-skill-worker` | `padel-worker` | `match-result-recorded` |
+
+The segmentation worker has no push subscription — like the churn worker (Stage 4.2), it is a long-running batch process triggered by scheduled invocation; a Cloud Run Job is an acceptable alternative if preferred at review.
+
+### 6.3 Worker fan-in
+
+- `padel-campaign-worker` adds a subscription on `segment-assigned`
+
+### 6.4 Cloud Run Jobs (scheduled)
+
+Same pattern as §4.4.
+
+| Job | Schedule | Purpose | Status |
+|---|---|---|---|
+| `cancellation-prediction-job` | Every 6h | Score upcoming bookings within 24h; write `cancellation_predictions` | ❌ Not implemented |
+| `cancellation-prompts-job` | Daily | Identify high-risk bookings from `cancellation_predictions`; prompt players to confirm or release; write `player_prompted_at` | ❌ Not implemented |
+| `skill-rating-update-job` | Nightly batch | Compute ELO deltas from `match_results`; update `skill_level`; write `skill_level_history` | ❌ Not implemented |
+
+### 6.5 Dynamic pricing automation — no new infrastructure
+
+#74 flips Sprint 11's staff-reviewed dynamic pricing (Stage 5.5) to fully automatic. This is an `ai_feature_flags` / application-config change plus monitoring vigilance — no Terraform. Make sure the Stage 2.3 alerting is extended with a price-anomaly guardrail alert before enabling autonomy.
+
+### Stage 6 deliverables checklist
+
+- [ ] Two new topics + DLQs live (`segment-assigned`, `match-result-recorded`)
+- [ ] Segmentation and skill workers deployed; skill worker consuming `match-result-recorded`, writing ELO deltas
+- [ ] Campaign worker consuming `segment-assigned`
+- [ ] Three new scheduled jobs running (see §6.4 table)
+- [ ] Dynamic pricing running autonomously with a guardrail alert in place
+
+---
+
+## Stage 7 — Conversational AI & Anomaly Detection (Sprint 14–15)
+
+> **Goal:** the conversational layer and payment intelligence: AI support triage and chatbot ([#111](https://github.com/kendavis23/SmashBook/issues/111), [#112](https://github.com/kendavis23/SmashBook/issues/112), Sprint 14), natural-language booking and AI assistant ([#109](https://github.com/kendavis23/SmashBook/issues/109), [#110](https://github.com/kendavis23/SmashBook/issues/110), Sprint 15), revenue anomaly detection ([#73](https://github.com/kendavis23/SmashBook/issues/73)), intelligent failed-payment retry ([#78](https://github.com/kendavis23/SmashBook/issues/78)), and dispute auto-flagging ([#108](https://github.com/kendavis23/SmashBook/issues/108)) (Sprint 15). This phase mostly reuses existing infrastructure.
+
+### 7.1 New Cloud Run Job
+
+| Job | Schedule | Purpose | Status |
+|---|---|---|---|
+| `revenue-anomaly-detection-job` | Daily | Vertex AI scoring of revenue/refund patterns per club; flag anomalies (drop / refund spike) for staff review (#73) | ❌ Not implemented |
+
+Same pattern as §4.4.
+
+### 7.2 Notes on what does *not* need new infra
+
+- **Conversational booking / AI assistant** (#109, #110) — uses Anthropic API (existing) + pgvector (Stage 1) + `padel-api` (existing)
+- **AI support chatbot / triage** (#111, #112) — same; rides the `support_tickets`/`support_messages` path built in Stage 3
+- **Intelligent payment retry** (#78) — layers Vertex scoring on top of the operational `payment-retry-job` from §2.7; no new resources
+- **Dispute auto-flagging** (#108) — rides the `charge.dispute.created` webhook handler (§1.10, a Stage 1 carried-forward item that must be closed at go-live)
+- **Synchronous AI calls** generally — go through `padel-api`, no new service needed
+
+### 7.3 IAM review
+
+By this stage, runtime SA permissions should be reviewed against principle of least privilege. Anything broadly granted in earlier stages that isn't needed should be tightened. Add an audit-log-based review here.
+
+### Stage 7 deliverables checklist
+
+- [ ] `revenue-anomaly-detection-job` live and flagging
+- [ ] Conversational/chatbot features all reachable via existing infra (no Terraform-blocked features)
+- [ ] IAM least-privilege review completed and recorded
+
+---
+
+## Stage 8 — Cross-Tenant Analytics (Sprint 16+)
+
+> **Goal:** introduce BigQuery only when there is a real reporting query the four-tier read-path cannot answer. Until that exists, do not build this stage.
+
+### 8.1 BigQuery dataset
+
+**Resources:**
+- `google_bigquery_dataset.platform_analytics` — `EU` location, default table expiration off
+- `google_bigquery_table` for streamed event tables (one per Pub/Sub topic mirrored)
+
+### 8.2 Pub/Sub → BigQuery subscriptions
+
+For each topic that should mirror to BigQuery (start narrow — `booking-events`, `payment-events`, `ai_inference_log`-derived topic):
+- `google_pubsub_subscription` with `bigquery_config` block
+- IAM: BigQuery service agent gets `roles/bigquery.dataEditor` on the dataset
+
+### 8.3 Looker Studio / dashboards
+
+Out of Terraform scope — connected to BigQuery via console.
+
+### Stage 8 deliverables checklist
+
+- [ ] At least one cross-tenant query that previously could not be answered, now answered
+- [ ] BigQuery dataset live, three Pub/Sub mirrors streaming
+- [ ] First analytics dashboard wired to BigQuery
+
+---
+
+## Deferred — Do Not Build
+
+Removed from the stage roadmap 2026-06-12 because their backlog stories are **On Hold** or unscheduled. Parked here (not deleted) so the original designs are recoverable; **do not build any of these** until the backlog re-sprints the story. The descope of weather and equipment/maintenance AI is also recorded in `CLAUDE.md` and `DATA_MODEL_TARGET_STATE.md`.
+
+| Job / capability | Was in | Backlog story | Status |
+|---|---|---|---|
+| `weather-alert-check-job` (hourly weather fetch + alert dispatch) | old Stage 3 | [#84](https://github.com/kendavis23/SmashBook/issues/84) | On Hold — all weather features descoped |
+| `equipment-prediction-job` (weekly replacement-need scoring) | old Stage 4 | [#104](https://github.com/kendavis23/SmashBook/issues/104) | On Hold — equipment/maintenance AI descoped |
+| `maintenance-scheduling-job` (weekly maintenance recommendations) | old Stage 4 | [#107](https://github.com/kendavis23/SmashBook/issues/107) | On Hold |
+| `maintenance-reminders-job` (daily `equipment_maintenance_log` reminders) | old Stage 4 | [#106](https://github.com/kendavis23/SmashBook/issues/106) (related) | On Hold |
+| `equipment-reorder-check-job` (weekly stock-depletion purchase recommendations) | old Stage 4 | [#105](https://github.com/kendavis23/SmashBook/issues/105) | On Hold |
+| CV court video analysis (Vertex AI + Cloud Storage) | old Stage 5 | [#114](https://github.com/kendavis23/SmashBook/issues/114) | Backlog, unscheduled |
+
+---
+
 ## Cross-Cutting Conventions
 
 These apply to every stage. Generated Terraform should follow them by default.
@@ -827,9 +967,10 @@ Any resource that exists in GCP before its Terraform block is added must be impo
 This document is a living blueprint. Update it when any of the following happens:
 
 1. **A stage is delivered.** Mark ✅ in the [Stage Status](#stage-status) table, set the delivered date, and move any items that were descoped or modified into a "Delivered notes" subsection on that stage. Do not delete the original entries — the diff is useful.
-2. **A new feature is added that needs new infrastructure.** Add it to the appropriate stage. If it doesn't fit any existing stage, propose a new stage in the table, justify the placement, and update [Suggested Ordering](#suggested-ordering).
-3. **An ADR or design doc changes the target architecture.** Reflect it here. The bullet "Cloud SQL one primary + one read replica" came from `ARCHITECTURE.md` §11; if §11 changes, this doc changes.
-4. **GCP introduces or deprecates a service** that affects the design — e.g. if a managed service is replaced by something newer, update the affected stage and explain the swap in a note. The original Memorystore-vs-Postgres dedup decision (Stage 3.6) is an example of this pattern.
+2. **The issue backlog re-sprints a feature.** Stages are anchored to backlog sprints (`issues.json`); if a story moves sprint, move its infrastructure to the matching stage and note the move. The 2026-06-12 restructure (AI Phase 1 split around the go-live line; weather/equipment jobs parked in [Deferred](#deferred--do-not-build)) is the template for this.
+3. **A new feature is added that needs new infrastructure.** Add it to the appropriate stage. If it doesn't fit any existing stage, propose a new stage in the table, justify the placement, and update [Suggested Ordering](#suggested-ordering).
+4. **An ADR or design doc changes the target architecture.** Reflect it here. The bullet "Cloud SQL one primary + one read replica" came from `ARCHITECTURE.md` §11; if §11 changes, this doc changes.
+5. **GCP introduces or deprecates a service** that affects the design — e.g. if a managed service is replaced by something newer, update the affected stage and explain the swap in a note. The original Memorystore-vs-Postgres dedup decision (Stage 4.6) is an example of this pattern.
 
 When Claude is asked to generate Terraform for a stage:
 
