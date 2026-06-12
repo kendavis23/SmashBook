@@ -21,5 +21,7 @@ export * from "./revenue/revenue.api";
 export * from "./revenue/revenue.types";
 export * from "./analytics-player/analytics-player.api";
 export * from "./analytics-player/analytics-player.types";
+export * from "./analytics-coach/analytics-coach.api";
+export * from "./analytics-coach/analytics-coach.types";
 export * from "./staff/staff.api";
 export * from "./staff/staff.types";

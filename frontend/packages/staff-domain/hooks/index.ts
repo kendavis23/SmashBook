@@ -95,3 +95,4 @@ export {
     useActivePlayersTimeseries,
     useSignupsTimeseries,
 } from "./analytics-player.hooks";
+export { useCoachPopularityLeaderboard } from "./analytics-coach.hooks";

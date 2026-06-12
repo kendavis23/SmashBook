@@ -143,44 +143,44 @@ export default function StaffListView({
 
             {deactivatingMemberName
                 ? createPortal(
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-                    <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-                        <h2 className="text-lg font-semibold text-foreground">
-                            Deactivate Staff Member
-                        </h2>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                            Deactivate {deactivatingMemberName}? They will lose access to this
-                            club&apos;s portal.
-                        </p>
-                        {apiError ? (
-                            <div className="mt-4">
-                                <AlertToast
-                                    title={apiError}
-                                    variant="error"
-                                    onClose={onDismissError}
-                                />
-                            </div>
-                        ) : null}
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button
-                                type="button"
-                                onClick={onCancelDeactivate}
-                                className="btn-outline"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onConfirmDeactivate}
-                                disabled={isMutating}
-                                className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-destructive px-4 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                                {isMutating ? "Deactivating…" : "Deactivate"}
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
+                      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                          <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+                              <h2 className="text-lg font-semibold text-foreground">
+                                  Deactivate Staff Member
+                              </h2>
+                              <p className="mt-2 text-sm text-muted-foreground">
+                                  Deactivate {deactivatingMemberName}? They will lose access to this
+                                  club&apos;s portal.
+                              </p>
+                              {apiError ? (
+                                  <div className="mt-4">
+                                      <AlertToast
+                                          title={apiError}
+                                          variant="error"
+                                          onClose={onDismissError}
+                                      />
+                                  </div>
+                              ) : null}
+                              <div className="mt-6 flex justify-end gap-3">
+                                  <button
+                                      type="button"
+                                      onClick={onCancelDeactivate}
+                                      className="btn-outline"
+                                  >
+                                      Cancel
+                                  </button>
+                                  <button
+                                      type="button"
+                                      onClick={onConfirmDeactivate}
+                                      disabled={isMutating}
+                                      className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-destructive px-4 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-60"
+                                  >
+                                      {isMutating ? "Deactivating…" : "Deactivate"}
+                                  </button>
+                              </div>
+                          </div>
+                      </div>,
+                      document.body
                   )
                 : null}
 

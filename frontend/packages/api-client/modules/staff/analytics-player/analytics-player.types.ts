@@ -27,6 +27,11 @@ export interface PlayerValueRow {
     lifetime_spend: number;
     payments_count: number;
     currency: string | null;
+    recency_score: number | null;
+    frequency_score: number | null;
+    value_score: number | null;
+    rfv_total: number | null;
+    rfv_cell: string | null;
 }
 
 export interface PlayerValueLeaderboard {

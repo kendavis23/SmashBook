@@ -1,4 +1,4 @@
-_Last updated: 2026-06-10 18:45 UTC_
+_Last updated: 2026-06-12 17:27 UTC_
 
 # White-Label Brand Kit & Onboarding Spec
 
@@ -16,20 +16,22 @@ The whole point is that the input surface is small. A club provides **one master
 colour spec** — everything else (the full 49-token light/dark theme, every icon size, the
 splash, the notification icon) is **generated and validated**.
 
-| Field                  | Required       | Notes                                                                                                            |
-| ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Brand id**           | ✅             | kebab-case, globally unique (e.g. `ace-london`). Becomes the asset folder + OTA channel prefix.                  |
-| **Display name**       | ✅             | Springboard/launcher label + store name (e.g. "Ace London").                                                     |
-| **Delivery model**     | ✅             | `shared` (Model B, default — instant, no store build) or `dedicated` (Model A — own store listing).              |
-| **Primary colour**     | ✅             | `#RRGGBB`. Drives CTA, hero, active tab, ring + all derived hover/surface/border variants.                       |
-| **Secondary colour**   | optional       | Defaults to a near-black neutral. Text / primary surfaces.                                                       |
-| **Background colour**  | optional       | Defaults to white (light). Dark-theme background is derived.                                                     |
-| **Font family**        | optional       | One of the **curated** bundled set (default `Inter`). No client-supplied font files (licensing/bundle-size, §7). |
-| **Master logo**        | ✅ (dedicated) | One high-res square master (SVG preferred, or ≥1024² PNG). All native icons are generated from it.               |
-| **In-app logo**        | ✅             | Wordmark/header logo shown inside the app (distinct from the OS icon).                                           |
-| **Native bundle ids**  | ✅ (dedicated) | `iosBundleId` + `androidPackage` (e.g. `app.acelondon.player`). Immutable once shipped.                          |
-| **Associated domains** | optional       | Universal/app links (e.g. `applinks:ace.london`).                                                                |
-| **Tenants served**     | optional       | Subdomains this brand may serve (Model B mapping). Config, not identity (§4).                                    |
+| Field                  | Required       | Notes                                                                                                                                                                                                                               |
+| ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Brand id**           | ✅             | kebab-case, globally unique (e.g. `ace-london`). Becomes the asset folder + OTA channel prefix.                                                                                                                                     |
+| **Display name**       | ✅             | Springboard/launcher label + store name (e.g. "Ace London").                                                                                                                                                                        |
+| **Delivery model**     | ✅             | `shared` (Model B, default — instant, no store build) or `dedicated` (Model A — own store listing).                                                                                                                                 |
+| **Primary colour**     | ✅             | `#RRGGBB`. Drives CTA, hero, active tab, ring + all derived hover/surface/border variants.                                                                                                                                          |
+| **Secondary colour**   | optional       | Defaults to a near-black neutral. Text / primary surfaces.                                                                                                                                                                          |
+| **Background colour**  | optional       | Defaults to white (light). Dark-theme background is derived.                                                                                                                                                                        |
+| **Font family**        | optional       | One of the **curated** bundled set (default `Inter`). No client-supplied font files (licensing/bundle-size, §7).                                                                                                                    |
+| **Master logo**        | ✅ (dedicated) | One high-res square master (SVG preferred, or ≥1024² PNG). All native icons are generated from it.                                                                                                                                  |
+| **In-app logo**        | ✅             | Wordmark/header logo shown inside the app (distinct from the OS icon).                                                                                                                                                              |
+| **Native bundle ids**  | ✅ (dedicated) | `iosBundleId` + `androidPackage` (e.g. `app.acelondon.player`). Immutable once shipped.                                                                                                                                             |
+| **Associated domains** | optional       | Universal/app links (e.g. `applinks:ace.london`).                                                                                                                                                                                   |
+| **Tenants served**     | optional       | Subdomains this brand may serve (Model B mapping). Config, not identity (§4).                                                                                                                                                       |
+| **Store listing copy** | ✅ (dedicated) | Description/subtitle, keywords, screenshots, App Privacy / Play data-safety answers, support + marketing URLs. Required for review — and meaningfully different listings are themselves a Guideline 4.3 mitigation (plan §15/§16).  |
+| **Push config**        | ✅ (dedicated) | A Firebase app per bundle id → `google-services.json` + `GoogleService-Info.plist` (wired via `app.config.ts` `googleServicesFile`), plus an APNs key registration. Without it, the brand's app silently receives no notifications. |
 
 Everything else in the resolved manifest — the complete theme, scheme, Stripe merchant id,
 asset background colours — is **derived** by `defineBrand()`. Reaching for a per-token
@@ -133,12 +135,35 @@ The `.github/workflows/mobile-brand-build.yml` workflow runs this as its first g
 6. **Dedicated only — native onboarding** (the per-brand manual steps):
     - `eas init` under the brand's account → real `easProjectId`; update `brand.config.ts` + `app.config.ts`.
     - `eas credentials` → provision iOS cert/provisioning + Android keystore (EAS-managed, §10).
+    - Provision the brand's Firebase app + APNs key; add `google-services.json` /
+      `GoogleService-Info.plist` and wire them via `googleServicesFile` (plan §10).
     - `ACTIVE_BRAND=<id> npx expo start` — verify the theme renders in the dev client.
-    - `ACTIVE_BRAND=<id> eas build --profile preview --platform all` → smoke-test on TestFlight / internal track.
+    - `ACTIVE_BRAND=<id> eas build --profile preview --platform all` → smoke-test on TestFlight /
+      internal track — **including receiving a push notification** (the per-brand push config is
+      the easiest thing to get silently wrong).
+    - Prepare the store listing (description, keywords, screenshots, App Privacy / data-safety
+      answers, support URL) — `eas submit` is blocked without it.
     - Create OTA channel `<id>-production` (and `<id>-preview`) in EAS Update.
-    - Production build via the workflow; **manual approval gate** before `eas submit` (Apple Guideline 4.3, §16).
+    - Production build via the workflow; **manual approval gate** before `eas submit` (Apple Guideline 4.3 / Play repetitive-content, §16).
 7. **Shared (Model B)** — no native build: add the club's subdomain to the brand's `tenants[]`
    (and the backend brand↔tenant mapping row once that endpoint lands, §13). The shared
    `_default` binary re-skins to the brand at runtime.
 
 See [FE_WHITE_LABEL_OTA_RUNBOOK.md](FE_WHITE_LABEL_OTA_RUNBOOK.md) for channels, OTA updates, and rollback.
+
+---
+
+## 6. Offboarding a brand (the reverse path)
+
+Defined now, before the first churn — not improvised during one.
+
+1. **Dedicated (Model A):** publish a final OTA with an end-of-service notice → remove the
+   store listing (or transfer the app to the club's own accounts — cleanest when they owned
+   the accounts from the start, plan §15) → remove the brand from `registry.ts` (drops it
+   from the build matrix, asset pipeline, and CI automatically — the registry is the single
+   iterable) → revoke EAS credentials, push keys, and CI secrets for the brand → stop
+   publishing to its OTA channels.
+2. **Shared (Model B):** remove the club's subdomain from the brand's `tenants[]` (and the
+   backend mapping row) — players fall back to `_default` at next brand resolution. No build.
+3. **Either way:** bundle ids are never reused for a different brand, and the retired brand
+   id is not recycled (OTA channel history and incident logs reference it).

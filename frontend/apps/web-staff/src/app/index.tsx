@@ -63,6 +63,7 @@ const PlayerValuePage = lazy(() => import("../features/analytics/pages/PlayerVal
 const PlayerEngagementPage = lazy(() => import("../features/analytics/pages/PlayerEngagementPage"));
 const PlayerSegmentsPage = lazy(() => import("../features/analytics/pages/PlayerSegmentsPage"));
 const PlayerActivityPage = lazy(() => import("../features/analytics/pages/PlayerActivityPage"));
+const CoachPopularityPage = lazy(() => import("../features/analytics/pages/CoachPopularityPage"));
 const StaffListPage = lazy(() => import("../features/staff/pages/StaffPage"));
 const StaffInvitationsPage = lazy(() => import("../features/staff/pages/StaffInvitationsPage"));
 const MySubscriptionPage = lazy(() => import("../features/subscription/pages/MySubscriptionPage"));
@@ -408,6 +409,13 @@ const playerActivityRoute = createRoute({
     component: PlayerActivityPage,
 });
 
+const coachPopularityRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/analytics/coach-popularity",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: CoachPopularityPage,
+});
+
 const staffRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/staff",
@@ -552,6 +560,7 @@ const routeTree = rootRoute.addChildren([
         playerEngagementRoute,
         playerSegmentsRoute,
         playerActivityRoute,
+        coachPopularityRoute,
         clubsRoute,
         newClubRoute,
         clubDetailRoute,

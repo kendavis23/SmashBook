@@ -13,4 +13,5 @@ export {
     useActivePlayersKpi,
     useActivePlayersTimeseries,
     useSignupsTimeseries,
+    useCoachPopularityLeaderboard,
 } from "@repo/staff-domain/hooks";

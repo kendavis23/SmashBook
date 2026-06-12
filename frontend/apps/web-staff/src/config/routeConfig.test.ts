@@ -75,6 +75,7 @@ describe("ROUTES", () => {
             "player-engagement",
             "player-segments",
             "player-activity",
+            "coach-popularity",
         ]);
         expect(analytics?.children?.map((c) => [c.key, c.subgroup])).toEqual([
             ["club-utilisation", "Utilisation"],
@@ -86,6 +87,7 @@ describe("ROUTES", () => {
             ["player-engagement", "Players"],
             ["player-segments", "Players"],
             ["player-activity", "Players"],
+            ["coach-popularity", "Players"],
         ]);
     });
 

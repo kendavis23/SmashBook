@@ -1,27 +1,27 @@
 import { MONTHS_SHORT } from "@repo/ui";
-import type { PlayerSort } from "../types";
-
-/** Detail table tabs. */
-export type PlayerTab = "value" | "rfv";
-
-export const PLAYER_TABS: { id: PlayerTab; label: string }[] = [
-    { id: "value", label: "Top by Lifetime Spend" },
-    { id: "rfv", label: "RFV Scores" },
-];
+import type { CoachSort } from "../types";
 
 /** Rows per page — sent as both `limit` and visible page size. */
 export const TABLE_PAGE_SIZE = 10 as const;
 
-export const PLAYER_SORT_OPTIONS: { value: PlayerSort; label: string }[] = [
-    { value: "lifetime_spend", label: "Lifetime spend" },
-    { value: "bookings_played", label: "Bookings played" },
-    { value: "last_played_at", label: "Last played" },
+/** Sort options offered in the detail-table sort dropdown. */
+export const COACH_SORT_OPTIONS: { value: CoachSort; label: string }[] = [
+    { value: "sessions", label: "Sessions" },
+    { value: "distinct_players", label: "Distinct players" },
+    { value: "repeat_players", label: "Repeat players" },
+    { value: "return_rate", label: "Return rate" },
+    { value: "lesson_revenue", label: "Lesson revenue" },
+    { value: "last_session_at", label: "Last session" },
 ];
 
-export const PLAYER_SORT_TAB_LABEL: Record<PlayerSort, string> = {
-    lifetime_spend: "Top by Lifetime Spend",
-    bookings_played: "Top by Bookings Played",
-    last_played_at: "Recently Played",
+/** Heading shown on the detail table for each active sort. */
+export const COACH_SORT_TABLE_LABEL: Record<CoachSort, string> = {
+    sessions: "Top by Sessions",
+    distinct_players: "Top by Distinct Players",
+    repeat_players: "Top by Repeat Players",
+    return_rate: "Top by Return Rate",
+    lesson_revenue: "Top by Lesson Revenue",
+    last_session_at: "Recently Active",
 };
 
 /** Shared Tailwind class strings for the report's panels and table cells. */
@@ -38,10 +38,9 @@ export const tdBase = "px-4 py-3 text-sm tabular-nums text-foreground";
 /**
  * Formats a bare `YYYY-MM-DD...` / ISO timestamp from the API as "02 Jun 2026".
  * Parses the date parts directly so the displayed day never shifts by the
- * browser's timezone offset (see the analytics guide on snapshot dates).
- * Returns "—" for null / empty / unparseable input.
+ * browser's timezone offset. Returns "—" for null / empty / unparseable input.
  */
-export function formatPlayedDate(value: string | null): string {
+export function formatSessionDate(value: string | null): string {
     if (!value) return "—";
     const datePart = value.slice(0, 10);
     const [y, m, d] = datePart.split("-").map(Number);
@@ -50,7 +49,7 @@ export function formatPlayedDate(value: string | null): string {
     return `${day} ${MONTHS_SHORT[m - 1]} ${y}`;
 }
 
-/** UTC-anchored "today" as a YYYY-MM-DD string, used for relative-day maths. */
+/** UTC-anchored "today" as a millisecond timestamp, used for relative-day maths. */
 function todayUtcMidnight(): number {
     const now = new Date();
     return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -58,8 +57,8 @@ function todayUtcMidnight(): number {
 
 /**
  * Whole calendar days between `value` and today, or `null` when unparseable.
- * Negative values (future dates) clamp to 0. Pure of the local timezone — it
- * compares UTC midnights, so the count never drifts by an hour-of-day offset.
+ * Negative values (future dates) clamp to 0. Compares UTC midnights so the
+ * count never drifts by an hour-of-day offset.
  */
 export function daysSince(value: string | null): number | null {
     if (!value) return null;
@@ -71,8 +70,8 @@ export function daysSince(value: string | null): number | null {
     return diff < 0 ? 0 : diff;
 }
 
-/** Human "2 days ago" / "Today" / "Yesterday" label for a last-played date. */
-export function relativePlayedLabel(value: string | null): string {
+/** Human "2 days ago" / "Today" / "Yesterday" label for a last-session date. */
+export function relativeSessionLabel(value: string | null): string {
     const days = daysSince(value);
     if (days === null) return "—";
     if (days === 0) return "Today";
@@ -80,17 +79,22 @@ export function relativePlayedLabel(value: string | null): string {
     return `${days} days ago`;
 }
 
-/** A player's display name, falling back to email, then a placeholder. */
-export function playerDisplayName(fullName: string | null, email: string | null): string {
-    const trimmed = fullName?.trim();
-    if (trimmed) return trimmed;
-    if (email) return email;
-    return "Unknown player";
+/** Formats a 0–1 return rate as a guarded percentage string ("64%"). */
+export function formatReturnRate(rate: number | null | undefined): string {
+    const v = Number(rate);
+    if (!Number.isFinite(v) || v <= 0) return "0%";
+    return `${Math.round(v * 100)}%`;
+}
+
+/** A coach's display name, falling back to a placeholder. */
+export function coachDisplayName(name: string | null): string {
+    const trimmed = name?.trim();
+    return trimmed ? trimmed : "Unknown coach";
 }
 
 /** Up-to-two-letter initials for the avatar fallback chip. */
-export function playerInitials(fullName: string | null, email: string | null): string {
-    const source = (fullName?.trim() || email || "?").trim();
+export function coachInitials(name: string | null): string {
+    const source = (name?.trim() || "?").trim();
     const parts = source.split(/\s+/).filter(Boolean);
     const first = parts[0];
     if (!first) return "?";
@@ -99,7 +103,7 @@ export function playerInitials(fullName: string | null, email: string | null): s
     return ((first[0] ?? "") + (last[0] ?? "")).toUpperCase();
 }
 
-/** Deterministic accent class for an avatar chip, keyed off the user id. */
+/** Deterministic accent class for an avatar chip, keyed off the seed id. */
 const AVATAR_TONES = [
     "bg-cta/15 text-cta",
     "bg-success/15 text-success",

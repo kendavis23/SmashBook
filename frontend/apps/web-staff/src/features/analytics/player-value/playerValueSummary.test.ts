@@ -19,6 +19,11 @@ function row(overrides: Partial<PlayerValueRow>): PlayerValueRow {
         lifetime_spend: 0,
         payments_count: 0,
         currency: "INR",
+        recency_score: null,
+        frequency_score: null,
+        value_score: null,
+        rfv_total: null,
+        rfv_cell: null,
         ...overrides,
     };
 }
