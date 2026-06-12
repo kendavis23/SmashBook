@@ -1,6 +1,6 @@
 # AI Domain — CLAUDE.md
 
-_Last updated: 2026-05-30_
+_Last updated: 2026-06-12_
 
 **Commits:** The user handles all commits manually. Never run `git commit` or `git push` — make the changes and leave them for the user to review and commit.
 
@@ -81,4 +81,4 @@ Schema state and the migration backlog stay in central `/docs/DATA_MODEL.md` and
 
 ## Sprint alignment
 
-This subtree owns the work in migration groups **G7–G12**. Read the relevant group in [/docs/DATA_MODEL_TARGET_STATE.md](../../../docs/DATA_MODEL_TARGET_STATE.md) before starting a sprint, implement the migrations, then update `DATA_MODEL.md`.
+This subtree owns the AI-side work in migration groups **G8, G9b, and G13–G16** (Sprints 9–15; production go-live is after Sprint 10, so G13–G16 are post-launch). G7 belongs to analytics; G9a/G9-360/G10/G11 are operational-tree work. Read the relevant group in [/docs/DATA_MODEL_TARGET_STATE.md](../../../docs/DATA_MODEL_TARGET_STATE.md) before starting a sprint, implement the migrations, then update `DATA_MODEL.md`.

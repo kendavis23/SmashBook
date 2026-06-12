@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-_Last updated: 2026-06-10_
+_Last updated: 2026-06-12_
 
 > **Maintenance rule:** Whenever this file is updated, bump the `_Last updated:_` line above to today's date. This file is the AI-assistant entry point — staleness here cascades into stale assumptions everywhere downstream. Treat the timestamp as part of the change, not an afterthought.
 
@@ -31,13 +31,13 @@ SmashBook is a **multi-tenant SaaS platform for padel club management**. Tenants
 ```
 backend/
   app/
-    # Operational domain (Sprints 1-6) — bookings, payments, auth, messaging, etc.
+    # Operational domain (Sprints 1-6, 8-9) — bookings, payments, auth, messaging, etc.
     api/v1/endpoints/       # one file per operational concern
     services/               # operational business logic
     workers/                # operational Pub/Sub consumers (email, notifications)
     schemas/                # operational Pydantic models
 
-    # AI domain (Sprints 8-12) — see app/ai/CLAUDE.md
+    # AI domain (Sprints 9-15) — see app/ai/CLAUDE.md
     ai/
       api/                  # endpoint modules + ai_router aggregator
       services/             # ai_inference_service + feature services
@@ -185,7 +185,7 @@ All AI calls must go through `ai_inference_service.py`, which handles:
 
 **Fallback required:** Every AI feature must have a non-AI fallback. If dynamic pricing is unavailable, return `price_per_slot` from `pricing_rules`. If matchmaking fails, proceed without player suggestions. `fallback_used` on `ai_inference_log` records which path ran.
 
-Dynamic pricing is the only **synchronous** AI call (blocks the booking request). Everything else is async via Pub/Sub. **AI features are gated per-tenant via the `ai_feature_flags` table only.** Plan-level defaults are seeded as rows into `ai_feature_flags` when a tenant is provisioned (one row per AI feature, `is_enabled` set from the plan default). `subscription_plans` does **not** carry AI feature flag columns — it carries only non-AI flags (clubs/courts/staff caps, `tournaments_enabled`, `messaging_enabled`, etc.). When toggling an AI feature for a tenant, write to `ai_feature_flags`, never to `subscription_plans`.
+Dynamic pricing is the only **synchronous** AI call (blocks the booking request). Everything else is async via Pub/Sub. **AI features are gated per-tenant via the `ai_feature_flags` table only.** Plan-level defaults are seeded as rows into `ai_feature_flags` when a tenant is provisioned (one row per AI feature, `is_enabled` set from the plan default). `subscription_plans` does **not** carry AI feature flag columns — it carries only non-AI flags (clubs/courts/staff caps, `tournaments_enabled`, `messaging_enabled`, etc.). When toggling an AI feature for a tenant, write to `ai_feature_flags`, never to `subscription_plans`. Each flag row also carries `automation_mode` (`suggest` | `approve` | `auto`, default `suggest`) — the per-feature trust dial, orthogonal to `is_enabled`: `suggest` writes to the `ai_recommendations` inbox only, `approve` prepares the action for a staff click, `auto` executes within the per-club guardrail columns on `clubs`. Every AI feature launches in `suggest` and is promoted per-feature.
 
 ### Auth
 
@@ -240,12 +240,12 @@ The target state was simplified in May 2026 to remove ~7 tables and avoid over-e
 - **`notification_deliveries` + `campaign_deliveries` → `message_deliveries`.** One unified delivery table with `source` enum (`template`, `campaign`) and nullable FKs to both `template_id` and `campaign_id`. All inbox queries, open/click/conversion analytics, and per-campaign rollups go through this single table.
 - **`chat_threads` + `chat_messages` dropped.** Support tickets and casual player↔club chat are the same domain. `support_tickets` carries a `category` enum (`support`, `chat`, `booking_inquiry`); `support_messages` carries `intent`, `booking_id`, and `ai_inference_id` for chat use cases. One inbox, one query path.
 - **`membership_perks` dropped.** Perks (`discount_pct`, `booking_credits_per_period`, `guest_passes_per_period`, `priority_booking_days`, `max_active_members`, `trial_days`) remain as columns on `membership_plans`. Don't add a perks table until a customer asks for a perk that can't be expressed in a column. `membership_plan_pricing` is kept — multiple billing intervals per plan is a real need.
-- **`player_segments` + `player_segment_memberships` + `campaign_messages` dropped.** Campaigns is now a single table with a `target_filter` JSONB (saved query). Structured player segmentation gets reintroduced post-revenue when real clubs reveal what they want to segment by.
+- **`player_segments` + `player_segment_memberships` + `campaign_messages` dropped.** Campaigns is now a single table with a `target_filter` JSONB (saved query). Structured player segmentation gets reintroduced post-revenue when real clubs reveal what they want to segment by. *(2026-06-12: auto-segmentation output lives in `player_profiles.tags` TEXT[] — AI-written, staff-editable, matched by `target_filter` — do not resurrect the segment tables for it.)*
 - **`tournament_matches` dropped.** A tournament match is a `bookings` row with `booking_type = 'tournament'`, a `tournament_id` FK, and optional `tournament_round` / `tournament_match_label` fields. Players (and doubles partners) go in `booking_players` with a new nullable `team` enum. Scores go in `match_results`.
 
 **Architectural decisions held open:**
 
-- **`ai_recommendations` table design** is deferred to Sprint 10. Two options on the table: (1) thin inbox row that links via `source_event_id` to feature-specific tables (`gap_detection_events`, `cancellation_predictions`, etc.) that already own the structured data — recommended; or (2) unified table with a smaller (3–4 value) recommendation domain enum. Don't bake either into code without revisiting this decision at Sprint 10 kickoff. See the architectural note at the top of `DATA_MODEL_TARGET_STATE.md` for full context.
+- **`ai_recommendations` table design** is deferred to Sprint 11 *(re-anchored 2026-06-12 — the table moved to migration group G13 with its consuming stories; go-live is after Sprint 10 and this table is post-go-live)*. Two options on the table: (1) thin inbox row that links via `source_event_id` to feature-specific tables (`gap_detection_events`, `cancellation_predictions`, etc.) that already own the structured data — recommended; or (2) unified table with a smaller (3–4 value) recommendation domain enum. Don't bake either into code without revisiting this decision at Sprint 11 kickoff. See the architectural note at the top of `DATA_MODEL_TARGET_STATE.md` for full context.
 
 ---
 
@@ -361,19 +361,23 @@ Every new endpoint needs at minimum:
 
 Migration groups in `DATA_MODEL_TARGET_STATE.md` map to sprints. Implement the group before starting that sprint's feature work.
 
-**Re-prioritised 2026-05-29** to **Analytics → AI infrastructure → CRM → Tournaments**, driven by the analytics-first ROI story (multi-site operators). G7–G12 were redefined in place; G1–G6 are unchanged. **Descoped entirely:** all weather features, and all equipment/maintenance AI. See the re-prioritisation + descope notes at the top of `DATA_MODEL_TARGET_STATE.md`.
+**Re-anchored 2026-06-12 to the refined issue backlog (`issues.json`), with production go-live after Sprint 10.** The backlog is the source of truth for sprint anchors; the migration groups in `DATA_MODEL_TARGET_STATE.md` and the infrastructure stages in `INFRASTRUCTURE_TARGET_STATE.md` were both restructured to match. Sprints 1–10 build the pre-go-live platform — by the end of Sprint 10 the core architecture including the AI platform is in place, with a deliberately **minimal** launch AI feature set; the bulk of AI functionality lands post-go-live in Sprints 11–15. **Descoped entirely** (from the 2026-05-29 re-prioritisation, still in force): all weather features, and all equipment/maintenance AI. **Parked:** video analysis (story unscheduled). See the re-prioritisation + descope notes at the top of `DATA_MODEL_TARGET_STATE.md`.
 
 | Sprint | Phase | Focus | Migration group |
 |---|---|---|---|
 | 1–2 | MVP | Auth, tenant/club setup, court discovery | G1, G2 |
 | 3–4 | MVP | Core booking flow, payments, wallet | G3, G4 |
-| 5–6 | MVP / **Foundation** | Staff admin, reservations, support, discounts; **G3/G5 table reconciliation** (`waitlist_entries`, `calendar_reservations`) — prerequisite for the re-prioritised roadmap | G5, G6 |
+| 5–6 | MVP / **Foundation** | Staff admin, reservations, support, discounts; **G3/G5 table reconciliation** (`waitlist_entries`, `calendar_reservations`) | G5, G6 |
 | 7 | **Analytics** | Site + player performance analytics: `court_utilisation_snapshots`, aspirational `users` demographics, report materialized views | G7 |
-| 8 | **AI infrastructure** | `ai_inference_log` / `ai_feature_flags`, dynamic pricing, payment anomaly detection, revenue forecasting | G8 |
-| 9 | **CRM I** | Player profiles + engagement/churn scoring, delivery infra, gap detection, matchmaking, cancellation prediction | G9 |
-| 10 | **CRM II** | Campaigns, AI recommendations, re-engagement, membership tiers | G10 |
-| 11 | **Tournaments + match/skill** | Tournaments, registrations, match results, skill ELO | G11 |
-| 12+ | Phase 3 (deferred) | Conversational booking, AI support chatbot, training recommendations, video analysis, market intelligence | G12 |
+| 8 | **Payments & financial reporting** | Stripe Connect config per club, in-person payments, cancel/refund rules, Stripe↔payout reconciliation, financial exports, subscription payment log | G8-Fin |
+| 9 | **Messaging + AI core platform** | Chat/support inbox, staff→player messaging, reminders, waitlist notifications, player admin, equipment admin; AI core infra (`ai_inference_log` / `ai_feature_flags` + `automation_mode`); player-360 starts | G9a, G8, G9-360 |
+| 10 | **CRM launch + tournaments** | Churn scoring + auto re-engagement campaigns, revenue forecasting, AI insights dashboard, membership pricing v2, tournaments + match results, player registration | G9b, G10, G11 |
+| — | 🚀 **PRODUCTION GO-LIVE** | After Sprint 10 — see `INFRASTRUCTURE_TARGET_STATE.md` go-live checklist | — |
+| 11 | **Revenue & engagement AI** | Dynamic pricing (staff-reviewed), gap detection + targeted offers, matchmaking, AI slot suggestions, AI re-engagement drafts; CI/CD to production | G13 |
+| 12 | **Recommendations & market intel** | Membership/top-up suggestions, staffing recommendations, competitor pricing intel | G14 |
+| 13 | **Prediction & automation** | Autonomous dynamic pricing, cancellation prediction, skill ELO, auto-segmentation | G15 |
+| 14 | **Conversational AI** | AI support chatbot/triage, training recommendations | G16 |
+| 15+ | Assistant & anomaly (deferred) | NL booking, AI assistant, revenue anomaly detection, dispute auto-flagging, intelligent payment retry | — |
 
 ---
 

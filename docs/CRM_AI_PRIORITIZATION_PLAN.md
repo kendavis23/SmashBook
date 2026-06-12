@@ -1,4 +1,6 @@
-_Last updated: 2026-06-10 08:04 UTC_
+_Last updated: 2026-06-12 15:45 UTC_
+
+> **✅ Adopted 2026-06-12:** the §2 G9 split and all five §3 schema additions are now in `DATA_MODEL_TARGET_STATE.md`, which was restructured against the refined backlog with **go-live after Sprint 10**. Group mapping after the restructure: **G9a** = messaging core (Sprint 9, + consent columns + chat columns from old G12); **G9-360** = player 360 (`player_profiles` sans embedding + `tags`, `player_notes`; Sprint 9–10); **G9b** = `player_engagement_scores` (Sprint 10); **G8** = AI core platform incl. `automation_mode` + frequency cap (Sprint 9); **G13** = gap detection + `ai_recommendations` + pgvector embedding (Sprint 11, post-go-live); **G15** = cancellation prediction (Sprint 13). Group references in the body below predate the restructure — read them through this mapping.
 
 # CRM + AI — Database Evaluation & User Story Prioritization
 
@@ -97,7 +99,7 @@ These are the deltas this evaluation adds on top of the existing G8–G10 design
 | [#71](https://github.com/kendavis23/SmashBook/issues/71) | Dynamic pricing (suggest/approve mode) | G8 + existing `pricing_rules` surge columns |
 | [#94](https://github.com/kendavis23/SmashBook/issues/94) | Auto-built skill & preference profile | G9b: `player_profiles` behavioural columns + nightly profile worker |
 
-**G10 decision falls due here:** confirm the **thin-inbox** `ai_recommendations` variant (recommended in the target-state architectural note) — structured data stays in `gap_detection_events` / `player_engagement_scores` / etc.; the inbox row is just status/priority/title/rationale + polymorphic `source_event_id`.
+**`ai_recommendations` decision falls due here** *(now group G13, due at **Sprint 11 kickoff** after the 2026-06-12 restructure)*: confirm the **thin-inbox** variant (recommended in the target-state architectural note) — structured data stays in `gap_detection_events` / `player_engagement_scores` / etc.; the inbox row is just status/priority/title/rationale + polymorphic `source_event_id`.
 
 ### Tier 3 — Autonomous & complex: after client trust is earned
 *Same tables, `automation_mode='auto'` — plus genuinely harder models. Don't show these first; sell them as the roadmap.*
@@ -121,9 +123,9 @@ These are the deltas this evaluation adds on top of the existing G8–G10 design
 - [ ] **M1 — G9a (messaging core, no AI):** `notification_templates`, `message_deliveries` (+ enums `MessageSource`, `DeliveryStatus`, `NotificationChannel` reuse). Add §3.2 consent columns to `users` in the same migration. *(Unblocks all Tier-1 messaging stories.)*
 - [ ] **M2 — Player 360 support:** `player_profiles` **without** `embedding` (defer pgvector + Cloud SQL flag until matchmaking), with §3.3 `tags`; new `player_notes` (§3.4). `UNIQUE(user_id, club_id)`.
 - [ ] **M3 — G8 (AI foundation):** `ai_inference_log` (hand-written partition DDL — autogenerate won't emit it), `ai_feature_flags` **with §3.1 `automation_mode`**, `clubs` guardrail columns (+ §3.5 frequency cap), `subscription_plans` non-AI flag columns. Then retro-fit the deferred FKs (`skill_level_history.ai_inference_id`, `support_messages.ai_inference_id`).
-- [ ] **M4 — G9b (AI scoring):** `player_engagement_scores`, `gap_detection_events`, `cancellation_predictions`, `bookings.cancellation_risk_score`/`campaign_id`*. (*`campaign_id` FK requires `campaigns` — either move it to M5 or land as plain UUID like the `promo_codes.campaign_id` precedent.)
-- [ ] **M5 — G10 (campaigns & inbox):** `campaigns`, `ai_recommendations` (confirm thin-inbox variant first), `membership_plan_pricing`; enforce the deferred `promo_codes.campaign_id` FK.
-- [ ] **M6 — pgvector:** `player_profiles.embedding` vector(384) + ivfflat index (`CREATE EXTENSION vector`; enable `cloudsql.enable_pgvector` first). Deferred until matchmaking (Tier 3) starts.
+- [ ] **M4 — G9b (churn scoring):** `player_engagement_scores` only *(trimmed 2026-06-12: `gap_detection_events` moved to G13/Sprint 11 and `cancellation_predictions` + `bookings.cancellation_risk_score` to G15/Sprint 13 — their stories are post-go-live; `bookings.campaign_id` moved to M5 with `campaigns`)*.
+- [ ] **M5 — G10 (campaigns):** `campaigns`, `bookings.campaign_id`, `membership_plan_pricing`; enforce the deferred `promo_codes.campaign_id` FK. *(`ai_recommendations` moved to G13/Sprint 11 — confirm the thin-inbox variant at Sprint 11 kickoff.)*
+- [ ] **M6 — G13 (post-go-live, Sprint 11):** `gap_detection_events`; `ai_recommendations`; `player_profiles.embedding` vector(384) + ivfflat index (`CREATE EXTENSION vector`; enable `cloudsql.enable_pgvector` first).
 
 Each migration follows the Database Change Workflow in `CLAUDE.md` (autogenerate, review, up/down verify, update `DATA_MODEL.md` + flip target-state status + `ENTITY_RELATIONSHIPS.md`).
 
@@ -131,7 +133,7 @@ Each migration follows the Database Change Workflow in `CLAUDE.md` (autogenerate
 
 ## 6. Backlog hygiene findings
 
-1. **Sprint labels disagree with the re-prioritised migration groups.** Churn stories (#99–#101) sit in Sprint 11 and gap detection (#79–#82) in Sprint 10 in the backlog, but both feature sets belong to G9 (Sprint 9 — CRM I) per the 2026-05-29 re-prioritisation. Re-sprint the issues or accept the doc's group→sprint table as truth.
-2. **#102 has no schema home** — fixed by §3.3 (`player_profiles.tags`); update `DATA_MODEL_TARGET_STATE.md` §17 when adopted.
-3. **No consent model anywhere in backlog or target state** — §3.2 should become a tracked issue; it blocks the first real campaign send.
-4. **G10 `ai_recommendations` decision** is due at Sprint 10 kickoff — recommend resolving it when M5 is scheduled, per the architectural note (thin inbox).
+1. ~~**Sprint labels disagree with the re-prioritised migration groups.**~~ **Resolved 2026-06-12** — the backlog settled the other way round from what this note predicted (churn #99/#101 → Sprint 10, gap detection #79–#82 → Sprint 11), and `DATA_MODEL_TARGET_STATE.md` was restructured to match the backlog (the backlog is now the source of truth for sprint anchors).
+2. ~~**#102 has no schema home**~~ **Resolved 2026-06-12** — `player_profiles.tags` (§3.3) adopted into the target state (group G9-360).
+3. **No consent model in the backlog** — §3.2 is now in the target state (`users.marketing_opt_in`, group G9a), but should still become a tracked issue; it blocks the first real campaign send (Sprint 10, pre-go-live).
+4. **`ai_recommendations` decision** is due at **Sprint 11 kickoff** (moved to G13 in the 2026-06-12 restructure) — resolve it when M6 is scheduled, per the architectural note (thin inbox).

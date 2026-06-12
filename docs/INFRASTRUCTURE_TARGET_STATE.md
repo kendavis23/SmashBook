@@ -1,4 +1,4 @@
-_Last updated: 2026-06-12 15:10 UTC_
+_Last updated: 2026-06-12 15:32 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -300,7 +300,7 @@ This task is **prod-only** — the public front door only exists once a producti
 
 **Resources:**
 - New secret: `anthropic-api-key`
-- New secret: `firebase-fcm-credentials` (or migrate notification worker to Firebase Admin SDK with runtime SA — decide before this stage starts). **Stage 3 dependency:** push notifications (pre-game reminders, waitlist alerts) need this in Sprint 9 — do not let it slip behind the rest of #259.
+- **FCM auth — decided 2026-06-12: Firebase Admin SDK with the runtime SA (no secret).** The notification worker authenticates to Firebase Cloud Messaging via Application Default Credentials — the Cloud Run runtime SA's ambient identity — with `FIREBASE_PROJECT_ID` (already in `app/core/config.py`) pointing at the Firebase project. No `firebase-fcm-credentials` secret is created; do not reintroduce a service-account JSON key — a static key would contradict the IAM conventions (workload identity, no long-lived secrets) for zero benefit. Resources: an IAM binding granting the runtime SA the FCM-send permission on the Firebase project, plus the Admin SDK wiring in the worker. **Stage 3 dependency:** push notifications (pre-game reminders, waitlist alerts) need this in Sprint 9 — do not let it slip behind the rest of #259.
 - IAM: runtime SA gets `roles/aiplatform.user` (Vertex AI access)
 
 ### 2.5 Scheduled-job invocation pattern (Cloud Scheduler → Pub/Sub)
@@ -377,7 +377,7 @@ Production-readiness cron jobs beyond wallet settlement. All follow the standard
 - [x] VPC connector live and attached to all Cloud Run services _(delivered 2026-05-29: `padel-connector-staging`, `10.8.0.0/28`; all four services on `PRIVATE_RANGES_ONLY`)_
 - [ ] At minimum 6 monitoring alert policies firing to a real notification channel
 - [ ] `anthropic-api-key` secret created, value set, runtime SA has `aiplatform.user`
-- [ ] `firebase-fcm-credentials` secret (or Admin SDK decision) resolved — gates Stage 3 push notifications
+- [ ] FCM send via Admin SDK + runtime SA working (IAM binding applied, `FIREBASE_PROJECT_ID` set; no key secret) — gates Stage 3 push notifications
 - [ ] Scheduled-job Pub/Sub topic(s) + push subscriptions live; Cloud Scheduler service agent has `pubsub.publisher` (per §2.5)
 - [ ] Wallet settlement cron live via Scheduler → Pub/Sub → settlement handler, daily
 - [ ] SendGrid webhook endpoint live, signature verification passing, `message_deliveries` rows updating (§2.8)
@@ -398,7 +398,7 @@ Production-readiness cron jobs beyond wallet settlement. All follow the standard
 - **Chat / support tickets** — `support_tickets` + `support_messages` via `padel-api` (one inbox, per the May 2026 data-model simplification). Request/response over the API; no dedicated chat service, no websocket infra at this stage.
 - **Staff→player messaging and announcements** — publish to the existing `notification-events` topic; `padel-notification-worker` dispatches. `announcement-expiry-job` is already scoped in §2.7.
 - **Email delivery + engagement tracking** — SendGrid (existing secret) + the §2.8 webhook.
-- **Push notifications** — Firebase FCM via the `firebase-fcm-credentials` secret from §2.4. Verify the notification worker is actually wired to FCM as part of this stage; that secret decision gates this.
+- **Push notifications** — Firebase FCM via the Admin SDK with the runtime SA's ambient credentials (decided in §2.4 — no key secret). Verify the notification worker is actually wired to FCM as part of this stage; the §2.4 IAM binding gates this.
 - **Waitlist slot-open notifications** — ride the `booking-cancelled` topic (§1.9). ⚠️ §1.9 is still an open Stage 1 item and is a hard prerequisite for [#17](https://github.com/kendavis23/SmashBook/issues/17); `waitlist-offer-expiry-job` is in §2.7.
 
 ### 3.2 New scheduled job — `booking-reminder-job`
@@ -417,7 +417,7 @@ Production-readiness cron jobs beyond wallet settlement. All follow the standard
 - [ ] `booking-cancelled` topic live (§1.9 carried-forward item) and waitlist notifications flowing
 - [ ] `booking-reminder-job` live on the §2.5 pattern; no duplicate reminders on re-run
 - [ ] `support-ticket-sla-job` live
-- [ ] FCM push delivery verified end-to-end (secret from §2.4, notification worker wired)
+- [ ] FCM push delivery verified end-to-end (Admin SDK + runtime SA per §2.4, notification worker wired)
 - [ ] Chat/support and staff messaging flows confirmed to need no further GCP resources (or this stage updated if that turns out false)
 
 ---

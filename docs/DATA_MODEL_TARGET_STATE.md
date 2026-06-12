@@ -1,4 +1,4 @@
-_Last updated: 2026-06-10 (staff_invitations — staff onboarding Phase B1)_
+_Last updated: 2026-06-12 (backlog restructure: groups re-anchored to refined sprint plan, go-live after Sprint 10; CRM-plan schema additions adopted)_
 
 # SmashBook — Data Model Target State
 
@@ -7,6 +7,8 @@ _Last updated: 2026-06-10 (staff_invitations — staff onboarding Phase B1)_
 > **What it is not:** A migration script. Nothing in this file should be applied directly. Every change moves through a SQLAlchemy model edit → `alembic revision --autogenerate` → reviewed migration file → `alembic upgrade head`.
 >
 > **Relationship to `DATA_MODEL.md`:** `DATA_MODEL.md` always reflects the live database state — it is updated only after a migration has been successfully applied and verified. This file is updated when new user stories are added or the target design evolves. The diff between the two files is your migration backlog at any given time.
+>
+> **Go-live anchor (2026-06-12 restructure):** **Production go-live takes place after Sprint 10.** Migration groups are anchored to the sprint plan in the GitHub issue backlog (`issues.json`) and split around that line: G8-Fin, G8, G9a, G9-360, G9b, G10, and G11 are **pre-go-live** (Sprints 8–10); G13–G16 are **post-go-live** (Sprints 11–14). The old G9/G12 bundles were split because their tables' consuming stories now span up to five sprints. Group labels follow the established "redefine in place" precedent — existing labels were kept or suffixed, never renumbered. See the re-prioritisation note in the Migration Backlog Summary.
 
 ---
 
@@ -37,11 +39,11 @@ This pass removed ~6–8 tables and one parallel system from the target state wi
 
 The `ai_recommendations` table currently bundles 12 distinct recommendation types into one row shape with a JSONB `action_payload`. This works as a generic "staff inbox" but risks becoming a god-table over time, with every UI query branching on `recommendation_type` and every new AI feature widening the JSONB shape contract.
 
-**Decision deferred to Sprint 10.** Before building this table, revisit whether it should be:
+**Decision deferred to Sprint 11 kickoff** *(re-anchored 2026-06-12 — the consuming stories, #72/#86/#103/#115, are Sprint 11–12 in the refined backlog; the table now sits in migration group G13)*. Before building this table, revisit whether it should be:
 - *(Recommended)* Kept as a thin inbox (status / priority / title / rationale / ai_inference_id) that *links* to specialised tables that already own structured fields — `gap_detection_events`, `cancellation_predictions`. Each specialised table is the source of truth for its action; `ai_recommendations` is just the staff-facing review queue.
 - *(Acceptable)* Kept as a unified table but with the type enum collapsed to 3–4 broad domains (`pricing`, `outreach`, `staffing`) so `action_payload` only needs a few documented schemas.
 
-Look at this fresh when Sprint 10 work begins.
+Look at this fresh when Sprint 11 work begins.
 
 ---
 
@@ -76,11 +78,13 @@ subscription_plans ──< tenants ──< clubs ──< courts ──< bookings
 
 tenants ──< users ──< wallets ──< wallet_transactions
                  ├──< player_profiles (one per user per club)
+                 ├──< player_notes (club-scoped staff notes, append-only)
                  ├──< player_engagement_scores
                  ├──< skill_level_history
                  └──< training_recommendations
 
 tenants ──< ai_feature_flags
+tenants ──< tenant_subscription_payments (SmashBook → org billing log)
 
 ai_inference_log ◄── referenced by: gap_detection_events, ai_recommendations,
                      player_engagement_scores, skill_level_history,
@@ -112,15 +116,25 @@ Update the **Status** column when a migration has been applied and verified. The
 | G6.1 | Post-MVP | ✅ Applied (`32204403280f`) | Player registration email verification + free basic membership: `users`: add `email_verified_at`; `membership_plans`: add `is_default` with partial unique index per club |
 | G6.2 | Post-MVP | ✅ Applied (`fa46b223afc9`) | Membership downgrade scheduling: `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — scheduled downgrade target applied at `current_period_end` |
 | G7 | Sprint 7 — **Analytics** | 🚧 Schema applied (`b210c7b03579`, `a04c76851993`, `520ea227119a`, `fd3c5c3192ab`, `4d439313634d`) | New table: `court_utilisation_snapshots`; `clubs`: add `timezone`; `users`: add `date_of_birth`, `gender`, `postcode`, `latitude`, `longitude` (all nullable, aspirational — fill Epic-2 demographics/catchment reports) — **all applied**. Court-utilisation serving is **live**: `court_utilisation_snapshots` is populated by `app/analytics/workers/snapshot_court_utilisation.py` (slot-anchored, nightly + 90-day backfill) and served by `GET /api/v1/analytics/utilisation/clubs/{club_id}/{daily,courts,heatmap}`. **Revenue-by-club is now live** (`a04c76851993`, `520ea227119a`): materialized views `mv_revenue_by_club_day_{service,cash}` (subtract-embedded equipment split, membership MRR excluded) + the first MV-refresh worker `app/analytics/workers/refresh_views.py` logging to new table `analytics_refresh_log`, served by `GET /api/v1/analytics/revenue/clubs[/{club_id}/{timeseries,by-type,summary}]` with `?basis=service|cash`. **Player value (workstream B) is now live** (`fd3c5c3192ab`): materialized view `mv_player_value` (grain `(club_id, user_id)`; activity ⋈ net-spend ⋈ paid-membership per player; net realised LTV, membership MRR excluded), served by `GET /api/v1/analytics/players/clubs/{club_id}/{value,most-active,inactive-members}`. **Club player-flow (workstream A) is now live** (`4d439313634d`): materialized views `mv_club_active_player_day` (presence; distinct on-court players) + `mv_club_signups_day` (new paid subscription starts), served by `GET /api/v1/analytics/players/clubs/{club_id}/{active,active/timeseries,signups}` — active = `COUNT(DISTINCT user_id)` over a trailing window or calendar bucket (WAP/MAP). **Group LTV (workstream C) is now live (no migration — pure `GROUP BY` over `mv_player_value`)**: `GET /api/v1/analytics/players/clubs/{club_id}/value/by-group?dimension=membership_tier|member_status|activity_status` — attribute-based + single-axis-recency cuts only; structured RFV/cohort segmentation deliberately deferred (see dropped `player_segments` decision). The remaining REPORT_CATALOG materialized views (coach popularity, RFV pre-aggregate) are **not yet built** (worker-managed DDL, not ORM/autogenerate) — group stays 🚧 until they land |
-| G8 | Sprint 8 — **AI infrastructure** | ⬜ Not started | New tables: `ai_inference_log`, `ai_feature_flags`; `subscription_plans`: add `tournaments_enabled`, `messaging_enabled` (non-AI flags only — AI flags live in `ai_feature_flags`); `clubs`: add `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`. Features: dynamic pricing, payment anomaly detection, revenue forecasting |
-| G9 | Sprint 9 — **CRM I** (profiles, scoring, delivery) | ⬜ Not started | New tables: `player_profiles` (with pgvector embedding), `player_engagement_scores`, `notification_templates`, `message_deliveries`, `gap_detection_events`, `cancellation_predictions`; `bookings`: add `cancellation_risk_score`, `campaign_id`. Features: gap detection, smart notifications, personalised slot suggestions, churn scoring, matchmaking/Fill-the-Court |
-| G10 | Sprint 10 — **CRM II** (campaigns & recommendations) | ⬜ Not started | New tables: `campaigns`, `ai_recommendations` (inbox variant); membership v2: add `membership_plan_pricing` (perks stay as columns on `membership_plans`). Features: re-engagement campaigns, churn-prevention, membership tier suggestions, AI pricing/outreach recommendations |
-| G11 | Sprint 11 — **Tournaments + match/skill** | ⬜ Not started | New tables: `tournaments`, `tournament_registrations`, `match_results`, `match_result_players`; `bookings`: add `tournament_id` FK, `tournament_round`, `tournament_match_label`; `booking_players`: add `team`. Features: skill auto-update (ELO), bracket auto-arrange |
-| G12 | Sprint 12 — **Phase 3 (deferred)** | ⬜ Not started | New tables: `training_recommendations`, `video_analyses`, `competitor_price_snapshots`; `support_tickets`: add `category`; `support_messages`: add `intent`, `booking_id`, AI fields. Features: AI support chatbot, conversational booking, training recommendations, video analysis, competitor pricing intel |
+| G8-Fin | Sprint 8 — **Financial reporting** | 🚧 In progress ([#275](https://github.com/kendavis23/SmashBook/issues/275)) | New table: `tenant_subscription_payments` — append-only log of SmashBook → org subscription billing payments, written by the stripe-billing webhook handlers. Backs subscription financial reporting. **Draft shape in §1 — confirm against the in-flight #275 implementation before migrating** |
+| G9a | Sprint 9 — **Messaging core (no AI)** | ⬜ Not started | New tables: `notification_templates`, `message_deliveries`; `users`: add `marketing_opt_in`, `marketing_opt_in_updated_at` (consent — gates the first campaign send); `support_tickets`: add `category`, `last_message_at` *(pulled forward from old G12 — chat ships Sprint 9, [#130](https://github.com/kendavis23/SmashBook/issues/130)/[#167](https://github.com/kendavis23/SmashBook/issues/167))*. No dependency on `ai_inference_log` — can land before or alongside G8. Features: staff messaging, reminders, waitlist notifications, chat/support inbox |
+| G8 | Sprint 9 — **AI core platform** ([#201](https://github.com/kendavis23/SmashBook/issues/201)) | ⬜ Not started | New tables: `ai_inference_log`, `ai_feature_flags` (now with `automation_mode` — the suggest/approve/auto trust dial); `subscription_plans`: add `tournaments_enabled`, `messaging_enabled` (non-AI flags only — AI flags live in `ai_feature_flags`); `clubs`: add `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`, `max_marketing_msgs_per_week`. Features it unlocks at launch (Sprint 10): revenue forecasting, AI insights dashboard, churn scoring. The gap/pricing guardrail columns are seeded here cheaply but their features are Sprint 11 (G13) |
+| G9-360 | Sprint 9–10 — **Player 360** ([#49](https://github.com/kendavis23/SmashBook/issues/49)) | ⬜ Not started | New tables: `player_profiles` **without** `embedding` (defer pgvector to G13) but **with** `tags` TEXT[] (auto-segmentation output home); `player_notes` (append-only staff CRM notes). Features: staff player-360 view — profile, history, notes, tags |
+| G9b | Sprint 10 — **Churn scoring** ([#99](https://github.com/kendavis23/SmashBook/issues/99)) | ⬜ Not started | New table: `player_engagement_scores`. Features: AI churn scoring feeding re-engagement campaigns. *(Old G9's other tables moved: gap detection → G13, cancellation prediction → G15)* |
+| G10 | Sprint 10 — **Campaigns + membership v2** ([#101](https://github.com/kendavis23/SmashBook/issues/101)) | ⬜ Not started | New tables: `campaigns`, `membership_plan_pricing` (perks stay as columns on `membership_plans`); `bookings`: add `campaign_id`; `membership_subscriptions`: add `plan_pricing_id`; enforce the deferred `promo_codes.campaign_id` FK. Features: re-engagement campaigns, churn-prevention, multi-interval membership pricing. *(`ai_recommendations` moved to G13 — its consuming stories are Sprint 11–12)* |
+| G11 | Sprint 10 — **Tournaments + match results** ([#131](https://github.com/kendavis23/SmashBook/issues/131)) | ⬜ Not started | New tables: `tournaments`, `tournament_registrations`, `match_results`, `match_result_players`; `bookings`: add `tournament_id` FK, `tournament_round`, `tournament_match_label`; `booking_players`: add `team`. *(Re-anchored Sprint 11 → Sprint 10: tournaments ship pre-go-live. Skill auto-update (ELO) is Sprint 13 **feature** work — its schema, `skill_level_history` columns, shipped in G6; no further migration needed)* |
+| — | 🚀 **PRODUCTION GO-LIVE — after Sprint 10.** Everything above this line is pre-go-live schema; everything below lands post-launch | — | — |
+| G13 | Sprint 11 — **Gap detection, recommendations & matchmaking** ([#79](https://github.com/kendavis23/SmashBook/issues/79), [#72](https://github.com/kendavis23/SmashBook/issues/72), [#92](https://github.com/kendavis23/SmashBook/issues/92)) | ⬜ Not started | New tables: `gap_detection_events`, `ai_recommendations` (**resolve the thin-inbox vs unified design decision at Sprint 11 kickoff** — see architectural note above); `player_profiles`: add `embedding` vector(384) + ivfflat index (pgvector — `CREATE EXTENSION vector` first). Features: gap detection + targeted offers, AI recommendations inbox, matchmaking/Fill-the-Court, AI slot suggestions |
+| G14 | Sprint 12 — **Market intelligence** ([#115](https://github.com/kendavis23/SmashBook/issues/115)) | ⬜ Not started | New table: `competitor_price_snapshots`. Features: competitor pricing intel in manager dashboard |
+| G15 | Sprint 13 — **Cancellation prediction** ([#96](https://github.com/kendavis23/SmashBook/issues/96)) | ⬜ Not started | New table: `cancellation_predictions`; `bookings`: add `cancellation_risk_score`, `cancellation_risk_scored_at` + partial index. Features: cancellation likelihood + confirm-or-release prompts |
+| G16 | Sprint 14 — **Conversational AI** ([#111](https://github.com/kendavis23/SmashBook/issues/111), [#113](https://github.com/kendavis23/SmashBook/issues/113)) | ⬜ Not started | New table: `training_recommendations`; `support_messages`: add `intent`, `booking_id` (AI intent-extraction fields for the chatbot). Features: AI support chatbot/triage, training recommendations; conversational booking (Sprint 15) rides the same fields |
+| Parked | Unscheduled | ⏸ Parked | `video_analyses` — its story ([#114](https://github.com/kendavis23/SmashBook/issues/114)) is unscheduled backlog. Spec retained in §22; **do not build** until the story is re-sprinted |
 | G-Staff | Staff onboarding (Phase B) | ✅ Applied (`b94daf2c75e8`) | New table: `staff_invitations` (`StaffInvitationStatus` enum; `role` reuses shared `StaffRole`). Invite-based staff onboarding into clubs — schema foundation for the B2 invite→accept slice + B3 CRUD endpoints. Not part of the original G1–G12 roadmap; landed to support the staff-onboarding + permissions work |
 | OOB | Out-of-band fix | ✅ Applied (`a3ad99663232`) | `payments`: add `stripe_destination_payment_id` (indexed) — connected-account-side payment id (`py_xxx`) so `payout.paid` can match destination-charge Connect payouts |
 
 > **🔁 Re-prioritisation (2026-05-29):** The post-MVP roadmap was re-sequenced to **Analytics → AI infrastructure → CRM → Tournaments**, with a Foundation step first. Groups G7–G12 were **redefined in place** (labels kept, contents and target sprints remapped) — G1–G6 are untouched. The driver is the analytics-first ROI story (see `Jamie Info` user stories: Site Performance + Player Analytics are HIGH priority). Two feature areas were **descoped entirely**: (1) all **weather** features/columns/flags, (2) all **equipment & maintenance AI**. See the "Descoped 2026-05-29" note below.
+
+> **🔁 Backlog restructure (2026-06-12):** Groups re-anchored to the refined issue backlog with **go-live after Sprint 10** as the organizing line. Changes: **G8** re-anchored Sprint 8 → 9 ([#201](https://github.com/kendavis23/SmashBook/issues/201)) and absorbed `automation_mode` + the marketing frequency cap. **G9 split four ways** — G9a (Sprint 9 messaging, no AI), G9-360 (Sprint 9–10 player 360), G9b (Sprint 10 churn scoring), with gap detection → G13 and cancellation prediction → G15 — because its tables' consuming stories had drifted across four sprints. **G10** slimmed: `ai_recommendations` → G13 (its stories are Sprint 11–12); `campaigns` + `membership_plan_pricing` stay Sprint 10. **G11** re-anchored Sprint 11 → **Sprint 10** (tournaments ship pre-go-live, [#131](https://github.com/kendavis23/SmashBook/issues/131)). **G12 dissolved**: chat columns → G9a (Sprint 9), competitor snapshots → G14 (Sprint 12), training recs + chatbot fields → G16 (Sprint 14), `video_analyses` → Parked (story unscheduled). **New:** G8-Fin (Sprint 8, [#275](https://github.com/kendavis23/SmashBook/issues/275)) — subscription payment log, previously missing from the target state entirely. The [CRM_AI_PRIORITIZATION_PLAN.md](CRM_AI_PRIORITIZATION_PLAN.md) §3 schema additions (automation mode, consent, tags, player notes, frequency cap) were adopted in the same pass.
 
 > **Note on G3/G5 reconciliation (completed 2026-05-30):** Resolved. Both tables are now built, migrated, and applied — `waitlist_entries` (G3, `62a903cfb227`) and `calendar_reservations` (G5, `24a1464d08d9`, with skill-filter cleanup `f80daf1c4ecb`) — and the corresponding column changes (`bookings.min_skill_level`/`max_skill_level`/`parent_booking_id`/`recurrence_end_date`, `booking_players.invite_status`, `clubs.default_skill_range_*`, `equipment_rentals` payment/damage fields) are live. `DATA_MODEL.md` now carries migration rows for all three revisions, and G3/G5 are flipped to ✅. **One deliberate deviation:** the descoped `equipment_inventory.reorder_threshold` column was **not** dropped — it was migrated in and is intentionally left in the DB (unused) rather than removed.
 
@@ -148,17 +162,16 @@ Update the **Status** column when a migration has been applied and verified. The
 14. [Discounts & Promo Codes](#14-discounts--promo-codes)
 15. [Calendar Reservations](#15-calendar-reservations)
 16. [AI Infrastructure](#16-ai-infrastructure)
-17. [Player Profiles & Engagement Scoring](#17-player-profiles--engagement-scoring)
+17. [Player Profiles & Engagement Scoring](#17-player-profiles--engagement-scoring) *(incl. `player_notes`, `cancellation_predictions`)*
 18. [Campaigns](#18-campaigns)
 19. [Notifications & Outreach](#19-notifications--outreach)
 20. [Utilisation & Gap Detection](#20-utilisation--gap-detection)
 21. [AI Recommendations Engine](#21-ai-recommendations-engine)
-22. [Cancellation Prediction](#22-cancellation-prediction)
-23. [Video Analysis](#23-video-analysis)
-24. [Market Intelligence](#24-market-intelligence)
-25. [Enumerations](#25-enumerations)
-26. [Indexes](#26-indexes)
-27. [AI Feature → Table Mapping](#27-ai-feature--table-mapping)
+22. [Video Analysis](#22-video-analysis) *(parked)*
+23. [Market Intelligence](#23-market-intelligence)
+24. [Enumerations](#24-enumerations)
+25. [Indexes](#25-indexes)
+26. [AI Feature → Table Mapping](#26-ai-feature--table-mapping)
 
 ---
 
@@ -222,10 +235,34 @@ Update the **Status** column when a migration has been applied and verified. The
 
 ---
 
+### `tenant_subscription_payments` *(NEW TABLE — Migration group G8-Fin)*
+Append-only log of SmashBook → org subscription billing payments (platform Stripe **billing** account — see the two-account model in `CLAUDE.md`). Written by the `/webhooks/stripe-billing` handlers on `invoice.payment_succeeded` / `invoice.payment_failed`; backs subscription financial reporting ([#275](https://github.com/kendavis23/SmashBook/issues/275)).
+
+> ⚠️ **Draft shape.** #275 is in progress with no model landed yet — confirm or amend this spec against the actual implementation before migrating, then remove this marker.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `tenant_id` | UUID | FK → `tenants` |
+| `stripe_invoice_id` | VARCHAR(255) | UNIQUE — idempotency key for webhook replays |
+| `stripe_payment_intent_id` | VARCHAR(255) | Nullable |
+| `amount` | NUMERIC(10,2) | |
+| `currency` | VARCHAR(3) | Default `"GBP"` |
+| `status` | ENUM | `succeeded`, `failed`, `refunded` |
+| `failure_reason` | TEXT | Nullable |
+| `period_start` | TIMESTAMPTZ | Billing period covered by this invoice |
+| `period_end` | TIMESTAMPTZ | |
+| `paid_at` | TIMESTAMPTZ | Nullable — null for failed payments |
+| `created_at` | TIMESTAMPTZ | |
+
+**Constraints:** `UNIQUE(stripe_invoice_id)`. Append-only — webhook retries upsert nothing; a replayed invoice id is skipped.
+
+---
+
 ## 2. Users & Authentication
 
 ### `users`
-**Changes from current:** Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` *(Migration group G1)*; add `email_verified_at` for player email-verification registration flow *(Migration group G6.1)*; add `date_of_birth`, `gender`, `postcode`, `latitude`, `longitude` for player-analytics demographics + catchment reporting *(Migration group G7)*.
+**Changes from current:** Add `phone`, `photo_url`, `is_suspended`, `suspension_reason`, `default_payment_method_id`, `preferred_notification_channel` *(Migration group G1)*; add `email_verified_at` for player email-verification registration flow *(Migration group G6.1)*; add `date_of_birth`, `gender`, `postcode`, `latitude`, `longitude` for player-analytics demographics + catchment reporting *(Migration group G7)*; add `marketing_opt_in`, `marketing_opt_in_updated_at` — standing marketing-consent preference, required before the first campaign send (GDPR/PECR) *(Migration group G9a)*.
 
 | Column | Type | Notes |
 |---|---|---|
@@ -252,6 +289,8 @@ Update the **Status** column when a migration has been applied and verified. The
 | `postcode` | VARCHAR(20) | **NEW** Nullable — catchment-area reporting *(G7)* |
 | `latitude` | NUMERIC(10,7) | **NEW** Nullable — player location for the catchment map (distinct from club coordinates) *(G7)* |
 | `longitude` | NUMERIC(10,7) | **NEW** Nullable *(G7)* |
+| `marketing_opt_in` | BOOLEAN | **NEW** Default `false` — standing consent for marketing sends. Campaign pipeline filters `WHERE marketing_opt_in = true`; the unsubscribe link flips it. Transactional sends (confirmations, reminders) are exempt and keyed off `preferred_notification_channel` *(G9a)* |
+| `marketing_opt_in_updated_at` | TIMESTAMPTZ | **NEW** Nullable — when consent was last granted/withdrawn *(G9a)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -294,6 +333,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | `gap_detection_threshold_pct` | NUMERIC(5,2) | **NEW** Default `40.0` — utilisation % below which gap detection fires *(G8)* |
 | `max_gap_discount_pct` | NUMERIC(5,2) | **NEW** Default `30.0` — cap on AI-generated discounts *(G8)* |
 | `churn_inactive_days_threshold` | INTEGER | **NEW** Default `30` — days without booking before churn flag *(G8)* |
+| `max_marketing_msgs_per_week` | INTEGER | **NEW** Default `2` — hard cap consulted by any `auto`-mode sender (see `ai_feature_flags.automation_mode`) so a player can't be hit by gap offers + re-engagement + flash sale in one week. Enforced against `message_deliveries WHERE source = 'campaign'` (plus `notification_type = 'gap_offer'`) per user per rolling 7 days *(G8)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -359,7 +399,7 @@ No changes from current state.
 ## 5. Bookings
 
 ### `bookings`
-**Changes from current:** Add skill level filters for open games, invite confirmation tracking, recurring series self-reference, discount attribution, AI scores, tournament linkage, and campaign linkage. A tournament match is just a booking with `booking_type = 'tournament'` and a `tournament_id` FK — there is no separate `tournament_matches` table. *(Migration groups G3, G4, G5, G6, G9, G11)*
+**Changes from current:** Add skill level filters for open games, invite confirmation tracking, recurring series self-reference, discount attribution, AI scores, tournament linkage, and campaign linkage. A tournament match is just a booking with `booking_type = 'tournament'` and a `tournament_id` FK — there is no separate `tournament_matches` table. *(Migration groups G3, G4, G5, G6, G10, G11, G15)*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -395,9 +435,9 @@ No changes from current state.
 | `hold_expires_at` | TIMESTAMPTZ | **NEW** Nullable — court-level hold deadline (created `now()+5min`); cleared when the first player pays. Null = live booking with a paid player or a staff booking (always blocks the court). Drives conflict-check exclusion + sweep cancellation *(G4.1)* |
 | `promo_code_id` | UUID | **NEW** FK → `promo_codes`, nullable |
 | `membership_subscription_id` | UUID | **NEW** FK → `membership_subscriptions`, nullable *(G4)* |
-| `campaign_id` | UUID | **NEW** FK → `campaigns`, nullable |
-| `cancellation_risk_score` | NUMERIC(4,3) | **NEW** Nullable — AI prediction 0–1, denormalised from `cancellation_predictions` *(G9)* |
-| `cancellation_risk_scored_at` | TIMESTAMPTZ | **NEW** Nullable *(G9)* |
+| `campaign_id` | UUID | **NEW** FK → `campaigns`, nullable *(G10)* |
+| `cancellation_risk_score` | NUMERIC(4,3) | **NEW** Nullable — AI prediction 0–1, denormalised from `cancellation_predictions` *(G15)* |
+| `cancellation_risk_scored_at` | TIMESTAMPTZ | **NEW** Nullable *(G15)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -405,7 +445,7 @@ No changes from current state.
 - `ix_bookings_court_window (court_id, start_datetime, end_datetime)` — conflict detection *(existing)*
 - `ix_bookings_club_status (club_id, status)` *(existing)*
 - `ix_bookings_club_start (club_id, start_datetime)` *(existing)*
-- `ix_bookings_cancellation_risk (club_id, cancellation_risk_score DESC) WHERE cancellation_risk_score > 0.6` **NEW**
+- `ix_bookings_cancellation_risk (club_id, cancellation_risk_score DESC) WHERE cancellation_risk_score > 0.6` **NEW** *(G15)*
 - `ix_bookings_tournament (tournament_id, tournament_round)` — fast lookup of all matches in a tournament round **NEW** *(G11)*
 
 ---
@@ -726,8 +766,8 @@ Post-match outcome record. Source of truth for ELO/TrueSkill updates and AI trai
 
 ---
 
-### `training_recommendations` *(NEW TABLE — Migration group G12)*
-AI-generated per-player training suggestions from match analysis (Phase 3).
+### `training_recommendations` *(NEW TABLE — Migration group G16)*
+AI-generated per-player training suggestions from match analysis (Sprint 14, [#113](https://github.com/kendavis23/SmashBook/issues/113)).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -900,7 +940,7 @@ Club-wide posts visible to all players.
 
 ---
 
-### `support_tickets` *(NEW TABLE — Migration group G6; `category` and supporting fields added in G12)*
+### `support_tickets` *(NEW TABLE — Migration group G6; `category` and `last_message_at` added in G9a — chat ships Sprint 9)*
 Unified threads table for support, casual chat, and booking inquiries.
 
 | Column | Type | Notes |
@@ -909,7 +949,7 @@ Unified threads table for support, casual chat, and booking inquiries.
 | `club_id` | UUID | FK → `clubs` |
 | `user_id` | UUID | FK → `users` |
 | `booking_id` | UUID | FK → `bookings`, nullable |
-| `category` | ENUM | **NEW** *(G12)* `support`, `chat`, `booking_inquiry` — default `support` |
+| `category` | ENUM | **NEW** *(G9a)* `support`, `chat`, `booking_inquiry` — default `support` |
 | `subject` | VARCHAR(255) | Nullable — required for `support`, optional for `chat` |
 | `status` | ENUM | `open`, `in_progress`, `resolved`, `closed` |
 | `priority` | ENUM | `low`, `medium`, `high` — `medium` default for `support`, ignored for `chat` |
@@ -917,7 +957,7 @@ Unified threads table for support, casual chat, and booking inquiries.
 | `handled_by` | ENUM | `staff`, `ai`, `hybrid` — default `staff` |
 | `resolution_summary` | TEXT | Nullable |
 | `resolved_at` | TIMESTAMPTZ | Nullable |
-| `last_message_at` | TIMESTAMPTZ | **NEW** *(G12)* Nullable — denormalised for inbox sort |
+| `last_message_at` | TIMESTAMPTZ | **NEW** *(G9a)* Nullable — denormalised for inbox sort |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -925,7 +965,7 @@ Unified threads table for support, casual chat, and booking inquiries.
 
 ---
 
-### `support_messages` *(NEW TABLE — Migration group G6; `intent` and `booking_id` added in G12 for chat use cases)*
+### `support_messages` *(NEW TABLE — Migration group G6; `intent` and `booking_id` added in G16 for the AI chatbot — human chat needs neither)*
 Single message table covering support replies, chat messages, and AI-assistant turns.
 
 | Column | Type | Notes |
@@ -935,8 +975,8 @@ Single message table covering support replies, chat messages, and AI-assistant t
 | `sender_user_id` | UUID | FK → `users`, nullable — null = AI agent |
 | `sender_type` | ENUM | `player`, `staff`, `ai` |
 | `body` | TEXT | |
-| `intent` | VARCHAR(100) | **NEW** *(G12)* Nullable — e.g. `"book_court"`, `"cancel_booking"`, `"faq"` — extracted by AI on inbound player messages |
-| `booking_id` | UUID | **NEW** *(G12)* FK → `bookings`, nullable — set when a booking was created via this message |
+| `intent` | VARCHAR(100) | **NEW** *(G16)* Nullable — e.g. `"book_court"`, `"cancel_booking"`, `"faq"` — extracted by AI on inbound player messages |
+| `booking_id` | UUID | **NEW** *(G16)* FK → `bookings`, nullable — set when a booking was created via this message |
 | `ai_inference_id` | UUID | FK → `ai_inference_log`, nullable — set when `sender_type = ai` or when AI extracted an intent |
 | `created_at` | TIMESTAMPTZ | |
 
@@ -1033,6 +1073,7 @@ Every call to any AI model is logged here before its output is used. **Append-on
 | `tenant_id` | UUID | FK → `tenants` |
 | `feature` | VARCHAR(100) | Must match values used in `ai_inference_log.feature` |
 | `is_enabled` | BOOLEAN | Default `false` |
+| `automation_mode` | ENUM | **NEW** `suggest`, `approve`, `auto` — default `suggest`. The per-feature trust dial, orthogonal to `is_enabled`: `suggest` = AI writes to the `ai_recommendations` inbox only; `approve` = AI prepares the action, a staff click executes it; `auto` = AI executes within guardrails and logs to the inbox retrospectively. Every feature launches in `suggest` and graduates per-feature as the club gains confidence |
 | `config` | JSONB | Nullable — e.g. `{"min_gap_hours": 2, "max_discount_pct": 25}` |
 | `enabled_at` | TIMESTAMPTZ | Nullable |
 | `enabled_by` | UUID | FK → `users`, nullable |
@@ -1041,14 +1082,16 @@ Every call to any AI model is logged here before its output is used. **Append-on
 
 **Constraints:** `UNIQUE(tenant_id, feature)`
 
+> **Scope note on `automation_mode`:** `ai_feature_flags` is tenant-level. Per-club overrides are deliberately deferred (YAGNI) until a multi-club tenant asks; the per-club **numeric guardrails** on `clubs` (G8: `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`, `max_marketing_msgs_per_week`) cover club-level variation for now.
+
 > **Recognised AI features (seed list, extensible without schema change):** `dynamic_pricing`, `payment_anomaly_detection`, `revenue_forecasting`, `gap_detection`, `smart_notifications`, `personalised_slot_suggestions`, `cancellation_prediction`, `skill_auto_update`, `matchmaking`, `churn_scoring`, `re_engagement_campaigns`, `ai_staffing_recommendations`, `membership_tier_suggestions`, `ai_support_chatbot`, `conversational_booking`, `training_recommendations`, `video_analysis`, `competitor_pricing_intel`. *(Descoped 2026-05-29: `weather_aware_alerts`, `equipment_replacement_prediction`, `ai_maintenance_scheduling`.)*
 
 ---
 
 ## 17. Player Profiles & Engagement Scoring
 
-### `player_profiles` *(NEW TABLE — Migration group G9)*
-AI-managed preference and behaviour profile — one per user per club. Built automatically from booking history and match results. The `embedding` column is the input to matchmaking and Fill the Court.
+### `player_profiles` *(NEW TABLE — Migration group G9-360; `embedding` + ivfflat index deferred to G13)*
+Preference and behaviour profile — one per user per club. The non-AI columns land first (G9-360, Sprint 9–10) to power the staff player-360 view ([#49](https://github.com/kendavis23/SmashBook/issues/49)); the behavioural columns are then filled by the scoring pipeline, and the `embedding` column (input to matchmaking and Fill the Court) is added in G13 when matchmaking ships (Sprint 11).
 
 | Column | Type | Notes |
 |---|---|---|
@@ -1063,20 +1106,39 @@ AI-managed preference and behaviour profile — one per user per club. Built aut
 | `last_booking_at` | TIMESTAMPTZ | Nullable — denormalised from `bookings` for churn query speed |
 | `lifetime_bookings` | INTEGER | Default `0` |
 | `lifetime_spend` | NUMERIC(12,2) | Default `0.00` |
-| `embedding` | vector(384) | pgvector — generated nightly by Vertex AI text-embedding model |
-| `embedding_updated_at` | TIMESTAMPTZ | Nullable |
+| `tags` | TEXT[] | **NEW** Default `{}` — segment tags (e.g. `casual`, `competitive`, `corporate`). AI-written by auto-segmentation ([#102](https://github.com/kendavis23/SmashBook/issues/102)), staff-editable. The home for segmentation after `player_segments` was dropped; `campaigns.target_filter` matches against it *(G9-360)* |
+| `embedding` | vector(384) | pgvector — generated nightly by Vertex AI text-embedding model *(G13 — not part of the G9-360 migration)* |
+| `embedding_updated_at` | TIMESTAMPTZ | Nullable *(G13)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
 **Constraints:** `UNIQUE(user_id, club_id)`
 
-**Index:** `ivfflat (embedding vector_cosine_ops) WITH (lists = 100)` — approximate nearest-neighbour search for matchmaking
+**Indexes:**
+- `GIN (tags)` — tag-filter queries for campaign targeting *(G9-360)*
+- `ivfflat (embedding vector_cosine_ops) WITH (lists = 100)` — approximate nearest-neighbour search for matchmaking *(G13)*
 
-> **Prerequisite:** Requires `CREATE EXTENSION IF NOT EXISTS vector` in the migration. On Cloud SQL, enable the `cloudsql.enable_pgvector` flag before running this migration.
+> **Prerequisite (G13 only):** the `embedding` migration requires `CREATE EXTENSION IF NOT EXISTS vector`. On Cloud SQL, enable the `cloudsql.enable_pgvector` flag before running it. The G9-360 migration has no pgvector dependency.
 
 ---
 
-### `player_engagement_scores` *(NEW TABLE — Migration group G9)*
+### `player_notes` *(NEW TABLE — Migration group G9-360)*
+Append-only staff notes on a player — the classic CRM timeline ("called about membership renewal 3/6"). Deliberately minimal: no categories, no pinning, until a club asks.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` |
+| `user_id` | UUID | FK → `users` — the player the note is about |
+| `author_id` | UUID | FK → `users` — the staff member who wrote it |
+| `body` | TEXT | |
+| `created_at` | TIMESTAMPTZ | |
+
+**Index:** `ix_player_notes_club_user (club_id, user_id, created_at DESC)` — player-360 timeline
+
+---
+
+### `player_engagement_scores` *(NEW TABLE — Migration group G9b)*
 Append-only. One row per daily scoring run per player per club. Never upsert — historical scores are retained for model evaluation.
 
 | Column | Type | Notes |
@@ -1099,7 +1161,7 @@ Append-only. One row per daily scoring run per player per club. Never upsert —
 
 ---
 
-### `cancellation_predictions` *(NEW TABLE — Migration group G9)*
+### `cancellation_predictions` *(NEW TABLE — Migration group G15 — Sprint 13, [#96](https://github.com/kendavis23/SmashBook/issues/96))*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -1159,7 +1221,7 @@ Append-only. One row per daily scoring run per player per club. Never upsert —
 
 ## 19. Notifications & Outreach
 
-### `notification_templates` *(NEW TABLE — Migration group G9)*
+### `notification_templates` *(NEW TABLE — Migration group G9a)*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -1178,7 +1240,7 @@ Append-only. One row per daily scoring run per player per club. Never upsert —
 
 ---
 
-### `message_deliveries` *(NEW TABLE — Migration group G9)*
+### `message_deliveries` *(NEW TABLE — Migration group G9a)*
 **Unified delivery record** for every outbound message — system notifications (template-driven) and campaign sends alike. Replaces the separate `notification_deliveries` and `campaign_deliveries` tables in the previous design.
 
 | Column | Type | Notes |
@@ -1244,7 +1306,7 @@ Hourly utilisation snapshots per court. Primary input to gap detection and dynam
 
 ---
 
-### `gap_detection_events` *(NEW TABLE — Migration group G9)*
+### `gap_detection_events` *(NEW TABLE — Migration group G13 — Sprint 11, [#79](https://github.com/kendavis23/SmashBook/issues/79))*
 An AI-detected gap event triggers the discount and notification pipeline. The `status` lifecycle tracks the gap from detection through to outcome.
 
 | Column | Type | Notes |
@@ -1269,9 +1331,9 @@ An AI-detected gap event triggers the discount and notification pipeline. The `s
 
 ## 21. AI Recommendations Engine
 
-> **Architectural decision deferred to Sprint 10.** See the "Simplification Notes" section at the top of this file. The shape below is a placeholder for the **inbox-only** variant of `ai_recommendations` — staff-facing review queue, with structured action data living in the feature-specific tables (`gap_detection_events`, `cancellation_predictions`). Confirm the final design before writing the G10 migration.
+> **Architectural decision deferred to Sprint 11 kickoff** *(re-anchored 2026-06-12 — the table moved from G10 to G13 with its consuming stories)*. See the "Simplification Notes" section at the top of this file. The shape below is a placeholder for the **inbox-only** variant of `ai_recommendations` — staff-facing review queue, with structured action data living in the feature-specific tables (`gap_detection_events`, `cancellation_predictions`). Confirm the final design before writing the G13 migration.
 
-### `ai_recommendations` *(NEW TABLE — Migration group G10)*
+### `ai_recommendations` *(NEW TABLE — Migration group G13)*
 Staff-facing inbox for AI-generated suggestions across every feature type. The structured action data lives in the originating feature table; this row is the review queue entry. `source_event_id` is the foreign key into that feature table.
 
 | Column | Type | Notes |
@@ -1297,7 +1359,9 @@ Staff-facing inbox for AI-generated suggestions across every feature type. The s
 
 ## 22. Video Analysis
 
-### `video_analyses` *(NEW TABLE — Migration group G12)*
+> ⏸ **Parked 2026-06-12.** The consuming story ([#114](https://github.com/kendavis23/SmashBook/issues/114)) is unscheduled backlog. Spec retained for when it is re-sprinted — **do not build**.
+
+### `video_analyses` *(NEW TABLE — Parked, no migration group)*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -1321,7 +1385,7 @@ Staff-facing inbox for AI-generated suggestions across every feature type. The s
 
 ## 23. Market Intelligence
 
-### `competitor_price_snapshots` *(NEW TABLE — Migration group G12)*
+### `competitor_price_snapshots` *(NEW TABLE — Migration group G14 — Sprint 12, [#115](https://github.com/kendavis23/SmashBook/issues/115))*
 
 | Column | Type | Notes |
 |---|---|---|
@@ -1375,31 +1439,33 @@ All new enums must be created in Alembic migrations **before** the columns that 
 | `CalendarReservationType` | `training_block`, `private_hire`, `maintenance`, `tournament_hold` | G5 |
 | `SupportTicketStatus` | `open`, `in_progress`, `resolved`, `closed` | G6 |
 | `SupportTicketPriority` | `low`, `medium`, `high` | G6 |
-| `SupportTicketCategory` | `support`, `chat`, `booking_inquiry` | G12 |
+| `SupportTicketCategory` | `support`, `chat`, `booking_inquiry` | G9a |
 | `SupportHandledBy` | `staff`, `ai`, `hybrid` | G6 |
 | `MessageSenderType` | `player`, `staff`, `ai` | G6 |
-| `MessageDeliverySource` | `template`, `campaign` | G9 |
+| `MessageDeliverySource` | `template`, `campaign` | G9a |
 | `ModelProvider` | `anthropic`, `vertex_ai`, `internal` | G8 |
+| `AutomationMode` | `suggest`, `approve`, `auto` | G8 |
+| `TenantSubscriptionPaymentStatus` | `succeeded`, `failed`, `refunded` | G8-Fin |
 | `SkillChangeSource` | `staff_manual`, `ai_auto`, `match_result` | G6 |
-| `GapStatus` | `detected`, `offer_generated`, `notified`, `filled`, `expired` | G9 |
+| `GapStatus` | `detected`, `offer_generated`, `notified`, `filled`, `expired` | G13 |
 | `CampaignType` | `re_engagement`, `flash_sale`, `waitlist_fill`, `onboarding`, `churn_prevention`, `custom` | G10 |
 | `CampaignStatus` | `draft`, `scheduled`, `running`, `completed`, `cancelled` | G10 |
 | `CampaignTriggerType` | `manual`, `scheduled`, `ai_triggered`, `event_driven` | G10 |
-| `DeliveryStatus` | `pending`, `sent`, `delivered`, `opened`, `clicked`, `bounced`, `unsubscribed`, `failed` | G9 |
-| `RecommendationType` | `price_adjustment`, `gap_discount`, `re_engagement_outreach`, `staffing_change`, `membership_upsell`, `competitor_price_alert`, `anomaly_alert`, `cancellation_risk_alert`, `training_recommendation` | G10 |
-| `RecommendationStatus` | `pending`, `approved`, `rejected`, `actioned`, `expired` | G10 |
-| `RecommendationPriority` | `low`, `medium`, `high`, `critical` | G10 |
+| `DeliveryStatus` | `pending`, `sent`, `delivered`, `opened`, `clicked`, `bounced`, `unsubscribed`, `failed` | G9a |
+| `RecommendationType` | `price_adjustment`, `gap_discount`, `re_engagement_outreach`, `staffing_change`, `membership_upsell`, `competitor_price_alert`, `anomaly_alert`, `cancellation_risk_alert`, `training_recommendation` | G13 |
+| `RecommendationStatus` | `pending`, `approved`, `rejected`, `actioned`, `expired` | G13 |
+| `RecommendationPriority` | `low`, `medium`, `high`, `critical` | G13 |
 | `MembershipInterval` | `monthly`, `quarterly`, `annual` | G10 |
 | `TournamentFormat` | `round_robin`, `single_elimination`, `double_elimination`, `americano`, `mexicano` | G11 |
 | `TournamentStatus` | `draft`, `open`, `in_progress`, `completed`, `cancelled` | G11 |
 | `TournamentRegistrationStatus` | `registered`, `waitlisted`, `withdrawn`, `disqualified` | G11 |
 | `MatchWinnerSide` | `team1`, `team2`, `draw` | G11 |
 | `MatchTeam` | `team1`, `team2` | G11 |
-| `PlayerCancellationResponse` | `confirmed`, `released` | G9 |
-| `TrainingRecommendationStatus` | `draft`, `sent`, `read`, `dismissed` | G12 |
-| `VideoAnalysisStatus` | `queued`, `processing`, `completed`, `failed` | G12 |
-| `CompetitorDataSource` | `web_scrape`, `manual_entry`, `api` | G12 |
-| `CompetitorDayType` | `weekday`, `weekend`, `peak`, `off_peak` | G12 |
+| `PlayerCancellationResponse` | `confirmed`, `released` | G15 |
+| `TrainingRecommendationStatus` | `draft`, `sent`, `read`, `dismissed` | G16 |
+| `VideoAnalysisStatus` | `queued`, `processing`, `completed`, `failed` | Parked |
+| `CompetitorDataSource` | `web_scrape`, `manual_entry`, `api` | G14 |
+| `CompetitorDayType` | `weekday`, `weekend`, `peak`, `off_peak` | G14 |
 
 **Enums removed in May 2026 simplification (no longer used):** `SegmentType`, `ChatThreadStatus`, `TournamentMatchStatus`, `PerkType` — their parent tables (`player_segments`, `chat_threads`, `tournament_matches`, `membership_perks`) were dropped from the target state.
 
@@ -1437,25 +1503,28 @@ Priority indexes to add alongside the tables that need them.
 
 | Table | Index | Migration group |
 |---|---|---|
-| `bookings` | `ix_bookings_cancellation_risk (club_id, cancellation_risk_score DESC) WHERE cancellation_risk_score > 0.6` | G9 |
+| `bookings` | `ix_bookings_cancellation_risk (club_id, cancellation_risk_score DESC) WHERE cancellation_risk_score > 0.6` | G15 |
 | `bookings` | `ix_bookings_tournament (tournament_id, tournament_round)` | G11 |
-| `player_engagement_scores` | `ix_engagement_club_churn (club_id, churn_risk_score DESC) WHERE churn_risk_score > 0.5` | G9 |
-| `player_engagement_scores` | `ix_engagement_user_club (user_id, club_id)` | G9 |
+| `player_engagement_scores` | `ix_engagement_club_churn (club_id, churn_risk_score DESC) WHERE churn_risk_score > 0.5` | G9b |
+| `player_engagement_scores` | `ix_engagement_user_club (user_id, club_id)` | G9b |
 | `court_utilisation_snapshots` | `UNIQUE (court_id, snapshot_date, hour_of_day)` | G7 |
-| `gap_detection_events` | `ix_gap_club_status (club_id, status) WHERE status IN ('detected','offer_generated','notified')` | G9 |
-| `ai_recommendations` | `ix_rec_club_status_priority (club_id, status, priority)` | G10 |
+| `gap_detection_events` | `ix_gap_club_status (club_id, status) WHERE status IN ('detected','offer_generated','notified')` | G13 |
+| `ai_recommendations` | `ix_rec_club_status_priority (club_id, status, priority)` | G13 |
 | `ai_inference_log` | `ix_inference_club_feature (club_id, feature, created_at DESC)` | G8 |
-| `message_deliveries` | `UNIQUE (campaign_id, user_id) WHERE campaign_id IS NOT NULL` | G9 |
-| `message_deliveries` | `ix_msg_user_club (user_id, club_id, notification_type, created_at DESC)` | G9 |
-| `message_deliveries` | `ix_msg_campaign (campaign_id) WHERE campaign_id IS NOT NULL` | G9 |
+| `message_deliveries` | `UNIQUE (campaign_id, user_id) WHERE campaign_id IS NOT NULL` | G9a |
+| `message_deliveries` | `ix_msg_user_club (user_id, club_id, notification_type, created_at DESC)` | G9a |
+| `message_deliveries` | `ix_msg_campaign (campaign_id) WHERE campaign_id IS NOT NULL` | G9a |
 | `membership_subscriptions` | `UNIQUE (user_id, club_id) WHERE status = 'active'` — partial unique index | G10 |
 | `membership_plan_pricing` | `UNIQUE (membership_plan_id, interval)` | G10 |
 | `waitlist_entries` | `ix_waitlist_club_date (club_id, desired_date, status)` | G3 |
 | `promo_codes` | `UNIQUE (club_id, code)` | G6 |
-| `player_profiles` | `ivfflat (embedding vector_cosine_ops) WITH (lists = 100)` | G9 |
+| `player_profiles` | `GIN (tags)` — campaign tag targeting | G9-360 |
+| `player_profiles` | `ivfflat (embedding vector_cosine_ops) WITH (lists = 100)` | G13 |
+| `player_notes` | `ix_player_notes_club_user (club_id, user_id, created_at DESC)` — player-360 timeline | G9-360 |
+| `tenant_subscription_payments` | `UNIQUE (stripe_invoice_id)` — webhook replay idempotency | G8-Fin |
 | `ai_feature_flags` | `UNIQUE (tenant_id, feature)` | G8 |
 | `support_tickets` | `ix_ticket_club_status (club_id, status, priority)` | G6 |
-| `support_tickets` | `ix_ticket_category_last_msg (club_id, category, last_message_at DESC)` — inbox sort | G12 |
+| `support_tickets` | `ix_ticket_category_last_msg (club_id, category, last_message_at DESC)` — inbox sort | G9a |
 
 ---
 
@@ -1463,25 +1532,28 @@ Priority indexes to add alongside the tables that need them.
 
 Quick reference for Claude Code when implementing AI features: which tables to read from and write to.
 
+Sprint numbers re-anchored 2026-06-12 to the refined issue backlog (go-live after Sprint 10 — everything Sprint 11+ is post-launch).
+
 | AI Feature | Sprint | Reads from | Writes to |
 |---|---|---|---|
-| Dynamic pricing | 8 | `pricing_rules`, `court_utilisation_snapshots` | `ai_inference_log` (price in-memory) |
-| Payment anomaly detection | 8 | `payments` | `payments.anomaly_flagged`, `ai_recommendations`, `ai_inference_log` |
-| Revenue forecasting | 8 | `court_utilisation_snapshots`, `payments` | `ai_recommendations`, `ai_inference_log` |
-| Gap detection | 9 | `court_utilisation_snapshots`, `clubs` (config columns) | `gap_detection_events`, `ai_inference_log` |
-| Smart notifications | 9 | `gap_detection_events`, `player_profiles` | `message_deliveries`, `ai_inference_log` |
-| Personalised slot suggestions | 9 | `player_profiles`, `court_utilisation_snapshots` | `message_deliveries`, `ai_inference_log` |
-| Cancellation prediction | 9 | `bookings`, `player_profiles` | `cancellation_predictions`, `bookings.cancellation_risk_score`, `ai_inference_log` |
-| Matchmaking / Fill the Court | 9 | `player_profiles` (embedding), `bookings` | `bookings` (new record), `ai_inference_log` |
-| Churn scoring | 9 | `bookings`, `player_profiles` | `player_engagement_scores`, `ai_inference_log` |
+| Revenue forecasting | 10 | `court_utilisation_snapshots`, `payments` | `ai_recommendations`, `ai_inference_log` |
+| Churn scoring | 10 | `bookings`, `player_profiles` | `player_engagement_scores`, `ai_inference_log` |
 | Re-engagement campaigns | 10 | `player_engagement_scores`, `player_profiles`, `bookings` | `campaigns`, `message_deliveries`, `ai_inference_log` |
-| AI staffing recommendations | 10 | `court_utilisation_snapshots`, `staff_profiles`, `trainer_availability` | `ai_recommendations`, `ai_inference_log` |
-| Membership tier suggestions | 10 | `membership_subscriptions`, `player_profiles`, `wallet_transactions` | `ai_recommendations`, `message_deliveries`, `ai_inference_log` |
-| Skill auto-update (ELO) | 11 | `match_results`, `match_result_players` | `users.skill_level`, `skill_level_history`, `ai_inference_log` |
-| AI support chatbot | 12 | `support_tickets`, `support_messages`, `bookings` | `support_messages`, `support_tickets.handled_by`, `ai_inference_log` |
-| Conversational booking | 12 | `bookings`, `courts`, `player_profiles` | `bookings`, `support_messages` (with `intent` + `booking_id`), `ai_inference_log` |
-| Training recommendations | 12 | `match_results`, `skill_level_history` | `training_recommendations`, `ai_inference_log` |
-| Video analysis | 12 | `video_analyses.video_path` (GCS) | `video_analyses`, `ai_inference_log` |
+| Dynamic pricing | 11 (staff-reviewed; auto Sprint 13) | `pricing_rules`, `court_utilisation_snapshots` | `ai_inference_log` (price in-memory) |
+| Gap detection | 11 | `court_utilisation_snapshots`, `clubs` (config columns) | `gap_detection_events`, `ai_inference_log` |
+| Smart notifications | 11 | `gap_detection_events`, `player_profiles` | `message_deliveries`, `ai_inference_log` |
+| Personalised slot suggestions | 11 | `player_profiles`, `court_utilisation_snapshots` | `message_deliveries`, `ai_inference_log` |
+| Matchmaking / Fill the Court | 11 | `player_profiles` (embedding), `bookings` | `bookings` (new record), `ai_inference_log` |
+| AI staffing recommendations | 12 | `court_utilisation_snapshots`, `staff_profiles`, `trainer_availability` | `ai_recommendations`, `ai_inference_log` |
+| Membership tier suggestions | 12 | `membership_subscriptions`, `player_profiles`, `wallet_transactions` | `ai_recommendations`, `message_deliveries`, `ai_inference_log` |
 | Competitor pricing intel | 12 | external scrape | `competitor_price_snapshots`, `ai_recommendations`, `ai_inference_log` |
+| Cancellation prediction | 13 | `bookings`, `player_profiles` | `cancellation_predictions`, `bookings.cancellation_risk_score`, `ai_inference_log` |
+| Skill auto-update (ELO) | 13 | `match_results`, `match_result_players` | `users.skill_level`, `skill_level_history`, `ai_inference_log` |
+| Auto-segmentation | 13 | `bookings`, `player_profiles` | `player_profiles.tags`, `ai_inference_log` |
+| AI support chatbot | 14 | `support_tickets`, `support_messages`, `bookings` | `support_messages`, `support_tickets.handled_by`, `ai_inference_log` |
+| Training recommendations | 14 | `match_results`, `skill_level_history` | `training_recommendations`, `ai_inference_log` |
+| Conversational booking | 15 | `bookings`, `courts`, `player_profiles` | `bookings`, `support_messages` (with `intent` + `booking_id`), `ai_inference_log` |
+| Payment anomaly detection | 15 | `payments` | `payments.anomaly_flagged`, `ai_recommendations`, `ai_inference_log` |
+| Video analysis | ⏸ Parked (unscheduled) | `video_analyses.video_path` (GCS) | `video_analyses`, `ai_inference_log` |
 
 *(Descoped 2026-05-29: Weather-aware alerts, Equipment replacement prediction, AI maintenance scheduling.)*

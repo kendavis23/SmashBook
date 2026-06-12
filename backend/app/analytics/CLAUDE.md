@@ -1,6 +1,6 @@
 # Analytics Domain — CLAUDE.md
 
-_Last updated: 2026-05-30_
+_Last updated: 2026-06-12_
 
 **Commits:** The user handles all commits manually. Never run `git commit` or `git push` — make the changes and leave them for the user to review and commit.
 
@@ -61,4 +61,4 @@ Schema state stays in central [/docs/DATA_MODEL.md](../../../docs/DATA_MODEL.md)
 
 ## Sprint alignment
 
-This subtree owns reporting work introduced in Sprints 5–6 (basic operational reports) and the heavier analytical work that accompanies AI features in Sprints 7–12 (e.g. AI inference dashboards, churn cohorts, campaign performance). Models for analytics tables live in the same `db/models/` tree as everything else.
+This subtree owns reporting work introduced in Sprints 5–6 (basic operational reports), the Sprint 7 analytics build (G7), and the heavier analytical work that accompanies AI features in Sprints 9–15 (e.g. AI inference dashboards, churn cohorts, campaign performance). Models for analytics tables live in the same `db/models/` tree as everything else.
