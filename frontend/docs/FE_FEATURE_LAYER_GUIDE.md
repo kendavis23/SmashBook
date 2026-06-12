@@ -1,4 +1,4 @@
-_Last updated: 2026-06-06 00:00 UTC_
+_Last updated: 2026-06-12 00:00 UTC_
 
 # Frontend Feature Layer Guide
 
@@ -553,6 +553,55 @@ Every feature that has both a page route and a contextual modal uses the **5-fil
     ) : null}
 </div>
 ```
+
+---
+
+### Confirmation modal (delete / deactivate)
+
+A small confirm dialog (delete, deactivate, etc.) follows the same backdrop and surface tokens as the full modal, and **must be portaled to `document.body`** — exactly like `StaffEditDialog`. If you render it inline inside a page container, the overlay is clipped to the content area and leaves a visible gap over the navbar/header strip.
+
+```tsx
+import { createPortal } from "react-dom";
+
+{
+    isConfirming
+        ? createPortal(
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                  <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+                      <h2 className="text-lg font-semibold text-foreground">Deactivate Staff Member</h2>
+                      <p className="mt-2 text-sm text-muted-foreground">
+                          Are you sure? This cannot be undone.
+                      </p>
+                      <div className="mt-6 flex justify-end gap-3">
+                          <button type="button" onClick={onCancel} className="btn-outline">
+                              Cancel
+                          </button>
+                          <button
+                              type="button"
+                              onClick={onConfirm}
+                              className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-destructive px-4 text-sm font-semibold text-destructive-foreground transition hover:bg-destructive/90"
+                          >
+                              Deactivate
+                          </button>
+                      </div>
+                  </div>
+              </div>,
+              document.body
+          )
+        : null;
+}
+```
+
+| Element        | Classes                                                                       |
+| -------------- | ----------------------------------------------------------------------------- |
+| Backdrop       | `fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm` |
+| Surface        | `w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl`      |
+
+**Rules:**
+
+- Backdrop is always `bg-black/50` — never `bg-background/80`, which renders as a washed-out, near-white overlay.
+- Surface is always `bg-card` with `rounded-2xl` + `shadow-2xl` to match the Edit dialog.
+- Always wrap in `createPortal(..., document.body)` so the overlay covers the full viewport (no header/navbar gap).
 
 ---
 

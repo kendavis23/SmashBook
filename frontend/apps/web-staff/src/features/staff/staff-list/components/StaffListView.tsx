@@ -1,5 +1,6 @@
 import type { FormEvent, JSX } from "react";
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { AlertToast, Breadcrumb } from "@repo/ui";
 import { RefreshCw, Search, Users } from "lucide-react";
 import type { StaffFormState, StaffMember } from "../../types";
@@ -140,9 +141,10 @@ export default function StaffListView({
                 />
             ) : null}
 
-            {deactivatingMemberName ? (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 px-4 py-6 backdrop-blur-sm">
-                    <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-xl">
+            {deactivatingMemberName
+                ? createPortal(
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
                         <h2 className="text-lg font-semibold text-foreground">
                             Deactivate Staff Member
                         </h2>
@@ -177,8 +179,10 @@ export default function StaffListView({
                             </button>
                         </div>
                     </div>
-                </div>
-            ) : null}
+                </div>,
+                document.body
+                  )
+                : null}
 
             {successMessage ? (
                 <AlertToast title={successMessage} variant="success" onClose={onDismissSuccess} />
