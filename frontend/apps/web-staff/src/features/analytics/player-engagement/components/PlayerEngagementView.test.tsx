@@ -42,6 +42,11 @@ function row(o: Partial<PlayerValueRow>): PlayerValueRow {
         lifetime_spend: 1200,
         payments_count: 4,
         currency: "GBP",
+        recency_score: null,
+        frequency_score: null,
+        value_score: null,
+        rfv_total: null,
+        rfv_cell: null,
         ...o,
     };
 }

@@ -45,8 +45,8 @@ _default-preview        ace-staging-preview        ace-london-preview
   for un-parameterised local builds; per-brand channels are set at build invocation time, not
   hardcoded in `eas.json` (which is strict JSON and can't carry the matrix).
 
-> **Channel vs. branch:** EAS distinguishes *channels* (what a binary points at) from
-> *branches* (what an update is published to), linked by a mapping that defaults to 1:1 by
+> **Channel vs. branch:** EAS distinguishes _channels_ (what a binary points at) from
+> _branches_ (what an update is published to), linked by a mapping that defaults to 1:1 by
 > name. This runbook relies on that default — `<brandId>-<environment>` names both, and
 > commands below use `--channel` / `--branch` accordingly. **Never re-point a brand channel
 > at a differently-named branch**; if a mapping is ever changed (e.g. for a staged rollout),

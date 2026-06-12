@@ -365,6 +365,17 @@ export const ROUTES: RouteConfig[] = [
                 roles: ["owner", "admin"],
                 subgroup: "Players",
             },
+            {
+                key: "coach-popularity",
+                path: "/analytics/coach-popularity",
+                label: "Coach Popularity",
+                icon: GraduationCap,
+                title: "Coach Popularity",
+                subtitle: "Sessions, player reach and repeat bookings across your coaches.",
+                breadcrumb: ["Analytics", "Players", "Coach Popularity"],
+                roles: ["owner", "admin"],
+                subgroup: "Players",
+            },
         ],
     },
 

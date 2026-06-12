@@ -568,7 +568,9 @@ import { createPortal } from "react-dom";
         ? createPortal(
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
                   <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
-                      <h2 className="text-lg font-semibold text-foreground">Deactivate Staff Member</h2>
+                      <h2 className="text-lg font-semibold text-foreground">
+                          Deactivate Staff Member
+                      </h2>
                       <p className="mt-2 text-sm text-muted-foreground">
                           Are you sure? This cannot be undone.
                       </p>
@@ -592,10 +594,10 @@ import { createPortal } from "react-dom";
 }
 ```
 
-| Element        | Classes                                                                       |
-| -------------- | ----------------------------------------------------------------------------- |
-| Backdrop       | `fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm` |
-| Surface        | `w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl`      |
+| Element  | Classes                                                                                |
+| -------- | -------------------------------------------------------------------------------------- |
+| Backdrop | `fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm` |
+| Surface  | `w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl`              |
 
 **Rules:**
 

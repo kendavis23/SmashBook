@@ -14,6 +14,7 @@ import {
 } from "../playerValueConstants";
 import { PlayerAnalyticsDetailTable } from "../../components/PlayerAnalyticsDetailTable";
 import { LeaderboardPanel } from "./LeaderboardPanel";
+import { RfvScoreTable } from "./RfvScoreTable";
 
 type Props = {
     summary: PlayerValueSummary;
@@ -57,7 +58,6 @@ export default function PlayerValueView({
     onRefresh,
 }: Props): JSX.Element {
     const tabRows = value?.rows ?? [];
-    const activeTabLabel = PLAYER_SORT_TAB_LABEL[sort];
 
     return (
         <div className="w-full space-y-4">
@@ -179,20 +179,31 @@ export default function PlayerValueView({
                                                 : "border-transparent text-muted-foreground hover:text-foreground")
                                         }
                                     >
-                                        {active ? activeTabLabel : t.label}
+                                        {t.id === "value" ? PLAYER_SORT_TAB_LABEL[sort] : t.label}
                                     </button>
                                 );
                             })}
                         </div>
                         <div className="p-4">
-                            <PlayerAnalyticsDetailTable
-                                rows={tabRows}
-                                page={page}
-                                totalPages={totalPages}
-                                totalItems={totalItems}
-                                pageSize={TABLE_PAGE_SIZE}
-                                onPageChange={onPageChange}
-                            />
+                            {tab === "rfv" ? (
+                                <RfvScoreTable
+                                    rows={tabRows}
+                                    page={page}
+                                    totalPages={totalPages}
+                                    totalItems={totalItems}
+                                    pageSize={TABLE_PAGE_SIZE}
+                                    onPageChange={onPageChange}
+                                />
+                            ) : (
+                                <PlayerAnalyticsDetailTable
+                                    rows={tabRows}
+                                    page={page}
+                                    totalPages={totalPages}
+                                    totalItems={totalItems}
+                                    pageSize={TABLE_PAGE_SIZE}
+                                    onPageChange={onPageChange}
+                                />
+                            )}
                         </div>
                     </section>
                 </>

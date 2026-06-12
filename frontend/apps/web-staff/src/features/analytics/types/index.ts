@@ -28,6 +28,12 @@ export type {
     SignupsPoint,
     SignupsTimeseries,
 } from "@repo/staff-domain/models";
+export type {
+    CoachSort,
+    CoachPopularityRow,
+    CoachPopularityLeaderboard,
+    CoachPopularityParams,
+} from "@repo/staff-domain/models";
 
 // Feature-specific types — not in domain
 

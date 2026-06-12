@@ -16,21 +16,21 @@ The whole point is that the input surface is small. A club provides **one master
 colour spec** — everything else (the full 49-token light/dark theme, every icon size, the
 splash, the notification icon) is **generated and validated**.
 
-| Field                  | Required       | Notes                                                                                                            |
-| ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Brand id**           | ✅             | kebab-case, globally unique (e.g. `ace-london`). Becomes the asset folder + OTA channel prefix.                  |
-| **Display name**       | ✅             | Springboard/launcher label + store name (e.g. "Ace London").                                                     |
-| **Delivery model**     | ✅             | `shared` (Model B, default — instant, no store build) or `dedicated` (Model A — own store listing).              |
-| **Primary colour**     | ✅             | `#RRGGBB`. Drives CTA, hero, active tab, ring + all derived hover/surface/border variants.                       |
-| **Secondary colour**   | optional       | Defaults to a near-black neutral. Text / primary surfaces.                                                       |
-| **Background colour**  | optional       | Defaults to white (light). Dark-theme background is derived.                                                     |
-| **Font family**        | optional       | One of the **curated** bundled set (default `Inter`). No client-supplied font files (licensing/bundle-size, §7). |
-| **Master logo**        | ✅ (dedicated) | One high-res square master (SVG preferred, or ≥1024² PNG). All native icons are generated from it.               |
-| **In-app logo**        | ✅             | Wordmark/header logo shown inside the app (distinct from the OS icon).                                           |
-| **Native bundle ids**  | ✅ (dedicated) | `iosBundleId` + `androidPackage` (e.g. `app.acelondon.player`). Immutable once shipped.                          |
-| **Associated domains** | optional       | Universal/app links (e.g. `applinks:ace.london`).                                                                |
-| **Tenants served**     | optional       | Subdomains this brand may serve (Model B mapping). Config, not identity (§4).                                    |
-| **Store listing copy** | ✅ (dedicated) | Description/subtitle, keywords, screenshots, App Privacy / Play data-safety answers, support + marketing URLs. Required for review — and meaningfully different listings are themselves a Guideline 4.3 mitigation (plan §15/§16). |
+| Field                  | Required       | Notes                                                                                                                                                                                                                               |
+| ---------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Brand id**           | ✅             | kebab-case, globally unique (e.g. `ace-london`). Becomes the asset folder + OTA channel prefix.                                                                                                                                     |
+| **Display name**       | ✅             | Springboard/launcher label + store name (e.g. "Ace London").                                                                                                                                                                        |
+| **Delivery model**     | ✅             | `shared` (Model B, default — instant, no store build) or `dedicated` (Model A — own store listing).                                                                                                                                 |
+| **Primary colour**     | ✅             | `#RRGGBB`. Drives CTA, hero, active tab, ring + all derived hover/surface/border variants.                                                                                                                                          |
+| **Secondary colour**   | optional       | Defaults to a near-black neutral. Text / primary surfaces.                                                                                                                                                                          |
+| **Background colour**  | optional       | Defaults to white (light). Dark-theme background is derived.                                                                                                                                                                        |
+| **Font family**        | optional       | One of the **curated** bundled set (default `Inter`). No client-supplied font files (licensing/bundle-size, §7).                                                                                                                    |
+| **Master logo**        | ✅ (dedicated) | One high-res square master (SVG preferred, or ≥1024² PNG). All native icons are generated from it.                                                                                                                                  |
+| **In-app logo**        | ✅             | Wordmark/header logo shown inside the app (distinct from the OS icon).                                                                                                                                                              |
+| **Native bundle ids**  | ✅ (dedicated) | `iosBundleId` + `androidPackage` (e.g. `app.acelondon.player`). Immutable once shipped.                                                                                                                                             |
+| **Associated domains** | optional       | Universal/app links (e.g. `applinks:ace.london`).                                                                                                                                                                                   |
+| **Tenants served**     | optional       | Subdomains this brand may serve (Model B mapping). Config, not identity (§4).                                                                                                                                                       |
+| **Store listing copy** | ✅ (dedicated) | Description/subtitle, keywords, screenshots, App Privacy / Play data-safety answers, support + marketing URLs. Required for review — and meaningfully different listings are themselves a Guideline 4.3 mitigation (plan §15/§16).  |
 | **Push config**        | ✅ (dedicated) | A Firebase app per bundle id → `google-services.json` + `GoogleService-Info.plist` (wired via `app.config.ts` `googleServicesFile`), plus an APNs key registration. Without it, the brand's app silently receives no notifications. |
 
 Everything else in the resolved manifest — the complete theme, scheme, Stripe merchant id,

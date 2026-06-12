@@ -153,3 +153,9 @@ export type {
     ActivePlayersKpiParams,
     PlayerFlowTimeseriesParams,
 } from "./analytics-player.model";
+export type {
+    CoachSort,
+    CoachPopularityRow,
+    CoachPopularityLeaderboard,
+    CoachPopularityParams,
+} from "./analytics-coach.model";

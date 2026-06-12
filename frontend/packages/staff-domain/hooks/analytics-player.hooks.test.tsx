@@ -56,6 +56,11 @@ const mockPlayerRow = {
     lifetime_spend: 1150,
     payments_count: 20,
     currency: "EUR",
+    recency_score: 4,
+    frequency_score: 5,
+    value_score: 3,
+    rfv_total: 12,
+    rfv_cell: "453",
 };
 
 const mockValueLeaderboard = {
