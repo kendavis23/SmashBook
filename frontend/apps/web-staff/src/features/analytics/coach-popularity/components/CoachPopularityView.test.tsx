@@ -80,6 +80,7 @@ function board(rows: CoachPopularityRow[]): CoachPopularityLeaderboard {
 
 const filledSummary: CoachPopularitySummary = {
     coachCount: 1,
+    activeCoachCount: 1,
     totalSessions: 12,
     totalDistinctPlayers: 9,
     totalLessonRevenue: 320,
@@ -89,6 +90,7 @@ const filledSummary: CoachPopularitySummary = {
 
 const emptySummary: CoachPopularitySummary = {
     coachCount: 0,
+    activeCoachCount: 0,
     totalSessions: 0,
     totalDistinctPlayers: 0,
     totalLessonRevenue: 0,
@@ -102,7 +104,6 @@ function renderView(overrides: Partial<Parameters<typeof CoachPopularityView>[0]
         value: board([row()]),
         topSessions: board([row()]),
         topReturnRate: board([row()]),
-        topRecentlyActive: board([row()]),
         sort: "sessions" as const,
         page: 0,
         totalPages: 1,
@@ -162,11 +163,9 @@ describe("CoachPopularityView", () => {
         expect(props.onSortChange).toHaveBeenCalledWith("return_rate");
     });
 
-    it("calls onSortChange from a leaderboard panel View all button", () => {
-        const props = renderView();
-        // Non-active panels render a "View all" button; clicking it changes the sort.
-        const [viewAll] = screen.getAllByText("View all");
-        fireEvent.click(viewAll as HTMLElement);
-        expect(props.onSortChange).toHaveBeenCalled();
+    it("renders both bar chart titles", () => {
+        renderView();
+        expect(screen.getByText(/Sessions by Coach/)).toBeInTheDocument();
+        expect(screen.getByText(/Return Rate by Coach/)).toBeInTheDocument();
     });
 });

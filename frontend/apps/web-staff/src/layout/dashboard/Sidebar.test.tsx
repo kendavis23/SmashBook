@@ -186,7 +186,7 @@ describe("Sidebar — role-restricted routes visible to admin", () => {
 
     it("renders Staff link for admin", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Staff")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Staff" })).toHaveAttribute("href", "/staff");
     });
 
     it("renders the Analytics section for admin", () => {
@@ -209,7 +209,7 @@ describe("Sidebar — all routes visible to owner", () => {
 
     it("renders Staff link for owner", () => {
         render(<Sidebar />);
-        expect(screen.getByText("Staff")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Staff" })).toHaveAttribute("href", "/staff");
     });
 
     it("renders the Settings section for owner", () => {

@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { TABLE_PAGE_SIZE } from "../coachPopularityConstants";
 import CoachPopularityContainer from "./CoachPopularityContainer";
 
 const refetch = vi.fn();
@@ -34,13 +35,9 @@ vi.mock("./CoachPopularityView", () => ({
 describe("CoachPopularityContainer", () => {
     beforeEach(() => vi.clearAllMocks());
 
-    it("calls the leaderboard hook with the club id and the paged + top-5 params", async () => {
+    it("calls the leaderboard hook with the club id and the paged + chart params", async () => {
         const { useCoachPopularityLeaderboard } = await import("../../hooks");
         render(<CoachPopularityContainer />);
-        expect(useCoachPopularityLeaderboard).toHaveBeenCalledWith(
-            "club-1",
-            expect.objectContaining({ sort: "sessions", limit: 10, offset: 0 })
-        );
         expect(useCoachPopularityLeaderboard).toHaveBeenCalledWith(
             "club-1",
             expect.objectContaining({ sort: "sessions", limit: 5, offset: 0 })
@@ -49,10 +46,6 @@ describe("CoachPopularityContainer", () => {
             "club-1",
             expect.objectContaining({ sort: "return_rate", limit: 5, offset: 0 })
         );
-        expect(useCoachPopularityLeaderboard).toHaveBeenCalledWith(
-            "club-1",
-            expect.objectContaining({ sort: "last_session_at", limit: 5, offset: 0 })
-        );
     });
 
     it("defaults to the sessions sort", () => {
@@ -60,10 +53,10 @@ describe("CoachPopularityContainer", () => {
         expect(screen.getByTestId("sort").textContent).toBe("sessions");
     });
 
-    it("refetches all four queries on Refresh", () => {
+    it("refetches all three queries on Refresh", () => {
         render(<CoachPopularityContainer />);
         fireEvent.click(screen.getByText("Refresh"));
-        expect(refetch).toHaveBeenCalledTimes(4);
+        expect(refetch).toHaveBeenCalledTimes(3);
     });
 
     it("passes the updated sort to the paged query and resets the page", async () => {
@@ -72,7 +65,7 @@ describe("CoachPopularityContainer", () => {
         fireEvent.click(screen.getByText("Sort"));
         expect(useCoachPopularityLeaderboard).toHaveBeenCalledWith(
             "club-1",
-            expect.objectContaining({ sort: "return_rate", limit: 10, offset: 0 })
+            expect.objectContaining({ sort: "return_rate", limit: TABLE_PAGE_SIZE, offset: 0 })
         );
         expect(screen.getByTestId("page").textContent).toBe("0");
     });

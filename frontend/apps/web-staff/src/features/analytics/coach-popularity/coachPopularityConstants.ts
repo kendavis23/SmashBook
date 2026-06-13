@@ -2,7 +2,7 @@ import { MONTHS_SHORT } from "@repo/ui";
 import type { CoachSort } from "../types";
 
 /** Rows per page — sent as both `limit` and visible page size. */
-export const TABLE_PAGE_SIZE = 10 as const;
+export const TABLE_PAGE_SIZE = 500 as const;
 
 /** Sort options offered in the detail-table sort dropdown. */
 export const COACH_SORT_OPTIONS: { value: CoachSort; label: string }[] = [
