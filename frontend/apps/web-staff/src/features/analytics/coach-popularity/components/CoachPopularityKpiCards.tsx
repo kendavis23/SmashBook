@@ -1,5 +1,5 @@
 import type { JSX } from "react";
-import { CalendarCheck, Repeat, Users, Wallet } from "lucide-react";
+import { CalendarCheck, Repeat, UserCheck, Users, Wallet } from "lucide-react";
 import { formatCurrency } from "@repo/ui";
 import type { CoachPopularitySummary } from "../coachPopularitySummary";
 
@@ -12,9 +12,10 @@ type KpiCardProps = {
     value: string;
     icon: JSX.Element;
     iconBg: string;
+    subtext?: string;
 };
 
-function KpiCard({ label, value, icon, iconBg }: KpiCardProps): JSX.Element {
+function KpiCard({ label, value, icon, iconBg, subtext }: KpiCardProps): JSX.Element {
     return (
         <div className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-card px-3 py-2.5 shadow-xs ring-1 ring-black/[0.02] transition-colors hover:border-border">
             <div
@@ -29,14 +30,32 @@ function KpiCard({ label, value, icon, iconBg }: KpiCardProps): JSX.Element {
                 <p className="truncate text-base font-semibold leading-5 tracking-tight text-foreground">
                     {value}
                 </p>
+                {subtext !== undefined && (
+                    <p className="truncate text-[10px] leading-3 text-muted-foreground/70">
+                        {subtext}
+                    </p>
+                )}
             </div>
         </div>
     );
 }
 
 export function CoachPopularityKpiCards({ summary }: Props): JSX.Element {
+    const inactiveCount = summary.coachCount - summary.activeCoachCount;
+    const coachSubtext =
+        summary.coachCount > 0
+            ? `Active: ${summary.activeCoachCount}${inactiveCount > 0 ? ` (−${inactiveCount})` : ""}`
+            : undefined;
+
     return (
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 min-[1100px]:grid-cols-5">
+            <KpiCard
+                label="Total Coaches"
+                value={summary.coachCount.toLocaleString()}
+                subtext={coachSubtext}
+                iconBg="bg-purple-500/10 text-purple-500"
+                icon={<UserCheck size={15} />}
+            />
             <KpiCard
                 label="Total Sessions"
                 value={summary.totalSessions.toLocaleString()}

@@ -1,6 +1,6 @@
 import type { JSX } from "react";
 import { GraduationCap, RefreshCw } from "lucide-react";
-import { formatCurrency, SelectInput } from "@repo/ui";
+import { SelectInput } from "@repo/ui";
 import type { SelectOption } from "@repo/ui";
 import type { CoachPopularityLeaderboard, CoachSort } from "../../types";
 import type { CoachPopularitySummary } from "../coachPopularitySummary";
@@ -9,20 +9,18 @@ import {
     COACH_SORT_TABLE_LABEL,
     TABLE_PAGE_SIZE,
     formatReturnRate,
-    formatSessionDate,
     panelCls,
     panelTitleCls,
 } from "../coachPopularityConstants";
 import { CoachPopularityKpiCards } from "./CoachPopularityKpiCards";
-import { CoachLeaderboardPanel } from "./CoachLeaderboardPanel";
 import { CoachPopularityTable } from "./CoachPopularityTable";
+import { CoachBarChart } from "./CoachBarChart";
 
 type Props = {
     summary: CoachPopularitySummary;
     value: CoachPopularityLeaderboard | undefined;
     topSessions: CoachPopularityLeaderboard | undefined;
     topReturnRate: CoachPopularityLeaderboard | undefined;
-    topRecentlyActive: CoachPopularityLeaderboard | undefined;
     sort: CoachSort;
     page: number;
     totalPages: number;
@@ -39,7 +37,6 @@ export default function CoachPopularityView({
     value,
     topSessions,
     topReturnRate,
-    topRecentlyActive,
     sort,
     page,
     totalPages,
@@ -103,42 +100,31 @@ export default function CoachPopularityView({
                 <>
                     <CoachPopularityKpiCards summary={summary} />
 
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                        <CoachLeaderboardPanel
-                            title="Top 5 by Sessions"
+                    {/* Bar charts */}
+                    <div className="grid grid-cols-1 gap-4 min-[1100px]:grid-cols-2">
+                        <CoachBarChart
+                            title="Sessions by Coach (Top 5)"
                             hint="Coaches with the most all-time sessions delivered."
-                            metricLabel="Sessions"
+                            xAxisLabel="Sessions"
                             rows={topSessions?.rows ?? []}
                             metricOf={(row) => ({
-                                display: row.sessions.toLocaleString(),
                                 value: row.sessions,
+                                display: row.sessions.toLocaleString(),
                             })}
-                            active={sort === "sessions"}
-                            onViewAll={() => onSortChange("sessions")}
+                            barClassName="bg-[hsl(213_94%_52%)]"
                         />
-                        <CoachLeaderboardPanel
-                            title="Top 5 by Return Rate"
+                        <CoachBarChart
+                            title="Return Rate by Coach (Top 5)"
                             hint="Share of a coach's players who booked them more than once."
-                            metricLabel="Return Rate"
+                            xAxisLabel="Return Rate (%)"
                             rows={topReturnRate?.rows ?? []}
                             metricOf={(row) => ({
-                                display: formatReturnRate(row.return_rate),
                                 value: Number(row.return_rate) || 0,
+                                display: formatReturnRate(row.return_rate),
                             })}
-                            active={sort === "return_rate"}
-                            onViewAll={() => onSortChange("return_rate")}
-                        />
-                        <CoachLeaderboardPanel
-                            title="Top 5 Recently Active"
-                            hint="Coaches ordered by their latest session."
-                            metricLabel="Last Session"
-                            rows={topRecentlyActive?.rows ?? []}
-                            metricOf={(row) => ({
-                                display: formatSessionDate(row.last_session_at),
-                                value: row.sessions,
-                            })}
-                            active={sort === "last_session_at"}
-                            onViewAll={() => onSortChange("last_session_at")}
+                            maxValue={1}
+                            tickFormatter={(value) => `${Math.round(value * 100)}%`}
+                            barClassName="bg-[hsl(157_69%_42%)]"
                         />
                     </div>
 
@@ -147,7 +133,7 @@ export default function CoachPopularityView({
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
                             <h2 className={panelTitleCls}>{COACH_SORT_TABLE_LABEL[sort]}</h2>
                             <label className="flex items-center gap-2">
-                                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                <span className="whitespace-nowrap text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                     Sort by
                                 </span>
                                 <SelectInput
@@ -170,12 +156,6 @@ export default function CoachPopularityView({
                             />
                         </div>
                     </section>
-
-                    {/* Footnote — surface the only formatter the table doesn't render inline */}
-                    <p className="px-1 text-xs text-muted-foreground">
-                        Lesson revenue across all coaches:{" "}
-                        {formatCurrency(summary.totalLessonRevenue)}.
-                    </p>
                 </>
             )}
         </div>

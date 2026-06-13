@@ -29,11 +29,6 @@ export default function CoachPopularityContainer(): JSX.Element {
         limit: 5,
         offset: 0,
     });
-    const topRecentlyActive = useCoachPopularityLeaderboard(clubId ?? "", {
-        sort: "last_session_at",
-        limit: 5,
-        offset: 0,
-    });
 
     const summary = useMemo(() => computeCoachPopularitySummary(value.data), [value.data]);
 
@@ -44,8 +39,7 @@ export default function CoachPopularityContainer(): JSX.Element {
         void value.refetch();
         void topSessions.refetch();
         void topReturnRate.refetch();
-        void topRecentlyActive.refetch();
-    }, [topRecentlyActive, topReturnRate, topSessions, value]);
+    }, [topReturnRate, topSessions, value]);
 
     const handleSortChange = useCallback((nextSort: CoachSort) => {
         setSort(nextSort);
@@ -58,17 +52,13 @@ export default function CoachPopularityContainer(): JSX.Element {
             value={value.data}
             topSessions={topSessions.data}
             topReturnRate={topReturnRate.data}
-            topRecentlyActive={topRecentlyActive.data}
             sort={sort}
             page={page}
             totalPages={totalPages}
             totalItems={totalItems}
             isLoading={value.isLoading}
             error={
-                ((value.error ??
-                    topSessions.error ??
-                    topReturnRate.error ??
-                    topRecentlyActive.error) as Error | null) ?? null
+                ((value.error ?? topSessions.error ?? topReturnRate.error) as Error | null) ?? null
             }
             onSortChange={handleSortChange}
             onPageChange={setPage}

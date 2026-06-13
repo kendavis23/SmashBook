@@ -87,7 +87,7 @@ describe("ROUTES", () => {
             ["player-engagement", "Players"],
             ["player-segments", "Players"],
             ["player-activity", "Players"],
-            ["coach-popularity", "Players"],
+            ["coach-popularity", "Staff"],
         ]);
     });
 

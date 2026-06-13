@@ -4,6 +4,8 @@ import type { CoachPopularityLeaderboard, CoachPopularityRow } from "../types";
 export type CoachPopularitySummary = {
     /** Number of coaches in the leaderboard page. */
     coachCount: number;
+    /** Number of active coaches (is_active === true). */
+    activeCoachCount: number;
     /** All-time coaching sessions, summed across the rows. */
     totalSessions: number;
     /** Distinct players coached, summed across the rows. */
@@ -49,8 +51,11 @@ export function computeCoachPopularitySummary(
     const avgReturnRatePct =
         totalDistinctPlayers > 0 ? (totalRepeatPlayers / totalDistinctPlayers) * 100 : 0;
 
+    const activeCoachCount = rows.filter((r) => r.is_active === true).length;
+
     return {
         coachCount: rows.length,
+        activeCoachCount,
         totalSessions,
         totalDistinctPlayers,
         totalLessonRevenue,

@@ -39,6 +39,7 @@ describe("computeCoachPopularitySummary", () => {
         const s = computeCoachPopularitySummary(undefined);
         expect(s).toEqual({
             coachCount: 0,
+            activeCoachCount: 0,
             totalSessions: 0,
             totalDistinctPlayers: 0,
             totalLessonRevenue: 0,
@@ -49,6 +50,14 @@ describe("computeCoachPopularitySummary", () => {
 
     it("returns empty for a board with no rows", () => {
         expect(computeCoachPopularitySummary(board([])).isEmpty).toBe(true);
+    });
+
+    it("counts active coaches separately from total", () => {
+        const s = computeCoachPopularitySummary(
+            board([row({ is_active: true }), row({ is_active: false }), row({ is_active: null })])
+        );
+        expect(s.coachCount).toBe(3);
+        expect(s.activeCoachCount).toBe(1);
     });
 
     it("sums sessions, players and revenue across rows", () => {

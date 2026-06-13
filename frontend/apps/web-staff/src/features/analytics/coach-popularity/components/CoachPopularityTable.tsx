@@ -91,9 +91,11 @@ export function CoachPopularityTable({
                             <th className={`${thBase} text-right`}>Distinct Players</th>
                             <th className={`${thBase} text-right`}>Repeat Players</th>
                             <th className={`${thBase} ${groupDivider} text-right`}>Return Rate</th>
+                            <th className={`${dateHeader} text-left`}>First Session</th>
                             <th className={`${dateHeader} ${groupDivider} text-left`}>
                                 Last Session
                             </th>
+                            <th className={`${thBase} ${groupDivider} text-right`}>Attendances</th>
                             <th className={`${thBase} text-right`}>Lesson Revenue</th>
                             <th className={`${thBase} text-left`}>Currency</th>
                         </tr>
@@ -132,6 +134,11 @@ export function CoachPopularityTable({
                                 >
                                     {formatReturnRate(row.return_rate)}
                                 </td>
+                                <td className={`${dateCell} text-left`}>
+                                    <span className="block leading-5 text-foreground">
+                                        {formatSessionDate(row.first_session_at)}
+                                    </span>
+                                </td>
                                 <td className={`${dateCell} ${groupDivider} text-left`}>
                                     <span className="block leading-5 text-foreground">
                                         {formatSessionDate(row.last_session_at)}
@@ -139,6 +146,9 @@ export function CoachPopularityTable({
                                     <span className="block text-xs leading-4 text-muted-foreground">
                                         {relativeSessionLabel(row.last_session_at)}
                                     </span>
+                                </td>
+                                <td className={`${tdBase} ${groupDivider} text-right`}>
+                                    {row.total_attendances.toLocaleString()}
                                 </td>
                                 <td className={`${tdBase} text-right font-semibold text-success`}>
                                     {formatCurrency(row.lesson_revenue)}
