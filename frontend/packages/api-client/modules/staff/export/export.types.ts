@@ -1,5 +1,7 @@
 import type { UUID } from "../common";
+import type { RevenueBasis } from "../revenue/revenue.types";
 export type { UUID };
+export type { RevenueBasis };
 
 export type ExportReportType =
     | "revenue_summary"
@@ -8,8 +10,6 @@ export type ExportReportType =
     | "player_value";
 
 export type ExportFormat = "csv" | "xlsx";
-
-export type RevenueBasis = "service" | "cash";
 
 export interface ExportRequest {
     report_type: ExportReportType;
