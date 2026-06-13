@@ -27,3 +27,5 @@ export * from "./staff/staff.api";
 export * from "./staff/staff.types";
 export * from "./export/export.api";
 export * from "./export/export.types";
+export * from "./payment/payment.api";
+export * from "./payment/payment.types";
