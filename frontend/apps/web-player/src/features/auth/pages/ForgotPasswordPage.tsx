@@ -24,7 +24,7 @@ export default function ForgotPasswordPage(): JSX.Element {
             setCountdown((prev) => {
                 if (prev <= 1) {
                     clearInterval(intervalRef.current!);
-                    void navigate({ to: "/reset-password" });
+                    void navigate({ to: "/reset-password", search: { token: undefined } });
                     return 0;
                 }
                 return prev - 1;
@@ -97,7 +97,12 @@ export default function ForgotPasswordPage(): JSX.Element {
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() => void navigate({ to: "/reset-password" })}
+                                    onClick={() =>
+                                        void navigate({
+                                            to: "/reset-password",
+                                            search: { token: undefined },
+                                        })
+                                    }
                                     className="text-cta text-sm font-medium"
                                 >
                                     Go now

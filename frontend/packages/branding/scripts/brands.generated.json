@@ -1,41 +1,41 @@
 [
-  {
-    "id": "_default",
-    "deliveryModel": "shared",
-    "accent": "#2563EB",
-    "splashBackgroundColor": "#FFFFFF",
-    "adaptiveIconBackgroundColor": "#FFFFFF",
-    "outputs": {
-      "icon": "./assets/icon.png",
-      "adaptiveIcon": "./assets/adaptive-icon.png",
-      "splash": "./assets/splash-icon.png",
-      "notificationIcon": "./assets/notification-icon.png"
+    {
+        "id": "_default",
+        "deliveryModel": "shared",
+        "accent": "#2563EB",
+        "splashBackgroundColor": "#FFFFFF",
+        "adaptiveIconBackgroundColor": "#FFFFFF",
+        "outputs": {
+            "icon": "./assets/icon.png",
+            "adaptiveIcon": "./assets/adaptive-icon.png",
+            "splash": "./assets/splash-icon.png",
+            "notificationIcon": "./assets/notification-icon.png"
+        }
+    },
+    {
+        "id": "ace-staging",
+        "deliveryModel": "dedicated",
+        "accent": "#16A34A",
+        "splashBackgroundColor": "#FFFFFF",
+        "adaptiveIconBackgroundColor": "#DCFCE7",
+        "outputs": {
+            "icon": "./assets/ace-staging/icon.png",
+            "adaptiveIcon": "./assets/ace-staging/adaptive-icon.png",
+            "splash": "./assets/ace-staging/splash-icon.png",
+            "notificationIcon": "./assets/ace-staging/notification-icon.png"
+        }
+    },
+    {
+        "id": "rally-staging",
+        "deliveryModel": "dedicated",
+        "accent": "#8B5CF6",
+        "splashBackgroundColor": "#0F1117",
+        "adaptiveIconBackgroundColor": "#1A1430",
+        "outputs": {
+            "icon": "./assets/rally-staging/icon.png",
+            "adaptiveIcon": "./assets/rally-staging/adaptive-icon.png",
+            "splash": "./assets/rally-staging/splash-icon.png",
+            "notificationIcon": "./assets/rally-staging/notification-icon.png"
+        }
     }
-  },
-  {
-    "id": "ace-staging",
-    "deliveryModel": "dedicated",
-    "accent": "#16A34A",
-    "splashBackgroundColor": "#FFFFFF",
-    "adaptiveIconBackgroundColor": "#DCFCE7",
-    "outputs": {
-      "icon": "./assets/ace-staging/icon.png",
-      "adaptiveIcon": "./assets/ace-staging/adaptive-icon.png",
-      "splash": "./assets/ace-staging/splash-icon.png",
-      "notificationIcon": "./assets/ace-staging/notification-icon.png"
-    }
-  },
-  {
-    "id": "rally-staging",
-    "deliveryModel": "dedicated",
-    "accent": "#8B5CF6",
-    "splashBackgroundColor": "#0F1117",
-    "adaptiveIconBackgroundColor": "#1A1430",
-    "outputs": {
-      "icon": "./assets/rally-staging/icon.png",
-      "adaptiveIcon": "./assets/rally-staging/adaptive-icon.png",
-      "splash": "./assets/rally-staging/splash-icon.png",
-      "notificationIcon": "./assets/rally-staging/notification-icon.png"
-    }
-  }
 ]

@@ -92,7 +92,10 @@ describe("ForgotPasswordPage", () => {
         } as unknown as ReturnType<typeof usePasswordResetRequest>);
         render(<ForgotPasswordPage />, { wrapper });
         fireEvent.click(screen.getByRole("button", { name: /go now/i }));
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reset-password" });
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: "/reset-password",
+            search: { token: undefined },
+        });
     });
 
     it("navigates to /login when 'Back to sign in' is clicked", () => {
@@ -138,7 +141,10 @@ describe("ForgotPasswordPage", () => {
         act(() => {
             vi.advanceTimersByTime(60_000);
         });
-        expect(mockNavigate).toHaveBeenCalledWith({ to: "/reset-password" });
+        expect(mockNavigate).toHaveBeenCalledWith({
+            to: "/reset-password",
+            search: { token: undefined },
+        });
         vi.useRealTimers();
     });
 });

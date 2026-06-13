@@ -37,13 +37,9 @@ export function CourtCard({
     const borderColor = isAvailable
         ? colors.ctaBorder
         : isJoinable
-          ? colors.successSurface
+          ? colors.ctaBorder
           : colors.border;
-    const badgeBg = isAvailable
-        ? colors.ctaSurface
-        : isJoinable
-          ? colors.successSurface
-          : colors.muted;
+    const badgeBg = isAvailable ? colors.ctaSurface : isJoinable ? colors.ctaSurface : colors.muted;
 
     return (
         <View
@@ -122,12 +118,10 @@ export function CourtCard({
                                     width: 5,
                                     height: 5,
                                     borderRadius: 2.5,
-                                    backgroundColor: colors.success,
+                                    backgroundColor: colors.cta,
                                 }}
                             />
-                            <Text
-                                style={{ fontSize: 11, fontWeight: "600", color: colors.success }}
-                            >
+                            <Text style={{ fontSize: 11, fontWeight: "600", color: colors.cta }}>
                                 Open Game
                             </Text>
                         </View>
@@ -150,7 +144,7 @@ export function CourtCard({
             {isJoinable && existingMatch && (
                 <View
                     style={{
-                        backgroundColor: colors.successSurface,
+                        backgroundColor: colors.ctaSurface,
                         borderRadius: 10,
                         paddingHorizontal: 10,
                         paddingVertical: 6,
@@ -160,8 +154,8 @@ export function CourtCard({
                         marginBottom: 10,
                     }}
                 >
-                    <Ionicons name="people-outline" size={13} color={colors.success} />
-                    <Text style={{ fontSize: 12, color: colors.success, fontWeight: "600" }}>
+                    <Ionicons name="people-outline" size={13} color={colors.foreground} />
+                    <Text style={{ fontSize: 12, color: colors.foreground, fontWeight: "600" }}>
                         {existingMatch.slots_available} spot
                         {existingMatch.slots_available !== 1 ? "s" : ""} left
                     </Text>
@@ -236,7 +230,7 @@ export function CourtCard({
                         accessibilityLabel={`Join game at ${court.name}`}
                         className="active:opacity-75"
                         style={{
-                            backgroundColor: colors.success,
+                            backgroundColor: colors.cta,
                             borderRadius: 14,
                             paddingHorizontal: 20,
                             paddingVertical: 10,
@@ -247,17 +241,17 @@ export function CourtCard({
                         }}
                     >
                         {isThisJoining ? (
-                            <ActivityIndicator size="small" color={colors.successForeground} />
+                            <ActivityIndicator size="small" color={colors.ctaForeground} />
                         ) : (
                             <Ionicons
                                 name="people-outline"
                                 size={15}
-                                color={colors.successForeground}
+                                color={colors.ctaForeground}
                             />
                         )}
                         <Text
                             style={{
-                                color: colors.successForeground,
+                                color: colors.ctaForeground,
                                 fontWeight: "700",
                                 fontSize: 13,
                             }}

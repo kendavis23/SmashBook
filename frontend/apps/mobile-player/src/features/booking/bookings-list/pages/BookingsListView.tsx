@@ -40,6 +40,14 @@ function getTodayStr(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
+function getYesterdayStr(): string {
+    return new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+}
+
+function defaultDateForTab(tab: BookingTab): string {
+    return tab === "upcoming" ? getTodayStr() : getYesterdayStr();
+}
+
 function buildChipsFromItems(items: PlayerBookingItem[]): DateChip[] {
     const seen = new Set<string>();
     const allDates: string[] = [];
@@ -281,8 +289,9 @@ export function BookingsListView({
     onInviteResponded,
 }: Props): JSX.Element {
     const colors = useThemeColors();
-    const todayStr = getTodayStr();
-    const [selectedDate, setSelectedDate] = useState<string | null>(todayStr);
+    const [selectedDate, setSelectedDate] = useState<string | null>(() =>
+        defaultDateForTab(activeTab)
+    );
 
     const isUpcoming = activeTab === "upcoming";
     const allItems = isUpcoming ? upcoming : past;
@@ -411,7 +420,7 @@ export function BookingsListView({
                         <BookingsTabBar
                             activeTab={activeTab}
                             onTabChange={(tab) => {
-                                setSelectedDate(null);
+                                setSelectedDate(defaultDateForTab(tab));
                                 onTabChange(tab);
                             }}
                         />

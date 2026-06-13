@@ -5,10 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockMutate = vi.fn();
 const mockNavigate = vi.fn();
+let mockSearch: { token?: string } = { token: "reset-token-abc" };
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
     const actual = await importOriginal<typeof import("@tanstack/react-router")>();
-    return { ...actual, useNavigate: () => mockNavigate };
+    return { ...actual, useNavigate: () => mockNavigate, useSearch: () => mockSearch };
 });
 
 vi.mock("../hooks", () => ({
@@ -32,6 +33,7 @@ function wrapper({ children }: { children: ReactNode }): JSX.Element {
 describe("ResetPasswordPage", () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        mockSearch = { token: "reset-token-abc" };
         vi.mocked(usePasswordResetConfirm).mockReturnValue({
             mutate: mockMutate,
             isPending: false,
@@ -41,9 +43,9 @@ describe("ResetPasswordPage", () => {
         } as unknown as ReturnType<typeof usePasswordResetConfirm>);
     });
 
-    it("renders token, new password and confirm password fields", () => {
+    it("renders new password and confirm password fields without a token field", () => {
         render(<ResetPasswordPage />, { wrapper });
-        expect(screen.getByLabelText("Reset token")).toBeInTheDocument();
+        expect(screen.queryByLabelText("Reset token")).not.toBeInTheDocument();
         expect(screen.getByLabelText("New password")).toBeInTheDocument();
         expect(screen.getByLabelText("Confirm password")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /reset password/i })).toBeInTheDocument();
@@ -52,13 +54,12 @@ describe("ResetPasswordPage", () => {
     it("shows validation errors when submitting empty form", () => {
         render(<ResetPasswordPage />, { wrapper });
         fireEvent.click(screen.getByRole("button", { name: /reset password/i }));
-        expect(screen.getAllByText("Required")).toHaveLength(3);
+        expect(screen.getAllByText("Required")).toHaveLength(2);
         expect(mockMutate).not.toHaveBeenCalled();
     });
 
     it("shows error when password is too short", () => {
         render(<ResetPasswordPage />, { wrapper });
-        fireEvent.change(screen.getByLabelText("Reset token"), { target: { value: "tok" } });
         fireEvent.change(screen.getByLabelText("New password"), { target: { value: "short" } });
         fireEvent.change(screen.getByLabelText("Confirm password"), { target: { value: "short" } });
         fireEvent.click(screen.getByRole("button", { name: /reset password/i }));
@@ -68,7 +69,6 @@ describe("ResetPasswordPage", () => {
 
     it("shows error when passwords do not match", () => {
         render(<ResetPasswordPage />, { wrapper });
-        fireEvent.change(screen.getByLabelText("Reset token"), { target: { value: "tok" } });
         fireEvent.change(screen.getByLabelText("New password"), {
             target: { value: "password123" },
         });
@@ -80,11 +80,8 @@ describe("ResetPasswordPage", () => {
         expect(mockMutate).not.toHaveBeenCalled();
     });
 
-    it("calls mutate with token and new_password on valid submit", () => {
+    it("calls mutate with the token from the URL and new_password on valid submit", () => {
         render(<ResetPasswordPage />, { wrapper });
-        fireEvent.change(screen.getByLabelText("Reset token"), {
-            target: { value: "reset-token-abc" },
-        });
         fireEvent.change(screen.getByLabelText("New password"), {
             target: { value: "newpass123" },
         });
