@@ -159,3 +159,10 @@ export type {
     CoachPopularityLeaderboard,
     CoachPopularityParams,
 } from "./analytics-coach.model";
+export type {
+    ExportReportType,
+    ExportFormat,
+    ExportRevenueBasis,
+    ExportInput,
+    ExportAccepted,
+} from "./export.model";
