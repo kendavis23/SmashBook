@@ -13,7 +13,7 @@ stamp again on payout.failed / payout.canceled.
 import uuid
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from stripe._stripe_object import StripeObject
