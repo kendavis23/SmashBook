@@ -197,7 +197,15 @@ jobs:
       # See the comment on "Deploy API" for why we don't pass config flags here.
       - name: Deploy Workers
         run: |
-          for WORKER in booking-worker payment-worker notification-worker; do
+          for WORKER in booking-worker payment-worker notification-worker analytics-worker analytics-refresh-worker settlement-worker; do
+            # The service is created by Terraform; skip any worker that doesn't
+            # exist yet so a first deploy (before `terraform apply`) doesn't 404.
+            if ! gcloud run services describe "padel-${WORKER}" \
+              --region=${{ env.REGION }} \
+              --project=${{ secrets.GCP_PROJECT_ID }} >/dev/null 2>&1; then
+              echo "Skipping padel-${WORKER} — service does not exist yet (create it via Terraform first)."
+              continue
+            fi
             echo "Deploying padel-${WORKER}..."
             gcloud run services update "padel-${WORKER}" \
               --image="${{ env.REGISTRY }}/padel-worker:${{ needs.build.outputs.image_tag }}" \
