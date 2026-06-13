@@ -551,6 +551,130 @@ resource "google_cloud_run_v2_service" "notification_worker" {
 }
 
 # ---------------------------------------------------------------------------
+# padel-settlement-worker  (Stage 2.6 — wallet-debt settlement cron)
+#
+# Triggered by Cloud Scheduler → Pub/Sub (wallet-settlement-events) → push to
+# /pubsub. Runs the platform-wide PaymentService.settle_wallet_debts(): it writes
+# settled_at + platform-fee rows to the **primary** and issues one Stripe Connect
+# transfer per club, so unlike the analytics workers it needs STRIPE_SECRET_KEY
+# (platform account) and mounts the primary only.
+# ---------------------------------------------------------------------------
+
+resource "google_cloud_run_v2_service" "settlement_worker" {
+  name     = "padel-settlement-worker"
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    service_account = var.compute_sa_email
+
+    vpc_access {
+      connector = var.vpc_connector_id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
+    scaling {
+      max_instance_count = var.max_instance_count
+    }
+
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [var.cloud_sql_connection]
+      }
+    }
+
+    containers {
+      image   = "${var.worker_image}:${var.image_tag}"
+      command = ["uvicorn"]
+      args    = ["app.workers.settlement_worker:app", "--host", "0.0.0.0", "--port", "8080"]
+
+      ports {
+        name           = "http1"
+        container_port = 8080
+      }
+
+      resources {
+        limits            = local.resource_limits
+        cpu_idle          = true
+        startup_cpu_boost = true
+      }
+
+      startup_probe {
+        failure_threshold = local.startup_probe.failure_threshold
+        period_seconds    = local.startup_probe.period_seconds
+        timeout_seconds   = local.startup_probe.timeout_seconds
+        tcp_socket {
+          port = 8080
+        }
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["padel-database-url"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["padel-secret-key"]
+            version = "latest"
+          }
+        }
+      }
+
+      # Settlement issues Stripe Connect transfers via the platform account.
+      env {
+        name = "STRIPE_SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["stripe-secret-key"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
+    }
+
+    max_instance_request_concurrency = 80
+    timeout                          = "300s"
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].annotations,
+      client,
+      client_version,
+    ]
+  }
+}
+
+# ---------------------------------------------------------------------------
 # padel-analytics-worker  (Sprint 7 / G7 — court-utilisation snapshots)
 #
 # Triggered by Cloud Scheduler → Pub/Sub (analytics-events) → push to /pubsub.

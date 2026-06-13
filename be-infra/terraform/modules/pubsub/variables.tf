@@ -29,3 +29,7 @@ variable "analytics_worker_uri" {
 variable "analytics_refresh_worker_uri" {
   type = string
 }
+
+variable "settlement_worker_uri" {
+  type = string
+}

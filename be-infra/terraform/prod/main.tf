@@ -79,13 +79,16 @@ module "cloud_run" {
 }
 
 module "pubsub" {
-  source                  = "../modules/pubsub"
-  project_id              = var.project_id
-  region                  = var.region
-  compute_sa_email        = module.iam.compute_sa_email
-  booking_worker_uri      = module.cloud_run.booking_worker_uri
-  payment_worker_uri      = module.cloud_run.payment_worker_uri
-  notification_worker_uri = module.cloud_run.notification_worker_uri
+  source                       = "../modules/pubsub"
+  project_id                   = var.project_id
+  region                       = var.region
+  compute_sa_email             = module.iam.compute_sa_email
+  booking_worker_uri           = module.cloud_run.booking_worker_uri
+  payment_worker_uri           = module.cloud_run.payment_worker_uri
+  notification_worker_uri      = module.cloud_run.notification_worker_uri
+  analytics_worker_uri         = module.cloud_run.analytics_worker_uri
+  analytics_refresh_worker_uri = module.cloud_run.analytics_refresh_worker_uri
+  settlement_worker_uri        = module.cloud_run.settlement_worker_uri
 
   # The run.invoker IAM members reference services by literal name, so Terraform
   # has no implicit edge to their creation — force pubsub to wait for cloud_run
@@ -109,6 +112,13 @@ module "scheduler" {
   platform_api_key_secret_id = module.secrets.secret_ids["padel-platform-api-key"]
   # Prod runs the expiry sweep continuously (every minute).
   paused = false
+
+  # Daily court-utilisation snapshot (02:00 UTC) + nightly MV refresh (03:00 UTC).
+  analytics_events_topic_id         = module.pubsub.analytics_events_topic_id
+  analytics_refresh_events_topic_id = module.pubsub.analytics_refresh_events_topic_id
+
+  # Daily wallet-debt settlement (02:00 UTC) — runs in prod.
+  settlement_events_topic_id = module.pubsub.wallet_settlement_events_topic_id
 }
 
 # ---------------------------------------------------------------------------
@@ -117,6 +127,10 @@ module "scheduler" {
 
 output "api_url" {
   value = module.cloud_run.api_url
+}
+
+output "settlement_worker_uri" {
+  value = module.cloud_run.settlement_worker_uri
 }
 
 output "artifact_registry_url" {

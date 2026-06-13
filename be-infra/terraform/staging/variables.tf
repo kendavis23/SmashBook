@@ -53,3 +53,9 @@ variable "analytics_refresh_paused" {
   type        = bool
   default     = false
 }
+
+variable "settlement_paused" {
+  description = "Pause the daily wallet-debt settlement Cloud Scheduler job in staging. Defaults to false; set to true if the staging Stripe account is not in test mode, since settlement issues real Connect transfers."
+  type        = bool
+  default     = false
+}

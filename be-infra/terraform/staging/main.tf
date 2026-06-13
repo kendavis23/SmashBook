@@ -85,6 +85,7 @@ module "pubsub" {
   notification_worker_uri      = module.cloud_run.notification_worker_uri
   analytics_worker_uri         = module.cloud_run.analytics_worker_uri
   analytics_refresh_worker_uri = module.cloud_run.analytics_refresh_worker_uri
+  settlement_worker_uri        = module.cloud_run.settlement_worker_uri
 
   # The run.invoker IAM members reference services by literal name, so Terraform
   # has no implicit edge to their creation — force pubsub to wait for cloud_run
@@ -120,6 +121,12 @@ module "scheduler" {
   # Flip `analytics_refresh_paused = true` to disable.
   analytics_refresh_events_topic_id = module.pubsub.analytics_refresh_events_topic_id
   analytics_refresh_paused          = var.analytics_refresh_paused
+
+  # Daily wallet-debt settlement job (02:00 UTC). Runs in staging too — verify
+  # the staging Stripe key is test-mode, as this issues real Connect transfers.
+  # Flip `settlement_paused = true` to disable.
+  settlement_events_topic_id = module.pubsub.wallet_settlement_events_topic_id
+  settlement_paused          = var.settlement_paused
 }
 
 # ---------------------------------------------------------------------------
@@ -136,6 +143,10 @@ output "analytics_worker_uri" {
 
 output "analytics_refresh_worker_uri" {
   value = module.cloud_run.analytics_refresh_worker_uri
+}
+
+output "settlement_worker_uri" {
+  value = module.cloud_run.settlement_worker_uri
 }
 
 output "artifact_registry_url" {

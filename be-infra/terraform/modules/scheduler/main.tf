@@ -131,3 +131,42 @@ resource "google_cloud_scheduler_job" "analytics_refresh_daily" {
     data       = base64encode(jsonencode({ event_type = "analytics.refresh_views" }))
   }
 }
+
+# ---------------------------------------------------------------------------
+# Cloud Scheduler — daily wallet-debt settlement (Stage 2.6)
+#
+# Publishes {"event_type": "wallet.settle"} to wallet-settlement-events,
+# delivered to padel-settlement-worker, which runs the platform-wide
+# PaymentService.settle_wallet_debts() — transferring each club's accumulated
+# wallet receivables to its Stripe Connect account. Fires at 02:00 UTC (the
+# low-traffic window); settlement is platform-wide and resolved server-side, so
+# no X-Tenant-ID / club scope is supplied.
+# ---------------------------------------------------------------------------
+
+resource "google_pubsub_topic_iam_member" "scheduler_publish_settlement" {
+  topic  = var.settlement_events_topic_id
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
+
+resource "google_cloud_scheduler_job" "wallet_settle_debts" {
+  name      = "wallet-settle-debts"
+  project   = var.project_id
+  region    = var.region
+  schedule  = var.settlement_schedule
+  time_zone = "Etc/UTC"
+
+  paused = var.settlement_paused
+
+  # The push delivery does the real work; the publish itself is instant.
+  attempt_deadline = "320s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  pubsub_target {
+    topic_name = var.settlement_events_topic_id
+    data       = base64encode(jsonencode({ event_type = "wallet.settle" }))
+  }
+}

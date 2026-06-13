@@ -61,3 +61,20 @@ variable "analytics_refresh_paused" {
   type        = bool
   default     = false
 }
+
+variable "settlement_events_topic_id" {
+  description = "Full topic id (projects/.../topics/wallet-settlement-events) the daily settlement job publishes to"
+  type        = string
+}
+
+variable "settlement_schedule" {
+  description = "Cron schedule (UTC) for the daily wallet-debt settlement job"
+  type        = string
+  default     = "0 2 * * *" # 02:00 UTC daily, low-traffic window
+}
+
+variable "settlement_paused" {
+  description = "When true, the daily settlement job exists but does not fire"
+  type        = bool
+  default     = false
+}

@@ -21,3 +21,7 @@ output "analytics_worker_uri" {
 output "analytics_refresh_worker_uri" {
   value = google_cloud_run_v2_service.analytics_refresh_worker.uri
 }
+
+output "settlement_worker_uri" {
+  value = google_cloud_run_v2_service.settlement_worker.uri
+}

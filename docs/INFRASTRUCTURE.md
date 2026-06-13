@@ -1,4 +1,4 @@
-_Last updated: 2026-06-12 15:10 UTC_
+_Last updated: 2026-06-13 12:00 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -339,8 +339,8 @@ These are gaps between the current state and the next stage of infrastructure wo
 | Cloud SQL on public IP | Stage 2.1 follow-on | VPC connector now live (`padel-connector-staging`); the private IP migration itself is still pending |
 | `release-expired-holds` sweep paused in staging | Stage 1.8 | The job is **applied** in staging but created **paused** (`release_holds_scheduler_paused` defaults true), so the periodic sweep does not run there — abandoned court holds are only released on payment success/failure. Resume with `make scheduler-activate` (or flip the variable) for a testing session. Prod runs it every minute once the prod project exists. |
 | `analytics-alerts` has no subscriber (G7) | Sprint 7 | The revenue MV-refresh pipeline is live, and `refresh_views.py` publishes a message to `analytics-alerts` on refresh failure, but nothing consumes that topic yet — so a failed nightly refresh is recorded in `analytics_refresh_log` but does not page anyone. Wire an alerting consumer (or a log-based alert on `RefreshStatus = failed`) as part of monitoring (Stage 2.3). |
-| Analytics infra not wired into `prod/` (G7) | Sprint 7 | `prod/main.tf` does not pass `analytics_worker_uri` or `analytics_refresh_worker_uri` to the `pubsub` module, so `terraform validate` fails in `prod/` — analytics is intentionally **staging-only** until prod exists. Wire both args (mirroring `staging/main.tf`) when the prod project is created |
 | Report-export worker not provisioned (G7) | Sprint 7 | The async export pipeline exists in code (`POST /api/v1/analytics/exports` → `app/analytics/workers/export_report.py`), and the exports **bucket already exists** (`padel-exports-…`). Still to provision via Terraform: the `analytics-export-events` topic (+ `-sub` / `-dlq`), and a `padel-analytics-export-worker` Cloud Run service (`uvicorn app.analytics.workers.export_report:app`, primary + read replica, with `roles/pubsub.publisher` on the topic for the API service identity). No Cloud Scheduler — exports are request-triggered, not cron. Until then, export requests publish to a topic with no subscriber and no file is produced. |
+| Wallet settlement cron not applied (Stage 2.6) | Sprint 7 | Terraform + handler are **written but not yet applied**: `padel-settlement-worker` Cloud Run service (`uvicorn app.workers.settlement_worker:app`), `wallet-settlement-events` topic (+ `-sub` / `-dlq`), and `google_cloud_scheduler_job.wallet_settle_debts` (`0 2 * * *`, Pub/Sub target) — wired into both `staging/` and `prod/`. Until applied, wallet receivables (`wallet_club_debts`) only settle when an admin manually calls `POST /payments/wallet/settle-debts`. **Before apply:** confirm the staging Stripe key is test-mode, since `settlement_paused` defaults `false` and settlement issues real Connect transfers. |
 
 ---
 
