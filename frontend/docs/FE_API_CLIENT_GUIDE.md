@@ -1,4 +1,4 @@
-_Last updated: 2026-06-13 12:00 UTC_
+_Last updated: 2026-06-13 21:15 UTC_
 
 # Backend Schema → Frontend API Client
 
@@ -263,16 +263,31 @@ export * from "./<module>/<module>.types";
 
 ## Implemented modules
 
-| Domain   | Module            | Types file                 | API file                 | Test file                     |
-| -------- | ----------------- | -------------------------- | ------------------------ | ----------------------------- |
-| `staff`  | `club`            | `club.types.ts`            | `club.api.ts`            | `club.api.test.ts`            |
-| `staff`  | `court`           | `court.types.ts`           | `court.api.ts`           | `court.api.test.ts`           |
-| `staff`  | `booking`         | `booking.types.ts`         | `booking.api.ts`         | `booking.api.test.ts`         |
-| `staff`  | `membership`      | `membership.types.ts`      | `membership.api.ts`      | `membership.api.test.ts`      |
-| `staff`  | `equipment`       | `equipment.types.ts`       | `equipment.api.ts`       | `equipment.api.test.ts`       |
-| `staff`  | `trainer`         | `trainer.types.ts`         | `trainer.api.ts`         | `trainer.api.test.ts`         |
-| `staff`  | `revenue`         | `revenue.types.ts`         | `revenue.api.ts`         | `revenue.api.test.ts`         |
-| `staff`  | `analytics-coach` | `analytics-coach.types.ts` | `analytics-coach.api.ts` | `analytics-coach.api.test.ts` |
-| `staff`  | `export`          | `export.types.ts`          | `export.api.ts`          | `export.api.test.ts`          |
-| `player` | —                 | —                          | —                        | —                             |
-| `share`  | `profile`         | `profile.types.ts`         | `profile.api.ts`         | —                             |
+| Domain   | Module             | Types file                  | API file                  | Test file                      |
+| -------- | ------------------ | --------------------------- | ------------------------- | ------------------------------ |
+| `staff`  | `club`             | `club.types.ts`             | `club.api.ts`             | `club.api.test.ts`             |
+| `staff`  | `court`            | `court.types.ts`            | `court.api.ts`            | `court.api.test.ts`            |
+| `staff`  | `booking`          | `booking.types.ts`          | `booking.api.ts`          | `booking.api.test.ts`          |
+| `staff`  | `membership`       | `membership.types.ts`       | `membership.api.ts`       | `membership.api.test.ts`       |
+| `staff`  | `equipment`        | `equipment.types.ts`        | `equipment.api.ts`        | `equipment.api.test.ts`        |
+| `staff`  | `trainer`          | `trainer.types.ts`          | `trainer.api.ts`          | `trainer.api.test.ts`          |
+| `staff`  | `revenue`          | `revenue.types.ts`          | `revenue.api.ts`          | `revenue.api.test.ts`          |
+| `staff`  | `analytics-coach`  | `analytics-coach.types.ts`  | `analytics-coach.api.ts`  | `analytics-coach.api.test.ts`  |
+| `staff`  | `analytics-player` | `analytics-player.types.ts` | `analytics-player.api.ts` | `analytics-player.api.test.ts` |
+| `staff`  | `export`           | `export.types.ts`           | `export.api.ts`           | `export.api.test.ts`           |
+| `staff`  | `payment`          | `payment.types.ts`          | `payment.api.ts`          | `payment.api.test.ts`          |
+| `staff`  | `player`           | `player.types.ts`           | `player.api.ts`           | `player.api.test.ts`           |
+| `staff`  | `subscription`     | `subscription.types.ts`     | `subscription.api.ts`     | `subscription.api.test.ts`     |
+| `staff`  | `utilisation`      | `utilisation.types.ts`      | `utilisation.api.ts`      | `utilisation.api.test.ts`      |
+| `player` | `booking`          | `booking.types.ts`          | `booking.api.ts`          | `booking.api.test.ts`          |
+| `player` | `club`             | `club.types.ts`             | `club.api.ts`             | `club.api.test.ts`             |
+| `player` | `membership`       | `membership.types.ts`       | `membership.api.ts`       | `membership.api.test.ts`       |
+| `player` | `profile`          | `profile.types.ts`          | `profile.api.ts`          | `profile.api.test.ts`          |
+| `share`  | `booking`          | `booking.types.ts`          | `booking.api.ts`          | `booking.api.test.ts`          |
+| `share`  | `court`            | `court.types.ts`            | `court.api.ts`            | `court.api.test.ts`            |
+| `share`  | `equipment`        | `equipment.types.ts`        | `equipment.api.ts`        | `equipment.api.test.ts`        |
+| `share`  | `membership`       | `membership.types.ts`       | `membership.api.ts`       | `membership.api.test.ts`       |
+| `share`  | `payment`          | `payment.types.ts`          | `payment.api.ts`          | `payment.api.test.ts`          |
+| `share`  | `player`           | `player.types.ts`           | `player.api.ts`           | `player.api.test.ts`           |
+| `share`  | `profile`          | `profile.types.ts`          | `profile.api.ts`          | —                              |
+| `share`  | `trainer`          | `trainer.types.ts`          | `trainer.api.ts`          | `trainer.api.test.ts`          |

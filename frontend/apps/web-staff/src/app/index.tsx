@@ -34,6 +34,7 @@ const BookingsPage = lazy(() => import("../features/booking/pages/BookingsPage")
 const NewBookingPage = lazy(() => import("../features/booking/pages/NewBookingPage"));
 const ManageBookingPage = lazy(() => import("../features/booking/pages/ManageBookingPage"));
 const CalendarPage = lazy(() => import("../features/calendar/pages/CalendarPage"));
+const PayoutsPage = lazy(() => import("../features/payment/pages/PayoutsPage"));
 const MembershipPlansPage = lazy(() => import("../features/membership/pages/MembershipPlansPage"));
 const NewMembershipPlanPage = lazy(
     () => import("../features/membership/pages/NewMembershipPlanPage")
@@ -349,6 +350,13 @@ const editMembershipPlanRoute = createRoute({
     component: EditMembershipPlanPage,
 });
 
+const payoutsRoute = createRoute({
+    getParentRoute: () => dashboardLayoutRoute,
+    path: "/payouts",
+    beforeLoad: requireRole(["owner", "admin"]),
+    component: PayoutsPage,
+});
+
 const clubUtilisationRoute = createRoute({
     getParentRoute: () => dashboardLayoutRoute,
     path: "/analytics/club-utilisation",
@@ -580,6 +588,7 @@ const routeTree = rootRoute.addChildren([
         membershipPlansRoute,
         newMembershipPlanRoute,
         editMembershipPlanRoute,
+        payoutsRoute,
         staffRoute,
         staffInvitationsRoute,
         trainersRoute,
