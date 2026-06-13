@@ -181,7 +181,7 @@ export function WalletScreen(): JSX.Element {
                             accessibilityRole="button"
                             accessibilityLabel="Top up wallet"
                             disabled={isLoading}
-                            className="flex-row items-center gap-2 rounded-xl bg-success px-4 py-2.5 active:opacity-75 disabled:opacity-40"
+                            className="flex-row items-center gap-2 rounded-xl bg-cta px-4 py-2.5 active:opacity-75 disabled:opacity-40"
                         >
                             <Ionicons
                                 name="add-circle-outline"
@@ -293,7 +293,7 @@ export function WalletScreen(): JSX.Element {
                             onPress={() => setShowTopUp(true)}
                             accessibilityRole="button"
                             accessibilityLabel="Top up wallet"
-                            className="mt-1 flex-row items-center gap-2 rounded-xl bg-success px-6 py-3.5 active:opacity-80"
+                            className="mt-1 flex-row items-center gap-2 rounded-xl bg-cta px-6 py-3.5 active:opacity-80"
                         >
                             <Ionicons name="add" size={16} color={colors.ctaForeground} />
                             <Text className="text-[14px] font-semibold text-cta-foreground">

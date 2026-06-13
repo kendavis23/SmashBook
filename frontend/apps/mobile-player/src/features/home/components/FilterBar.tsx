@@ -1,18 +1,14 @@
-import { type ComponentProps, type JSX, useState } from "react";
-import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    Text,
-    TextInput,
-    View,
-} from "react-native";
+import { type ComponentProps, type JSX, useEffect, useState } from "react";
+import { Modal, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import DateTimePicker, {
+    DateTimePickerAndroid,
+    type DateTimePickerEvent,
+} from "@react-native-community/datetimepicker";
 import { SURFACE_OPTIONS } from "../types";
 import { useThemeColors } from "../../../theme";
 import { isoDateParts, isoDateToWeekdayShort } from "../../../lib/datetime";
+import { formatPlainTime } from "../utils";
 
 type Props = {
     date: string;
@@ -30,7 +26,6 @@ type FilterControlProps = {
     onToTimeChange: (v: string) => void;
     onToggleAvailable: (v: boolean) => void;
     onToggleOpenGame: (v: boolean) => void;
-    onClear: () => void;
 };
 
 type IconName = ComponentProps<typeof Ionicons>["name"];
@@ -131,18 +126,68 @@ function surfaceIcon(value: string): IconName {
     return "leaf-outline";
 }
 
+function timeStringToDate(value: string): Date {
+    const now = new Date();
+    const [hourString, minuteString] = value.split(":");
+
+    if (hourString !== undefined && minuteString !== undefined) {
+        now.setHours(Number(hourString), Number(minuteString), 0, 0);
+        return now;
+    }
+
+    const roundedMinutes = Math.ceil(now.getMinutes() / 15) * 15;
+    now.setMinutes(roundedMinutes, 0, 0);
+    return now;
+}
+
+function dateToTimeString(value: Date): string {
+    const hours = String(value.getHours()).padStart(2, "0");
+    const minutes = String(value.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+}
+
 function TimeField({
     label,
     value,
     placeholder,
-    onChangeText,
+    onChange,
 }: {
     label: string;
     value: string;
     placeholder: string;
-    onChangeText: (v: string) => void;
+    onChange: (v: string) => void;
 }): JSX.Element {
     const colors = useThemeColors();
+    const [isPickerOpen, setIsPickerOpen] = useState(false);
+    const [pendingTime, setPendingTime] = useState(() => timeStringToDate(value));
+
+    const openPicker = (): void => {
+        const pickerValue = timeStringToDate(value);
+        setPendingTime(pickerValue);
+
+        if (Platform.OS === "android") {
+            DateTimePickerAndroid.open({
+                value: pickerValue,
+                mode: "time",
+                display: "clock",
+                is24Hour: false,
+                onChange: (event: DateTimePickerEvent, selectedTime?: Date) => {
+                    if (event.type === "set" && selectedTime) {
+                        onChange(dateToTimeString(selectedTime));
+                    }
+                },
+            });
+            return;
+        }
+
+        setIsPickerOpen(true);
+    };
+
+    const confirmIosTime = (): void => {
+        onChange(dateToTimeString(pendingTime));
+        setIsPickerOpen(false);
+    };
+
     return (
         <View style={{ flex: 1 }}>
             <Text
@@ -159,36 +204,167 @@ function TimeField({
                 style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 10,
                     minHeight: 52,
                     borderRadius: 16,
                     borderWidth: 1.5,
                     borderColor: value ? colors.cta : colors.border,
                     backgroundColor: value ? colors.ctaSurface : colors.card,
-                    paddingHorizontal: 14,
                 }}
             >
-                <Ionicons
-                    name="time-outline"
-                    size={19}
-                    color={value ? colors.cta : colors.mutedForeground}
-                />
-                <TextInput
-                    value={value}
-                    onChangeText={onChangeText}
-                    placeholder={placeholder}
-                    placeholderTextColor={colors.placeholder}
-                    keyboardType="numbers-and-punctuation"
+                <Pressable
+                    onPress={openPicker}
+                    accessibilityRole="button"
                     accessibilityLabel={`${label} time filter`}
+                    accessibilityHint="Opens the time picker"
+                    className="active:opacity-70"
                     style={{
                         flex: 1,
-                        fontSize: 14,
-                        fontWeight: "700",
-                        color: value ? colors.cta : colors.foreground,
-                        padding: 0,
+                        minHeight: 49,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 10,
+                        paddingLeft: 14,
+                        paddingRight: value ? 4 : 14,
                     }}
-                />
+                >
+                    <Ionicons
+                        name="time-outline"
+                        size={19}
+                        color={value ? colors.cta : colors.mutedForeground}
+                    />
+                    <Text
+                        numberOfLines={1}
+                        style={{
+                            flex: 1,
+                            fontSize: 14,
+                            fontWeight: "700",
+                            color: value ? colors.cta : colors.placeholder,
+                        }}
+                    >
+                        {value ? formatPlainTime(value) : placeholder}
+                    </Text>
+                </Pressable>
+                {value ? (
+                    <Pressable
+                        onPress={() => onChange("")}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Clear ${label.toLowerCase()} time`}
+                        hitSlop={8}
+                        className="active:opacity-60"
+                        style={{
+                            width: 40,
+                            minHeight: 49,
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        <Ionicons name="close-circle" size={18} color={colors.mutedForeground} />
+                    </Pressable>
+                ) : null}
             </View>
+
+            {Platform.OS === "ios" ? (
+                <Modal
+                    visible={isPickerOpen}
+                    transparent
+                    animationType="fade"
+                    onRequestClose={() => setIsPickerOpen(false)}
+                >
+                    <View
+                        style={{
+                            flex: 1,
+                            justifyContent: "center",
+                            paddingHorizontal: 24,
+                            backgroundColor: colors.overlay,
+                        }}
+                    >
+                        <Pressable
+                            onPress={() => setIsPickerOpen(false)}
+                            style={{ position: "absolute", inset: 0 }}
+                        />
+                        <View
+                            style={{
+                                borderRadius: 24,
+                                backgroundColor: colors.card,
+                                paddingTop: 18,
+                                paddingBottom: 14,
+                                overflow: "hidden",
+                            }}
+                        >
+                            <Text
+                                style={{
+                                    paddingHorizontal: 20,
+                                    fontSize: 18,
+                                    fontWeight: "700",
+                                    color: colors.foreground,
+                                }}
+                            >
+                                Select {label.toLowerCase()} time
+                            </Text>
+                            <DateTimePicker
+                                value={pendingTime}
+                                mode="time"
+                                display="spinner"
+                                is24Hour={false}
+                                minuteInterval={5}
+                                onChange={(_event, selectedTime) => {
+                                    if (selectedTime) setPendingTime(selectedTime);
+                                }}
+                                textColor={colors.foreground}
+                                accentColor={colors.cta}
+                                themeVariant="light"
+                                style={{ height: 180 }}
+                            />
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    justifyContent: "flex-end",
+                                    gap: 8,
+                                    paddingHorizontal: 14,
+                                }}
+                            >
+                                <Pressable
+                                    onPress={() => setIsPickerOpen(false)}
+                                    accessibilityRole="button"
+                                    className="active:opacity-60"
+                                    style={{ paddingHorizontal: 14, paddingVertical: 10 }}
+                                >
+                                    <Text
+                                        style={{
+                                            fontSize: 15,
+                                            fontWeight: "700",
+                                            color: colors.mutedForeground,
+                                        }}
+                                    >
+                                        Cancel
+                                    </Text>
+                                </Pressable>
+                                <Pressable
+                                    onPress={confirmIosTime}
+                                    accessibilityRole="button"
+                                    className="active:opacity-80"
+                                    style={{
+                                        borderRadius: 12,
+                                        backgroundColor: colors.cta,
+                                        paddingHorizontal: 18,
+                                        paddingVertical: 10,
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            fontSize: 15,
+                                            fontWeight: "700",
+                                            color: colors.ctaForeground,
+                                        }}
+                                    >
+                                        Done
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            ) : null}
         </View>
     );
 }
@@ -204,20 +380,72 @@ export function FilterButton({
     onToTimeChange,
     onToggleAvailable,
     onToggleOpenGame,
-    onClear,
 }: FilterControlProps): JSX.Element {
     const colors = useThemeColors();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const slotTypeChanged = !showAvailableSlot || !showOpenGame;
-    const activeFilterCount = [surface, fromTime, toTime, slotTypeChanged ? "slotType" : ""].filter(
-        Boolean
-    ).length;
+
+    // Draft state — the sheet edits these locally; nothing reaches the parent
+    // (and thus the availability API) until "Apply Filters" is pressed.
+    const [draftSurface, setDraftSurface] = useState(surface);
+    const [draftFromTime, setDraftFromTime] = useState(fromTime);
+    const [draftToTime, setDraftToTime] = useState(toTime);
+    const [draftShowAvailable, setDraftShowAvailable] = useState(showAvailableSlot);
+    const [draftShowOpenGame, setDraftShowOpenGame] = useState(showOpenGame);
+
+    // Re-seed the draft from the applied filters each time the sheet opens, so
+    // a dismissed-without-apply session doesn't leak stale drafts into the next.
+    useEffect(() => {
+        if (!isSheetOpen) return;
+        setDraftSurface(surface);
+        setDraftFromTime(fromTime);
+        setDraftToTime(toTime);
+        setDraftShowAvailable(showAvailableSlot);
+        setDraftShowOpenGame(showOpenGame);
+    }, [isSheetOpen, surface, fromTime, toTime, showAvailableSlot, showOpenGame]);
+
+    // Closed-pill badge reflects the *applied* filters.
+    const appliedSlotTypeChanged = !showAvailableSlot || !showOpenGame;
+    const activeFilterCount = [
+        surface,
+        fromTime,
+        toTime,
+        appliedSlotTypeChanged ? "slotType" : "",
+    ].filter(Boolean).length;
     const hasActiveFilter = activeFilterCount > 0;
 
+    // Apply button enables only when the draft differs from what's applied.
+    const draftDiffersFromApplied =
+        draftSurface !== surface ||
+        draftFromTime !== fromTime ||
+        draftToTime !== toTime ||
+        draftShowAvailable !== showAvailableSlot ||
+        draftShowOpenGame !== showOpenGame;
+
+    const handleToggleDraftAvailable = (v: boolean): void => {
+        if (!v && !draftShowOpenGame) return;
+        setDraftShowAvailable(v);
+    };
+
+    const handleToggleDraftOpenGame = (v: boolean): void => {
+        if (!v && !draftShowAvailable) return;
+        setDraftShowOpenGame(v);
+    };
+
     const handleReset = (): void => {
-        onClear();
-        onToggleAvailable(true);
-        onToggleOpenGame(true);
+        setDraftSurface("");
+        setDraftFromTime("");
+        setDraftToTime("");
+        setDraftShowAvailable(true);
+        setDraftShowOpenGame(true);
+    };
+
+    const handleApply = (): void => {
+        onSurfaceChange(draftSurface);
+        onFromTimeChange(draftFromTime);
+        onToTimeChange(draftToTime);
+        onToggleAvailable(draftShowAvailable);
+        onToggleOpenGame(draftShowOpenGame);
+        setIsSheetOpen(false);
     };
 
     return (
@@ -271,19 +499,20 @@ export function FilterButton({
                 animationType="slide"
                 onRequestClose={() => setIsSheetOpen(false)}
             >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === "ios" ? "padding" : "height"}
-                    style={{ flex: 1, justifyContent: "flex-end" }}
+                <View
+                    style={{
+                        flex: 1,
+                        justifyContent: "flex-end",
+                        backgroundColor: colors.overlay,
+                    }}
                 >
-                    <Pressable
-                        onPress={() => setIsSheetOpen(false)}
-                        style={{ flex: 1, backgroundColor: colors.overlay }}
-                    />
+                    <Pressable onPress={() => setIsSheetOpen(false)} style={{ flex: 1 }} />
                     <View
                         style={{
                             backgroundColor: colors.card,
                             borderTopLeftRadius: 28,
                             borderTopRightRadius: 28,
+                            overflow: "hidden",
                             paddingHorizontal: 20,
                             paddingTop: 10,
                             paddingBottom: 24,
@@ -358,18 +587,18 @@ export function FilterButton({
                             <View style={{ width: "48%" }}>
                                 <FilterChip
                                     label="All"
-                                    active={!surface}
+                                    active={!draftSurface}
                                     icon="grid-outline"
-                                    onPress={() => onSurfaceChange("")}
+                                    onPress={() => setDraftSurface("")}
                                 />
                             </View>
                             {SURFACE_OPTIONS.map((opt) => (
                                 <View key={opt.value} style={{ width: "48%" }}>
                                     <FilterChip
                                         label={opt.label}
-                                        active={surface === opt.value}
+                                        active={draftSurface === opt.value}
                                         icon={surfaceIcon(opt.value)}
-                                        onPress={() => onSurfaceChange(opt.value)}
+                                        onPress={() => setDraftSurface(opt.value)}
                                     />
                                 </View>
                             ))}
@@ -389,17 +618,17 @@ export function FilterButton({
                             <View style={{ flex: 1 }}>
                                 <FilterChip
                                     label="Available"
-                                    active={showAvailableSlot}
+                                    active={draftShowAvailable}
                                     icon="ellipse"
-                                    onPress={() => onToggleAvailable(!showAvailableSlot)}
+                                    onPress={() => handleToggleDraftAvailable(!draftShowAvailable)}
                                 />
                             </View>
                             <View style={{ flex: 1 }}>
                                 <FilterChip
                                     label="Open Game"
-                                    active={showOpenGame}
+                                    active={draftShowOpenGame}
                                     icon="people-outline"
-                                    onPress={() => onToggleOpenGame(!showOpenGame)}
+                                    onPress={() => handleToggleDraftOpenGame(!draftShowOpenGame)}
                                 />
                             </View>
                         </View>
@@ -417,48 +646,54 @@ export function FilterButton({
                         <View style={{ flexDirection: "row", gap: 12, marginBottom: 22 }}>
                             <TimeField
                                 label="From"
-                                value={fromTime}
+                                value={draftFromTime}
                                 placeholder="Anytime"
-                                onChangeText={onFromTimeChange}
+                                onChange={setDraftFromTime}
                             />
                             <TimeField
                                 label="To"
-                                value={toTime}
+                                value={draftToTime}
                                 placeholder="Anytime"
-                                onChangeText={onToTimeChange}
+                                onChange={setDraftToTime}
                             />
                         </View>
 
                         <Pressable
-                            onPress={() => setIsSheetOpen(false)}
+                            onPress={handleApply}
+                            disabled={!draftDiffersFromApplied}
                             accessibilityRole="button"
                             accessibilityLabel="Apply filters"
+                            accessibilityState={{ disabled: !draftDiffersFromApplied }}
                             className="active:opacity-85"
                             style={{
                                 height: 56,
                                 borderRadius: 18,
-                                backgroundColor: colors.cta,
+                                backgroundColor: draftDiffersFromApplied
+                                    ? colors.cta
+                                    : colors.muted,
                                 alignItems: "center",
                                 justifyContent: "center",
-                                shadowColor: colors.cta,
-                                shadowOpacity: 0.22,
-                                shadowRadius: 12,
+                                shadowColor: draftDiffersFromApplied ? colors.cta : "transparent",
+                                shadowOpacity: draftDiffersFromApplied ? 0.22 : 0,
+                                shadowRadius: draftDiffersFromApplied ? 12 : 0,
                                 shadowOffset: { width: 0, height: 8 },
-                                elevation: 8,
+                                elevation: draftDiffersFromApplied ? 8 : 0,
                             }}
                         >
                             <Text
                                 style={{
                                     fontSize: 16,
                                     fontWeight: "700",
-                                    color: colors.ctaForeground,
+                                    color: draftDiffersFromApplied
+                                        ? colors.ctaForeground
+                                        : colors.mutedForeground,
                                 }}
                             >
                                 Apply Filters
                             </Text>
                         </Pressable>
                     </View>
-                </KeyboardAvoidingView>
+                </View>
             </Modal>
         </>
     );
@@ -588,16 +823,20 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                 animationType="slide"
                 onRequestClose={() => setIsCalendarOpen(false)}
             >
-                <View style={{ flex: 1, justifyContent: "flex-end" }}>
-                    <Pressable
-                        onPress={() => setIsCalendarOpen(false)}
-                        style={{ flex: 1, backgroundColor: colors.overlay }}
-                    />
+                <View
+                    style={{
+                        flex: 1,
+                        justifyContent: "flex-end",
+                        backgroundColor: colors.overlay,
+                    }}
+                >
+                    <Pressable onPress={() => setIsCalendarOpen(false)} style={{ flex: 1 }} />
                     <View
                         style={{
                             backgroundColor: colors.card,
                             borderTopLeftRadius: 32,
                             borderTopRightRadius: 32,
+                            overflow: "hidden",
                             paddingHorizontal: 20,
                             paddingTop: 10,
                             paddingBottom: 32,
@@ -738,9 +977,10 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                                 >
                                                     <View
                                                         style={{
-                                                            width: 42,
-                                                            height: 52,
-                                                            borderRadius: 14,
+                                                            width: 44,
+                                                            height: 44,
+                                                            borderRadius: 22,
+                                                            overflow: "hidden",
                                                             alignItems: "center",
                                                             justifyContent: "center",
                                                             backgroundColor: isSelected
@@ -754,30 +994,8 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                                                   ? 1.5
                                                                   : 0,
                                                             borderColor: colors.ctaBorder,
-                                                            shadowColor: isSelected
-                                                                ? colors.cta
-                                                                : "transparent",
-                                                            shadowOpacity: isSelected ? 0.35 : 0,
-                                                            shadowRadius: isSelected ? 8 : 0,
-                                                            shadowOffset: { width: 0, height: 4 },
-                                                            elevation: isSelected ? 6 : 0,
                                                         }}
                                                     >
-                                                        <Text
-                                                            style={{
-                                                                fontSize: 9,
-                                                                fontWeight: "700",
-                                                                color: isSelected
-                                                                    ? colors.heroMuted
-                                                                    : isToday
-                                                                      ? colors.cta
-                                                                      : colors.mutedForeground,
-                                                                letterSpacing: 0.4,
-                                                                textTransform: "uppercase",
-                                                            }}
-                                                        >
-                                                            {day.topLabel}
-                                                        </Text>
                                                         <Text
                                                             style={{
                                                                 fontSize: 17,
@@ -790,7 +1008,6 @@ export function FilterBar({ date, onDateChange }: Props): JSX.Element {
                                                                     : isToday
                                                                       ? colors.cta
                                                                       : colors.foreground,
-                                                                marginTop: 1,
                                                                 letterSpacing: -0.3,
                                                             }}
                                                         >

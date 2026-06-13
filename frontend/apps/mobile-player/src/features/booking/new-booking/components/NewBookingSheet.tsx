@@ -6,6 +6,7 @@ import {
     Platform,
     Pressable,
     ScrollView,
+    Switch,
     Text,
     View,
 } from "react-native";
@@ -36,9 +37,24 @@ type FormState = {
     playerUserIds: string[];
 };
 
-const BOOKING_TYPE_OPTIONS: { value: BookingType; label: string }[] = [
-    { value: "regular", label: "Regular" },
-    { value: "lesson_individual", label: "Individual Lesson" },
+const BOOKING_TYPE_OPTIONS: {
+    value: BookingType;
+    label: string;
+    description: string;
+    icon: keyof typeof Ionicons.glyphMap;
+}[] = [
+    {
+        value: "regular",
+        label: "Regular",
+        description: "Open to all players",
+        icon: "people-outline",
+    },
+    {
+        value: "lesson_individual",
+        label: "Individual Lesson",
+        description: "1-on-1 coaching",
+        icon: "school-outline",
+    },
 ];
 
 const DISCOUNT_SOURCE_LABELS: Record<string, string> = {
@@ -88,33 +104,34 @@ function getPayableBookingForUser(
     };
 }
 
-/* ── Fixed read-only match info tile ── */
-function InfoTile({
+/* ── Single icon + value line inside the booking summary ── */
+function SummaryRow({
     icon,
-    label,
     value,
 }: {
     icon: keyof typeof Ionicons.glyphMap;
-    label: string;
     value: string;
 }): JSX.Element {
     const colors = useThemeColors();
     return (
-        <View className="flex-1 flex-row items-center gap-3 rounded-[16px] border border-border/60 bg-card px-3.5 py-3">
-            <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-muted">
-                <Ionicons name={icon} size={16} color={colors.mutedForeground} />
-            </View>
-            <View className="min-w-0 flex-1">
-                <Text className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {label}
-                </Text>
-                <Text
-                    className="mt-0.5 text-[14px] font-semibold text-foreground"
-                    numberOfLines={1}
-                >
-                    {value}
-                </Text>
-            </View>
+        <View className="flex-row items-center gap-2.5">
+            <Ionicons name={icon} size={15} color={colors.mutedForeground} />
+            <Text className="flex-1 text-[14px] font-medium text-foreground" numberOfLines={1}>
+                {value}
+            </Text>
+        </View>
+    );
+}
+
+/* ── Court thumbnail (graceful placeholder — no image URL in the booking data) ── */
+function CourtThumbnail(): JSX.Element {
+    const colors = useThemeColors();
+    return (
+        <View
+            className="h-[88px] w-[88px] items-center justify-center rounded-[16px] bg-muted"
+            style={{ borderWidth: 1, borderColor: colors.border }}
+        >
+            <Ionicons name="tennisball-outline" size={28} color={colors.mutedForeground} />
         </View>
     );
 }
@@ -137,7 +154,7 @@ function PriceBreakdown({ priceQuote }: { priceQuote: PriceQuote | null }): JSX.
         DISCOUNT_SOURCE_LABELS[priceQuote.discount_source] ?? priceQuote.discount_source;
 
     return (
-        <View className="flex-row overflow-hidden rounded-[16px] border border-border/60 bg-card">
+        <View className="flex-row overflow-hidden rounded-[16px] border border-border/60 bg-background">
             <View className="flex-1 px-3 py-3">
                 <Text className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
                     Original
@@ -172,7 +189,7 @@ function PriceBreakdown({ priceQuote }: { priceQuote: PriceQuote | null }): JSX.
     );
 }
 
-/* ── Segmented booking-type selector ── */
+/* ── Booking-type selector — rich radio cards (icon + title + subtitle) ── */
 function BookingTypeSelector({
     value,
     onChange,
@@ -182,31 +199,52 @@ function BookingTypeSelector({
 }): JSX.Element {
     const colors = useThemeColors();
     return (
-        <View className="gap-2">
-            <Text className="text-[13px] font-semibold text-foreground">
-                Booking Type <Text style={{ color: colors.destructive }}>*</Text>
-            </Text>
-            <View className="flex-row gap-2">
+        <View className="gap-3">
+            <Text className="text-[15px] font-bold text-foreground">Booking Type</Text>
+            <View className="flex-row gap-3">
                 {BOOKING_TYPE_OPTIONS.map((opt) => {
                     const active = opt.value === value;
                     return (
                         <Pressable
                             key={opt.value}
                             onPress={() => onChange(opt.value)}
-                            accessibilityRole="button"
+                            accessibilityRole="radio"
                             accessibilityLabel={opt.label}
                             accessibilityState={{ selected: active }}
-                            className="flex-1 items-center rounded-[14px] border px-3 py-3 active:opacity-80"
+                            className="flex-1 rounded-[16px] border px-3.5 py-3.5 active:opacity-80"
                             style={{
                                 borderColor: active ? colors.cta : colors.border,
                                 backgroundColor: active ? colors.ctaSurface : colors.card,
                             }}
                         >
+                            <View className="flex-row items-center justify-between">
+                                <View
+                                    className="h-5 w-5 items-center justify-center rounded-full border-2"
+                                    style={{
+                                        borderColor: active ? colors.cta : colors.border,
+                                    }}
+                                >
+                                    {active ? (
+                                        <View
+                                            className="h-2.5 w-2.5 rounded-full"
+                                            style={{ backgroundColor: colors.cta }}
+                                        />
+                                    ) : null}
+                                </View>
+                                <Ionicons
+                                    name={opt.icon}
+                                    size={20}
+                                    color={active ? colors.cta : colors.mutedForeground}
+                                />
+                            </View>
                             <Text
-                                className="text-[13px] font-semibold"
-                                style={{ color: active ? colors.cta : colors.foreground }}
+                                className="mt-3 text-[14px] font-bold"
+                                style={{ color: active ? colors.foreground : colors.foreground }}
                             >
                                 {opt.label}
+                            </Text>
+                            <Text className="mt-0.5 text-[12px] text-muted-foreground">
+                                {opt.description}
                             </Text>
                         </Pressable>
                     );
@@ -216,16 +254,14 @@ function BookingTypeSelector({
     );
 }
 
-/* ── Number stepper ── */
-function NumberStepper({
-    label,
+/* ── Max-players stepper card (circular +/-, big number, "including you" helper) ── */
+function MaxPlayersStepper({
     value,
     min,
     max,
     onChange,
     disabled,
 }: {
-    label: string;
     value: number;
     min: number;
     max: number;
@@ -234,12 +270,10 @@ function NumberStepper({
 }): JSX.Element {
     const colors = useThemeColors();
     return (
-        <View className="gap-2">
-            <Text className="text-[13px] font-semibold text-foreground">
-                {label} <Text style={{ color: colors.destructive }}>*</Text>
-            </Text>
+        <View className="gap-3 rounded-[20px] bg-card px-4 py-4 shadow-sm">
+            <Text className="text-[15px] font-bold text-foreground">Max Players</Text>
             <View
-                className="flex-row items-center justify-between rounded-[14px] border border-border bg-card px-2 py-1.5"
+                className="flex-row items-center justify-between rounded-[16px] border border-border bg-background px-3 py-2"
                 style={{ opacity: disabled ? 0.5 : 1 }}
             >
                 <Pressable
@@ -247,32 +281,40 @@ function NumberStepper({
                     disabled={disabled || value <= min}
                     accessibilityRole="button"
                     accessibilityLabel="Decrease max players"
-                    className="h-9 w-9 items-center justify-center rounded-[10px] bg-muted active:opacity-75 disabled:opacity-40"
+                    className="h-11 w-11 items-center justify-center rounded-full active:opacity-75 disabled:opacity-40"
+                    style={{ backgroundColor: colors.muted }}
                 >
-                    <Ionicons name="remove" size={18} color={colors.foreground} />
+                    <Ionicons name="remove" size={20} color={colors.foreground} />
                 </Pressable>
-                <Text className="text-[18px] font-bold text-foreground">{value}</Text>
+                <Text className="text-[26px] font-bold text-foreground">{value}</Text>
                 <Pressable
                     onPress={() => onChange(Math.min(max, value + 1))}
                     disabled={disabled || value >= max}
                     accessibilityRole="button"
                     accessibilityLabel="Increase max players"
-                    className="h-9 w-9 items-center justify-center rounded-[10px] bg-muted active:opacity-75 disabled:opacity-40"
+                    className="h-11 w-11 items-center justify-center rounded-full active:opacity-75 disabled:opacity-40"
+                    style={{ backgroundColor: colors.muted }}
                 >
-                    <Ionicons name="add" size={18} color={colors.foreground} />
+                    <Ionicons name="add" size={20} color={colors.foreground} />
                 </Pressable>
+            </View>
+            <View className="flex-row items-center justify-center gap-1.5">
+                <Ionicons name="people-outline" size={14} color={colors.mutedForeground} />
+                <Text className="text-[12px] text-muted-foreground">Including you</Text>
             </View>
         </View>
     );
 }
 
-/* ── Checkbox row ── */
-function CheckboxRow({
+/* ── Toggle row card (leading icon chip + label/description + Switch) ── */
+function ToggleRow({
+    icon,
     label,
     description,
     value,
     onChange,
 }: {
+    icon: keyof typeof Ionicons.glyphMap;
     label: string;
     description?: string;
     value: boolean;
@@ -280,31 +322,32 @@ function CheckboxRow({
 }): JSX.Element {
     const colors = useThemeColors();
     return (
-        <Pressable
-            onPress={() => onChange(!value)}
-            accessibilityRole="checkbox"
-            accessibilityLabel={label}
-            accessibilityState={{ checked: value }}
-            className="flex-row items-center gap-3 active:opacity-75"
-        >
+        <View className="flex-row items-center gap-3 rounded-[20px] bg-card px-4 py-3.5 shadow-sm">
             <View
-                className="h-6 w-6 items-center justify-center rounded-[7px] border-2"
-                style={{
-                    borderColor: value ? colors.cta : colors.border,
-                    backgroundColor: value ? colors.cta : "transparent",
-                }}
+                className="h-10 w-10 items-center justify-center rounded-full"
+                style={{ backgroundColor: value ? colors.ctaSurface : colors.muted }}
             >
-                {value ? (
-                    <Ionicons name="checkmark" size={15} color={colors.ctaForeground} />
-                ) : null}
+                <Ionicons
+                    name={icon}
+                    size={18}
+                    color={value ? colors.cta : colors.mutedForeground}
+                />
             </View>
             <View className="flex-1">
-                <Text className="text-[14px] font-medium text-foreground">{label}</Text>
+                <Text className="text-[14px] font-bold text-foreground">{label}</Text>
                 {description ? (
                     <Text className="mt-0.5 text-[12px] text-muted-foreground">{description}</Text>
                 ) : null}
             </View>
-        </Pressable>
+            <Switch
+                value={value}
+                onValueChange={onChange}
+                accessibilityLabel={label}
+                trackColor={{ false: colors.border, true: colors.cta }}
+                thumbColor={colors.ctaForeground}
+                ios_backgroundColor={colors.border}
+            />
+        </View>
     );
 }
 
@@ -380,6 +423,9 @@ export function NewBookingSheet({
     }, [date, startTime, endTime]);
     const courtPrice = priceQuote?.base_price ?? null;
     const formattedPrice = formatCurrency(courtPrice);
+    // What the user actually pays: their discounted share if present, else the base price.
+    const payableAmount = priceQuote?.amount_due ?? priceQuote?.per_player_price ?? courtPrice;
+    const formattedPayable = formatCurrency(payableAmount);
 
     const handleFormChange = useCallback((patch: Partial<FormState>) => {
         setForm((prev) => {
@@ -564,75 +610,96 @@ export function NewBookingSheet({
 
                         {step === "details" ? (
                             <>
-                                {/* Fixed match information */}
-                                <View className="gap-3">
-                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                        Match Information
+                                {/* Booking summary card */}
+                                <View className="gap-4 rounded-[20px] bg-card px-4 py-4 shadow-sm">
+                                    <Text className="text-[16px] font-bold text-foreground">
+                                        Booking Summary
                                     </Text>
-                                    <View className="gap-2">
-                                        <View className="flex-row gap-2">
-                                            <InfoTile
-                                                icon="location-outline"
-                                                label="Court"
-                                                value={courtName}
-                                            />
-                                            <InfoTile
+                                    <View className="flex-row gap-4">
+                                        <CourtThumbnail />
+                                        <View className="flex-1 gap-2">
+                                            <Text
+                                                className="text-[18px] font-bold text-foreground"
+                                                numberOfLines={1}
+                                            >
+                                                {courtName}
+                                            </Text>
+                                            <SummaryRow
                                                 icon="calendar-outline"
-                                                label="Date"
                                                 value={formattedDate}
                                             />
-                                        </View>
-                                        <View className="flex-row gap-2">
-                                            <InfoTile
-                                                icon="time-outline"
-                                                label="Time"
-                                                value={formattedTime}
-                                            />
-                                            <InfoTile
+                                            <SummaryRow icon="time-outline" value={formattedTime} />
+                                            <SummaryRow
                                                 icon="pricetag-outline"
-                                                label="Price"
                                                 value={formattedPrice}
                                             />
                                         </View>
-                                        <PriceBreakdown priceQuote={priceQuote} />
                                     </View>
+                                    <PriceBreakdown priceQuote={priceQuote} />
                                 </View>
 
-                                {/* Editable booking settings */}
-                                <View className="gap-4 rounded-[20px] bg-card px-4 py-5 shadow-sm">
-                                    <BookingTypeSelector
-                                        value={form.bookingType}
-                                        onChange={(v) => handleFormChange({ bookingType: v })}
-                                    />
+                                {/* Booking type */}
+                                <BookingTypeSelector
+                                    value={form.bookingType}
+                                    onChange={(v) => handleFormChange({ bookingType: v })}
+                                />
 
-                                    <NumberStepper
-                                        label="Max Players"
-                                        value={
-                                            isIndividualLesson
-                                                ? 1
-                                                : parseInt(form.maxPlayers, 10) || 4
-                                        }
-                                        min={1}
-                                        max={10}
-                                        onChange={(v) =>
-                                            handleFormChange({ maxPlayers: String(v) })
-                                        }
-                                        disabled={isIndividualLesson}
-                                    />
+                                {/* Max players */}
+                                <MaxPlayersStepper
+                                    value={
+                                        isIndividualLesson ? 1 : parseInt(form.maxPlayers, 10) || 4
+                                    }
+                                    min={1}
+                                    max={10}
+                                    onChange={(v) => handleFormChange({ maxPlayers: String(v) })}
+                                    disabled={isIndividualLesson}
+                                />
 
-                                    {!isIndividualLesson ? (
-                                        <View className="border-t border-border/50 pt-4">
-                                            <CheckboxRow
-                                                label="Private / invite-only match"
-                                                description="Only invited players can join"
-                                                value={!form.isOpenGame}
-                                                onChange={(v) =>
-                                                    handleFormChange({ isOpenGame: !v })
-                                                }
+                                {/* Private / invite-only toggle */}
+                                {!isIndividualLesson ? (
+                                    <ToggleRow
+                                        icon="lock-closed-outline"
+                                        label="Private / invite-only match"
+                                        description="Only invited players can join"
+                                        value={!form.isOpenGame}
+                                        onChange={(v) => handleFormChange({ isOpenGame: !v })}
+                                    />
+                                ) : null}
+
+                                {/* Invite & split-cost entry row */}
+                                {!isIndividualLesson ? (
+                                    <Pressable
+                                        onPress={() => setStep("invite")}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Invite players and split the cost"
+                                        className="flex-row items-center gap-3 rounded-[20px] px-4 py-3.5 active:opacity-80"
+                                        style={{ backgroundColor: colors.ctaSurface }}
+                                    >
+                                        <View
+                                            className="h-10 w-10 items-center justify-center rounded-full"
+                                            style={{ backgroundColor: colors.cta }}
+                                        >
+                                            <Ionicons
+                                                name="people-outline"
+                                                size={18}
+                                                color={colors.ctaForeground}
                                             />
                                         </View>
-                                    ) : null}
-                                </View>
+                                        <View className="flex-1">
+                                            <Text className="text-[14px] font-bold text-foreground">
+                                                Invite players & split the cost
+                                            </Text>
+                                            <Text className="mt-0.5 text-[12px] text-muted-foreground">
+                                                Easily invite friends and manage payments
+                                            </Text>
+                                        </View>
+                                        <Ionicons
+                                            name="chevron-forward"
+                                            size={18}
+                                            color={colors.mutedForeground}
+                                        />
+                                    </Pressable>
+                                ) : null}
 
                                 {/* Trainer (individual lesson) */}
                                 {isLessonType ? (
@@ -815,9 +882,16 @@ export function NewBookingSheet({
                                     color={colors.ctaForeground}
                                 />
                             )}
-                            <Text className="text-[15px] font-bold text-cta-foreground">
-                                {createMutation.isPending ? "Creating…" : "Create & Pay"}
-                            </Text>
+                            <View className="items-center">
+                                <Text className="text-[15px] font-bold text-cta-foreground">
+                                    {createMutation.isPending ? "Creating…" : "Create & Pay"}
+                                </Text>
+                                {!createMutation.isPending && formattedPayable !== "—" ? (
+                                    <Text className="text-[12px] font-medium text-cta-foreground/90">
+                                        {formattedPayable}
+                                    </Text>
+                                ) : null}
+                            </View>
                         </Pressable>
                     </View>
                 </View>

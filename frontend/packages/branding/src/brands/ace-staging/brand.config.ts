@@ -25,8 +25,8 @@ export const aceStagingBrand: BrandManifest = defineBrand({
     },
 
     branding: {
-        primaryColor: "#16A34A", // green600 — CTA / hero / active tab
-        secondaryColor: "#052E16", // green950 — text / primary surfaces
+        primaryColor: "#2563EB", // blue600 — CTA / hero / active tab
+        secondaryColor: "#0F172A", // slate900 — text / primary surfaces
         backgroundColor: "#FFFFFF",
         fontFamily: "Inter",
     },
@@ -57,21 +57,21 @@ export const aceStagingBrand: BrandManifest = defineBrand({
     // Pin the Tailwind green-ramp stops the generic derivation can't hit exactly.
     themeOverrides: {
         light: {
-            ctaHover: "#15803D", // green700
-            ctaSurface: "#F0FDF4", // green50
-            ctaBorder: "#BBF7D0", // green200
-            ring: "#22C55E", // green500
-            heroMuted: "#BBF7D0", // green200
+            ctaHover: "#1D4ED8", // blue700
+            ctaSurface: "#EFF6FF", // blue50
+            ctaBorder: "#BFDBFE", // blue200
+            ring: "#3B82F6", // blue500
+            heroMuted: "#BFDBFE", // blue200
         },
         dark: {
-            cta: "#22C55E", // green500
-            ctaSurface: "rgba(34,197,94,0.16)",
-            ctaBorder: "rgba(34,197,94,0.32)",
-            ring: "#22C55E", // green500
-            hero: "#14532D", // green900
-            heroMuted: "#BBF7D0", // green200
-            tabActive: "#4ADE80", // green400
-            ripple: "rgba(74,222,128,0.16)",
+            cta: "#3B82F6", // blue500
+            ctaSurface: "rgba(59,130,246,0.16)",
+            ctaBorder: "rgba(59,130,246,0.32)",
+            ring: "#3B82F6", // blue500
+            hero: "#1E40AF", // blue800
+            heroMuted: "#BFDBFE", // blue200
+            tabActive: "#60A5FA", // blue400
+            ripple: "rgba(96,165,250,0.16)",
         },
     },
 

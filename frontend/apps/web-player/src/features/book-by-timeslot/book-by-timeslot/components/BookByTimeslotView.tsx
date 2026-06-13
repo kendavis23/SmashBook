@@ -45,7 +45,7 @@ type Props = {
     onFromTimeCommit: (v: string) => void;
     onToTimeChange: (v: string) => void;
     onToTimeCommit: (v: string) => void;
-    onSelectSlot: (slot: ClubAvailabilitySlot) => void;
+    onSelectSlot: (slot: ClubAvailabilitySlot | null) => void;
     onBook: (courtId: string, slot: ClubAvailabilitySlot) => void;
     onJoin: (bookingId: string) => void;
     onRefresh: () => void;
@@ -278,6 +278,15 @@ export default function BookByTimeslotView({
         if (showAvailableSlot) return hasAvailable;
         return true;
     });
+
+    // The container auto-selects a slot from unfiltered availability; if the
+    // active filters (Open Game / Available Slot) hide that slot, deselect it
+    // so the "Available Courts" header doesn't show a stale slot.
+    React.useEffect(() => {
+        if (selectedSlot && !slots.some((s) => s.start_time === selectedSlot.start_time)) {
+            onSelectSlot(null);
+        }
+    }, [selectedSlot, slots, onSelectSlot]);
 
     const filteredCourts = (): ClubAvailabilityCourt[] => {
         if (!surface) return courts;

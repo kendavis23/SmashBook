@@ -8,11 +8,7 @@ import {
     formatAmount,
     formatBookingType,
 } from "../../utils/bookingFormatters";
-import {
-    getStatusConfig,
-    getPaymentConfig,
-    getInviteConfig,
-} from "../../constants/bookingConstants";
+import { getStatusConfig, getInviteConfig } from "../../constants/bookingConstants";
 import { useRespondInvite } from "../../hooks";
 import { useThemeColors } from "../../../../theme";
 
@@ -56,11 +52,6 @@ export function BookingCard({
         text: colors.mutedForeground,
         dot: colors.mutedForeground,
     };
-    const paymentCfg = getPaymentConfig(colors)[booking.payment_status] ?? {
-        label: booking.payment_status,
-        bg: colors.muted,
-        text: colors.mutedForeground,
-    };
     const inviteCfg = getInviteConfig(colors)[booking.invite_status] ?? null;
 
     const isOrganiser = booking.role === "organiser";
@@ -73,20 +64,20 @@ export function BookingCard({
         <View
             style={{
                 backgroundColor: colors.card,
-                borderRadius: 18,
+                borderRadius: 16,
                 borderWidth: 1.5,
-                borderColor: colors.border,
+                borderColor: colors.ctaBorder,
                 overflow: "hidden",
                 shadowColor: colors.shadow,
-                shadowOffset: { width: 0, height: 2 },
+                shadowOffset: { width: 0, height: 1 },
                 shadowOpacity: 0.05,
-                shadowRadius: 8,
+                shadowRadius: 4,
                 elevation: 2,
             }}
             accessibilityRole="none"
         >
-            <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 11 }}>
-                {/* Row 1: Court icon + name + status badge */}
+            <View style={{ paddingHorizontal: 16, paddingVertical: 14, gap: 12 }}>
+                {/* Row 1: Court icon + name/club + status badge */}
                 <View
                     style={{
                         flexDirection: "row",
@@ -100,39 +91,49 @@ export function BookingCard({
                             flex: 1,
                             flexDirection: "row",
                             alignItems: "center",
-                            gap: 10,
+                            gap: 11,
                             minWidth: 0,
                         }}
                     >
-                        <View
-                            style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 11,
-                                backgroundColor: isOrganiser ? colors.ctaSurface : colors.muted,
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                            }}
-                        >
-                            <Ionicons
-                                name="tennisball"
-                                size={17}
-                                color={isOrganiser ? colors.cta : colors.mutedForeground}
-                            />
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text
+                                style={{
+                                    fontSize: 16,
+                                    fontWeight: "700",
+                                    color: colors.foreground,
+                                    letterSpacing: -0.3,
+                                }}
+                                numberOfLines={1}
+                            >
+                                {booking.court_name}
+                            </Text>
+                            <View
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    gap: 4,
+                                    marginTop: 2,
+                                }}
+                            >
+                                <Ionicons
+                                    name="business-outline"
+                                    size={11}
+                                    color={colors.mutedForeground}
+                                />
+                                <Text
+                                    style={{
+                                        flex: 1,
+                                        fontSize: 12,
+                                        fontWeight: "500",
+                                        color: colors.mutedForeground,
+                                        letterSpacing: -0.1,
+                                    }}
+                                    numberOfLines={1}
+                                >
+                                    {booking.club_name}
+                                </Text>
+                            </View>
                         </View>
-                        <Text
-                            style={{
-                                flex: 1,
-                                fontSize: 16,
-                                fontWeight: "700",
-                                color: colors.foreground,
-                                letterSpacing: -0.3,
-                            }}
-                            numberOfLines={1}
-                        >
-                            {booking.court_name}
-                        </Text>
                     </View>
 
                     <View
@@ -141,8 +142,8 @@ export function BookingCard({
                             alignItems: "center",
                             gap: 5,
                             backgroundColor: statusCfg.bg,
-                            borderRadius: 20,
-                            paddingHorizontal: 10,
+                            borderRadius: 8,
+                            paddingHorizontal: 9,
                             paddingVertical: 5,
                             flexShrink: 0,
                         }}
@@ -204,7 +205,7 @@ export function BookingCard({
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 4,
-                            borderRadius: 20,
+                            borderRadius: 8,
                             borderWidth: 1,
                             borderColor: colors.border,
                             backgroundColor: colors.muted,
@@ -229,7 +230,7 @@ export function BookingCard({
                             flexDirection: "row",
                             alignItems: "center",
                             gap: 4,
-                            borderRadius: 20,
+                            borderRadius: 8,
                             borderWidth: 1,
                             borderColor: isOrganiser ? colors.ctaBorder : colors.border,
                             backgroundColor: isOrganiser ? colors.ctaSurface : colors.muted,
@@ -259,7 +260,7 @@ export function BookingCard({
                                 flexDirection: "row",
                                 alignItems: "center",
                                 gap: 4,
-                                borderRadius: 20,
+                                borderRadius: 8,
                                 borderWidth: 1,
                                 borderColor: colors.border,
                                 backgroundColor: colors.muted,
@@ -291,24 +292,6 @@ export function BookingCard({
                     }}
                 >
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                        <View
-                            style={{
-                                backgroundColor: paymentCfg.bg,
-                                borderRadius: 20,
-                                paddingHorizontal: 10,
-                                paddingVertical: 4,
-                            }}
-                        >
-                            <Text
-                                style={{
-                                    fontSize: 11,
-                                    fontWeight: "600",
-                                    color: paymentCfg.text,
-                                }}
-                            >
-                                {paymentCfg.label}
-                            </Text>
-                        </View>
                         <Text
                             style={{
                                 fontSize: 17,
@@ -352,7 +335,7 @@ export function BookingCard({
                                             flexDirection: "row",
                                             alignItems: "center",
                                             gap: 5,
-                                            borderRadius: 22,
+                                            borderRadius: 10,
                                             backgroundColor: colors.success,
                                             paddingHorizontal: 14,
                                             paddingVertical: 8,
@@ -390,7 +373,7 @@ export function BookingCard({
                                             flexDirection: "row",
                                             alignItems: "center",
                                             gap: 5,
-                                            borderRadius: 22,
+                                            borderRadius: 10,
                                             borderWidth: 1,
                                             borderColor: colors.border,
                                             backgroundColor: colors.card,
@@ -431,7 +414,7 @@ export function BookingCard({
                                         flexDirection: "row",
                                         alignItems: "center",
                                         gap: 5,
-                                        borderRadius: 22,
+                                        borderRadius: 10,
                                         backgroundColor: colors.cta,
                                         paddingHorizontal: 16,
                                         paddingVertical: 8,
@@ -463,7 +446,7 @@ export function BookingCard({
                                                 flexDirection: "row",
                                                 alignItems: "center",
                                                 gap: 5,
-                                                borderRadius: 22,
+                                                borderRadius: 10,
                                                 borderWidth: 1,
                                                 borderColor: colors.border,
                                                 backgroundColor: colors.card,
@@ -495,7 +478,7 @@ export function BookingCard({
                                             flexDirection: "row",
                                             alignItems: "center",
                                             gap: 5,
-                                            borderRadius: 22,
+                                            borderRadius: 10,
                                             borderWidth: 1,
                                             borderColor: colors.border,
                                             backgroundColor: colors.card,

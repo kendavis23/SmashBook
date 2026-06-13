@@ -19,7 +19,7 @@ import {
     getInitials,
 } from "../../utils/bookingFormatters";
 import { getStatusConfig } from "../../constants/bookingConstants";
-import { useThemeColors, palette } from "../../../../theme";
+import { useThemeColors } from "../../../../theme";
 
 type SelectedBooking = { bookingId: string; clubId: string };
 
@@ -30,38 +30,38 @@ type MyInfo = {
     amountDue: number;
 };
 
-function InfoTile({
+function SummaryRow({
     icon,
-    label,
     value,
-    iconBg,
-    iconColor,
 }: {
-    icon: string;
-    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
     value: string;
-    iconBg: string;
-    iconColor: string;
 }): JSX.Element {
+    const colors = useThemeColors();
+
     return (
-        <View className="flex-1 flex-row items-center gap-3 rounded-[16px] border border-border bg-muted px-3 py-3">
-            <View
-                style={{ backgroundColor: iconBg }}
-                className="h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
-            >
-                <Ionicons name={icon as never} size={16} color={iconColor} />
-            </View>
-            <View className="min-w-0 flex-1">
-                <Text className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    {label}
-                </Text>
-                <Text
-                    className="mt-0.5 text-[13px] font-semibold text-foreground"
-                    numberOfLines={1}
-                >
-                    {value}
-                </Text>
-            </View>
+        <View className="flex-row items-center gap-2.5">
+            <Ionicons name={icon} size={16} color={colors.mutedForeground} />
+            <Text className="flex-1 text-[14px] font-medium text-foreground" numberOfLines={1}>
+                {value}
+            </Text>
+        </View>
+    );
+}
+
+function SummaryMetric({
+    icon,
+    value,
+}: {
+    icon: keyof typeof Ionicons.glyphMap;
+    value: string;
+}): JSX.Element {
+    const colors = useThemeColors();
+
+    return (
+        <View className="flex-1 flex-row items-center justify-center gap-2">
+            <Ionicons name={icon} size={16} color={colors.mutedForeground} />
+            <Text className="text-[13px] font-semibold text-foreground">{value}</Text>
         </View>
     );
 }
@@ -87,11 +87,6 @@ function PlayerRow({
     const avatarBg = isMe ? colors.ctaSurface : isAccepted ? colors.successSurface : colors.muted;
     const avatarText = isMe ? colors.cta : isAccepted ? colors.success : colors.mutedForeground;
 
-    const inviteBg = isAccepted
-        ? colors.successSurface
-        : inviteStatus === "pending"
-          ? colors.warningSurface
-          : colors.muted;
     const inviteColor = isAccepted
         ? colors.success
         : inviteStatus === "pending"
@@ -103,11 +98,6 @@ function PlayerRow({
           ? "Pending"
           : inviteStatus;
 
-    const payBg = isPaid
-        ? colors.successSurface
-        : paymentStatus === "pending"
-          ? colors.warningSurface
-          : colors.muted;
     const payColor = isPaid
         ? colors.success
         : paymentStatus === "pending"
@@ -115,47 +105,32 @@ function PlayerRow({
           : colors.mutedForeground;
 
     return (
-        <View
-            style={{ backgroundColor: isMe ? colors.ctaSurface : colors.card }}
-            className="flex-row items-center gap-3 rounded-[16px] border border-border px-3 py-3"
-        >
-            {/* Left accent */}
-            {isMe ? (
-                <View className="absolute bottom-0 left-0 top-0 w-0.5 rounded-r bg-cta" />
-            ) : null}
-
-            {/* Avatar */}
+        <View className="flex-row items-center gap-3 rounded-[16px] bg-card px-3 py-3">
             <View
                 style={{ backgroundColor: avatarBg }}
-                className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
+                className="h-10 w-10 shrink-0 items-center justify-center rounded-full"
             >
                 <Text style={{ color: avatarText }} className="text-[12px] font-bold">
                     {initials}
                 </Text>
             </View>
 
-            {/* Name + role */}
             <View className="min-w-0 flex-1">
-                <Text className="text-[13px] font-semibold text-foreground" numberOfLines={1}>
+                <Text className="text-[14px] font-semibold text-foreground" numberOfLines={1}>
                     {name}
                     {isMe ? " (You)" : ""}
                 </Text>
-                <Text className="mt-0.5 text-[11px] capitalize text-muted-foreground">{role}</Text>
+                <Text className="mt-0.5 text-[12px] capitalize text-muted-foreground">{role}</Text>
             </View>
 
-            {/* Badges */}
-            <View className="flex-row gap-1.5">
-                <View style={{ backgroundColor: inviteBg }} className="rounded-full px-2 py-1">
-                    <Text style={{ color: inviteColor }} className="text-[10px] font-semibold">
-                        {inviteLabel}
-                    </Text>
-                </View>
+            <View className="items-end gap-1.5">
+                <Text style={{ color: inviteColor }} className="text-[11px] font-semibold">
+                    {inviteLabel}
+                </Text>
                 {isAccepted ? (
-                    <View style={{ backgroundColor: payBg }} className="rounded-full px-2 py-1">
-                        <Text style={{ color: payColor }} className="text-[10px] font-semibold">
-                            {isPaid ? "Paid" : "Unpaid"}
-                        </Text>
-                    </View>
+                    <Text style={{ color: payColor }} className="text-[10px] font-semibold">
+                        {isPaid ? "Paid" : "Payment due"}
+                    </Text>
                 ) : null}
             </View>
         </View>
@@ -251,38 +226,54 @@ export function BookingDetailSheet({
             onRequestClose={onClose}
         >
             <View className="flex-1 bg-background">
-                {/* Header */}
                 <View className="flex-row items-center justify-between bg-card px-5 pb-4 pt-5 shadow-sm">
-                    <View className="min-w-0 flex-1">
-                        <Text className="text-[18px] font-bold text-foreground" numberOfLines={1}>
-                            {typedBooking?.court_name ?? "Booking Details"}
-                        </Text>
-                        {statusCfg ? (
-                            <View
-                                style={{ backgroundColor: statusCfg.bg }}
-                                className="mt-1.5 flex-row items-center gap-1.5 self-start rounded-full px-2.5 py-1"
-                            >
-                                <View
-                                    style={{ backgroundColor: statusCfg.dot }}
-                                    className="h-1.5 w-1.5 rounded-full"
-                                />
+                    <View className="min-w-0 flex-1 flex-row items-center gap-3">
+                        <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-secondary">
+                            <Ionicons name="calendar-outline" size={20} color={colors.cta} />
+                        </View>
+                        <View className="min-w-0 flex-1">
+                            <Text className="text-[18px] font-bold text-foreground">
+                                Manage Booking
+                            </Text>
+                            <View className="mt-0.5 flex-row items-center gap-2">
                                 <Text
-                                    style={{ color: statusCfg.text }}
-                                    className="text-[11px] font-semibold"
+                                    className="shrink text-[12px] text-muted-foreground"
+                                    numberOfLines={1}
                                 >
-                                    {statusCfg.label}
+                                    {typedBooking?.court_name ?? "Booking details"}
                                 </Text>
+                                {statusCfg ? (
+                                    <View
+                                        style={{ backgroundColor: statusCfg.bg }}
+                                        className="flex-row items-center gap-1.5 rounded-full px-2 py-0.5"
+                                    >
+                                        <View
+                                            style={{ backgroundColor: statusCfg.dot }}
+                                            className="h-1.5 w-1.5 rounded-full"
+                                        />
+                                        <Text
+                                            style={{ color: statusCfg.text }}
+                                            className="text-[10px] font-semibold"
+                                        >
+                                            {statusCfg.label}
+                                        </Text>
+                                    </View>
+                                ) : null}
                             </View>
-                        ) : null}
+                        </View>
                     </View>
-                    <View className="flex-row items-center gap-2">
+                    <View className="ml-3 flex-row gap-2">
                         <Pressable
                             onPress={() => void refetch()}
                             accessibilityRole="button"
                             accessibilityLabel="Refresh booking"
                             className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
                         >
-                            <Ionicons name="refresh-outline" size={18} color={colors.foreground} />
+                            <Ionicons
+                                name="refresh-outline"
+                                size={18}
+                                color={colors.mutedForeground}
+                            />
                         </Pressable>
                         <Pressable
                             onPress={onClose}
@@ -338,75 +329,75 @@ export function BookingDetailSheet({
                     </View>
                 ) : (
                     <ScrollView
-                        contentContainerClassName="pb-[40px] gap-4 pt-4 px-5"
+                        contentContainerClassName="gap-6 px-5 pb-10 pt-5"
                         showsVerticalScrollIndicator={false}
                     >
-                        {/* Match info tiles */}
-                        <View className="gap-2">
-                            <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Match Information
+                        <View
+                            style={{
+                                shadowColor: colors.shadow,
+                                shadowOffset: { width: 0, height: 5 },
+                                shadowOpacity: 0.06,
+                                shadowRadius: 14,
+                                elevation: 2,
+                            }}
+                            className="gap-4 rounded-[20px] bg-card px-4 py-4"
+                        >
+                            <Text className="text-[16px] font-bold text-foreground">
+                                Booking Summary
                             </Text>
-                            <View className="flex-row gap-2">
-                                <InfoTile
-                                    icon="location-outline"
-                                    label="Court"
-                                    value={typedBooking.court_name}
-                                    iconBg={colors.ctaSurface}
-                                    iconColor={colors.cta}
-                                />
-                                <InfoTile
-                                    icon="calendar-outline"
-                                    label="Date"
-                                    value={formatBookingDate(typedBooking.start_datetime)}
-                                    iconBg={colors.ctaSurface}
-                                    iconColor={colors.cta}
-                                />
+                            <View className="flex-row gap-4">
+                                <View className="h-[88px] w-[88px] items-center justify-center rounded-[16px] border border-border bg-muted">
+                                    <Ionicons
+                                        name="tennisball-outline"
+                                        size={28}
+                                        color={colors.mutedForeground}
+                                    />
+                                </View>
+                                <View className="min-w-0 flex-1 gap-2">
+                                    <Text
+                                        className="text-[18px] font-bold text-foreground"
+                                        numberOfLines={1}
+                                    >
+                                        {typedBooking.court_name}
+                                    </Text>
+                                    <SummaryRow
+                                        icon="calendar-outline"
+                                        value={formatBookingDate(typedBooking.start_datetime)}
+                                    />
+                                    <SummaryRow
+                                        icon="time-outline"
+                                        value={formatBookingTimeRange(
+                                            typedBooking.start_datetime,
+                                            typedBooking.end_datetime
+                                        )}
+                                    />
+                                    <SummaryRow
+                                        icon="pricetag-outline"
+                                        value={formatAmount(typedBooking.total_price)}
+                                    />
+                                </View>
                             </View>
-                            <View className="flex-row gap-2">
-                                <InfoTile
-                                    icon="time-outline"
-                                    label="Time"
-                                    value={formatBookingTimeRange(
-                                        typedBooking.start_datetime,
-                                        typedBooking.end_datetime
-                                    )}
-                                    iconBg={colors.warningSurface}
-                                    iconColor={colors.warning}
-                                />
-                                <InfoTile
+                            <View className="flex-row rounded-[14px] border border-border bg-background py-3">
+                                <SummaryMetric
                                     icon="layers-outline"
-                                    label="Type"
                                     value={formatBookingType(typedBooking.booking_type)}
-                                    iconBg={colors.ctaSurface}
-                                    iconColor={colors.cta}
                                 />
-                            </View>
-                            <View className="flex-row gap-2">
-                                <InfoTile
+                                <View className="w-px bg-border" />
+                                <SummaryMetric
                                     icon="people-outline"
-                                    label="Players"
                                     value={
                                         typedBooking.max_players != null
                                             ? `${typedBooking.max_players - typedBooking.slots_available} / ${typedBooking.max_players}`
                                             : String(typedBooking.players.length)
                                     }
-                                    iconBg={colors.muted}
-                                    iconColor={colors.mutedForeground}
-                                />
-                                <InfoTile
-                                    icon="cash-outline"
-                                    label="Total"
-                                    value={formatAmount(typedBooking.total_price)}
-                                    iconBg={colors.successSurface}
-                                    iconColor={colors.success}
                                 />
                             </View>
                         </View>
 
                         {/* Payment info for accepted player */}
                         {myInfo && myInfo.inviteStatus === "accepted" ? (
-                            <View className="gap-2">
-                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <View className="gap-3">
+                                <Text className="text-[15px] font-bold text-foreground">
                                     Your Payment
                                 </Text>
                                 <View className="overflow-hidden rounded-[20px] bg-card shadow-sm">
@@ -418,45 +409,48 @@ export function BookingDetailSheet({
                                             }}
                                             accessibilityRole="button"
                                             accessibilityLabel="Pay now"
-                                            className="flex-row items-center justify-between bg-cta px-5 py-4 active:opacity-90"
+                                            className="flex-row items-center justify-between bg-cta px-4 py-4 active:opacity-90"
                                         >
                                             <View className="flex-row items-center gap-3">
-                                                <View className="h-10 w-10 items-center justify-center rounded-[12px] bg-white/20">
+                                                <View className="h-11 w-11 items-center justify-center rounded-full bg-cta-foreground">
                                                     <Ionicons
                                                         name="card-outline"
                                                         size={20}
-                                                        color={colors.ctaForeground}
+                                                        color={colors.cta}
                                                     />
                                                 </View>
                                                 <View>
-                                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-cta-foreground/70">
+                                                    <Text className="text-[11px] font-medium text-cta-foreground/70">
                                                         Amount Due
                                                     </Text>
-                                                    <Text className="mt-0.5 text-[20px] font-bold text-cta-foreground">
+                                                    <Text className="mt-0.5 text-[21px] font-bold text-cta-foreground">
                                                         {formatAmount(myInfo.amountDue)}
                                                     </Text>
                                                 </View>
                                             </View>
-                                            <View className="flex-row items-center gap-2 rounded-[12px] bg-white/20 px-4 py-2.5">
-                                                <Text className="text-[13px] font-bold text-cta-foreground">
+                                            <View className="flex-row items-center gap-1.5 rounded-full bg-cta-foreground px-4 py-2.5">
+                                                <Text
+                                                    style={{ color: colors.cta }}
+                                                    className="text-[13px] font-bold"
+                                                >
                                                     Pay Now
                                                 </Text>
                                                 <Ionicons
                                                     name="arrow-forward"
                                                     size={14}
-                                                    color={colors.ctaForeground}
+                                                    color={colors.cta}
                                                 />
                                             </View>
                                         </Pressable>
                                     ) : (
                                         <View
                                             style={{ backgroundColor: colors.successSurface }}
-                                            className="flex-row items-center justify-between px-5 py-4"
+                                            className="flex-row items-center justify-between px-4 py-4"
                                         >
                                             <View className="flex-row items-center gap-3">
                                                 <View
-                                                    style={{ backgroundColor: palette.green200 }}
-                                                    className="h-10 w-10 items-center justify-center rounded-[12px]"
+                                                    style={{ backgroundColor: colors.card }}
+                                                    className="h-11 w-11 items-center justify-center rounded-full"
                                                 >
                                                     <Ionicons
                                                         name="checkmark-circle"
@@ -467,13 +461,13 @@ export function BookingDetailSheet({
                                                 <View>
                                                     <Text
                                                         style={{ color: colors.success }}
-                                                        className="text-[11px] font-semibold uppercase tracking-wider opacity-70"
+                                                        className="text-[11px] font-medium opacity-70"
                                                     >
                                                         Amount Paid
                                                     </Text>
                                                     <Text
                                                         style={{ color: colors.success }}
-                                                        className="mt-0.5 text-[20px] font-bold"
+                                                        className="mt-0.5 text-[21px] font-bold"
                                                     >
                                                         {formatAmount(myInfo.amountDue)}
                                                     </Text>
@@ -481,13 +475,18 @@ export function BookingDetailSheet({
                                             </View>
                                             <View
                                                 style={{ backgroundColor: colors.success }}
-                                                className="rounded-[12px] px-4 py-2.5"
+                                                className="flex-row items-center gap-1.5 rounded-full px-3.5 py-2"
                                             >
+                                                <Ionicons
+                                                    name="checkmark"
+                                                    size={14}
+                                                    color={colors.successForeground}
+                                                />
                                                 <Text
                                                     style={{ color: colors.successForeground }}
                                                     className="text-[13px] font-bold"
                                                 >
-                                                    Paid ✓
+                                                    Paid
                                                 </Text>
                                             </View>
                                         </View>
@@ -498,8 +497,8 @@ export function BookingDetailSheet({
 
                         {/* Invite player CTA for organiser on a pending booking */}
                         {myInfo?.role === "organiser" && typedBooking.status === "pending" ? (
-                            <View className="gap-2">
-                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <View className="gap-3">
+                                <Text className="text-[15px] font-bold text-foreground">
                                     Manage Players
                                 </Text>
                                 <Pressable
@@ -523,12 +522,12 @@ export function BookingDetailSheet({
                                     }}
                                     accessibilityRole="button"
                                     accessibilityLabel="Invite a player"
-                                    className="flex-row items-center justify-between rounded-[20px] border border-border bg-card px-5 py-4 active:opacity-75"
+                                    className="flex-row items-center justify-between rounded-[20px] bg-card px-4 py-4 shadow-sm active:opacity-75"
                                 >
                                     <View className="flex-row items-center gap-3">
                                         <View
                                             style={{ backgroundColor: colors.ctaSurface }}
-                                            className="h-10 w-10 items-center justify-center rounded-[12px]"
+                                            className="h-11 w-11 items-center justify-center rounded-full"
                                         >
                                             <Ionicons
                                                 name="person-add-outline"
@@ -537,10 +536,10 @@ export function BookingDetailSheet({
                                             />
                                         </View>
                                         <View>
-                                            <Text className="text-[14px] font-bold text-foreground">
+                                            <Text className="text-[15px] font-semibold text-foreground">
                                                 Invite a player
                                             </Text>
-                                            <Text className="text-[12px] text-muted-foreground">
+                                            <Text className="mt-0.5 text-[12px] text-muted-foreground">
                                                 Add someone to this booking
                                             </Text>
                                         </View>
@@ -556,21 +555,21 @@ export function BookingDetailSheet({
 
                         {/* Pending invite CTA for player */}
                         {myInfo?.role === "player" && myInfo.inviteStatus === "pending" ? (
-                            <View className="gap-2">
-                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            <View className="gap-3">
+                                <Text className="text-[15px] font-bold text-foreground">
                                     Invitation
                                 </Text>
                                 <View
                                     style={{
-                                        borderColor: palette.amber200,
+                                        borderColor: colors.warning,
                                         backgroundColor: colors.warningSurface,
                                     }}
-                                    className="overflow-hidden rounded-[20px] border px-5 py-4"
+                                    className="overflow-hidden rounded-[20px] border px-4 py-4"
                                 >
                                     <View className="mb-3 flex-row items-center gap-3">
                                         <View
-                                            style={{ backgroundColor: palette.amber100 }}
-                                            className="h-10 w-10 items-center justify-center rounded-[12px]"
+                                            style={{ backgroundColor: colors.card }}
+                                            className="h-11 w-11 items-center justify-center rounded-full"
                                         >
                                             <Ionicons
                                                 name="mail-outline"
@@ -641,9 +640,9 @@ export function BookingDetailSheet({
 
                         {/* Players list */}
                         {typedBooking.players.length > 0 ? (
-                            <View className="gap-2">
+                            <View className="gap-3">
                                 <View className="flex-row items-center justify-between">
-                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    <Text className="text-[15px] font-bold text-foreground">
                                         Players
                                     </Text>
                                     <View className="rounded-full bg-muted px-2.5 py-1">

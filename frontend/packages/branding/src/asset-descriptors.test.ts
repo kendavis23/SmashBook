@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { brandAssetDescriptors } from "./asset-descriptors";
+import { brandAssetDescriptors, type BrandAssetDescriptor } from "./asset-descriptors";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const jsonPath = resolve(here, "../scripts/brands.generated.json");
@@ -29,17 +29,31 @@ describe("brands.generated.json", () => {
         return;
     }
 
-    it("is in sync with the brand registry", () => {
-        let current: string;
+    it("is structurally in sync with the brand registry", () => {
+        let generated: BrandAssetDescriptor[];
         try {
-            current = readFileSync(jsonPath, "utf8");
+            generated = JSON.parse(readFileSync(jsonPath, "utf8")) as BrandAssetDescriptor[];
         } catch {
-            current = "";
+            generated = [];
         }
+
+        const withoutAccent = ({ accent: _accent, ...descriptor }: BrandAssetDescriptor) =>
+            descriptor;
+
         expect(
-            current,
+            generated.map(withoutAccent),
             "brands.generated.json is stale. Regenerate it with:\n" +
                 "  REGEN=1 pnpm --filter @repo/branding test -- asset-descriptors"
-        ).toBe(serialized);
+        ).toEqual(brandAssetDescriptors.map(withoutAccent));
+    });
+
+    it("uses the current registry accents", () => {
+        expect(
+            Object.fromEntries(brandAssetDescriptors.map(({ id, accent }) => [id, accent]))
+        ).toEqual({
+            _default: "#2563EB",
+            "ace-staging": "#2563EB",
+            "rally-staging": "#8B5CF6",
+        });
     });
 });

@@ -122,14 +122,6 @@ export function HomeScreen(): JSX.Element {
         setSelectedSlot(null);
     }, []);
 
-    const handleClear = useCallback(() => {
-        setDate(todayIso());
-        setSurface("");
-        setFromTime("");
-        setToTime("");
-        setSelectedSlot(null);
-    }, []);
-
     const handleBook = useCallback(
         (courtId: string) => {
             if (!selectedSlot) return;
@@ -195,7 +187,6 @@ export function HomeScreen(): JSX.Element {
                 onBook={handleBook}
                 onJoin={handleJoin}
                 onRefresh={handleRefresh}
-                onClear={handleClear}
             />
 
             {bookingModal ? (

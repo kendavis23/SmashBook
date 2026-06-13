@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore, type NotificationChannel, type UserResponse } from "@repo/auth";
@@ -17,9 +17,8 @@ type Props = {
 
 export function ProfileNotificationScreen({ user, onCancel }: Props) {
     const colors = useThemeColors();
-    const [selected, setSelected] = useState<NotificationChannel>(
-        user.preferred_notification_channel ?? DEFAULT_NOTIFICATION_CHANNEL
-    );
+    const initialChannel = user.preferred_notification_channel ?? DEFAULT_NOTIFICATION_CHANNEL;
+    const [selected, setSelected] = useState<NotificationChannel>(initialChannel);
     const [error, setError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
@@ -31,6 +30,15 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
         setError("");
         setSuccessMessage("");
     }, [user.preferred_notification_channel]);
+
+    const isDirty =
+        selected !== (user.preferred_notification_channel ?? DEFAULT_NOTIFICATION_CHANNEL);
+    const canSave = isDirty && !updateMutation.isPending;
+
+    const selectedLabel = useMemo(
+        () => NOTIFICATION_OPTIONS.find((o) => o.value === selected)?.label ?? "",
+        [selected]
+    );
 
     const handleSelect = (channel: NotificationChannel): void => {
         setSelected(channel);
@@ -55,18 +63,19 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
     const saveAction = (
         <Pressable
             onPress={() => void handleSave()}
-            disabled={updateMutation.isPending}
+            disabled={!canSave}
             accessibilityRole="button"
             accessibilityLabel="Save notification settings"
             hitSlop={12}
             style={{
                 height: 40,
-                paddingHorizontal: 16,
+                paddingHorizontal: 18,
                 borderRadius: 20,
                 backgroundColor: colors.heroForeground,
                 alignItems: "center",
                 justifyContent: "center",
-                opacity: updateMutation.isPending ? 0.6 : 1,
+                flexDirection: "row",
+                opacity: canSave ? 1 : 0.5,
             }}
         >
             {updateMutation.isPending ? (
@@ -80,29 +89,102 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
     return (
         <ProfileScreenShell
             title="Notification Channel"
+            subtitle="How we reach you"
             onBack={onCancel}
             backLabel="Back to profile"
             headerAction={saveAction}
         >
             <ScrollView
                 showsVerticalScrollIndicator={false}
-                contentContainerClassName="px-4 pt-5 pb-10"
+                contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40 }}
             >
+                {/* Intro */}
+                <View style={{ marginBottom: 18 }}>
+                    <Text
+                        style={{
+                            fontSize: 13,
+                            fontWeight: "600",
+                            letterSpacing: 0.5,
+                            textTransform: "uppercase",
+                            color: colors.mutedForeground,
+                        }}
+                    >
+                        Preferred channel
+                    </Text>
+                    <Text
+                        style={{
+                            marginTop: 6,
+                            fontSize: 15,
+                            lineHeight: 21,
+                            color: colors.mutedForeground,
+                        }}
+                    >
+                        Choose where you&apos;d like to receive booking confirmations, reminders, and
+                        account updates.
+                    </Text>
+                </View>
+
+                {/* Feedback banners */}
                 {!!error && (
-                    <View className="mb-3 rounded-xl border border-destructive/20 bg-destructive/5 px-3.5 py-2.5">
-                        <Text className="text-[13px] font-medium text-destructive">{error}</Text>
+                    <View
+                        style={{
+                            marginBottom: 14,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: colors.destructive,
+                            backgroundColor: colors.destructiveSurface,
+                            paddingHorizontal: 14,
+                            paddingVertical: 12,
+                        }}
+                    >
+                        <Ionicons name="alert-circle" size={18} color={colors.destructive} />
+                        <Text
+                            style={{
+                                flex: 1,
+                                fontSize: 13,
+                                fontWeight: "500",
+                                color: colors.destructive,
+                            }}
+                        >
+                            {error}
+                        </Text>
                     </View>
                 )}
 
                 {!!successMessage && (
-                    <View className="mb-3 rounded-xl border border-primary/10 bg-primary/5 px-3.5 py-2.5">
-                        <Text className="text-[13px] font-medium text-foreground">
+                    <View
+                        style={{
+                            marginBottom: 14,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 10,
+                            borderRadius: 14,
+                            borderWidth: 1,
+                            borderColor: colors.success,
+                            backgroundColor: colors.successSurface,
+                            paddingHorizontal: 14,
+                            paddingVertical: 12,
+                        }}
+                    >
+                        <Ionicons name="checkmark-circle" size={18} color={colors.success} />
+                        <Text
+                            style={{
+                                flex: 1,
+                                fontSize: 13,
+                                fontWeight: "500",
+                                color: colors.success,
+                            }}
+                        >
                             {successMessage}
                         </Text>
                     </View>
                 )}
 
-                <View className="gap-3">
+                {/* Option cards */}
+                <View style={{ gap: 12 }}>
                     {NOTIFICATION_OPTIONS.map((option) => {
                         const active = selected === option.value;
 
@@ -113,43 +195,32 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                                 accessibilityRole="radio"
                                 accessibilityState={{ checked: active }}
                                 accessibilityLabel={option.label}
-                                style={
-                                    active
-                                        ? {
-                                              backgroundColor: colors.ctaSurface,
-                                              borderColor: colors.cta,
-                                              borderWidth: 2,
-                                              borderRadius: 16,
-                                              paddingHorizontal: 16,
-                                              paddingVertical: 14,
-                                              flexDirection: "row",
-                                              alignItems: "center",
-                                          }
-                                        : {
-                                              backgroundColor: colors.card,
-                                              borderColor: colors.border,
-                                              borderWidth: 1,
-                                              borderRadius: 16,
-                                              paddingHorizontal: 16,
-                                              paddingVertical: 14,
-                                              flexDirection: "row",
-                                              alignItems: "center",
-                                          }
-                                }
+                                style={{
+                                    flexDirection: "row",
+                                    alignItems: "center",
+                                    borderRadius: 18,
+                                    paddingHorizontal: 16,
+                                    paddingVertical: 16,
+                                    backgroundColor: active ? colors.ctaSurface : colors.card,
+                                    borderWidth: active ? 1.5 : 1,
+                                    borderColor: active ? colors.cta : colors.border,
+                                    shadowColor: colors.shadow,
+                                    shadowOffset: { width: 0, height: 2 },
+                                    shadowOpacity: active ? 0.1 : 0.05,
+                                    shadowRadius: active ? 10 : 6,
+                                    elevation: active ? 3 : 1,
+                                }}
                             >
+                                {/* Icon chip — decorative per-channel accent */}
                                 <View
-                                    className={`mr-3 h-12 w-12 items-center justify-center rounded-2xl ${option.iconBgClassName}`}
-                                    style={
-                                        active
-                                            ? {
-                                                  shadowColor: colors.cta,
-                                                  shadowOffset: { width: 0, height: 2 },
-                                                  shadowOpacity: 0.25,
-                                                  shadowRadius: 6,
-                                                  elevation: 4,
-                                              }
-                                            : undefined
-                                    }
+                                    className={`h-12 w-12 items-center justify-center rounded-2xl ${option.iconBgClassName}`}
+                                    style={{
+                                        shadowColor: colors.shadow,
+                                        shadowOffset: { width: 0, height: 3 },
+                                        shadowOpacity: 0.2,
+                                        shadowRadius: 6,
+                                        elevation: 3,
+                                    }}
                                 >
                                     <Ionicons
                                         name={option.icon}
@@ -158,7 +229,8 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                                     />
                                 </View>
 
-                                <View className="flex-1">
+                                {/* Label + description */}
+                                <View style={{ flex: 1, marginLeft: 14 }}>
                                     <Text
                                         style={{
                                             fontSize: 16,
@@ -174,18 +246,19 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                                             fontSize: 13,
                                             lineHeight: 18,
                                             color: active ? colors.cta : colors.mutedForeground,
-                                            opacity: active ? 0.8 : 1,
+                                            opacity: active ? 0.85 : 1,
                                         }}
                                     >
                                         {option.description}
                                     </Text>
                                 </View>
 
+                                {/* Radio indicator */}
                                 <View
                                     style={{
-                                        width: 28,
-                                        height: 28,
-                                        borderRadius: 14,
+                                        width: 26,
+                                        height: 26,
+                                        borderRadius: 13,
                                         alignItems: "center",
                                         justifyContent: "center",
                                         backgroundColor: active ? colors.cta : "transparent",
@@ -204,6 +277,26 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                             </Pressable>
                         );
                     })}
+                </View>
+
+                {/* Selection summary */}
+                <View
+                    style={{
+                        marginTop: 22,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingHorizontal: 4,
+                    }}
+                >
+                    <Ionicons
+                        name="information-circle-outline"
+                        size={16}
+                        color={colors.mutedForeground}
+                    />
+                    <Text style={{ flex: 1, fontSize: 13, color: colors.mutedForeground }}>
+                        {`We'll send updates via ${selectedLabel}.`}
+                    </Text>
                 </View>
             </ScrollView>
         </ProfileScreenShell>

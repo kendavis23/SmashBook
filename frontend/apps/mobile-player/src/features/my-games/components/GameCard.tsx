@@ -29,30 +29,16 @@ export function GameCard({ game }: Props): JSX.Element {
         text: colors.mutedForeground,
     };
 
-    const isUpcoming = game.status === "confirmed" || game.status === "pending";
-
     return (
         <View
             className="overflow-hidden rounded-[22px] bg-card shadow-sm"
-            style={{ borderWidth: 1.5, borderColor: "rgba(0,0,0,0.07)" }}
+            style={{ borderWidth: 1.5, borderColor: colors.ctaBorder }}
             accessibilityRole="none"
         >
             <View className="px-4 pt-4 pb-4 gap-3">
                 {/* Row 1: Court name + status badge */}
                 <View className="flex-row items-start justify-between gap-2">
                     <View className="flex-1 flex-row items-center gap-2.5 min-w-0">
-                        <View
-                            style={{
-                                backgroundColor: isUpcoming ? colors.ctaSurface : colors.muted,
-                            }}
-                            className="h-9 w-9 shrink-0 items-center justify-center rounded-[12px]"
-                        >
-                            <Ionicons
-                                name="tennisball"
-                                size={18}
-                                color={isUpcoming ? colors.cta : colors.mutedForeground}
-                            />
-                        </View>
                         <Text
                             className="flex-1 text-[16px] font-bold text-foreground"
                             numberOfLines={1}

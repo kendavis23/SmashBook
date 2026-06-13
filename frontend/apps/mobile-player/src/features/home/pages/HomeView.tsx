@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import { type JSX, useEffect } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { ClubAvailability, ClubAvailabilityCourt, ClubAvailabilitySlot } from "../types";
@@ -26,13 +26,12 @@ type Props = {
     onSurfaceChange: (v: string) => void;
     onFromTimeChange: (v: string) => void;
     onToTimeChange: (v: string) => void;
-    onSelectSlot: (slot: ClubAvailabilitySlot) => void;
+    onSelectSlot: (slot: ClubAvailabilitySlot | null) => void;
     onToggleAvailable: (v: boolean) => void;
     onToggleOpenGame: (v: boolean) => void;
     onBook: (courtId: string) => void;
     onJoin: (bookingId: string) => void;
     onRefresh: () => void;
-    onClear: () => void;
 };
 
 function EmptySlots(): JSX.Element {
@@ -93,7 +92,6 @@ export function HomeView({
     onBook,
     onJoin,
     onRefresh,
-    onClear,
 }: Props): JSX.Element {
     const colors = useThemeColors();
     const allSlots = availability?.days[0]?.slots ?? [];
@@ -107,6 +105,15 @@ export function HomeView({
         if (showOpenGame) return hasOpenGame;
         return true;
     });
+
+    // The screen auto-selects a slot from unfiltered availability; if the active
+    // filters (Open Game / Available Slot) hide that slot, deselect it so the
+    // "Available courts" header doesn't show a stale slot.
+    useEffect(() => {
+        if (selectedSlot && !filteredSlots.some((s) => s.start_time === selectedSlot.start_time)) {
+            onSelectSlot(null);
+        }
+    }, [selectedSlot, filteredSlots, onSelectSlot]);
 
     const filteredCourts = (): ClubAvailabilityCourt[] => {
         if (!selectedSlot) return [];
@@ -208,7 +215,7 @@ export function HomeView({
                             <ActivityIndicator size="small" color={colors.heroForeground} />
                         ) : (
                             <Ionicons
-                                name="notifications-outline"
+                                name="refresh-outline"
                                 size={18}
                                 color={colors.heroForeground}
                             />
@@ -257,7 +264,6 @@ export function HomeView({
                         onToTimeChange={onToTimeChange}
                         onToggleAvailable={onToggleAvailable}
                         onToggleOpenGame={onToggleOpenGame}
-                        onClear={onClear}
                     />
                 </View>
 
@@ -419,7 +425,6 @@ export function HomeView({
                                 onToTimeChange={onToTimeChange}
                                 onToggleAvailable={onToggleAvailable}
                                 onToggleOpenGame={onToggleOpenGame}
-                                onClear={onClear}
                             />
                         </View>
                     </View>

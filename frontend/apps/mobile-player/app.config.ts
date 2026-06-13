@@ -149,6 +149,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         plugins: [
             "expo-router",
             "expo-dev-client",
+            "@react-native-community/datetimepicker",
             [
                 "@stripe/stripe-react-native",
                 {
