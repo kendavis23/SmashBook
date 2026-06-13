@@ -180,7 +180,7 @@ export default function NewBookingModalContainer({
             setForm((prev) => {
                 const next = { ...prev, ...patch };
                 if (patch.bookingType !== undefined) {
-                    next.isOpenGame = false;
+                    next.isOpenGame = true;
                     if (staffError) setStaffError("");
                     if (patch.bookingType === "lesson_individual") {
                         next.maxPlayers = "1";
