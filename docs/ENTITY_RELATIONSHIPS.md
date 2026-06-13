@@ -1,4 +1,4 @@
-_Last updated: 2026-06-10 09:00 UTC_
+_Last updated: 2026-06-13 15:00 UTC_
 
 # Entity Relationships — Gotchas & Cross-Entity Rules
 
@@ -79,6 +79,9 @@ Plan default change: never retroactively flips a live tenant's `ai_feature_flags
 
 `platform_fees`: written at confirm time with `pct_applied = plan.booking_fee_pct` **as it stood at the transaction** | reason: historical fees stay auditable after the plan's rate changes.
 `payments.stripe_destination_payment_id` (`py_xxx`): captured at confirm by walking Charge → Transfer | reason: a `payout.paid` balance transaction's `source` is the destination payment (`py_`), not the platform charge (`ch_`), so pre-capturing it lets reconciliation match payouts without extra Stripe API calls.
+`payouts.stripe_payout_id ⇄ payments.stripe_payout_id`: a **string join, not an FK** | reason: `payout.paid` stamps payments via the connected-account `py_xxx` match independently of the `payouts` row, so a `payouts` row can be `reconciliation_status='partial'` when some payments never captured `stripe_destination_payment_id` (best-effort at confirm); `reconcile_stripe_payouts` backfills these from `stripe.Payout.list`.
+`payout.failed` / `payout.canceled`: clears `stripe_payout_id` on every payment stamped to that payout and resets the `payouts` row to `unmatched` with null `matched_amount`/`discrepancy_amount`/`paid_at` | reason: the deposit never settled (or reversed), so those payments are not paid out and must not appear reconciled.
+`payouts.club_id`: resolved from `event["account"]` (the `acct_xxx`) via `clubs.stripe_connect_account_id`; a payout for an unmapped account is **logged and skipped**, not errored | reason: an unknown Connect account can't be scoped to a tenant, and erroring would wedge the webhook in infinite Stripe retries.
 Two Stripe webhooks (`/payments/stripe/webhook` vs `/webhooks/stripe-billing`): cannot share a URL | reason: `customer.subscription.*` and `invoice.payment_*` fire on both account identities; only the signing secret disambiguates which rail the event belongs to.
 Connect destination charge: requires `clubs.stripe_connect_account_id`; clubs without it are **skipped** (not errored) by `settle_wallet_debts` | reason: their debts stay outstanding until onboarding completes.
 Wallet top-up: balance credited **only** when the webhook confirms (`metadata.purpose = 'wallet_top_up'`), never optimistically | reason: an unconfirmed PaymentIntent must not inflate the balance.

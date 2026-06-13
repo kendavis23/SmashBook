@@ -1,4 +1,4 @@
-_Last updated: 2026-06-13 12:00 UTC_
+_Last updated: 2026-06-13 15:30 UTC_
 
 # SmashBook — Infrastructure Current State
 
@@ -79,6 +79,7 @@ All services use the `padel-runtime` service account, mount the `smashbook-stagi
 | `padel-notification-worker` | `padel-worker` | `uvicorn app.workers.notification_worker:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Dispatches push (Firebase), email (SendGrid), and SMS notifications. |
 | `padel-analytics-worker` | `padel-worker` | `uvicorn app.analytics.workers.snapshot_court_utilisation:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Court-utilisation snapshots (G7). Mounts primary + read replica. |
 | `padel-analytics-refresh-worker` | `padel-worker` | `uvicorn app.analytics.workers.refresh_views:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Revenue MV refresh (G7). Primary only. |
+| `padel-settlement-worker` | `padel-worker` | `uvicorn app.workers.settlement_worker:app --host 0.0.0.0 --port 8080` | Yes (Pub/Sub push) | Wallet-debt settlement (Stage 2.6). Runs platform-wide `PaymentService.settle_wallet_debts()` — issues one Stripe Connect transfer per club. Primary only; also injects `STRIPE_SECRET_KEY`. |
 
 **Images (Artifact Registry):**
 
@@ -109,6 +110,8 @@ Images are tagged with git SHA by CI/CD. Terraform ignores image tag drift (`lif
 | `DATABASE_URL` | `padel-database-url` |
 | `SECRET_KEY` | `padel-secret-key` |
 
+`padel-analytics-worker` additionally injects `DATABASE_READ_REPLICA_URL` (`padel-database-read-replica-url`). `padel-settlement-worker` additionally injects `STRIPE_SECRET_KEY` (`stripe-secret-key`), since it issues Stripe Connect transfers.
+
 ---
 
 ## Cloud Run Jobs
@@ -119,11 +122,12 @@ Images are tagged with git SHA by CI/CD. Terraform ignores image tag drift (`lif
 
 ### Cloud Scheduler
 
-`release-expired-holds`, `analytics-snapshot-daily`, and `analytics-refresh-daily` are all **live in staging** (present in Terraform state). All jobs are defined in `be-infra/terraform/modules/scheduler` and require `cloudscheduler.googleapis.com` enabled on the project.
+`release-expired-holds`, `analytics-snapshot-daily`, `analytics-refresh-daily`, and `wallet-settle-debts` are all **live in staging** (present in Terraform state). All jobs are defined in `be-infra/terraform/modules/scheduler` and require `cloudscheduler.googleapis.com` enabled on the project.
 
 - **`release-expired-holds`** (court-hold expiry sweep → `POST /api/v1/admin/bookings/release-expired-holds`), wired into both `staging/` and `prod/`. Runs every minute in prod; created **paused** in staging (toggle via the `release_holds_scheduler_paused` variable). It authenticates with the `X-Platform-Key` header sourced from the `padel-platform-api-key` secret — no OIDC SA required, since `padel-api` is public and the endpoint is header-gated.
 - **`analytics-snapshot-daily`** (Sprint 7 / G7), wired into `staging/`. **Pub/Sub target** — publishes `{"event_type":"analytics.snapshot_daily"}` to `analytics-events` at **02:00 UTC daily**, delivered to `padel-analytics-worker`. The worker snapshots each club's *local* yesterday, so a single UTC fire time suffices. Created **unpaused** in staging (toggle via `analytics_snapshot_paused`). The Cloud Scheduler service agent (`service-607958067144@gcp-sa-cloudscheduler.iam.gserviceaccount.com`) is granted `roles/pubsub.publisher` on the topic by the module. The one-time 90-day backfill is **not** scheduled — trigger on demand (`make analytics-backfill-staging`, or `scripts/run_court_snapshots.py`).
 - **`analytics-refresh-daily`** (Sprint 7 / G7), wired into `staging/`. **Pub/Sub target** — publishes `{"event_type":"analytics.refresh_views"}` to `analytics-refresh-events` at **03:00 UTC daily** (after the 02:00 snapshot; the two are independent), delivered to `padel-analytics-refresh-worker`, which runs `REFRESH MATERIALIZED VIEW CONCURRENTLY` over the revenue views and logs each run to `analytics_refresh_log`. Created **unpaused** in staging (toggle via `analytics_refresh_paused`). The Cloud Scheduler service agent is granted `roles/pubsub.publisher` on `analytics-refresh-events` by the module. Trigger manually with `make analytics-refresh-run` (job) or `make analytics-refresh-staging` (publish directly).
+- **`wallet-settle-debts`** (Stage 2.6), wired into both `staging/` and `prod/`. **Pub/Sub target** — publishes `{"event_type":"wallet.settle"}` to `wallet-settlement-events` at **02:00 UTC daily**, delivered to `padel-settlement-worker`, which runs the platform-wide `PaymentService.settle_wallet_debts()` (one Stripe Connect transfer per club, then stamps `settled_at`). Created **unpaused** in staging (toggle via `settlement_paused`) — settlement is platform-wide and resolved server-side, so no `X-Tenant-ID` is supplied. The Cloud Scheduler service agent is granted `roles/pubsub.publisher` on `wallet-settlement-events` by the module. Redelivery-safe (deterministic Stripe idempotency key per debt set + `settled_at` drops debts out of the query). **Note:** staging fires real Connect transfers, so the staging `stripe-secret-key` must be a test-mode key.
 
 ---
 
@@ -190,6 +194,8 @@ All Cloud Run services (`padel-api`, `padel-booking-worker`, `padel-payment-work
 | `analytics-refresh-events` | Sprint 7 (G7) | Materialized-view refresh triggers (revenue views). Separate topic from `analytics-events` so the snapshot worker never receives refresh messages. Live |
 | `analytics-refresh-events-dlq` | Sprint 7 (G7) | Dead-letter sink for `analytics-refresh-events-sub`. Live |
 | `analytics-alerts` | Sprint 7 (G7) | Sink for MV-refresh failure alerts published by `refresh_views.py`. Live; no subscription yet (alerting consumer is a future gap). |
+| `wallet-settlement-events` | Stage 2.6 | Daily wallet-debt settlement trigger. Cloud Scheduler publishes `{"event_type":"wallet.settle"}`; delivered to `padel-settlement-worker`. Live |
+| `wallet-settlement-events-dlq` | Stage 2.6 | Dead-letter sink for `wallet-settlement-events-sub`. Live |
 
 ### Push Subscriptions
 
@@ -200,8 +206,9 @@ All Cloud Run services (`padel-api`, `padel-booking-worker`, `padel-payment-work
 | `notification-events-sub` | `notification-events` | `padel-notification-worker /pubsub` | 300s | 7 days | `notification-events-dlq` | 5 |
 | `analytics-events-sub` | `analytics-events` | `padel-analytics-worker /pubsub` | 600s | 7 days | `analytics-events-dlq` | 5 | |
 | `analytics-refresh-events-sub` | `analytics-refresh-events` | `padel-analytics-refresh-worker /pubsub` | 600s | 7 days | `analytics-refresh-events-dlq` | 5 | |
+| `wallet-settlement-events-sub` | `wallet-settlement-events` | `padel-settlement-worker /pubsub` | 600s | 7 days | `wallet-settlement-events-dlq` | 5 | |
 
-All subscriptions use exponential backoff retry (10s–600s; `analytics-events-sub` and `analytics-refresh-events-sub` use 30s–600s). Push authentication via OIDC token using `padel-runtime` SA. The Pub/Sub service agent (`service-607958067144@gcp-sa-pubsub.iam.gserviceaccount.com`) holds `roles/pubsub.publisher` on each DLQ topic.
+All subscriptions use exponential backoff retry (10s–600s; `analytics-events-sub`, `analytics-refresh-events-sub`, and `wallet-settlement-events-sub` use 30s–600s). Push authentication via OIDC token using `padel-runtime` SA. The Pub/Sub service agent (`service-607958067144@gcp-sa-pubsub.iam.gserviceaccount.com`) holds `roles/pubsub.publisher` on each DLQ topic.
 
 ---
 
@@ -340,7 +347,7 @@ These are gaps between the current state and the next stage of infrastructure wo
 | `release-expired-holds` sweep paused in staging | Stage 1.8 | The job is **applied** in staging but created **paused** (`release_holds_scheduler_paused` defaults true), so the periodic sweep does not run there — abandoned court holds are only released on payment success/failure. Resume with `make scheduler-activate` (or flip the variable) for a testing session. Prod runs it every minute once the prod project exists. |
 | `analytics-alerts` has no subscriber (G7) | Sprint 7 | The revenue MV-refresh pipeline is live, and `refresh_views.py` publishes a message to `analytics-alerts` on refresh failure, but nothing consumes that topic yet — so a failed nightly refresh is recorded in `analytics_refresh_log` but does not page anyone. Wire an alerting consumer (or a log-based alert on `RefreshStatus = failed`) as part of monitoring (Stage 2.3). |
 | Report-export worker not provisioned (G7) | Sprint 7 | The async export pipeline exists in code (`POST /api/v1/analytics/exports` → `app/analytics/workers/export_report.py`), and the exports **bucket already exists** (`padel-exports-…`). Still to provision via Terraform: the `analytics-export-events` topic (+ `-sub` / `-dlq`), and a `padel-analytics-export-worker` Cloud Run service (`uvicorn app.analytics.workers.export_report:app`, primary + read replica, with `roles/pubsub.publisher` on the topic for the API service identity). No Cloud Scheduler — exports are request-triggered, not cron. Until then, export requests publish to a topic with no subscriber and no file is produced. |
-| Wallet settlement cron not applied (Stage 2.6) | Sprint 7 | Terraform + handler are **written but not yet applied**: `padel-settlement-worker` Cloud Run service (`uvicorn app.workers.settlement_worker:app`), `wallet-settlement-events` topic (+ `-sub` / `-dlq`), and `google_cloud_scheduler_job.wallet_settle_debts` (`0 2 * * *`, Pub/Sub target) — wired into both `staging/` and `prod/`. Until applied, wallet receivables (`wallet_club_debts`) only settle when an admin manually calls `POST /payments/wallet/settle-debts`. **Before apply:** confirm the staging Stripe key is test-mode, since `settlement_paused` defaults `false` and settlement issues real Connect transfers. |
+| Payout reconciliation cron not applied (G8-Pay) | Sprint 8 (§2.6.1) | Terraform is **written but not applied**: `padel-payout-reconcile-worker` Cloud Run service, `payout-reconciliation-events` topic (+ `-sub` / `-dlq`), and `payout-reconcile` Cloud Scheduler job (`0 4 * * *`, Pub/Sub target). The job **ships paused** (`payout_reconcile_paused` defaults true, set true in both roots), so even after apply the automated sweep stays off until explicitly enabled. The `payout.paid`/`failed`/`canceled` webhooks and the on-demand `reconcile_stripe_payouts` / `GET /payments/payouts` paths are live in code regardless. Apply, then flip the var to `false` to enable. |
 
 ---
 

@@ -1,4 +1,4 @@
-_Last updated: 2026-06-12 19:00 UTC_
+_Last updated: 2026-06-13 15:00 UTC_
 
 # SmashBook Data Model
 
@@ -511,6 +511,35 @@ SmashBook's fee ledger per transaction. Enables per-tenant revenue reconciliatio
 
 ---
 
+#### `payouts`
+One row per Stripe payout (a single bank deposit) to a club's Connect account. Bundles many `payments` minus refunds minus Stripe fees (`gross_amount − fee_amount = amount` net deposited); `matched_amount` (Σ linked payments, net of refunds) reconciles against it. Written by `payout.paid`/`payout.failed`/`payout.canceled` Connect webhooks and the `reconcile_stripe_payouts` backfill; served by `GET /api/v1/payments/payouts`.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` — scoping root (resolved from the Connect account on the event) |
+| `stripe_payout_id` | VARCHAR(255) | **UNIQUE** — `po_xxx`; idempotency + the join target of `payments.stripe_payout_id` |
+| `stripe_connect_account_id` | VARCHAR(255) | Nullable — `acct_xxx` the payout landed on |
+| `gross_amount` | NUMERIC(10,2) | Nullable — Σ payment balance-transaction amounts before fees |
+| `fee_amount` | NUMERIC(10,2) | Nullable — Σ Stripe fees on those transactions |
+| `amount` | NUMERIC(10,2) | Net amount deposited to the bank (Stripe `payout.amount`) |
+| `currency` | VARCHAR(3) | Default `"GBP"` |
+| `status` | ENUM | `pending`, `in_transit`, `paid`, `failed`, `canceled` (`payoutstatus`) |
+| `arrival_date` | TIMESTAMPTZ | Nullable — Stripe's expected/actual bank arrival date |
+| `statement_descriptor` | VARCHAR(255) | Nullable — bank-statement line text |
+| `failure_code` | VARCHAR(255) | Nullable — set on `payout.failed` |
+| `failure_message` | TEXT | Nullable |
+| `reconciliation_status` | ENUM | `unmatched`, `matched`, `partial`, `discrepancy` (`payoutreconstatus`) |
+| `matched_amount` | NUMERIC(10,2) | Nullable — Σ linked payments net of refunds, at match time |
+| `discrepancy_amount` | NUMERIC(10,2) | Nullable — `gross_amount − matched_amount` |
+| `paid_at` | TIMESTAMPTZ | Nullable — when status reached `paid` |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Constraints:** `UNIQUE(stripe_payout_id)`. **Indexes:** `ix_payouts_club_recon (club_id, reconciliation_status)`, `ix_payouts_arrival (arrival_date)`. **Linkage:** `payments.stripe_payout_id = payouts.stripe_payout_id` is a string join, **not** an FK.
+
+---
+
 ### 9. Wallet
 
 #### `wallets`
@@ -912,6 +941,7 @@ Managed with **Alembic**. Migration files live in [backend/app/db/migrations/ver
 | `b94daf2c75e8` | Staff onboarding (Phase B1) — new table `staff_invitations` (`TenantScopedMixin`; FKs `tenant_id`, `club_id`, `invited_by_user_id`→users, `accepted_user_id`→users nullable; indexes `(club_id, email)`, `(tenant_id)`). New enum `staffinvitationstatus` (`pending`/`accepted`/`revoked`/`expired`); `role` reuses the existing shared `staffrole` enum via `create_type=False`. Downgrade drops the table + `staffinvitationstatus` only, leaving `staffrole` (shared with `staff_profiles`) intact |
 | `1f0263eec44b` | G7 (Analytics) — coach-popularity report: new materialized view `mv_coach_popularity`, grain `(club_id, staff_profile_id)`, `UNIQUE(club_id, staff_profile_id)` for `REFRESH … CONCURRENTLY`. Hand-written DDL (views aren't ORM models). A coaching session is a lesson booking (`booking_type IN (lesson_individual, lesson_group, train_and_play)`) with a non-null `staff_profile_id`, non-cancelled + already-started. Measures: sessions (+30/90d windows), distinct_players, repeat_players (≥2 lessons with the coach), total_attendances, net lesson_revenue (`payments` by `booking_id`). `return_rate` is derived in the service (repeat/distinct), not stored. Closes the last G7 report MVs |
 | `dff4cf6de626` | G7 (Analytics) — RFV pre-aggregate: new materialized view `mv_player_rfv`, grain `(club_id, user_id)`, `UNIQUE(club_id, user_id)` for `REFRESH … CONCURRENTLY`. Hand-written DDL, built **on top of** `mv_player_value` (must refresh after it). Scores each engaged player (`bookings_played > 0 OR lifetime_spend > 0`) on Recency (`last_played_at`), Frequency (`bookings_played`), Value (`lifetime_spend`) via per-club `ntile(5)` quintiles (1–5); exposes `recency_score`/`frequency_score`/`value_score`, `rfv_total`, and `rfv_cell` (e.g. "543"). A pre-aggregate only — **no** named-segment taxonomy (deferred; see dropped `player_segments`) |
+| `8443a533d9d9` | G8-Pay — new table `payouts` (Stripe payout ↔ bank-statement reconciliation): one row per payout to a club's Connect account with `gross_amount`/`fee_amount`/`amount` (net) and `matched_amount` (Σ linked payments net of refunds) + `discrepancy_amount`. New enums `payoutstatus` (`pending`/`in_transit`/`paid`/`failed`/`canceled`), `payoutreconstatus` (`unmatched`/`matched`/`partial`/`discrepancy`). `UNIQUE(stripe_payout_id)`; indexes `ix_payouts_club_recon (club_id, reconciliation_status)`, `ix_payouts_arrival (arrival_date)`. Linked to `payments` via the existing `stripe_payout_id` string (no FK). Written by `payout.paid`/`payout.failed`/`payout.canceled` webhooks + `reconcile_stripe_payouts` backfill; downgrade drops both enums |
 
 To run migrations:
 ```bash

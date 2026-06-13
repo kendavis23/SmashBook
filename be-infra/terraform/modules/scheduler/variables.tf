@@ -78,3 +78,20 @@ variable "settlement_paused" {
   type        = bool
   default     = false
 }
+
+variable "payout_reconcile_events_topic_id" {
+  description = "Full topic id (projects/.../topics/payout-reconciliation-events) the daily payout-reconciliation job publishes to"
+  type        = string
+}
+
+variable "payout_reconcile_schedule" {
+  description = "Cron schedule (UTC) for the daily Stripe payout reconciliation sweep"
+  type        = string
+  default     = "0 4 * * *" # 04:00 UTC daily, after settlement (02:00) and MV refresh (03:00)
+}
+
+variable "payout_reconcile_paused" {
+  description = "When true, the payout reconciliation job exists but does not fire. Defaults to true — the sweep ships paused until explicitly enabled."
+  type        = bool
+  default     = true
+}

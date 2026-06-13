@@ -1,4 +1,4 @@
-_Last updated: 2026-06-12 19:30 UTC_
+_Last updated: 2026-06-13 15:00 UTC_
 
 # SmashBook — Implemented APIs
 
@@ -151,6 +151,8 @@ capability matrix in `app/core/permissions.py`. Cross-tenant club → 404.
 - `customer.subscription.deleted` — marks subscription cancelled
 - `invoice.payment_succeeded` — on renewal, resets credits and guest passes for the new period; on first payment, activates subscription
 - `invoice.payment_failed` — fires `membership_payment_failed` notification so player can update payment method
+- `payout.paid` — records the payout in `payouts` (gross/fee/net + reconciliation result) and stamps `stripe_payout_id` on matched payments
+- `payout.failed` / `payout.canceled` — records the failure/cancellation and clears `stripe_payout_id` on affected payments
 
 ---
 
@@ -219,7 +221,7 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 
 | Method | Path | Description |
 |---|---|---|
-| `POST` | `/api/v1/payments/stripe/webhook` | Verify Stripe signature and dispatch to the appropriate handler. Handles `payment_intent.succeeded` (marks payment succeeded, player paid, confirms booking when all players paid) and `payment_intent.payment_failed` (marks payment failed, records reason, notifies player and staff) |
+| `POST` | `/api/v1/payments/stripe/webhook` | Verify Stripe signature and dispatch to the appropriate handler. Handles `payment_intent.succeeded` (marks payment succeeded, player paid, confirms booking when all players paid), `payment_intent.payment_failed` (marks payment failed, records reason, notifies player and staff), and `payout.paid`/`payout.failed`/`payout.canceled` (payout reconciliation into the `payouts` table) |
 | `POST` | `/api/v1/payments/payment-intent` | Create a Stripe PaymentIntent for the current player's share of a booking. Derives amount from `BookingPlayer.amount_due`; creates a `pending` Payment record; returns `client_secret` for frontend confirmation |
 | `POST` | `/api/v1/payments/setup-intent` | Create a Stripe SetupIntent; returns `client_secret` and `setup_intent_id` for the frontend to collect card details via Stripe.js |
 | `POST` | `/api/v1/payments/payment-methods` | Attach a Stripe PaymentMethod to the player's Stripe customer; optionally sets it as the default. Creates the Stripe customer record if this is the player's first card |
@@ -230,6 +232,7 @@ Trainer availability is defined as recurring weekly windows (e.g. "every Tuesday
 | `POST` | `/api/v1/payments/wallet/top-up` | Create a Stripe PaymentIntent for a wallet top-up. Accepts `amount_pence` (min 100) and optional `payment_method_id` (falls back to saved default). Auto-creates wallet if the player has none. Returns `client_secret` and `payment_intent_id` for frontend confirmation. Webhook `payment_intent.succeeded` (purpose=`wallet_top_up`) credits the balance and records a `WalletTransaction` |
 | `POST` | `/api/v1/payments/wallet/pay-booking` | Pay for a booking using wallet balance. Deducts `BookingPlayer.amount_due`, writes a `Payment(method=wallet, state=succeeded)` record, marks the player's `BookingPlayer.payment_status = paid`, and confirms the booking if all accepted players have paid. Returns `{balance_after, transaction_id}`. 402 if balance insufficient; 404 if player not in booking; 409 if already paid. Creates a `WalletClubDebt` for deferred Stripe settlement |
 | `POST` | `/api/v1/payments/wallet/settle-debts` | Admin only. Transfer all unsettled wallet-debit obligations to each club's Stripe Connect account. Groups debits by club, issues one `stripe.Transfer` per club (net of platform fee), stamps `settled_at`. Returns `{settled_count, total_transferred, skipped_count}`. Clubs without a Connect account are skipped. |
+| `GET` | `/api/v1/payments/payouts` | Staff. Recorded Stripe payouts for a club (`?club_id=` required, resolved + tenant-validated via club context), for bank reconciliation. Optional `?reconciliation_status=unmatched\|matched\|partial\|discrepancy`. Returns gross/fee/net amounts, `matched_amount` (Σ linked payments net of refunds), `discrepancy_amount`, status, `arrival_date`, `statement_descriptor`. Read replica; UTC timestamps. Backed by the `payouts` table (G8-Pay), written by `payout.paid`/`failed`/`canceled` webhooks + `reconcile_stripe_payouts` |
 
 ---
 
@@ -323,7 +326,7 @@ validates and enqueues, the worker builds the file and emails a signed link.
 | File | Endpoints |
 |---|---|
 | `bookings.py` | `POST /{id}/waitlist`, `POST /{id}/video` |
-| `payments.py` | wallet (adjust), invoices (list/download), refunds, discounts, in-person payment, `GET /transactions` (transaction log), `GET /payouts` (Stripe payout reconciliation) |
+| `payments.py` | wallet (adjust), invoices (list/download), refunds, discounts, in-person payment, `GET /transactions` (transaction log) |
 | `staff.py` | suspend player, send notification, post announcement |
 | `players.py` | `GET /{id}` |
 | `support.py` | Create/list/get ticket, respond to ticket |

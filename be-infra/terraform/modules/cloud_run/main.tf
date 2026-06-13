@@ -675,6 +675,133 @@ resource "google_cloud_run_v2_service" "settlement_worker" {
 }
 
 # ---------------------------------------------------------------------------
+# padel-payout-reconcile-worker  (G8-Pay — Stripe payout reconciliation cron)
+#
+# Triggered by Cloud Scheduler → Pub/Sub (payout-reconciliation-events) → push to
+# /pubsub. Runs the platform-wide PaymentService.reconcile_all_payouts(): the
+# safety net behind the payout.paid webhook. It lists paid payouts from Stripe
+# per club and re-matches any not already reconciled, writing to the **primary**,
+# so like the settlement worker it needs STRIPE_SECRET_KEY (platform account)
+# and mounts the primary only. The scheduler job ships **paused** (see the
+# scheduler module / env wiring) — the service exists but is not yet driven.
+# ---------------------------------------------------------------------------
+
+resource "google_cloud_run_v2_service" "payout_reconcile_worker" {
+  name     = "padel-payout-reconcile-worker"
+  location = var.region
+  ingress  = "INGRESS_TRAFFIC_ALL"
+
+  template {
+    service_account = var.compute_sa_email
+
+    vpc_access {
+      connector = var.vpc_connector_id
+      egress    = "PRIVATE_RANGES_ONLY"
+    }
+
+    scaling {
+      max_instance_count = var.max_instance_count
+    }
+
+    annotations = {
+      "run.googleapis.com/startup-cpu-boost" = "true"
+    }
+
+    volumes {
+      name = "cloudsql"
+      cloud_sql_instance {
+        instances = [var.cloud_sql_connection]
+      }
+    }
+
+    containers {
+      image   = "${var.worker_image}:${var.image_tag}"
+      command = ["uvicorn"]
+      args    = ["app.workers.payout_reconciliation_worker:app", "--host", "0.0.0.0", "--port", "8080"]
+
+      ports {
+        name           = "http1"
+        container_port = 8080
+      }
+
+      resources {
+        limits            = local.resource_limits
+        cpu_idle          = true
+        startup_cpu_boost = true
+      }
+
+      startup_probe {
+        failure_threshold = local.startup_probe.failure_threshold
+        period_seconds    = local.startup_probe.period_seconds
+        timeout_seconds   = local.startup_probe.timeout_seconds
+        tcp_socket {
+          port = 8080
+        }
+      }
+
+      volume_mounts {
+        name       = "cloudsql"
+        mount_path = "/cloudsql"
+      }
+
+      env {
+        name = "DATABASE_URL"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["padel-database-url"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name = "SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["padel-secret-key"]
+            version = "latest"
+          }
+        }
+      }
+
+      # Reconciliation calls the Stripe platform account (Payout.list /
+      # BalanceTransaction.list on each connected account).
+      env {
+        name = "STRIPE_SECRET_KEY"
+        value_source {
+          secret_key_ref {
+            secret  = var.secret_ids["stripe-secret-key"]
+            version = "latest"
+          }
+        }
+      }
+
+      env {
+        name  = "PUBSUB_PROJECT_ID"
+        value = var.project_id
+      }
+    }
+
+    max_instance_request_concurrency = 80
+    timeout                          = "300s"
+  }
+
+  traffic {
+    type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+    percent = 100
+  }
+
+  lifecycle {
+    ignore_changes = [
+      template[0].containers[0].image,
+      template[0].annotations,
+      client,
+      client_version,
+    ]
+  }
+}
+
+# ---------------------------------------------------------------------------
 # padel-analytics-worker  (Sprint 7 / G7 — court-utilisation snapshots)
 #
 # Triggered by Cloud Scheduler → Pub/Sub (analytics-events) → push to /pubsub.

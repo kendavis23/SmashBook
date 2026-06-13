@@ -89,6 +89,7 @@ module "pubsub" {
   analytics_worker_uri         = module.cloud_run.analytics_worker_uri
   analytics_refresh_worker_uri = module.cloud_run.analytics_refresh_worker_uri
   settlement_worker_uri        = module.cloud_run.settlement_worker_uri
+  payout_reconcile_worker_uri  = module.cloud_run.payout_reconcile_worker_uri
 
   # The run.invoker IAM members reference services by literal name, so Terraform
   # has no implicit edge to their creation — force pubsub to wait for cloud_run
@@ -119,6 +120,11 @@ module "scheduler" {
 
   # Daily wallet-debt settlement (02:00 UTC) — runs in prod.
   settlement_events_topic_id = module.pubsub.wallet_settlement_events_topic_id
+
+  # Daily payout reconciliation (04:00 UTC) — ships PAUSED. Flip
+  # payout_reconcile_paused to false (here) to enable the automated sweep.
+  payout_reconcile_events_topic_id = module.pubsub.payout_reconciliation_events_topic_id
+  payout_reconcile_paused          = true
 }
 
 # ---------------------------------------------------------------------------
@@ -131,6 +137,10 @@ output "api_url" {
 
 output "settlement_worker_uri" {
   value = module.cloud_run.settlement_worker_uri
+}
+
+output "payout_reconcile_worker_uri" {
+  value = module.cloud_run.payout_reconcile_worker_uri
 }
 
 output "artifact_registry_url" {

@@ -59,3 +59,9 @@ variable "settlement_paused" {
   type        = bool
   default     = false
 }
+
+variable "payout_reconcile_paused" {
+  description = "Pause the daily Stripe payout reconciliation Cloud Scheduler job in staging. Defaults to true — the sweep ships paused until explicitly enabled."
+  type        = bool
+  default     = true
+}

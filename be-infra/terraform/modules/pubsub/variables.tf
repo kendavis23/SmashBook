@@ -33,3 +33,7 @@ variable "analytics_refresh_worker_uri" {
 variable "settlement_worker_uri" {
   type = string
 }
+
+variable "payout_reconcile_worker_uri" {
+  type = string
+}

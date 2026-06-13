@@ -170,3 +170,45 @@ resource "google_cloud_scheduler_job" "wallet_settle_debts" {
     data       = base64encode(jsonencode({ event_type = "wallet.settle" }))
   }
 }
+
+# ---------------------------------------------------------------------------
+# Cloud Scheduler — daily Stripe payout reconciliation sweep (G8-Pay)
+#
+# Publishes {"event_type": "payout.reconcile"} to payout-reconciliation-events,
+# delivered to padel-payout-reconcile-worker, which runs the platform-wide
+# PaymentService.reconcile_all_payouts() — the safety net behind the payout.paid
+# webhook. Fires at 04:00 UTC (after the 02:00 settlement and 03:00 MV refresh,
+# though all are independent).
+#
+# Ships **paused** (payout_reconcile_paused defaults to true): the table,
+# webhooks, and worker are live, but the automated sweep stays off until it is
+# explicitly enabled. Flip `payout_reconcile_paused = false` to turn it on.
+# ---------------------------------------------------------------------------
+
+resource "google_pubsub_topic_iam_member" "scheduler_publish_payout_reconcile" {
+  topic  = var.payout_reconcile_events_topic_id
+  role   = "roles/pubsub.publisher"
+  member = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
+
+resource "google_cloud_scheduler_job" "payout_reconcile" {
+  name      = "payout-reconcile"
+  project   = var.project_id
+  region    = var.region
+  schedule  = var.payout_reconcile_schedule
+  time_zone = "Etc/UTC"
+
+  paused = var.payout_reconcile_paused
+
+  # The push delivery does the real work; the publish itself is instant.
+  attempt_deadline = "320s"
+
+  retry_config {
+    retry_count = 1
+  }
+
+  pubsub_target {
+    topic_name = var.payout_reconcile_events_topic_id
+    data       = base64encode(jsonencode({ event_type = "payout.reconcile" }))
+  }
+}

@@ -5,9 +5,11 @@ from sqlalchemy import select as sa_select
 from typing import Optional
 
 from app.api.v1.dependencies.auth import get_current_user, require_admin, require_staff
+from app.api.v1.dependencies.club_context import ClubContext, get_club_context
 from app.core.config import get_settings
 from app.db.models.booking import Booking, BookingPlayer
 from app.db.models.club import Club
+from app.db.models.payment import Payout, PayoutReconStatus
 from app.db.models.wallet import WalletTransactionSource
 from app.db.session import get_db, get_read_db
 from app.schemas.payment_method import (
@@ -34,7 +36,8 @@ settings = get_settings()
 async def stripe_webhook(request: Request, db=Depends(get_db)):
     """
     Verify Stripe signature and dispatch to the appropriate service method.
-    Handles: payment_intent.succeeded, payment_intent.payment_failed, payout.paid
+    Handles: payment_intent.succeeded, payment_intent.payment_failed,
+    payout.paid, payout.failed, payout.canceled
     """
     payload = await request.body()
     sig_header = request.headers.get("stripe-signature")
@@ -67,6 +70,10 @@ async def stripe_webhook(request: Request, db=Depends(get_db)):
         await payment_svc.handle_payment_failed(event)
     elif event_type == "payout.paid":
         await payment_svc.handle_payout_paid(event)
+    elif event_type == "payout.failed":
+        await payment_svc.handle_payout_failed(event)
+    elif event_type == "payout.canceled":
+        await payment_svc.handle_payout_canceled(event)
     elif event_type == "customer.subscription.updated":
         await membership_svc.handle_subscription_updated(event)
     elif event_type == "customer.subscription.deleted":
@@ -290,6 +297,54 @@ async def transaction_log(
 
 
 @router.get("/payouts")
-async def stripe_payouts(current_user=Depends(require_staff)):
-    """Staff: Stripe payout records for bank reconciliation."""
-    pass
+async def stripe_payouts(
+    reconciliation_status: Optional[str] = None,
+    _user=Depends(require_staff),
+    ctx: ClubContext = Depends(get_club_context),
+    db=Depends(get_read_db),
+):
+    """
+    Staff: recorded Stripe payouts for the club, for bank reconciliation.
+
+    Scoped to the `club_id` query param (resolved + tenant-validated by
+    `get_club_context`). Optional `reconciliation_status` filter
+    (`unmatched` | `matched` | `partial` | `discrepancy`) surfaces payouts
+    that don't reconcile against their linked payments. Timestamps are UTC
+    (platform/financial audit values — not club-local).
+    """
+    if ctx.effective_role is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="No authority at this club")
+
+    stmt = sa_select(Payout).where(Payout.club_id == ctx.club.id)
+    if reconciliation_status is not None:
+        try:
+            recon = PayoutReconStatus(reconciliation_status)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid reconciliation_status",
+            )
+        stmt = stmt.where(Payout.reconciliation_status == recon)
+    stmt = stmt.order_by(Payout.arrival_date.desc().nullslast())
+
+    result = await db.execute(stmt)
+    payouts = result.scalars().all()
+    return [
+        {
+            "id": str(p.id),
+            "stripe_payout_id": p.stripe_payout_id,
+            "status": p.status.value,
+            "reconciliation_status": p.reconciliation_status.value,
+            "gross_amount": float(p.gross_amount) if p.gross_amount is not None else None,
+            "fee_amount": float(p.fee_amount) if p.fee_amount is not None else None,
+            "amount": float(p.amount),
+            "matched_amount": float(p.matched_amount) if p.matched_amount is not None else None,
+            "discrepancy_amount": float(p.discrepancy_amount) if p.discrepancy_amount is not None else None,
+            "currency": p.currency,
+            "arrival_date": p.arrival_date.isoformat() if p.arrival_date else None,
+            "statement_descriptor": p.statement_descriptor,
+            "failure_code": p.failure_code,
+            "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+        }
+        for p in payouts
+    ]

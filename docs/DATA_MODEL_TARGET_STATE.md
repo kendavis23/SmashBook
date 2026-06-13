@@ -1,4 +1,4 @@
-_Last updated: 2026-06-12 (backlog restructure: groups re-anchored to refined sprint plan, go-live after Sprint 10; CRM-plan schema additions adopted)_
+_Last updated: 2026-06-13 (add G8-Pay: `payouts` table for Stripe payout ↔ bank-statement reconciliation)_
 
 # SmashBook — Data Model Target State
 
@@ -117,6 +117,7 @@ Update the **Status** column when a migration has been applied and verified. The
 | G6.2 | Post-MVP | ✅ Applied (`fa46b223afc9`) | Membership downgrade scheduling: `membership_subscriptions`: add `pending_plan_id` (FK → `membership_plans`, nullable) — scheduled downgrade target applied at `current_period_end` |
 | G7 | Sprint 7 — **Analytics** | ✅ Applied (`b210c7b03579`, `a04c76851993`, `520ea227119a`, `fd3c5c3192ab`, `4d439313634d`, `1f0263eec44b`, `dff4cf6de626`) | New table: `court_utilisation_snapshots`; `clubs`: add `timezone`; `users`: add `date_of_birth`, `gender`, `postcode`, `latitude`, `longitude` (all nullable, aspirational — fill Epic-2 demographics/catchment reports) — **all applied**. Court-utilisation serving is **live**: `court_utilisation_snapshots` is populated by `app/analytics/workers/snapshot_court_utilisation.py` (slot-anchored, nightly + 90-day backfill) and served by `GET /api/v1/analytics/utilisation/clubs/{club_id}/{daily,courts,heatmap}`. **Revenue-by-club is now live** (`a04c76851993`, `520ea227119a`): materialized views `mv_revenue_by_club_day_{service,cash}` (subtract-embedded equipment split, membership MRR excluded) + the first MV-refresh worker `app/analytics/workers/refresh_views.py` logging to new table `analytics_refresh_log`, served by `GET /api/v1/analytics/revenue/clubs[/{club_id}/{timeseries,by-type,summary}]` with `?basis=service|cash`. **Player value (workstream B) is now live** (`fd3c5c3192ab`): materialized view `mv_player_value` (grain `(club_id, user_id)`; activity ⋈ net-spend ⋈ paid-membership per player; net realised LTV, membership MRR excluded), served by `GET /api/v1/analytics/players/clubs/{club_id}/{value,most-active,inactive-members}`. **Club player-flow (workstream A) is now live** (`4d439313634d`): materialized views `mv_club_active_player_day` (presence; distinct on-court players) + `mv_club_signups_day` (new paid subscription starts), served by `GET /api/v1/analytics/players/clubs/{club_id}/{active,active/timeseries,signups}` — active = `COUNT(DISTINCT user_id)` over a trailing window or calendar bucket (WAP/MAP). **Group LTV (workstream C) is now live (no migration — pure `GROUP BY` over `mv_player_value`)**: `GET /api/v1/analytics/players/clubs/{club_id}/value/by-group?dimension=membership_tier|member_status|activity_status` — attribute-based + single-axis-recency cuts only; structured RFV/cohort segmentation deliberately deferred (see dropped `player_segments` decision). The final REPORT_CATALOG materialized views are **now built** (`1f0263eec44b`, `dff4cf6de626`): `mv_coach_popularity` (grain `(club_id, staff_profile_id)`; lesson bookings led by a `staff_profile`; sessions, distinct/repeat players, net lesson revenue; `return_rate` derived in-service) and `mv_player_rfv` (grain `(club_id, user_id)`; R/F/V quintile scores built on top of `mv_player_value` — a pre-aggregate only, **no** named-segment taxonomy per the dropped `player_segments` decision). Both worker-managed DDL registered in `REFRESH_VIEWS`. Group complete |
 | G8-Fin | Sprint 8 — **Financial reporting** | 🚧 In progress ([#275](https://github.com/kendavis23/SmashBook/issues/275)) | New table: `tenant_subscription_payments` — append-only log of SmashBook → org subscription billing payments, written by the stripe-billing webhook handlers. Backs subscription financial reporting. **Draft shape in §1 — confirm against the in-flight #275 implementation before migrating** |
+| G8-Pay | Sprint 8 — **Payout reconciliation** | ✅ Applied (`8443a533d9d9`) | New table: `payouts` — one row per Stripe payout (bank deposit) to a club's Connect account, carrying gross/fee/net + the matched-payment sum so a payout can be reconciled against both its linked `payments` and the club's bank statement. Written by the `payout.paid`/`payout.failed`/`payout.canceled` webhooks and the `reconcile_stripe_payouts` backfill; served by `GET /payouts`. Linked to `payments` via the existing `stripe_payout_id` string (no FK). Spec in §8 |
 | G9a | Sprint 9 — **Messaging core (no AI)** | ⬜ Not started | New tables: `notification_templates`, `message_deliveries`; `users`: add `marketing_opt_in`, `marketing_opt_in_updated_at` (consent — gates the first campaign send); `support_tickets`: add `category`, `last_message_at` *(pulled forward from old G12 — chat ships Sprint 9, [#130](https://github.com/kendavis23/SmashBook/issues/130)/[#167](https://github.com/kendavis23/SmashBook/issues/167))*. No dependency on `ai_inference_log` — can land before or alongside G8. Features: staff messaging, reminders, waitlist notifications, chat/support inbox |
 | G8 | Sprint 9 — **AI core platform** ([#201](https://github.com/kendavis23/SmashBook/issues/201)) | ⬜ Not started | New tables: `ai_inference_log`, `ai_feature_flags` (now with `automation_mode` — the suggest/approve/auto trust dial); `subscription_plans`: add `tournaments_enabled`, `messaging_enabled` (non-AI flags only — AI flags live in `ai_feature_flags`); `clubs`: add `gap_detection_threshold_pct`, `max_gap_discount_pct`, `churn_inactive_days_threshold`, `max_marketing_msgs_per_week`. Features it unlocks at launch (Sprint 10): revenue forecasting, AI insights dashboard, churn scoring. The gap/pricing guardrail columns are seeded here cheaply but their features are Sprint 11 (G13) |
 | G9-360 | Sprint 9–10 — **Player 360** ([#49](https://github.com/kendavis23/SmashBook/issues/49)) | ⬜ Not started | New tables: `player_profiles` **without** `embedding` (defer pgvector to G13) but **with** `tags` TEXT[] (auto-segmentation output home); `player_notes` (append-only staff CRM notes). Features: staff player-360 view — profile, history, notes, tags |
@@ -634,7 +635,7 @@ Invite-based onboarding of a user into a club as staff. A dedicated table (rathe
 | `anomaly_flagged` | BOOLEAN | **NEW** Default `false` |
 | `anomaly_reason` | TEXT | **NEW** Nullable |
 | `dispute_status` | ENUM | **NEW** Nullable — `open`, `under_review`, `won`, `lost` |
-| `stripe_payout_id` | VARCHAR(255) | **NEW** Nullable — populated via `payout.paid` webhook; indexed |
+| `stripe_payout_id` | VARCHAR(255) | **NEW** Nullable — populated via `payout.paid` webhook; indexed. String join to `payouts.stripe_payout_id` (no FK); cleared on `payout.failed`/`canceled` *(G8-Pay)* |
 | `created_at` | TIMESTAMPTZ | |
 | `updated_at` | TIMESTAMPTZ | |
 
@@ -652,6 +653,35 @@ SmashBook's fee ledger per transaction. Enables per-tenant revenue reconciliatio
 | `amount` | NUMERIC(10,2) | |
 | `pct_applied` | NUMERIC(5,2) | Rate at time of transaction |
 | `created_at` | TIMESTAMPTZ | |
+
+---
+
+### `payouts` *(NEW TABLE — Migration group G8-Pay)*
+One row per Stripe payout (a single bank deposit) to a club's Connect account. A payout bundles many `payments` minus refunds minus Stripe fees, so `gross_amount − fee_amount = amount` (net deposited), and `matched_amount` (sum of linked `payments`, **net of refunds**) is reconciled against it. Written by the `payout.paid` / `payout.failed` / `payout.canceled` Connect webhooks (signed with `STRIPE_CONNECT_WEBHOOK_SECRET`) and backfilled by `PaymentService.reconcile_stripe_payouts`; served to staff by `GET /api/v1/payments/payouts` for bank-statement reconciliation.
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | UUID | PK |
+| `club_id` | UUID | FK → `clubs` — scoping root (resolved from the Connect account on the event; matches `payments` club-scoping) |
+| `stripe_payout_id` | VARCHAR(255) | **UNIQUE** — `po_xxx`; idempotency key + the join target of `payments.stripe_payout_id` |
+| `stripe_connect_account_id` | VARCHAR(255) | `acct_xxx` the payout landed on (= `event["account"]`) |
+| `gross_amount` | NUMERIC(10,2) | Nullable — sum of the payout's payment balance-transaction amounts before fees (derived from balance transactions) |
+| `fee_amount` | NUMERIC(10,2) | Nullable — Stripe fees deducted (`gross_amount − amount`) |
+| `amount` | NUMERIC(10,2) | Net amount deposited to the bank (Stripe `payout.amount`) |
+| `currency` | VARCHAR(3) | Default `"GBP"` |
+| `status` | ENUM | `pending`, `in_transit`, `paid`, `failed`, `canceled` (mirrors Stripe payout status) |
+| `arrival_date` | TIMESTAMPTZ | Stripe's expected/actual bank arrival date |
+| `statement_descriptor` | VARCHAR(255) | Nullable — bank-statement line text, for manual statement matching |
+| `failure_code` | VARCHAR(255) | Nullable — set on `payout.failed` |
+| `failure_message` | TEXT | Nullable |
+| `reconciliation_status` | ENUM | `unmatched`, `matched`, `partial`, `discrepancy` |
+| `matched_amount` | NUMERIC(10,2) | Nullable — Σ linked `payments` net of refunds, computed at match time |
+| `discrepancy_amount` | NUMERIC(10,2) | Nullable — `gross_amount − matched_amount`; non-zero ⇒ `reconciliation_status = discrepancy` |
+| `paid_at` | TIMESTAMPTZ | Nullable — when status reached `paid` |
+| `created_at` | TIMESTAMPTZ | |
+| `updated_at` | TIMESTAMPTZ | |
+
+**Constraints:** `UNIQUE(stripe_payout_id)` (webhook-replay idempotency + backfill upsert key). **Linkage:** `payments.stripe_payout_id = payouts.stripe_payout_id` is a **string join, not an FK** — the `payout.paid` match stamps payments via the connected-account `py_xxx` id independently of this row, so a `payouts` row can be `partial` when some payments never captured `stripe_destination_payment_id`. `payout.failed`/`canceled` clears `payments.stripe_payout_id`.
 
 ---
 
@@ -1446,6 +1476,8 @@ All new enums must be created in Alembic migrations **before** the columns that 
 | `ModelProvider` | `anthropic`, `vertex_ai`, `internal` | G8 |
 | `AutomationMode` | `suggest`, `approve`, `auto` | G8 |
 | `TenantSubscriptionPaymentStatus` | `succeeded`, `failed`, `refunded` | G8-Fin |
+| `PayoutStatus` | `pending`, `in_transit`, `paid`, `failed`, `canceled` | G8-Pay |
+| `PayoutReconStatus` | `unmatched`, `matched`, `partial`, `discrepancy` | G8-Pay |
 | `SkillChangeSource` | `staff_manual`, `ai_auto`, `match_result` | G6 |
 | `GapStatus` | `detected`, `offer_generated`, `notified`, `filled`, `expired` | G13 |
 | `CampaignType` | `re_engagement`, `flash_sale`, `waitlist_fill`, `onboarding`, `churn_prevention`, `custom` | G10 |
@@ -1522,6 +1554,9 @@ Priority indexes to add alongside the tables that need them.
 | `player_profiles` | `ivfflat (embedding vector_cosine_ops) WITH (lists = 100)` | G13 |
 | `player_notes` | `ix_player_notes_club_user (club_id, user_id, created_at DESC)` — player-360 timeline | G9-360 |
 | `tenant_subscription_payments` | `UNIQUE (stripe_invoice_id)` — webhook replay idempotency | G8-Fin |
+| `payouts` | `UNIQUE (stripe_payout_id)` — webhook replay + backfill upsert key | G8-Pay |
+| `payouts` | `ix_payouts_club_recon (club_id, reconciliation_status)` — staff unreconciled/discrepant list | G8-Pay |
+| `payouts` | `ix_payouts_arrival (arrival_date)` — bank-statement date matching | G8-Pay |
 | `ai_feature_flags` | `UNIQUE (tenant_id, feature)` | G8 |
 | `support_tickets` | `ix_ticket_club_status (club_id, status, priority)` | G6 |
 | `support_tickets` | `ix_ticket_category_last_msg (club_id, category, last_message_at DESC)` — inbox sort | G9a |

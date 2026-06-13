@@ -18,6 +18,10 @@ locals {
     # {"event_type": "wallet.settle"} here; the push subscription delivers it to
     # padel-settlement-worker.
     "wallet-settlement-events",
+    # G8-Pay — payout reconciliation sweep trigger. Cloud Scheduler publishes
+    # {"event_type": "payout.reconcile"} here; the push subscription delivers it
+    # to padel-payout-reconcile-worker.
+    "payout-reconciliation-events",
   ]
 }
 
@@ -54,6 +58,10 @@ resource "google_pubsub_topic" "analytics_refresh_events_dlq" {
 
 resource "google_pubsub_topic" "wallet_settlement_events_dlq" {
   name = "wallet-settlement-events-dlq"
+}
+
+resource "google_pubsub_topic" "payout_reconciliation_events_dlq" {
+  name = "payout-reconciliation-events-dlq"
 }
 
 # ---------------------------------------------------------------------------
@@ -230,6 +238,36 @@ resource "google_pubsub_subscription" "wallet_settlement_events" {
   }
 }
 
+resource "google_pubsub_subscription" "payout_reconciliation_events" {
+  name  = "payout-reconciliation-events-sub"
+  topic = google_pubsub_topic.topics["payout-reconciliation-events"].name
+
+  push_config {
+    push_endpoint = "${var.payout_reconcile_worker_uri}/pubsub"
+
+    oidc_token {
+      service_account_email = var.compute_sa_email
+    }
+  }
+
+  # The sweep calls Stripe Payout.list per club; give it a generous ack window.
+  # Redelivery is safe (idempotent — payouts is UNIQUE(stripe_payout_id) and
+  # already-matched rows are skipped), so DLQ only catches genuine poison.
+  ack_deadline_seconds       = 600
+  message_retention_duration = "604800s"
+  retain_acked_messages      = false
+
+  retry_policy {
+    minimum_backoff = "30s"
+    maximum_backoff = "600s"
+  }
+
+  dead_letter_policy {
+    dead_letter_topic     = google_pubsub_topic.payout_reconciliation_events_dlq.id
+    max_delivery_attempts = 5
+  }
+}
+
 # ---------------------------------------------------------------------------
 # Grant Pub/Sub service agent publisher rights on each DLQ topic
 # (required for Pub/Sub to forward poison messages to the DLQ)
@@ -271,6 +309,12 @@ resource "google_pubsub_topic_iam_member" "dlq_publisher_analytics_refresh" {
 
 resource "google_pubsub_topic_iam_member" "dlq_publisher_wallet_settlement" {
   topic  = google_pubsub_topic.wallet_settlement_events_dlq.name
+  role   = "roles/pubsub.publisher"
+  member = local.pubsub_sa
+}
+
+resource "google_pubsub_topic_iam_member" "dlq_publisher_payout_reconciliation" {
+  topic  = google_pubsub_topic.payout_reconciliation_events_dlq.name
   role   = "roles/pubsub.publisher"
   member = local.pubsub_sa
 }
@@ -327,6 +371,14 @@ resource "google_cloud_run_v2_service_iam_member" "pubsub_invoke_settlement" {
   member   = "serviceAccount:${var.compute_sa_email}"
 }
 
+resource "google_cloud_run_v2_service_iam_member" "pubsub_invoke_payout_reconcile" {
+  project  = var.project_id
+  location = var.region
+  name     = "padel-payout-reconcile-worker"
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.compute_sa_email}"
+}
+
 # ---------------------------------------------------------------------------
 # Topic ids exported so the scheduler module can target them (Cloud Scheduler →
 # Pub/Sub publishes the daily analytics.snapshot_daily / analytics.refresh_views
@@ -343,4 +395,8 @@ output "analytics_refresh_events_topic_id" {
 
 output "wallet_settlement_events_topic_id" {
   value = google_pubsub_topic.topics["wallet-settlement-events"].id
+}
+
+output "payout_reconciliation_events_topic_id" {
+  value = google_pubsub_topic.topics["payout-reconciliation-events"].id
 }

@@ -1,4 +1,4 @@
-_Last updated: 2026-06-13 12:00 UTC_
+_Last updated: 2026-06-13 15:30 UTC_
 
 # SmashBook — Infrastructure Target State
 
@@ -231,7 +231,8 @@ MVP-era cron jobs that must run before production go-live. The Cloud Scheduler S
 | `payment_intent.payment_failed` | Flag payment failed; notify staff; publish to `payment-events` | ✅ Implemented |
 | `charge.dispute.created` | Set `payments.dispute_status = 'open'`; queue for manual review. **Prerequisite for the Stage 7 dispute auto-flagging story (#108)** | ❌ Not implemented |
 | `account.updated` | Sync `clubs.stripe_connect_status`; block bookings if account deactivated | ❌ Not implemented |
-| `payout.paid` | Populate `payments.stripe_payout_id` for affected transfers | ✅ Implemented |
+| `payout.paid` | Record the `payouts` row (gross/fee/net + reconciliation result); stamp `payments.stripe_payout_id` for matched transfers | ✅ Implemented |
+| `payout.failed` / `payout.canceled` | Record the failure/cancellation on the `payouts` row; clear `payments.stripe_payout_id` for affected transfers (the deposit never settled) | ✅ Implemented |
 | `customer.subscription.*` / `invoice.*` (memberships on connect accounts) | Sync membership subscription state | ✅ Implemented |
 
 **Platform-account events** (verified with `stripe-billing-webhook-secret` → `/api/v1/webhooks/stripe-billing`):
@@ -332,17 +333,32 @@ This task is **prod-only** — the public front door only exists once a producti
 - Cloud Scheduler service agent gets `roles/pubsub.publisher` on the topic; the push SA gets `roles/run.invoker` on the handler. No static `X-Platform-Key`, no dedicated `cloud-scheduler@` SA.
 - Delivery retries/DLQ come from the subscription (replacing the old per-job `retry_count`/`max_backoff`).
 
-**Status — 🚧 Terraform written + handler implemented, pending apply (2026-06-13).** As-built:
+**Status — ✅ Applied to staging (2026-06-13).** As-built:
 - Handler: `padel-settlement-worker` Cloud Run service (`app.workers.settlement_worker:app`, from `Dockerfile.worker`), `/pubsub` dispatches `wallet.settle` → `PaymentService.settle_wallet_debts()` on the primary DB. It carries `STRIPE_SECRET_KEY` (platform account) since it issues Connect transfers; no `TenantMiddleware`, no `X-Tenant-ID` — settlement is platform-wide and resolved server-side.
 - Topic `wallet-settlement-events` (+ DLQ `wallet-settlement-events-dlq`); push subscription `wallet-settlement-events-sub` → worker `/pubsub` (OIDC as the compute SA, `max_delivery_attempts = 5`, 600s ack).
 - `google_cloud_scheduler_job.wallet_settle_debts` (`pubsub_target`, `0 2 * * *`) publishes `{"event_type":"wallet.settle"}`; Cloud Scheduler service agent granted `roles/pubsub.publisher` on the topic; compute SA granted `roles/run.invoker` on the worker.
-- Modules: `cloud_run`, `pubsub`, `scheduler`; wired in both `staging/` and `prod/` roots. Runs in staging too (`settlement_paused` defaults `false`) — **verify the staging Stripe key is test-mode before apply, since this issues real Connect transfers.**
+- Modules: `cloud_run`, `pubsub`, `scheduler`; wired in both `staging/` and `prod/` roots. Runs in staging too (`settlement_paused` defaults `false`) — **the staging Stripe key must be test-mode, since this issues real Connect transfers.**
 - Redelivery-safe: deterministic Stripe idempotency key per debt set + `settled_at` drops debts out of the query.
 
 **Operational notes:**
 - Daily cadence is the floor. If a club asks for faster settlement, lower to hourly — the underlying Stripe `Transfer.create` is already idempotency-keyed per debt set, so re-running is safe.
 - Alert on failure via the subscription's DLQ (oldest-unacked / DLQ-message-count alert, like the other Pub/Sub paths) plus the Stage 2.3 Cloud Run 5xx policy on the handler.
-- Until this lands, document a manual runbook step: ops admin calls `/wallet/settle-debts` at least weekly.
+- The admin-triggered `POST /payments/wallet/settle-debts` endpoint remains available for manual/ad-hoc settlement alongside the cron.
+
+### 2.6.1 Payout reconciliation cron (G8-Pay)
+
+**Why:** the real-time `payout.paid` webhook stamps `stripe_payout_id` and records the `payouts` row, but it can leave a payout under-reconciled — `stripe_destination_payment_id` is captured best-effort at confirm time (a swallowed Stripe error leaves a `partial` row), or the webhook may never arrive. Without a periodic sweep those rows never reach a settled `reconciliation_status`. This cron is the safety net.
+
+**Resources** (Cloud Scheduler → Pub/Sub pattern, per §2.5; mirrors §2.6):
+- Handler: `padel-payout-reconcile-worker` Cloud Run service (`app.workers.payout_reconciliation_worker:app`, from `Dockerfile.worker`), `/pubsub` dispatches `payout.reconcile` → `PaymentService.reconcile_all_payouts()` on the primary DB. Carries `STRIPE_SECRET_KEY` (platform account) since it calls `Payout.list` / `BalanceTransaction.list` on each connected account; no `TenantMiddleware` — the sweep is platform-wide and resolved server-side (every club with a `stripe_connect_account_id`).
+- Topic `payout-reconciliation-events` (+ DLQ `payout-reconciliation-events-dlq`); push subscription `payout-reconciliation-events-sub` → worker `/pubsub` (OIDC as the compute SA, `max_delivery_attempts = 5`, 600s ack).
+- `google_cloud_scheduler_job.payout_reconcile` (`pubsub_target`, `0 4 * * *`) publishes `{"event_type":"payout.reconcile"}`; Cloud Scheduler service agent granted `roles/pubsub.publisher` on the topic; compute SA granted `roles/run.invoker` on the worker.
+- Modules: `cloud_run`, `pubsub`, `scheduler`; wired in both `staging/` and `prod/` roots.
+
+**Operational notes:**
+- **Ships PAUSED.** `payout_reconcile_paused` defaults to `true` (and is set `true` in both prod and staging roots) — the table, webhooks, and worker are live, but the automated sweep stays off until explicitly enabled. To turn it on: flip the var to `false` and `terraform apply` (or `gcloud scheduler jobs resume payout-reconcile`).
+- Redelivery-safe: idempotent — `payouts` is `UNIQUE(stripe_payout_id)` and rows already `matched` are skipped; `reconcile_all_payouts` commits per club so one club's Stripe failure doesn't discard the rest.
+- The on-demand `PaymentService.reconcile_stripe_payouts(club_id)` and the `GET /payments/payouts` staff list remain available regardless of the cron's paused state.
 
 ### 2.7 Additional Scheduled Jobs
 
@@ -352,7 +368,8 @@ Production-readiness cron jobs beyond wallet settlement. All follow the standard
 
 | Job | Schedule | Purpose | Status |
 |---|---|---|---|
-| `wallet-settle-debts` | `0 2 * * *` (daily 02:00 UTC) | Settle accumulated `wallet_club_debts` to club Stripe Connect accounts (see §2.6 for full resource spec) | 🚧 Terraform written + handler implemented, pending apply |
+| `wallet-settle-debts` | `0 2 * * *` (daily 02:00 UTC) | Settle accumulated `wallet_club_debts` to club Stripe Connect accounts (see §2.6 for full resource spec) | ✅ Applied (staging) |
+| `payout-reconcile` | `0 4 * * *` (daily 04:00 UTC) | Sweep Stripe payouts per club, re-reconciling any not already `matched` — safety net behind the `payout.paid` webhook (see §2.6.1 for full resource spec). **Ships paused** | 🚧 Terraform written, ships paused |
 | `membership-renewal-job` | `0 1 * * *` (daily 01:00 UTC) | Renew active subscriptions at `current_period_end`; reset membership credits; flag lapsed subscriptions | ❌ Not implemented |
 | `announcement-expiry-job` | `0 3 * * *` (daily 03:00 UTC) | Soft-hide announcements where `expires_at <= NOW()` | ❌ Not implemented |
 | `promo-code-expiry-job` | `0 3 * * *` (daily 03:00 UTC) | Disable promo codes where `valid_until <= NOW()` | ❌ Not implemented |

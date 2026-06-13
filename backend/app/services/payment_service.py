@@ -24,7 +24,7 @@ from app.core.config import get_settings
 from app.core.pubsub import publish_notification_event
 from app.db.models.booking import Booking, BookingPlayer, BookingStatus, InviteStatus, PaymentStatus
 from app.db.models.club import Club
-from app.db.models.payment import Payment, PlatformFee, PlatformFeeType
+from app.db.models.payment import Payment, PlatformFee, PlatformFeeType, Payout, PayoutStatus, PayoutReconStatus
 from app.db.models.payment import PaymentMethod as PaymentMethodEnum
 from app.db.models.payment import PaymentState
 from app.db.models.tenant import SubscriptionPlan, Tenant
@@ -1031,48 +1031,238 @@ class PaymentService:
         """
         pass
 
+    async def _resolve_club_id_for_account(self, connect_account_id: str):
+        """Map a Stripe Connect account (acct_xxx) back to its owning club."""
+        result = await self.db.execute(
+            sa_select(Club.id).where(Club.stripe_connect_account_id == connect_account_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def _get_payout(self, stripe_payout_id: str):
+        result = await self.db.execute(
+            sa_select(Payout).where(Payout.stripe_payout_id == stripe_payout_id)
+        )
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    def _ts_to_utc(ts):
+        return datetime.fromtimestamp(ts, tz=timezone.utc) if ts else None
+
+    async def reconcile_all_payouts(self) -> dict:
+        """
+        Platform-wide payout reconciliation sweep (cron entrypoint).
+
+        Iterates every club with a Stripe Connect account and re-reconciles its
+        payouts via `reconcile_stripe_payouts`. The safety net behind the
+        real-time `payout.paid` webhook: catches payouts the webhook missed, or
+        matched only `partial`ly because `stripe_destination_payment_id` failed
+        its best-effort capture at confirm time.
+
+        Commits **per club** so one club's Stripe failure doesn't discard the
+        reconciliations already done for others. Returns an aggregate summary.
+        """
+        result = await self.db.execute(
+            sa_select(Club.id).where(Club.stripe_connect_account_id.isnot(None))
+        )
+        club_ids = list(result.scalars().all())
+
+        clubs_processed = 0
+        clubs_failed = 0
+        payouts_reconciled = 0
+        for club_id in club_ids:
+            try:
+                summaries = await self.reconcile_stripe_payouts(str(club_id))
+                await self.db.commit()
+                clubs_processed += 1
+                payouts_reconciled += len(summaries)
+            except Exception:
+                await self.db.rollback()
+                clubs_failed += 1
+                logger.exception("payout reconciliation failed for club %s", club_id)
+        return {
+            "clubs_processed": clubs_processed,
+            "clubs_failed": clubs_failed,
+            "payouts_reconciled": payouts_reconciled,
+        }
+
     async def reconcile_stripe_payouts(self, club_id: str) -> list:
-        """Fetch payout records from Stripe API for the club's Connect account."""
-        pass
+        """
+        Backfill / re-reconcile payouts for a club's Connect account.
+
+        Safety net for the best-effort `stripe_destination_payment_id` capture
+        at confirm time: lists paid payouts from Stripe and (re)reconciles any
+        that aren't already fully matched. Returns a per-payout summary.
+        """
+        result = await self.db.execute(sa_select(Club).where(Club.id == club_id))
+        club = result.scalar_one_or_none()
+        if club is None or not club.stripe_connect_account_id:
+            return []
+        account = club.stripe_connect_account_id
+
+        summaries: list[dict] = []
+        listing = stripe.Payout.list(stripe_account=account, status="paid", limit=100)
+        for po in listing.auto_paging_iter():
+            existing = await self._get_payout(po["id"])
+            if existing is not None and existing.reconciliation_status == PayoutReconStatus.matched:
+                continue
+            summaries.append(
+                await self._apply_paid_payout(po, account, str(club_id))
+            )
+        return summaries
 
     async def handle_payout_paid(self, event: dict) -> None:
         """
         Called when Stripe fires payout.paid on a connected account.
-        Stamps stripe_payout_id onto every Payment whose stripe_charge_id
-        appears in the payout's balance transactions.
-        Raises stripe.StripeError on API failure so the webhook returns 500
-        and Stripe retries automatically.
+
+        Records the payout in `payouts` (gross/fee/net + reconciliation result)
+        and stamps `stripe_payout_id` onto every matched Payment. Matching uses
+        the connected-account destination payment id (py_xxx) on each balance
+        transaction (type="payment") against Payment.stripe_destination_payment_id
+        — not the platform-side ch_xxx, which never appears connect-side.
+        Raises stripe.StripeError on API failure so the webhook returns 500 and
+        Stripe retries automatically.
         """
         payout = event["data"]["object"]
-        payout_id: str = payout["id"]
         connect_account_id: str = event["account"]
 
-        # Destination-charge Connect flow: payouts happen on the connected
-        # account, where balance transactions for incoming charges are
-        # type="payment" and `source` is the destination payment id (py_xxx)
-        # — not the platform-side charge id (ch_xxx). We store py_xxx on
-        # Payment.stripe_destination_payment_id at confirm time so we can
-        # match here without extra API calls.
+        club_id = await self._resolve_club_id_for_account(connect_account_id)
+        if club_id is None:
+            logger.warning(
+                "payout.paid for unknown Connect account %s (payout %s); skipping",
+                connect_account_id, payout["id"],
+            )
+            return
+
+        await self._apply_paid_payout(payout, connect_account_id, str(club_id))
+        await self.db.commit()
+
+    async def _apply_paid_payout(self, payout, connect_account_id: str, club_id: str) -> dict:
+        """
+        Reconcile one paid payout: pull its payment balance transactions, match
+        them to Payment rows, compute gross/fee/matched/discrepancy, and upsert
+        the `payouts` row. Does NOT commit — the caller owns the transaction.
+        """
+        payout_id: str = payout["id"]
+
         txns = stripe.BalanceTransaction.list(
             payout=payout_id,
             type="payment",
             stripe_account=connect_account_id,
         )
-        destination_payment_ids = [
-            src for t in txns.auto_paging_iter() if (src := getattr(t, "source", None))
-        ]
+        destination_payment_ids: list[str] = []
+        gross_minor = 0
+        fee_minor = 0
+        for t in txns.auto_paging_iter():
+            src = getattr(t, "source", None)
+            if src:
+                destination_payment_ids.append(src)
+            gross_minor += getattr(t, "amount", 0) or 0
+            fee_minor += getattr(t, "fee", 0) or 0
 
-        if not destination_payment_ids:
-            return
+        gross_amount = Decimal(gross_minor) / 100
+        fee_amount = Decimal(fee_minor) / 100
+        net_amount = Decimal(payout.get("amount") or 0) / 100
 
-        result = await self.db.execute(
-            sa_select(Payment).where(
-                Payment.stripe_destination_payment_id.in_(destination_payment_ids)
+        payments = []
+        if destination_payment_ids:
+            result = await self.db.execute(
+                sa_select(Payment).where(
+                    Payment.stripe_destination_payment_id.in_(destination_payment_ids)
+                )
             )
-        )
-        payments = result.scalars().all()
+            payments = result.scalars().all()
 
+        matched_amount = sum(
+            ((p.amount or Decimal(0)) - (p.refund_amount or Decimal(0)) for p in payments),
+            Decimal(0),
+        )
         for payment in payments:
             payment.stripe_payout_id = payout_id
+
+        txn_count = len(destination_payment_ids)
+        discrepancy_amount = gross_amount - matched_amount
+        if txn_count == 0:
+            recon = PayoutReconStatus.unmatched
+        elif len(payments) < txn_count:
+            recon = PayoutReconStatus.partial
+        elif abs(discrepancy_amount) > Decimal("0.01"):
+            recon = PayoutReconStatus.discrepancy
+        else:
+            recon = PayoutReconStatus.matched
+
+        payout_row = await self._get_payout(payout_id)
+        if payout_row is None:
+            payout_row = Payout(stripe_payout_id=payout_id, club_id=club_id)
+            self.db.add(payout_row)
+        payout_row.stripe_connect_account_id = connect_account_id
+        payout_row.gross_amount = gross_amount
+        payout_row.fee_amount = fee_amount
+        payout_row.amount = net_amount
+        payout_row.currency = (payout.get("currency") or "gbp").upper()
+        payout_row.status = PayoutStatus.paid
+        payout_row.arrival_date = self._ts_to_utc(payout.get("arrival_date"))
+        payout_row.statement_descriptor = payout.get("statement_descriptor")
+        payout_row.reconciliation_status = recon
+        payout_row.matched_amount = matched_amount
+        payout_row.discrepancy_amount = discrepancy_amount
+        payout_row.paid_at = datetime.now(tz=timezone.utc)
+
+        return {
+            "stripe_payout_id": payout_id,
+            "matched_count": len(payments),
+            "txn_count": txn_count,
+            "reconciliation_status": recon.value,
+            "discrepancy_amount": float(discrepancy_amount),
+        }
+
+    async def handle_payout_failed(self, event: dict) -> None:
+        """payout.failed — the bank rejected the deposit; reverse any stamping."""
+        await self._mark_payout_reversed(event, PayoutStatus.failed)
+
+    async def handle_payout_canceled(self, event: dict) -> None:
+        """payout.canceled — the payout was cancelled before settling."""
+        await self._mark_payout_reversed(event, PayoutStatus.canceled)
+
+    async def _mark_payout_reversed(self, event: dict, status: PayoutStatus) -> None:
+        """
+        Record a failed/canceled payout and clear `stripe_payout_id` from any
+        payments stamped to it — the money never reached (or returned from) the
+        bank, so those payments are not settled.
+        """
+        payout = event["data"]["object"]
+        payout_id: str = payout["id"]
+        connect_account_id: str = event["account"]
+
+        club_id = await self._resolve_club_id_for_account(connect_account_id)
+        if club_id is None:
+            logger.warning(
+                "%s for unknown Connect account %s (payout %s); skipping",
+                event.get("type"), connect_account_id, payout_id,
+            )
+            return
+
+        payout_row = await self._get_payout(payout_id)
+        if payout_row is None:
+            payout_row = Payout(
+                stripe_payout_id=payout_id,
+                club_id=club_id,
+                amount=Decimal(payout.get("amount") or 0) / 100,
+                currency=(payout.get("currency") or "gbp").upper(),
+            )
+            self.db.add(payout_row)
+        payout_row.stripe_connect_account_id = connect_account_id
+        payout_row.status = status
+        payout_row.failure_code = payout.get("failure_code")
+        payout_row.failure_message = payout.get("failure_message")
+        payout_row.reconciliation_status = PayoutReconStatus.unmatched
+        payout_row.matched_amount = None
+        payout_row.discrepancy_amount = None
+        payout_row.paid_at = None
+
+        result = await self.db.execute(
+            sa_select(Payment).where(Payment.stripe_payout_id == payout_id)
+        )
+        for payment in result.scalars().all():
+            payment.stripe_payout_id = None
 
         await self.db.commit()
