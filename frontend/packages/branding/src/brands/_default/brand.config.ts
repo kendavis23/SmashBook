@@ -19,6 +19,7 @@ export const defaultBrand: BrandManifest = defineBrand({
     id: "_default",
     displayName: "SmashBook",
     deliveryModel: "shared",
+    brandSubdomain: "ace-player-staging",
 
     // Minimal native identity — scheme + Stripe merchant id are pinned via nativeOverrides
     // below to keep the existing values (the default scheme would otherwise be the id).

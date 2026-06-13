@@ -17,6 +17,7 @@ export const rallyStagingBrand: BrandManifest = defineBrand({
     id: "rally-staging",
     displayName: "Rally",
     deliveryModel: "dedicated",
+    brandSubdomain: "rally-player-staging",
 
     native: {
         iosBundleId: "app.rally.staging.mobile",

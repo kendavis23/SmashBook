@@ -3,20 +3,25 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
+import { useMyProfile } from "@repo/player-domain";
 import { useMyBookings } from "../hooks";
-import type { BookingTab, InviteStatus, PlayerBookingItem } from "../types";
+import type { Booking, BookingTab, InviteStatus, PlayerBookingItem } from "../types";
 import { BookingsListView } from "../bookings-list/pages/BookingsListView";
+import { InvitePlayerSheet } from "../bookings-list/components/InvitePlayerSheet";
 import { BookingDetailSheet } from "../manage-booking/components/BookingDetailSheet";
+import { PaymentSheet, type PaymentContext } from "../../payment";
 import { useThemeColors } from "../../../theme";
 
 type SelectedBooking = { bookingId: string; clubId: string };
 
 export function BookScreen(): JSX.Element {
     const colors = useThemeColors();
+    const { data: profile } = useMyProfile();
     const [activeTab, setActiveTab] = useState<BookingTab>("upcoming");
     const [pastTabVisited, setPastTabVisited] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<SelectedBooking | null>(null);
-    const [pendingPayment, setPendingPayment] = useState<PlayerBookingItem | null>(null);
+    const [inviteBooking, setInviteBooking] = useState<PlayerBookingItem | null>(null);
+    const [payingBooking, setPayingBooking] = useState<PlayerBookingItem | null>(null);
 
     const now = new Date();
     const todayUtc = now.toISOString().slice(0, 10);
@@ -46,7 +51,7 @@ export function BookScreen(): JSX.Element {
     const isLoading = activeTab === "upcoming" ? isUpcomingLoading : isPastLoading;
     const error = activeTab === "upcoming" ? upcomingError : pastError;
 
-    const handleRefresh = useCallback(() => {
+    const refreshCurrent = useCallback(() => {
         if (activeTab === "upcoming") void refetchUpcoming();
         else void refetchPast();
     }, [activeTab, refetchUpcoming, refetchPast]);
@@ -61,21 +66,57 @@ export function BookScreen(): JSX.Element {
     }, []);
 
     const handlePayClick = useCallback((item: PlayerBookingItem) => {
-        setPendingPayment(item);
+        setPayingBooking(item);
     }, []);
 
-    const handleInvitePlayer = useCallback((_item: PlayerBookingItem, _userId: string) => {
-        // Handled inside BookingDetailSheet for the organiser flow
+    const handleInviteClick = useCallback((item: PlayerBookingItem) => {
+        setInviteBooking(item);
     }, []);
 
-    const handleRespondInvite = useCallback(
-        (_item: PlayerBookingItem, _action: Extract<InviteStatus, "accepted" | "declined">) => {
-            // Handled inside BookingDetailSheet for the player flow
+    // After accepting an invite, immediately open payment if there's a balance —
+    // mirrors the web-player accept→pay chain.
+    const handleInviteResponded = useCallback(
+        (
+            _item: PlayerBookingItem,
+            action: Extract<InviteStatus, "accepted" | "declined">,
+            updated: Booking
+        ) => {
+            refreshCurrent();
+            if (action !== "accepted") return;
+            const me = updated.players.find((p) => p.user_id === profile?.id);
+            if (!me || me.amount_due <= 0) return;
+            setPayingBooking({
+                booking_id: updated.id,
+                club_id: updated.club_id,
+                club_name: updated.club_name ?? "",
+                court_id: updated.court_id,
+                court_name: updated.court_name,
+                booking_type: updated.booking_type,
+                status: updated.status,
+                start_datetime: updated.start_datetime,
+                end_datetime: updated.end_datetime,
+                role: me.role,
+                invite_status: me.invite_status,
+                payment_status: me.payment_status,
+                amount_due: me.amount_due,
+            });
         },
-        []
+        [profile, refreshCurrent]
     );
 
+    const handlePaymentSuccess = useCallback(() => {
+        refreshCurrent();
+    }, [refreshCurrent]);
+
+    const handleClosePayment = useCallback(() => {
+        setPayingBooking(null);
+        refreshCurrent();
+    }, [refreshCurrent]);
+
     const upcomingCount = upcomingData?.upcoming?.length ?? 0;
+    const paymentContext: PaymentContext | null = payingBooking
+        ? { type: "booking", booking: payingBooking }
+        : null;
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: colors.hero }} edges={["top"]}>
@@ -134,7 +175,7 @@ export function BookScreen(): JSX.Element {
                     </View>
 
                     <Pressable
-                        onPress={handleRefresh}
+                        onPress={refreshCurrent}
                         disabled={isLoading}
                         accessibilityRole="button"
                         accessibilityLabel="Refresh bookings"
@@ -171,64 +212,6 @@ export function BookScreen(): JSX.Element {
                     elevation: 6,
                 }}
             >
-                {/* Pending payment banner */}
-                {pendingPayment ? (
-                    <View
-                        style={{
-                            marginHorizontal: 16,
-                            marginTop: 12,
-                            flexDirection: "row",
-                            alignItems: "center",
-                            gap: 10,
-                            borderRadius: 14,
-                            borderWidth: 1,
-                            borderColor: colors.ctaBorder,
-                            backgroundColor: colors.ctaSurface,
-                            paddingHorizontal: 14,
-                            paddingVertical: 11,
-                        }}
-                    >
-                        <View
-                            style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 10,
-                                backgroundColor: colors.ctaBorder,
-                                alignItems: "center",
-                                justifyContent: "center",
-                            }}
-                        >
-                            <Ionicons name="card-outline" size={16} color={colors.cta} />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text
-                                style={{ fontSize: 13, fontWeight: "600", color: colors.cta }}
-                                numberOfLines={1}
-                            >
-                                Payment pending · {pendingPayment.court_name}
-                            </Text>
-                            <Text
-                                style={{
-                                    fontSize: 11,
-                                    color: colors.mutedForeground,
-                                    marginTop: 1,
-                                }}
-                            >
-                                Payment flow coming soon
-                            </Text>
-                        </View>
-                        <Pressable
-                            onPress={() => setPendingPayment(null)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Dismiss payment banner"
-                            hitSlop={8}
-                        >
-                            <Ionicons name="close" size={16} color={colors.mutedForeground} />
-                        </Pressable>
-                    </View>
-                ) : null}
-
-                {/* Main list */}
                 <BookingsListView
                     upcoming={upcomingData?.upcoming ?? []}
                     past={pastData?.past ?? []}
@@ -236,11 +219,11 @@ export function BookScreen(): JSX.Element {
                     isLoading={isLoading}
                     error={error}
                     onTabChange={handleTabChange}
-                    onRefresh={handleRefresh}
+                    onRefresh={refreshCurrent}
                     onManageClick={handleManageClick}
                     onPayClick={handlePayClick}
-                    onInvitePlayer={handleInvitePlayer}
-                    onRespondInvite={handleRespondInvite}
+                    onInviteClick={handleInviteClick}
+                    onInviteResponded={handleInviteResponded}
                 />
             </View>
 
@@ -248,6 +231,16 @@ export function BookScreen(): JSX.Element {
                 selected={selectedBooking}
                 onClose={() => setSelectedBooking(null)}
                 onPayClick={handlePayClick}
+                onInviteClick={handleInviteClick}
+            />
+
+            <InvitePlayerSheet booking={inviteBooking} onClose={() => setInviteBooking(null)} />
+
+            <PaymentSheet
+                visible={payingBooking !== null}
+                context={paymentContext}
+                onClose={handleClosePayment}
+                onSuccess={handlePaymentSuccess}
             />
         </SafeAreaView>
     );

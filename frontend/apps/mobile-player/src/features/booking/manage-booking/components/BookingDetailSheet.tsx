@@ -166,9 +166,15 @@ type Props = {
     selected: SelectedBooking | null;
     onClose: () => void;
     onPayClick: (item: PlayerBookingItem) => void;
+    onInviteClick: (item: PlayerBookingItem) => void;
 };
 
-export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JSX.Element {
+export function BookingDetailSheet({
+    selected,
+    onClose,
+    onPayClick,
+    onInviteClick,
+}: Props): JSX.Element {
     const colors = useThemeColors();
     const [respondBusy, setRespondBusy] = useState<"accepted" | "declined" | null>(null);
 
@@ -213,6 +219,7 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
             ? {
                   booking_id: (booking as Booking).id,
                   club_id: (booking as Booking).club_id,
+                  club_name: (booking as Booking).club_name ?? "",
                   court_id: (booking as Booking).court_id,
                   court_name: (booking as Booking).court_name,
                   booking_type: (booking as Booking).booking_type,
@@ -486,6 +493,64 @@ export function BookingDetailSheet({ selected, onClose, onPayClick }: Props): JS
                                         </View>
                                     )}
                                 </View>
+                            </View>
+                        ) : null}
+
+                        {/* Invite player CTA for organiser on a pending booking */}
+                        {myInfo?.role === "organiser" && typedBooking.status === "pending" ? (
+                            <View className="gap-2">
+                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                    Manage Players
+                                </Text>
+                                <Pressable
+                                    onPress={() => {
+                                        onInviteClick({
+                                            booking_id: typedBooking.id,
+                                            club_id: typedBooking.club_id,
+                                            club_name: typedBooking.club_name ?? "",
+                                            court_id: typedBooking.court_id,
+                                            court_name: typedBooking.court_name,
+                                            booking_type: typedBooking.booking_type,
+                                            status: typedBooking.status,
+                                            start_datetime: typedBooking.start_datetime,
+                                            end_datetime: typedBooking.end_datetime,
+                                            role: myInfo.role,
+                                            invite_status: myInfo.inviteStatus,
+                                            payment_status: myInfo.paymentStatus,
+                                            amount_due: myInfo.amountDue,
+                                        });
+                                        onClose();
+                                    }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Invite a player"
+                                    className="flex-row items-center justify-between rounded-[20px] border border-border bg-card px-5 py-4 active:opacity-75"
+                                >
+                                    <View className="flex-row items-center gap-3">
+                                        <View
+                                            style={{ backgroundColor: colors.ctaSurface }}
+                                            className="h-10 w-10 items-center justify-center rounded-[12px]"
+                                        >
+                                            <Ionicons
+                                                name="person-add-outline"
+                                                size={20}
+                                                color={colors.cta}
+                                            />
+                                        </View>
+                                        <View>
+                                            <Text className="text-[14px] font-bold text-foreground">
+                                                Invite a player
+                                            </Text>
+                                            <Text className="text-[12px] text-muted-foreground">
+                                                Add someone to this booking
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Ionicons
+                                        name="chevron-forward"
+                                        size={18}
+                                        color={colors.mutedForeground}
+                                    />
+                                </Pressable>
                             </View>
                         ) : null}
 

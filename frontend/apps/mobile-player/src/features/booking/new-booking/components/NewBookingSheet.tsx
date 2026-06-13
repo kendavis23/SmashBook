@@ -1,4 +1,4 @@
-import { type JSX, useState, useCallback, useEffect, useRef } from "react";
+import { type JSX, useState, useCallback, useMemo } from "react";
 import {
     ActivityIndicator,
     KeyboardAvoidingView,
@@ -7,39 +7,51 @@ import {
     Pressable,
     ScrollView,
     Text,
-    TextInput,
     View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useMyProfile } from "@repo/player-domain";
 import { useThemeColors } from "../../../../theme";
-import {
-    useCreateBooking,
-    useListCourts,
-    useGetCourtAvailability,
-    useListAvailableTrainers,
-} from "../../hooks";
-import type { BookingInput, BookingType, TimeSlot, PlayerBookingItem, Booking } from "../../types";
-import { formatSlotTime, formatAmount, buildBookingDatetime } from "../../utils/bookingFormatters";
+import { formatUTCDate, formatUTCTime, formatCurrency } from "../../../../lib";
+import { useCreateBooking, useGetPriceQuote, useListAvailableTrainers } from "../../hooks";
+import type {
+    BookingInput,
+    BookingType,
+    PlayerBookingItem,
+    Booking,
+    PriceQuote,
+    PlayerSearchResult,
+} from "../../types";
+import { buildBookingDatetime } from "../../utils/bookingFormatters";
+import { PlayerSearchField } from "./PlayerSearchField";
+
+type Step = "details" | "invite";
 
 type FormState = {
-    courtId: string;
     bookingType: BookingType;
-    bookingDate: string;
-    startTime: string;
     isOpenGame: boolean;
     maxPlayers: string;
     staffProfileId: string;
     playerUserIds: string[];
 };
 
+const BOOKING_TYPE_OPTIONS: { value: BookingType; label: string }[] = [
+    { value: "regular", label: "Regular" },
+    { value: "lesson_individual", label: "Individual Lesson" },
+];
+
+const DISCOUNT_SOURCE_LABELS: Record<string, string> = {
+    membership: "Membership",
+    campaign: "Campaign",
+    promo_code: "Promo Code",
+    staff_manual: "Staff Discount",
+    ai_gap_offer: "Special Offer",
+};
+
 function createDefaultForm(): FormState {
     return {
-        courtId: "",
         bookingType: "regular",
-        bookingDate: "",
-        startTime: "",
         isOpenGame: true,
         maxPlayers: "4",
         staffProfileId: "",
@@ -62,6 +74,7 @@ function getPayableBookingForUser(
     return {
         booking_id: booking.id,
         club_id: booking.club_id,
+        club_name: booking.club_name ?? "",
         court_id: booking.court_id,
         court_name: booking.court_name,
         booking_type: booking.booking_type,
@@ -75,142 +88,130 @@ function getPayableBookingForUser(
     };
 }
 
-/* ── Picker-like row selector ── */
-function PickerRow({
+/* ── Fixed read-only match info tile ── */
+function InfoTile({
+    icon,
     label,
     value,
-    placeholder,
-    options,
-    onChange,
-    disabled,
-    error,
 }: {
+    icon: keyof typeof Ionicons.glyphMap;
     label: string;
     value: string;
-    placeholder: string;
-    options: { value: string; label: string; disabled?: boolean }[];
-    onChange: (v: string) => void;
-    disabled?: boolean;
-    error?: string;
 }): JSX.Element {
     const colors = useThemeColors();
-    const [open, setOpen] = useState(false);
-    const selected = options.find((o) => o.value === value);
-
     return (
-        <View className="gap-1.5">
-            <Text className="text-[12px] font-semibold text-foreground">{label}</Text>
-            <Pressable
-                onPress={() => !disabled && setOpen(true)}
-                accessibilityRole="combobox"
-                accessibilityLabel={label}
-                disabled={disabled}
-                className="flex-row items-center justify-between rounded-[14px] border border-border bg-card px-4 py-3.5 active:opacity-75"
-                style={{
-                    borderColor: error ? colors.destructive : colors.border,
-                    opacity: disabled ? 0.5 : 1,
-                }}
-            >
+        <View className="flex-1 flex-row items-center gap-3 rounded-[16px] border border-border/60 bg-card px-3.5 py-3">
+            <View className="h-9 w-9 items-center justify-center rounded-[12px] bg-muted">
+                <Ionicons name={icon} size={16} color={colors.mutedForeground} />
+            </View>
+            <View className="min-w-0 flex-1">
+                <Text className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {label}
+                </Text>
                 <Text
-                    style={{ color: selected ? colors.foreground : colors.placeholder }}
-                    className="flex-1 text-[14px]"
+                    className="mt-0.5 text-[14px] font-semibold text-foreground"
                     numberOfLines={1}
                 >
-                    {selected?.label ?? placeholder}
+                    {value}
                 </Text>
-                <Ionicons name="chevron-down" size={16} color={colors.placeholder} />
-            </Pressable>
-            {error ? <Text className="text-[11px] text-destructive">{error}</Text> : null}
-
-            <Modal visible={open} animationType="slide" transparent>
-                <Pressable
-                    className="flex-1"
-                    style={{ backgroundColor: colors.overlay }}
-                    onPress={() => setOpen(false)}
-                    accessibilityRole="button"
-                    accessibilityLabel="Close picker"
-                />
-                <View className="rounded-t-[24px] bg-card pb-8 pt-4">
-                    <View className="mb-2 flex-row items-center justify-between px-5">
-                        <Text className="text-[16px] font-bold text-foreground">{label}</Text>
-                        <Pressable
-                            onPress={() => setOpen(false)}
-                            accessibilityRole="button"
-                            accessibilityLabel="Close"
-                            className="h-8 w-8 items-center justify-center rounded-full bg-muted"
-                        >
-                            <Ionicons name="close" size={18} color={colors.foreground} />
-                        </Pressable>
-                    </View>
-                    <ScrollView>
-                        {options.map((opt) => (
-                            <Pressable
-                                key={opt.value}
-                                onPress={() => {
-                                    if (!opt.disabled) {
-                                        onChange(opt.value);
-                                        setOpen(false);
-                                    }
-                                }}
-                                accessibilityRole="menuitem"
-                                accessibilityLabel={opt.label}
-                                disabled={opt.disabled}
-                                className="flex-row items-center justify-between px-5 py-4 active:bg-muted"
-                                style={{ opacity: opt.disabled ? 0.4 : 1 }}
-                            >
-                                <Text
-                                    style={{
-                                        color: opt.value === value ? colors.cta : colors.foreground,
-                                    }}
-                                    className="text-[14px] font-medium"
-                                >
-                                    {opt.label}
-                                </Text>
-                                {opt.value === value ? (
-                                    <Ionicons name="checkmark" size={18} color={colors.cta} />
-                                ) : null}
-                            </Pressable>
-                        ))}
-                    </ScrollView>
-                </View>
-            </Modal>
+            </View>
         </View>
     );
 }
 
-/* ── Date input ── */
-function DateInput({
-    label,
+/* ── Discount breakdown bar (original / discount / your share) ── */
+function PriceBreakdown({ priceQuote }: { priceQuote: PriceQuote | null }): JSX.Element | null {
+    const colors = useThemeColors();
+    if (
+        !priceQuote ||
+        priceQuote.discount_amount == null ||
+        priceQuote.discount_amount <= 0 ||
+        priceQuote.discount_source == null
+    ) {
+        return null;
+    }
+
+    const originalPrice = priceQuote.per_player_price ?? priceQuote.base_price;
+    const amountDue = priceQuote.amount_due ?? priceQuote.base_price;
+    const discountLabel =
+        DISCOUNT_SOURCE_LABELS[priceQuote.discount_source] ?? priceQuote.discount_source;
+
+    return (
+        <View className="flex-row overflow-hidden rounded-[16px] border border-border/60 bg-card">
+            <View className="flex-1 px-3 py-3">
+                <Text className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Original
+                </Text>
+                <Text
+                    className="mt-1 text-[14px] font-bold text-muted-foreground"
+                    style={{ textDecorationLine: "line-through" }}
+                >
+                    {formatCurrency(originalPrice)}
+                </Text>
+            </View>
+            <View className="flex-1 border-l border-border/60 px-3 py-3">
+                <Text className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {discountLabel}
+                </Text>
+                <Text className="mt-1 text-[14px] font-bold" style={{ color: colors.cta }}>
+                    -{formatCurrency(priceQuote.discount_amount)}
+                </Text>
+            </View>
+            <View
+                className="flex-1 border-l border-border/60 px-3 py-3"
+                style={{ backgroundColor: colors.ctaSurface }}
+            >
+                <Text className="text-[9px] font-semibold uppercase tracking-wider text-cta">
+                    Your share
+                </Text>
+                <Text className="mt-1 text-[14px] font-bold" style={{ color: colors.cta }}>
+                    {formatCurrency(amountDue)}
+                </Text>
+            </View>
+        </View>
+    );
+}
+
+/* ── Segmented booking-type selector ── */
+function BookingTypeSelector({
     value,
     onChange,
-    disabled,
-    error,
 }: {
-    label: string;
-    value: string;
-    onChange: (v: string) => void;
-    disabled?: boolean;
-    error?: string;
+    value: BookingType;
+    onChange: (v: BookingType) => void;
 }): JSX.Element {
     const colors = useThemeColors();
     return (
-        <View className="gap-1.5">
-            <Text className="text-[12px] font-semibold text-foreground">{label}</Text>
-            <TextInput
-                value={value}
-                onChangeText={onChange}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={colors.placeholder}
-                keyboardType="numbers-and-punctuation"
-                editable={!disabled}
-                accessibilityLabel={label}
-                className="rounded-[14px] border border-border bg-card px-4 py-3.5 text-[14px] text-foreground"
-                style={{
-                    borderColor: error ? colors.destructive : colors.border,
-                    opacity: disabled ? 0.5 : 1,
-                }}
-            />
-            {error ? <Text className="text-[11px] text-destructive">{error}</Text> : null}
+        <View className="gap-2">
+            <Text className="text-[13px] font-semibold text-foreground">
+                Booking Type <Text style={{ color: colors.destructive }}>*</Text>
+            </Text>
+            <View className="flex-row gap-2">
+                {BOOKING_TYPE_OPTIONS.map((opt) => {
+                    const active = opt.value === value;
+                    return (
+                        <Pressable
+                            key={opt.value}
+                            onPress={() => onChange(opt.value)}
+                            accessibilityRole="button"
+                            accessibilityLabel={opt.label}
+                            accessibilityState={{ selected: active }}
+                            className="flex-1 items-center rounded-[14px] border px-3 py-3 active:opacity-80"
+                            style={{
+                                borderColor: active ? colors.cta : colors.border,
+                                backgroundColor: active ? colors.ctaSurface : colors.card,
+                            }}
+                        >
+                            <Text
+                                className="text-[13px] font-semibold"
+                                style={{ color: active ? colors.cta : colors.foreground }}
+                            >
+                                {opt.label}
+                            </Text>
+                        </Pressable>
+                    );
+                })}
+            </View>
         </View>
     );
 }
@@ -233,27 +234,30 @@ function NumberStepper({
 }): JSX.Element {
     const colors = useThemeColors();
     return (
-        <View className="gap-1.5">
-            <Text className="text-[12px] font-semibold text-foreground">{label}</Text>
-            <View className="flex-row items-center gap-3">
+        <View className="gap-2">
+            <Text className="text-[13px] font-semibold text-foreground">
+                {label} <Text style={{ color: colors.destructive }}>*</Text>
+            </Text>
+            <View
+                className="flex-row items-center justify-between rounded-[14px] border border-border bg-card px-2 py-1.5"
+                style={{ opacity: disabled ? 0.5 : 1 }}
+            >
                 <Pressable
                     onPress={() => onChange(Math.max(min, value - 1))}
                     disabled={disabled || value <= min}
                     accessibilityRole="button"
-                    accessibilityLabel="Decrease"
-                    className="h-11 w-11 items-center justify-center rounded-[12px] border border-border bg-card active:opacity-75 disabled:opacity-40"
+                    accessibilityLabel="Decrease max players"
+                    className="h-9 w-9 items-center justify-center rounded-[10px] bg-muted active:opacity-75 disabled:opacity-40"
                 >
                     <Ionicons name="remove" size={18} color={colors.foreground} />
                 </Pressable>
-                <Text className="min-w-[32px] text-center text-[16px] font-bold text-foreground">
-                    {value}
-                </Text>
+                <Text className="text-[18px] font-bold text-foreground">{value}</Text>
                 <Pressable
                     onPress={() => onChange(Math.min(max, value + 1))}
                     disabled={disabled || value >= max}
                     accessibilityRole="button"
-                    accessibilityLabel="Increase"
-                    className="h-11 w-11 items-center justify-center rounded-[12px] border border-border bg-card active:opacity-75 disabled:opacity-40"
+                    accessibilityLabel="Increase max players"
+                    className="h-9 w-9 items-center justify-center rounded-[10px] bg-muted active:opacity-75 disabled:opacity-40"
                 >
                     <Ionicons name="add" size={18} color={colors.foreground} />
                 </Pressable>
@@ -262,8 +266,8 @@ function NumberStepper({
     );
 }
 
-/* ── Toggle ── */
-function ToggleRow({
+/* ── Checkbox row ── */
+function CheckboxRow({
     label,
     description,
     value,
@@ -278,35 +282,27 @@ function ToggleRow({
     return (
         <Pressable
             onPress={() => onChange(!value)}
-            accessibilityRole="switch"
+            accessibilityRole="checkbox"
             accessibilityLabel={label}
             accessibilityState={{ checked: value }}
-            className="flex-row items-center justify-between rounded-[16px] border border-border bg-card px-4 py-4 active:opacity-75"
+            className="flex-row items-center gap-3 active:opacity-75"
         >
-            <View className="flex-1 pr-4">
-                <Text className="text-[14px] font-semibold text-foreground">{label}</Text>
+            <View
+                className="h-6 w-6 items-center justify-center rounded-[7px] border-2"
+                style={{
+                    borderColor: value ? colors.cta : colors.border,
+                    backgroundColor: value ? colors.cta : "transparent",
+                }}
+            >
+                {value ? (
+                    <Ionicons name="checkmark" size={15} color={colors.ctaForeground} />
+                ) : null}
+            </View>
+            <View className="flex-1">
+                <Text className="text-[14px] font-medium text-foreground">{label}</Text>
                 {description ? (
                     <Text className="mt-0.5 text-[12px] text-muted-foreground">{description}</Text>
                 ) : null}
-            </View>
-            <View
-                style={{
-                    backgroundColor: value ? colors.cta : colors.border,
-                    width: 44,
-                    height: 26,
-                    borderRadius: 13,
-                    padding: 3,
-                }}
-            >
-                <View
-                    style={{
-                        width: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        backgroundColor: colors.card,
-                        transform: [{ translateX: value ? 18 : 0 }],
-                    }}
-                />
             </View>
         </Pressable>
     );
@@ -315,6 +311,11 @@ function ToggleRow({
 type Props = {
     visible: boolean;
     clubId: string | null;
+    courtId: string;
+    courtName: string;
+    date: string;
+    startTime: string;
+    endTime?: string;
     onClose: () => void;
     onBookingCreated: (booking: PlayerBookingItem) => void;
     onSuccess: () => void;
@@ -323,6 +324,11 @@ type Props = {
 export function NewBookingSheet({
     visible,
     clubId,
+    courtId,
+    courtName,
+    date,
+    startTime,
+    endTime,
     onClose,
     onBookingCreated,
     onSuccess,
@@ -330,46 +336,23 @@ export function NewBookingSheet({
     const queryClient = useQueryClient();
     const colors = useThemeColors();
     const { data: profile } = useMyProfile();
+
+    const [step, setStep] = useState<Step>("details");
     const [form, setForm] = useState<FormState>(createDefaultForm);
-    const [courtError, setCourtError] = useState("");
-    const [dateError, setDateError] = useState("");
+    const [invitedInfo, setInvitedInfo] = useState<Record<string, PlayerSearchResult>>({});
     const [staffError, setStaffError] = useState("");
     const [apiError, setApiError] = useState("");
 
-    const { data: courts = [] } = useListCourts(clubId ?? "");
-    const courtList = courts as { id: string; name: string }[];
-
-    // Auto-select first court
-    useEffect(() => {
-        if (courtList.length > 0 && !form.courtId) {
-            setForm((prev) => ({ ...prev, courtId: courtList[0]?.id ?? "" }));
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [courtList]);
-
-    const {
-        data: availabilityData,
-        isLoading: slotsLoading,
-        refetch: refetchSlots,
-    } = useGetCourtAvailability(form.courtId, form.bookingDate);
-    const slots = (availabilityData?.slots ?? []) as TimeSlot[];
-    const selectedSlot = slots.find((s) => s.start_time === form.startTime);
-    const selectedPrice = selectedSlot?.price ?? null;
-
-    // Auto-select first available slot
-    const prevAvailabilityRef = useRef(availabilityData);
-    useEffect(() => {
-        if (slotsLoading || slots.length === 0) return;
-        if (availabilityData === prevAvailabilityRef.current) return;
-        prevAvailabilityRef.current = availabilityData;
-        const first = slots.find((s) => s.is_available);
-        setForm((prev) => ({ ...prev, startTime: first?.start_time ?? "" }));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [availabilityData, slotsLoading]);
-
-    const isLessonType =
-        form.bookingType === "lesson_individual" || form.bookingType === "lesson_group";
     const isIndividualLesson = form.bookingType === "lesson_individual";
+    const isLessonType = form.bookingType === "lesson_individual";
+
+    const startDatetimeForQuote = date && startTime ? `${date}T${startTime}:00` : "";
+    const { data: priceQuote = null } = useGetPriceQuote({
+        club_id: clubId ?? "",
+        start_datetime: startDatetimeForQuote,
+        booking_type: form.bookingType,
+        max_players: parseInt(form.maxPlayers, 10) || 4,
+    });
 
     const {
         data: trainerData = [],
@@ -377,92 +360,102 @@ export function NewBookingSheet({
         isError: trainersError,
     } = useListAvailableTrainers({
         clubId: isLessonType ? (clubId ?? "") : "",
-        date: form.bookingDate,
-        startTime: form.startTime,
-        endTime: selectedSlot?.end_time ?? "",
+        date,
+        startTime,
+        endTime: endTime ?? "",
     });
 
     const trainerOptions = (trainerData as { staff_profile_id: string; full_name: string }[])
-        .map((t) => ({
-            value: t.staff_profile_id,
-            label: t.full_name,
-        }))
+        .map((t) => ({ value: t.staff_profile_id, label: t.full_name }))
         .filter((o) => o.value.length > 0);
 
     const createMutation = useCreateBooking(clubId ?? "");
+
+    const formattedDate = useMemo(() => (date ? formatUTCDate(`${date}T00:00:00Z`) : "—"), [date]);
+    const formattedTime = useMemo(() => {
+        if (!startTime) return "—";
+        const start = formatUTCTime(`${date}T${startTime}:00Z`);
+        const end = endTime ? formatUTCTime(`${date}T${endTime}:00Z`) : "";
+        return end ? `${start} – ${end}` : start;
+    }, [date, startTime, endTime]);
+    const courtPrice = priceQuote?.base_price ?? null;
+    const formattedPrice = formatCurrency(courtPrice);
 
     const handleFormChange = useCallback((patch: Partial<FormState>) => {
         setForm((prev) => {
             const next = { ...prev, ...patch };
             if (patch.bookingType !== undefined) {
-                next.isOpenGame = false;
+                next.isOpenGame = true;
                 if (patch.bookingType === "lesson_individual") {
                     next.maxPlayers = "1";
                     next.playerUserIds = [];
+                } else {
+                    next.maxPlayers = "4";
+                    next.staffProfileId = "";
                 }
             }
-            if (patch.courtId !== undefined) {
-                next.bookingDate = "";
-                next.startTime = "";
-            }
-            if (patch.bookingDate !== undefined) next.startTime = "";
             return next;
         });
-        if (patch.courtId !== undefined) setCourtError("");
-        if (patch.bookingDate !== undefined || patch.startTime !== undefined) setDateError("");
         if (patch.staffProfileId !== undefined) setStaffError("");
         setApiError("");
     }, []);
 
+    const handleAddPlayer = useCallback((player: PlayerSearchResult) => {
+        setInvitedInfo((info) => ({ ...info, [player.id]: player }));
+        setForm((prev) =>
+            prev.playerUserIds.includes(player.id)
+                ? prev
+                : { ...prev, playerUserIds: [...prev.playerUserIds.filter(Boolean), player.id] }
+        );
+    }, []);
+
+    const handleRemovePlayer = useCallback((id: string) => {
+        setForm((prev) => ({
+            ...prev,
+            playerUserIds: prev.playerUserIds.filter((uid) => uid !== id),
+        }));
+    }, []);
+
     const validate = (): boolean => {
-        let valid = true;
-        if (!form.courtId) {
-            setCourtError("Court is required.");
-            valid = false;
-        }
-        if (!form.bookingDate || !form.startTime) {
-            setDateError("Date and start time are required.");
-            valid = false;
-        }
         if (isIndividualLesson && !form.staffProfileId.trim()) {
             setStaffError("Trainer is required for individual lessons.");
-            valid = false;
+            return false;
         }
-        return valid;
+        return true;
     };
 
     const handleSubmit = useCallback(async () => {
         if (!validate()) return;
 
-        const startDatetime = buildBookingDatetime(form.bookingDate, form.startTime);
+        const startDatetime = buildBookingDatetime(date, startTime);
         const payload: BookingInput = {
             club_id: clubId ?? "",
-            court_id: form.courtId,
+            court_id: courtId,
             booking_type: form.bookingType,
             start_datetime: startDatetime,
             is_open_game: form.isOpenGame,
             max_players: parseOptionalNumber(form.maxPlayers) ?? undefined,
             player_user_ids:
-                form.playerUserIds.filter(Boolean).length > 0
+                !isIndividualLesson && form.playerUserIds.filter(Boolean).length > 0
                     ? form.playerUserIds.filter(Boolean)
                     : undefined,
             staff_profile_id: form.staffProfileId.trim() || null,
         };
 
         try {
-            const booking = await createMutation.mutateAsync(payload);
-            const createdBooking = booking as Booking;
+            const booking = (await createMutation.mutateAsync(payload)) as Booking;
             void queryClient.invalidateQueries({ queryKey: ["player", "bookings"] });
 
-            const payable = getPayableBookingForUser(createdBooking, profile?.id);
+            const payable = getPayableBookingForUser(booking, profile?.id);
             if (payable) {
                 onBookingCreated(payable);
-                onClose();
             } else {
                 onSuccess();
-                onClose();
             }
+            onClose();
             setForm(createDefaultForm());
+            setInvitedInfo({});
+            setStep("details");
         } catch (err) {
             setApiError((err as { message?: string })?.message ?? "Failed to create booking.");
         }
@@ -470,6 +463,10 @@ export function NewBookingSheet({
     }, [
         form,
         clubId,
+        courtId,
+        date,
+        startTime,
+        isIndividualLesson,
         createMutation,
         queryClient,
         profile?.id,
@@ -478,17 +475,8 @@ export function NewBookingSheet({
         onClose,
     ]);
 
-    const slotOptions = slots.map((s) => ({
-        value: s.start_time,
-        label: formatSlotTime(s.start_time) + (!s.is_available ? " — Booked" : ""),
-        disabled: !s.is_available,
-    }));
-
-    const courtOptions = courtList.map((c) => ({ value: c.id, label: c.name }));
-    const typeOptions = [
-        { value: "regular", label: "Regular" },
-        { value: "lesson_individual", label: "Individual Lesson" },
-    ];
+    const invitedIds = form.playerUserIds.filter(Boolean);
+    const canInvite = !isIndividualLesson;
 
     return (
         <Modal
@@ -505,15 +493,36 @@ export function NewBookingSheet({
                     {/* Header */}
                     <View className="flex-row items-center justify-between bg-card px-5 pb-4 pt-5 shadow-sm">
                         <View className="flex-row items-center gap-3">
-                            <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-secondary">
-                                <Ionicons name="calendar-outline" size={20} color={colors.cta} />
-                            </View>
+                            {step === "invite" ? (
+                                <Pressable
+                                    onPress={() => setStep("details")}
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Back"
+                                    className="h-10 w-10 items-center justify-center rounded-full bg-muted active:opacity-75"
+                                >
+                                    <Ionicons
+                                        name="arrow-back"
+                                        size={20}
+                                        color={colors.foreground}
+                                    />
+                                </Pressable>
+                            ) : (
+                                <View className="h-10 w-10 items-center justify-center rounded-[14px] bg-secondary">
+                                    <Ionicons
+                                        name="calendar-outline"
+                                        size={20}
+                                        color={colors.cta}
+                                    />
+                                </View>
+                            )}
                             <View>
                                 <Text className="text-[18px] font-bold text-foreground">
-                                    New Booking
+                                    {step === "invite" ? "Invite Players" : "New Booking"}
                                 </Text>
                                 <Text className="text-[12px] text-muted-foreground">
-                                    Book a court session
+                                    {step === "invite"
+                                        ? "Add players to this match"
+                                        : "Confirm your booking details"}
                                 </Text>
                             </View>
                         </View>
@@ -530,6 +539,7 @@ export function NewBookingSheet({
                     <ScrollView
                         contentContainerClassName="pb-[40px] gap-5 pt-5 px-5"
                         showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
                     >
                         {/* API Error */}
                         {apiError ? (
@@ -552,246 +562,249 @@ export function NewBookingSheet({
                             </View>
                         ) : null}
 
-                        {/* Section: Court & Type */}
-                        <View className="gap-3">
-                            <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Court Details
-                            </Text>
-                            <View className="gap-4 rounded-[20px] bg-card px-4 py-4 shadow-sm">
-                                <PickerRow
-                                    label="Court *"
-                                    value={form.courtId}
-                                    placeholder={
-                                        courtList.length === 0
-                                            ? "No courts available"
-                                            : "Select court…"
-                                    }
-                                    options={courtOptions}
-                                    onChange={(v) => handleFormChange({ courtId: v })}
-                                    disabled={courtList.length === 0}
-                                    error={courtError}
-                                />
-                                <PickerRow
-                                    label="Booking Type"
-                                    value={form.bookingType}
-                                    placeholder="Select type…"
-                                    options={typeOptions}
-                                    onChange={(v) =>
-                                        handleFormChange({
-                                            bookingType: v as BookingType,
-                                            maxPlayers: v === "lesson_individual" ? "1" : "4",
-                                        })
-                                    }
-                                />
-                            </View>
-                        </View>
-
-                        {/* Section: Date & Time */}
-                        <View className="gap-3">
-                            <View className="flex-row items-center justify-between">
-                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Schedule
-                                </Text>
-                                {form.courtId && form.bookingDate ? (
-                                    <Pressable
-                                        onPress={() => void refetchSlots()}
-                                        disabled={slotsLoading}
-                                        accessibilityRole="button"
-                                        accessibilityLabel="Refresh available slots"
-                                        className="flex-row items-center gap-1 active:opacity-75"
-                                    >
-                                        <Ionicons
-                                            name="refresh-outline"
-                                            size={14}
-                                            color={slotsLoading ? colors.placeholder : colors.cta}
-                                        />
-                                        <Text
-                                            style={{
-                                                color: slotsLoading
-                                                    ? colors.placeholder
-                                                    : colors.cta,
-                                            }}
-                                            className="text-[12px] font-medium"
-                                        >
-                                            Refresh
-                                        </Text>
-                                    </Pressable>
-                                ) : null}
-                            </View>
-                            <View className="gap-4 rounded-[20px] bg-card px-4 py-4 shadow-sm">
-                                <DateInput
-                                    label="Date *"
-                                    value={form.bookingDate}
-                                    onChange={(v) => handleFormChange({ bookingDate: v })}
-                                    disabled={!form.courtId}
-                                    error={dateError && !form.bookingDate ? dateError : undefined}
-                                />
-
-                                {!form.courtId || !form.bookingDate ? (
-                                    <View className="gap-1.5">
-                                        <Text className="text-[12px] font-semibold text-foreground">
-                                            Start Time *
-                                        </Text>
-                                        <View className="rounded-[14px] border border-border bg-muted px-4 py-3.5">
-                                            <Text className="text-[14px] text-muted-foreground">
-                                                {!form.courtId
-                                                    ? "Select a court first"
-                                                    : "Enter a date first"}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                ) : slotsLoading ? (
-                                    <View className="gap-1.5">
-                                        <Text className="text-[12px] font-semibold text-foreground">
-                                            Start Time *
-                                        </Text>
-                                        <View className="flex-row items-center gap-2 rounded-[14px] border border-border bg-muted px-4 py-3.5">
-                                            <ActivityIndicator
-                                                size="small"
-                                                color={colors.placeholder}
-                                            />
-                                            <Text className="text-[14px] text-muted-foreground">
-                                                Loading slots…
-                                            </Text>
-                                        </View>
-                                    </View>
-                                ) : slots.length === 0 ? (
-                                    <View className="gap-1.5">
-                                        <Text className="text-[12px] font-semibold text-foreground">
-                                            Start Time *
-                                        </Text>
-                                        <View className="rounded-[14px] border border-border bg-muted px-4 py-3.5">
-                                            <Text className="text-[14px] text-muted-foreground">
-                                                No slots available
-                                            </Text>
-                                        </View>
-                                    </View>
-                                ) : (
-                                    <PickerRow
-                                        label="Start Time *"
-                                        value={form.startTime}
-                                        placeholder="Select time…"
-                                        options={slotOptions}
-                                        onChange={(v) => handleFormChange({ startTime: v })}
-                                        error={dateError && !form.startTime ? dateError : undefined}
-                                    />
-                                )}
-                            </View>
-                        </View>
-
-                        {/* Section: Price preview */}
-                        {form.startTime && selectedPrice !== null ? (
-                            <View className="flex-row items-center justify-between rounded-[20px] border border-cta/30 bg-secondary px-5 py-4">
-                                <View className="flex-row items-center gap-3">
-                                    <View className="h-10 w-10 items-center justify-center rounded-[12px] bg-cta/20">
-                                        <Ionicons
-                                            name="cash-outline"
-                                            size={18}
-                                            color={colors.cta}
-                                        />
-                                    </View>
-                                    <Text className="text-[13px] font-semibold text-cta">
-                                        Estimated Price
+                        {step === "details" ? (
+                            <>
+                                {/* Fixed match information */}
+                                <View className="gap-3">
+                                    <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                        Match Information
                                     </Text>
-                                </View>
-                                <Text className="text-[20px] font-bold text-cta">
-                                    {formatAmount(selectedPrice)}
-                                </Text>
-                            </View>
-                        ) : null}
-
-                        {/* Section: Options */}
-                        <View className="gap-3">
-                            <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                Options
-                            </Text>
-                            <View className="gap-4 rounded-[20px] bg-card px-4 py-4 shadow-sm">
-                                <NumberStepper
-                                    label="Max Players"
-                                    value={
-                                        isIndividualLesson ? 1 : parseInt(form.maxPlayers, 10) || 4
-                                    }
-                                    min={1}
-                                    max={10}
-                                    onChange={(v) => handleFormChange({ maxPlayers: String(v) })}
-                                    disabled={isIndividualLesson}
-                                />
-
-                                {!isIndividualLesson ? (
-                                    <ToggleRow
-                                        label="Private / invite-only match"
-                                        description="Only invited players can join"
-                                        value={!form.isOpenGame}
-                                        onChange={(v) => handleFormChange({ isOpenGame: !v })}
-                                    />
-                                ) : null}
-                            </View>
-                        </View>
-
-                        {/* Trainer selection (lesson types) */}
-                        {isLessonType ? (
-                            <View className="gap-3">
-                                <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                                    Trainer
-                                </Text>
-                                <View className="rounded-[20px] bg-card px-4 py-4 shadow-sm">
-                                    {!form.startTime ? (
-                                        <View className="gap-1.5">
-                                            <Text className="text-[12px] font-semibold text-foreground">
-                                                Trainer {isIndividualLesson ? "*" : ""}
-                                            </Text>
-                                            <View className="rounded-[14px] border border-border bg-muted px-4 py-3.5">
-                                                <Text className="text-[14px] text-muted-foreground">
-                                                    Select a time slot first
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    ) : trainersLoading ? (
-                                        <View className="flex-row items-center gap-2 rounded-[14px] border border-border bg-muted px-4 py-3.5">
-                                            <ActivityIndicator
-                                                size="small"
-                                                color={colors.placeholder}
+                                    <View className="gap-2">
+                                        <View className="flex-row gap-2">
+                                            <InfoTile
+                                                icon="location-outline"
+                                                label="Court"
+                                                value={courtName}
                                             />
-                                            <Text className="text-[14px] text-muted-foreground">
-                                                Loading trainers…
-                                            </Text>
+                                            <InfoTile
+                                                icon="calendar-outline"
+                                                label="Date"
+                                                value={formattedDate}
+                                            />
                                         </View>
-                                    ) : trainersError ? (
-                                        <View className="rounded-[14px] border border-destructive bg-destructive/10 px-4 py-3.5">
-                                            <Text className="text-[14px] text-destructive">
-                                                Failed to load trainers
-                                            </Text>
+                                        <View className="flex-row gap-2">
+                                            <InfoTile
+                                                icon="time-outline"
+                                                label="Time"
+                                                value={formattedTime}
+                                            />
+                                            <InfoTile
+                                                icon="pricetag-outline"
+                                                label="Price"
+                                                value={formattedPrice}
+                                            />
+                                        </View>
+                                        <PriceBreakdown priceQuote={priceQuote} />
+                                    </View>
+                                </View>
+
+                                {/* Editable booking settings */}
+                                <View className="gap-4 rounded-[20px] bg-card px-4 py-5 shadow-sm">
+                                    <BookingTypeSelector
+                                        value={form.bookingType}
+                                        onChange={(v) => handleFormChange({ bookingType: v })}
+                                    />
+
+                                    <NumberStepper
+                                        label="Max Players"
+                                        value={
+                                            isIndividualLesson
+                                                ? 1
+                                                : parseInt(form.maxPlayers, 10) || 4
+                                        }
+                                        min={1}
+                                        max={10}
+                                        onChange={(v) =>
+                                            handleFormChange({ maxPlayers: String(v) })
+                                        }
+                                        disabled={isIndividualLesson}
+                                    />
+
+                                    {!isIndividualLesson ? (
+                                        <View className="border-t border-border/50 pt-4">
+                                            <CheckboxRow
+                                                label="Private / invite-only match"
+                                                description="Only invited players can join"
+                                                value={!form.isOpenGame}
+                                                onChange={(v) =>
+                                                    handleFormChange({ isOpenGame: !v })
+                                                }
+                                            />
+                                        </View>
+                                    ) : null}
+                                </View>
+
+                                {/* Trainer (individual lesson) */}
+                                {isLessonType ? (
+                                    <View className="gap-3">
+                                        <Text className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                            Trainer
+                                        </Text>
+                                        <View className="rounded-[20px] bg-card px-4 py-4 shadow-sm">
+                                            {trainersLoading ? (
+                                                <View className="flex-row items-center gap-2">
+                                                    <ActivityIndicator
+                                                        size="small"
+                                                        color={colors.placeholder}
+                                                    />
+                                                    <Text className="text-[14px] text-muted-foreground">
+                                                        Loading trainers…
+                                                    </Text>
+                                                </View>
+                                            ) : trainersError ? (
+                                                <Text className="text-[14px] text-destructive">
+                                                    Failed to load trainers
+                                                </Text>
+                                            ) : trainerOptions.length === 0 ? (
+                                                <Text className="text-[14px] text-muted-foreground">
+                                                    No trainers available
+                                                </Text>
+                                            ) : (
+                                                <View className="gap-2">
+                                                    {trainerOptions.map((opt) => {
+                                                        const active =
+                                                            opt.value === form.staffProfileId;
+                                                        return (
+                                                            <Pressable
+                                                                key={opt.value}
+                                                                onPress={() =>
+                                                                    handleFormChange({
+                                                                        staffProfileId: opt.value,
+                                                                    })
+                                                                }
+                                                                accessibilityRole="button"
+                                                                accessibilityLabel={opt.label}
+                                                                accessibilityState={{
+                                                                    selected: active,
+                                                                }}
+                                                                className="flex-row items-center justify-between rounded-[14px] border px-4 py-3 active:opacity-80"
+                                                                style={{
+                                                                    borderColor: active
+                                                                        ? colors.cta
+                                                                        : colors.border,
+                                                                    backgroundColor: active
+                                                                        ? colors.ctaSurface
+                                                                        : colors.card,
+                                                                }}
+                                                            >
+                                                                <Text
+                                                                    className="text-[14px] font-medium"
+                                                                    style={{
+                                                                        color: active
+                                                                            ? colors.cta
+                                                                            : colors.foreground,
+                                                                    }}
+                                                                >
+                                                                    {opt.label}
+                                                                </Text>
+                                                                {active ? (
+                                                                    <Ionicons
+                                                                        name="checkmark-circle"
+                                                                        size={18}
+                                                                        color={colors.cta}
+                                                                    />
+                                                                ) : null}
+                                                            </Pressable>
+                                                        );
+                                                    })}
+                                                </View>
+                                            )}
+                                            {staffError ? (
+                                                <Text className="mt-2 text-[12px] text-destructive">
+                                                    {staffError}
+                                                </Text>
+                                            ) : null}
+                                        </View>
+                                    </View>
+                                ) : null}
+                            </>
+                        ) : (
+                            /* ── Invite players step ── */
+                            <View className="gap-4">
+                                <View className="gap-3 rounded-[20px] bg-card px-4 py-5 shadow-sm">
+                                    <Text className="text-[13px] font-semibold text-foreground">
+                                        Invite Players
+                                    </Text>
+                                    <PlayerSearchField
+                                        clubId={clubId}
+                                        selectedIds={invitedIds}
+                                        onAdd={handleAddPlayer}
+                                    />
+
+                                    {invitedIds.length > 0 ? (
+                                        <View className="gap-2">
+                                            {invitedIds.map((uid) => {
+                                                const info = invitedInfo[uid];
+                                                const name = info?.full_name ?? "Player";
+                                                const label =
+                                                    info?.skill_level != null
+                                                        ? `${name} (${info.skill_level})`
+                                                        : name;
+                                                return (
+                                                    <View
+                                                        key={uid}
+                                                        className="flex-row items-center justify-between rounded-[14px] border border-border/60 bg-muted/30 px-4 py-3"
+                                                    >
+                                                        <Text
+                                                            className="flex-1 text-[14px] text-foreground"
+                                                            numberOfLines={1}
+                                                        >
+                                                            {label}
+                                                        </Text>
+                                                        <Pressable
+                                                            onPress={() => handleRemovePlayer(uid)}
+                                                            accessibilityRole="button"
+                                                            accessibilityLabel={`Remove ${name}`}
+                                                            hitSlop={8}
+                                                            className="h-7 w-7 items-center justify-center rounded-full bg-muted active:opacity-75"
+                                                        >
+                                                            <Ionicons
+                                                                name="close"
+                                                                size={15}
+                                                                color={colors.mutedForeground}
+                                                            />
+                                                        </Pressable>
+                                                    </View>
+                                                );
+                                            })}
                                         </View>
                                     ) : (
-                                        <PickerRow
-                                            label={`Trainer${isIndividualLesson ? " *" : ""}`}
-                                            value={form.staffProfileId}
-                                            placeholder={
-                                                trainerOptions.length === 0
-                                                    ? "No trainers available"
-                                                    : "Select trainer…"
-                                            }
-                                            options={trainerOptions}
-                                            onChange={(v) =>
-                                                handleFormChange({ staffProfileId: v })
-                                            }
-                                            disabled={trainerOptions.length === 0}
-                                            error={staffError}
-                                        />
+                                        <Text className="text-[12px] text-muted-foreground">
+                                            Search to add players, or leave seats open for others to
+                                            join.
+                                        </Text>
                                     )}
                                 </View>
                             </View>
-                        ) : null}
+                        )}
                     </ScrollView>
 
-                    {/* Submit footer */}
-                    <View className="border-t border-border bg-card px-5 pb-8 pt-4">
+                    {/* Footer */}
+                    <View className="flex-row gap-3 border-t border-border bg-card px-5 pb-8 pt-4">
+                        {step === "details" && canInvite ? (
+                            <Pressable
+                                onPress={() => setStep("invite")}
+                                accessibilityRole="button"
+                                accessibilityLabel="Invite players"
+                                className="flex-1 flex-row items-center justify-center gap-2 rounded-[16px] border border-border bg-card py-4 active:opacity-75"
+                            >
+                                <Ionicons
+                                    name="people-outline"
+                                    size={18}
+                                    color={colors.foreground}
+                                />
+                                <Text className="text-[15px] font-bold text-foreground">
+                                    Invite Players
+                                </Text>
+                            </Pressable>
+                        ) : null}
+
                         <Pressable
                             onPress={() => void handleSubmit()}
                             disabled={createMutation.isPending}
                             accessibilityRole="button"
                             accessibilityLabel="Create booking and pay"
-                            className="flex-row items-center justify-center gap-2 rounded-[16px] bg-cta py-4 active:opacity-90 disabled:opacity-60"
+                            className="flex-1 flex-row items-center justify-center gap-2 rounded-[16px] bg-cta py-4 active:opacity-90 disabled:opacity-60"
                         >
                             {createMutation.isPending ? (
                                 <ActivityIndicator size="small" color={colors.ctaForeground} />

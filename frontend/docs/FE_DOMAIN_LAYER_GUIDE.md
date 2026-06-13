@@ -1,4 +1,4 @@
-_Last updated: 2026-06-13 00:00 UTC_
+_Last updated: 2026-06-13 12:00 UTC_
 
 # Frontend Domain Layer Guide
 
@@ -452,3 +452,4 @@ New module added to api-client?
 | `staff`  | `revenue`         | `revenue.model.ts`         | —                | —                     | —       | `revenue.hooks.ts`         | `revenue.hooks.test.tsx`         |
 | `player` | `profile`         | `profile.model.ts`         | —                | —                     | —       | `profile.hooks.ts`         | `profile.hooks.test.tsx`         |
 | `staff`  | `analytics-coach` | `analytics-coach.model.ts` | —                | —                     | —       | `analytics-coach.hooks.ts` | `analytics-coach.hooks.test.tsx` |
+| `staff`  | `export`          | `export.model.ts`          | —                | —                     | —       | `export.hooks.ts`          | `export.hooks.test.tsx`          |

@@ -128,6 +128,10 @@ export type BrandManifest = {
     displayName: string;
     deliveryModel: DeliveryModel;
 
+    // The tenant subdomain this brand logs in against (e.g. "ace-player-staging").
+    // Replaces the per-login "Club" field — players never type their club.
+    brandSubdomain: string;
+
     native: BrandNative;
 
     theme: BrandTheme;
@@ -190,6 +194,9 @@ export type BrandInput = {
     id: string;
     displayName: string;
     deliveryModel?: DeliveryModel; // defaults to "shared" (Model B — instant onboarding)
+
+    // Tenant subdomain logins resolve against. Defaults to `id` when omitted.
+    brandSubdomain?: string;
 
     native: BrandInputNative;
     branding: BrandBranding;

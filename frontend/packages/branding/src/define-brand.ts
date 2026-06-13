@@ -60,6 +60,7 @@ export function defineBrand(input: BrandInput): BrandManifest {
         id: input.id,
         displayName: input.displayName,
         deliveryModel: input.deliveryModel ?? "shared",
+        brandSubdomain: input.brandSubdomain ?? input.id,
 
         native: resolvedNative,
 
