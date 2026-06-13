@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import type { JSX } from "react";
 import { useState } from "react";
 
@@ -6,20 +6,19 @@ import { usePasswordResetConfirm } from "../hooks";
 
 export default function ResetPasswordPage(): JSX.Element {
     const navigate = useNavigate();
+    const search = useSearch({ strict: false }) as { token?: string };
+    const token = search.token ?? "";
     const { mutate, isPending, isError, error, isSuccess } = usePasswordResetConfirm();
 
-    const [token, setToken] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
     const [fieldErrors, setFieldErrors] = useState<{
-        token?: string;
         newPassword?: string;
         confirmPassword?: string;
     }>({});
 
     const validate = (): boolean => {
-        const errors: { token?: string; newPassword?: string; confirmPassword?: string } = {};
-        if (!token) errors.token = "Required";
+        const errors: { newPassword?: string; confirmPassword?: string } = {};
         if (!newPassword) errors.newPassword = "Required";
         else if (newPassword.length < 8) errors.newPassword = "Must be at least 8 characters";
         if (!confirmPassword) errors.confirmPassword = "Required";
@@ -87,7 +86,7 @@ export default function ResetPasswordPage(): JSX.Element {
                                     Reset password
                                 </h1>
                                 <p className="text-sm text-muted-foreground mt-2">
-                                    Enter the reset token from your email and choose a new password.
+                                    Choose a new password for your account.
                                 </p>
                             </div>
 
@@ -108,28 +107,6 @@ export default function ResetPasswordPage(): JSX.Element {
                                             : "Invalid or expired token"}
                                     </div>
                                 )}
-
-                                <div>
-                                    <label
-                                        htmlFor="token"
-                                        className="text-sm text-muted-foreground"
-                                    >
-                                        Reset token
-                                    </label>
-                                    <input
-                                        id="token"
-                                        type="text"
-                                        placeholder="Paste your reset token"
-                                        className="mt-1 w-full px-4 py-3 border border-border rounded-lg text-sm bg-background text-foreground outline-none focus:ring-2 focus:ring-blue-500"
-                                        value={token}
-                                        onChange={(e) => setToken(e.target.value)}
-                                    />
-                                    {fieldErrors.token && (
-                                        <p className="text-xs text-red-500 mt-1">
-                                            {fieldErrors.token}
-                                        </p>
-                                    )}
-                                </div>
 
                                 <div>
                                     <label

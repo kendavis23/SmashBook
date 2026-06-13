@@ -119,8 +119,8 @@ export function ProfileNotificationScreen({ user, onCancel }: Props) {
                             color: colors.mutedForeground,
                         }}
                     >
-                        Choose where you&apos;d like to receive booking confirmations, reminders, and
-                        account updates.
+                        Choose where you&apos;d like to receive booking confirmations, reminders,
+                        and account updates.
                     </Text>
                 </View>
 
