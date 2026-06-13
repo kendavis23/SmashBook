@@ -13,6 +13,7 @@ export const aceStagingBrand: BrandManifest = defineBrand({
     id: "ace-staging",
     displayName: "Ace",
     deliveryModel: "dedicated",
+    brandSubdomain: "ace-player-staging",
 
     native: {
         iosBundleId: "app.ace.staging.mobile",

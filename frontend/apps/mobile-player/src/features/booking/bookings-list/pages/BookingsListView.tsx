@@ -1,7 +1,7 @@
 import { useState, type JSX } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
+import type { Booking, PlayerBookingItem, BookingTab, InviteStatus } from "../../types";
 import { BookingCard } from "../components/BookingCard";
 import { BookingsTabBar } from "../components/BookingsTabBar";
 import { useThemeColors } from "../../../../theme";
@@ -17,10 +17,11 @@ type Props = {
     onRefresh: () => void;
     onManageClick: (item: PlayerBookingItem) => void;
     onPayClick: (item: PlayerBookingItem) => void;
-    onInvitePlayer: (item: PlayerBookingItem, userId: string) => void;
-    onRespondInvite: (
+    onInviteClick: (item: PlayerBookingItem) => void;
+    onInviteResponded: (
         item: PlayerBookingItem,
-        action: Extract<InviteStatus, "accepted" | "declined">
+        action: Extract<InviteStatus, "accepted" | "declined">,
+        updated: Booking
     ) => void;
 };
 
@@ -276,6 +277,8 @@ export function BookingsListView({
     onRefresh,
     onManageClick,
     onPayClick,
+    onInviteClick,
+    onInviteResponded,
 }: Props): JSX.Element {
     const colors = useThemeColors();
     const todayStr = getTodayStr();
@@ -431,6 +434,8 @@ export function BookingsListView({
                         showActions={showActions}
                         onManageClick={onManageClick}
                         onPayClick={onPayClick}
+                        onInviteClick={onInviteClick}
+                        onInviteResponded={onInviteResponded}
                     />
                 </View>
             )}

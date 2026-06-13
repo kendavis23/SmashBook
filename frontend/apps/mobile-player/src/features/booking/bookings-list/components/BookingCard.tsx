@@ -1,7 +1,7 @@
-import { type JSX } from "react";
-import { Pressable, Text, View } from "react-native";
+import { type JSX, useState } from "react";
+import { ActivityIndicator, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { PlayerBookingItem } from "../../types";
+import type { Booking, PlayerBookingItem, InviteStatus } from "../../types";
 import {
     formatBookingDate,
     formatBookingTimeRange,
@@ -13,6 +13,7 @@ import {
     getPaymentConfig,
     getInviteConfig,
 } from "../../constants/bookingConstants";
+import { useRespondInvite } from "../../hooks";
 import { useThemeColors } from "../../../../theme";
 
 type Props = {
@@ -20,6 +21,12 @@ type Props = {
     showActions: boolean;
     onManageClick: (item: PlayerBookingItem) => void;
     onPayClick: (item: PlayerBookingItem) => void;
+    onInviteClick: (item: PlayerBookingItem) => void;
+    onInviteResponded: (
+        item: PlayerBookingItem,
+        action: Extract<InviteStatus, "accepted" | "declined">,
+        updated: Booking
+    ) => void;
 };
 
 export function BookingCard({
@@ -27,8 +34,22 @@ export function BookingCard({
     showActions,
     onManageClick,
     onPayClick,
+    onInviteClick,
+    onInviteResponded,
 }: Props): JSX.Element {
     const colors = useThemeColors();
+    const [respondBusy, setRespondBusy] = useState<"accepted" | "declined" | null>(null);
+    const respondMutation = useRespondInvite(booking.club_id, booking.booking_id);
+
+    async function handleRespond(action: "accepted" | "declined"): Promise<void> {
+        setRespondBusy(action);
+        try {
+            const updated = await respondMutation.mutateAsync({ action });
+            onInviteResponded(booking, action, updated);
+        } finally {
+            setRespondBusy(null);
+        }
+    }
     const statusCfg = getStatusConfig(colors)[booking.status] ?? {
         label: booking.status,
         bg: colors.muted,
@@ -43,8 +64,10 @@ export function BookingCard({
     const inviteCfg = getInviteConfig(colors)[booking.invite_status] ?? null;
 
     const isOrganiser = booking.role === "organiser";
-    const showPay =
-        showActions && booking.payment_status === "pending" && booking.invite_status === "accepted";
+    const isPendingInvite = !isOrganiser && booking.invite_status === "pending";
+    const isDeclinedInvite = !isOrganiser && booking.invite_status === "declined";
+    const showPay = booking.payment_status !== "paid";
+    const showInvite = isOrganiser && booking.status === "pending";
 
     return (
         <View
@@ -294,13 +317,112 @@ export function BookingCard({
                                 letterSpacing: -0.4,
                             }}
                         >
-                            {formatAmount(booking.amount_due)}
+                            {isDeclinedInvite ? "—" : formatAmount(booking.amount_due)}
                         </Text>
                     </View>
 
                     {showActions ? (
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                            {showPay ? (
+                        <View
+                            style={{
+                                flexDirection: "row",
+                                alignItems: "center",
+                                justifyContent: "flex-end",
+                                flexWrap: "wrap",
+                                gap: 6,
+                            }}
+                        >
+                            {isDeclinedInvite ? (
+                                <Text
+                                    style={{
+                                        fontSize: 12,
+                                        fontStyle: "italic",
+                                        color: colors.mutedForeground,
+                                    }}
+                                >
+                                    Invitation no longer available
+                                </Text>
+                            ) : isPendingInvite ? (
+                                <>
+                                    <Pressable
+                                        onPress={() => void handleRespond("accepted")}
+                                        disabled={respondBusy !== null}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Accept invitation"
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 5,
+                                            borderRadius: 22,
+                                            backgroundColor: colors.success,
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 8,
+                                            opacity: respondBusy !== null ? 0.5 : 1,
+                                        }}
+                                    >
+                                        {respondBusy === "accepted" ? (
+                                            <ActivityIndicator
+                                                size="small"
+                                                color={colors.successForeground}
+                                            />
+                                        ) : (
+                                            <Ionicons
+                                                name="checkmark-circle"
+                                                size={13}
+                                                color={colors.successForeground}
+                                            />
+                                        )}
+                                        <Text
+                                            style={{
+                                                fontSize: 13,
+                                                fontWeight: "600",
+                                                color: colors.successForeground,
+                                            }}
+                                        >
+                                            Accept
+                                        </Text>
+                                    </Pressable>
+                                    <Pressable
+                                        onPress={() => void handleRespond("declined")}
+                                        disabled={respondBusy !== null}
+                                        accessibilityRole="button"
+                                        accessibilityLabel="Decline invitation"
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 5,
+                                            borderRadius: 22,
+                                            borderWidth: 1,
+                                            borderColor: colors.border,
+                                            backgroundColor: colors.card,
+                                            paddingHorizontal: 14,
+                                            paddingVertical: 8,
+                                            opacity: respondBusy !== null ? 0.5 : 1,
+                                        }}
+                                    >
+                                        {respondBusy === "declined" ? (
+                                            <ActivityIndicator
+                                                size="small"
+                                                color={colors.mutedForeground}
+                                            />
+                                        ) : (
+                                            <Ionicons
+                                                name="close"
+                                                size={13}
+                                                color={colors.foreground}
+                                            />
+                                        )}
+                                        <Text
+                                            style={{
+                                                fontSize: 13,
+                                                fontWeight: "600",
+                                                color: colors.foreground,
+                                            }}
+                                        >
+                                            Decline
+                                        </Text>
+                                    </Pressable>
+                                </>
+                            ) : showPay ? (
                                 <Pressable
                                     onPress={() => onPayClick(booking)}
                                     accessibilityRole="button"
@@ -330,34 +452,74 @@ export function BookingCard({
                                         Pay
                                     </Text>
                                 </Pressable>
-                            ) : null}
-                            <Pressable
-                                onPress={() => onManageClick(booking)}
-                                accessibilityRole="button"
-                                accessibilityLabel={`View booking at ${booking.court_name}`}
-                                style={{
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    gap: 5,
-                                    borderRadius: 22,
-                                    borderWidth: 1,
-                                    borderColor: colors.border,
-                                    backgroundColor: colors.card,
-                                    paddingHorizontal: 16,
-                                    paddingVertical: 8,
-                                }}
-                            >
-                                <Ionicons name="eye-outline" size={13} color={colors.foreground} />
-                                <Text
-                                    style={{
-                                        fontSize: 13,
-                                        fontWeight: "600",
-                                        color: colors.foreground,
-                                    }}
-                                >
-                                    View
-                                </Text>
-                            </Pressable>
+                            ) : (
+                                <>
+                                    {showInvite ? (
+                                        <Pressable
+                                            onPress={() => onInviteClick(booking)}
+                                            accessibilityRole="button"
+                                            accessibilityLabel="Invite player"
+                                            style={{
+                                                flexDirection: "row",
+                                                alignItems: "center",
+                                                gap: 5,
+                                                borderRadius: 22,
+                                                borderWidth: 1,
+                                                borderColor: colors.border,
+                                                backgroundColor: colors.card,
+                                                paddingHorizontal: 14,
+                                                paddingVertical: 8,
+                                            }}
+                                        >
+                                            <Ionicons
+                                                name="person-add-outline"
+                                                size={13}
+                                                color={colors.foreground}
+                                            />
+                                            <Text
+                                                style={{
+                                                    fontSize: 13,
+                                                    fontWeight: "600",
+                                                    color: colors.foreground,
+                                                }}
+                                            >
+                                                Invite
+                                            </Text>
+                                        </Pressable>
+                                    ) : null}
+                                    <Pressable
+                                        onPress={() => onManageClick(booking)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={`View booking at ${booking.court_name}`}
+                                        style={{
+                                            flexDirection: "row",
+                                            alignItems: "center",
+                                            gap: 5,
+                                            borderRadius: 22,
+                                            borderWidth: 1,
+                                            borderColor: colors.border,
+                                            backgroundColor: colors.card,
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 8,
+                                        }}
+                                    >
+                                        <Ionicons
+                                            name="eye-outline"
+                                            size={13}
+                                            color={colors.foreground}
+                                        />
+                                        <Text
+                                            style={{
+                                                fontSize: 13,
+                                                fontWeight: "600",
+                                                color: colors.foreground,
+                                            }}
+                                        >
+                                            View
+                                        </Text>
+                                    </Pressable>
+                                </>
+                            )}
                         </View>
                     ) : null}
                 </View>

@@ -10,6 +10,9 @@ export type {
     PaymentStatus,
     BookingInput,
     TimeSlot,
+    PriceQuote,
+    DiscountSource,
+    PlayerSearchResult,
 } from "@repo/player-domain/models";
 
 export type BookingTab = "upcoming" | "past";

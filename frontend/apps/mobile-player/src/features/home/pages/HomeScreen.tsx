@@ -7,10 +7,17 @@ import { useAuth } from "@repo/auth";
 import type { ClubAvailabilitySlot } from "../types";
 import { HomeView } from "./HomeView";
 import { NewBookingSheet } from "../../booking/new-booking/components/NewBookingSheet";
+import { PaymentSheet } from "../../payment";
 import type { PlayerBookingItem, Booking } from "../../booking/types";
 import { useThemeColors } from "../../../theme";
 
-type BookingModal = { courtId: string; date: string; startTime: string } | null;
+type BookingModal = {
+    courtId: string;
+    courtName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+} | null;
 
 function todayIso(): string {
     return new Date().toISOString().slice(0, 10);
@@ -29,7 +36,7 @@ export function HomeScreen(): JSX.Element {
     const [showOpenGame, setShowOpenGame] = useState(true);
     const [joinBookingId, setJoinBookingId] = useState("");
     const [bookingModal, setBookingModal] = useState<BookingModal>(null);
-    const [, setPendingPayment] = useState<PlayerBookingItem | null>(null);
+    const [pendingPayment, setPendingPayment] = useState<PlayerBookingItem | null>(null);
     const startedJoinRef = useRef("");
 
     const params: ClubAvailabilityParams = {
@@ -78,6 +85,7 @@ export function HomeScreen(): JSX.Element {
                     setPendingPayment({
                         booking_id: booking.id,
                         club_id: booking.club_id,
+                        club_name: booking.club_name ?? "",
                         court_id: booking.court_id,
                         court_name: booking.court_name,
                         booking_type: booking.booking_type,
@@ -125,9 +133,16 @@ export function HomeScreen(): JSX.Element {
     const handleBook = useCallback(
         (courtId: string) => {
             if (!selectedSlot) return;
-            setBookingModal({ courtId, date, startTime: selectedSlot.start_time });
+            const courtName = availability?.courts.find((c) => c.id === courtId)?.name ?? "Court";
+            setBookingModal({
+                courtId,
+                courtName,
+                date,
+                startTime: selectedSlot.start_time,
+                endTime: selectedSlot.end_time,
+            });
         },
-        [selectedSlot, date]
+        [selectedSlot, date, availability]
     );
 
     const handleJoin = useCallback((bookingId: string) => {
@@ -187,6 +202,11 @@ export function HomeScreen(): JSX.Element {
                 <NewBookingSheet
                     visible={Boolean(bookingModal)}
                     clubId={clubId ?? null}
+                    courtId={bookingModal.courtId}
+                    courtName={bookingModal.courtName}
+                    date={bookingModal.date}
+                    startTime={bookingModal.startTime}
+                    endTime={bookingModal.endTime}
                     onClose={() => setBookingModal(null)}
                     onBookingCreated={(payable) => {
                         setBookingModal(null);
@@ -199,6 +219,16 @@ export function HomeScreen(): JSX.Element {
                     }}
                 />
             ) : null}
+
+            <PaymentSheet
+                visible={Boolean(pendingPayment)}
+                context={pendingPayment ? { type: "booking", booking: pendingPayment } : null}
+                onClose={() => {
+                    setPendingPayment(null);
+                    void refetch();
+                }}
+                onSuccess={() => void refetch()}
+            />
         </SafeAreaView>
     );
 }

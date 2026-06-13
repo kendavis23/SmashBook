@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth, useLogin } from "@repo/auth";
+import { useBrand } from "@repo/branding";
 import { Redirect, useRouter, type Href } from "expo-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -9,13 +10,13 @@ import { LoginView } from "./LoginView";
 export function LoginPage() {
     const router = useRouter();
     const { isAuthenticated } = useAuth();
+    const { brandSubdomain } = useBrand();
     const { mutate: login, isPending, error, isError } = useLogin("player");
     const [passwordVisible, setPasswordVisible] = useState(false);
 
     const { control, handleSubmit } = useForm<LoginFormValues>({
         resolver: zodResolver(loginSchema),
         defaultValues: {
-            tenant_subdomain: "",
             email: "",
             password: "",
         },
@@ -28,7 +29,7 @@ export function LoginPage() {
     const onSubmit = (values: LoginFormValues) => {
         login(
             {
-                tenant_subdomain: values.tenant_subdomain.trim(),
+                tenant_subdomain: brandSubdomain,
                 email: values.email.trim(),
                 password: values.password,
             },

@@ -97,6 +97,7 @@ export const brandManifestSchema = z.object({
     id: z.string().min(1),
     displayName: z.string().min(1),
     deliveryModel: z.enum(["dedicated", "shared"]),
+    brandSubdomain: z.string().min(1),
 
     native: brandNativeSchema,
 
@@ -139,6 +140,7 @@ export const brandInputSchema = z.object({
     id: z.string().min(1),
     displayName: z.string().min(1),
     deliveryModel: z.enum(["dedicated", "shared"]).optional(),
+    brandSubdomain: z.string().min(1).optional(),
 
     native: z.object({
         iosBundleId: z.string().min(1),

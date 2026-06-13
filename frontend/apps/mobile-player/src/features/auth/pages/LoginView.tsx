@@ -124,37 +124,6 @@ export function LoginView({
                         ) : null}
 
                         <View className="gap-5">
-                            {/* Club */}
-                            <Controller
-                                control={control}
-                                name="tenant_subdomain"
-                                render={({ field, fieldState }) => (
-                                    <InputField
-                                        label="Club"
-                                        icon="business-outline"
-                                        error={fieldState.error?.message}
-                                    >
-                                        <TextInput
-                                            accessibilityLabel="Club"
-                                            autoCapitalize="none"
-                                            autoCorrect={false}
-                                            className={`${inputBase} ${
-                                                fieldState.error
-                                                    ? "border-destructive bg-destructive/5"
-                                                    : inputResting
-                                            }`}
-                                            editable={!isPending}
-                                            onBlur={field.onBlur}
-                                            onChangeText={field.onChange}
-                                            placeholder="your-club"
-                                            placeholderTextColor={colors.placeholder}
-                                            returnKeyType="next"
-                                            value={field.value}
-                                        />
-                                    </InputField>
-                                )}
-                            />
-
                             {/* Email */}
                             <Controller
                                 control={control}
